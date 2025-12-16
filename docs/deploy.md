@@ -146,6 +146,64 @@ npm run deploy
 - 检查部署的文件是否完整
 - 检查网站根路径配置
 
+### 4. 源码样式修改
+
+#### 4.1 移除侧边栏个人信息组件
+
+**修改文件**：`node_modules/vuepress-theme-reco/components/Common.vue`
+
+**修改内容**：
+
+**原始代码**：
+```vue
+<Sidebar
+  :items="sidebarItems"
+  @toggle-sidebar="toggleSidebar">
+  <template slot="top">
+    <PersonalInfo />  <!-- 个人信息组件 -->
+  </template>
+  <slot
+    name="sidebar-bottom"
+    slot="bottom"/>
+</Sidebar>
+```
+
+**修改后代码**：
+```vue
+<Sidebar
+  :items="sidebarItems"
+  @toggle-sidebar="toggleSidebar">
+  <!-- 已移除个人信息组件 -->
+  <slot
+    name="sidebar-bottom"
+    slot="bottom"/>
+</Sidebar>
+```
+
+**功能说明**：
+- 该修改用于移除侧边栏顶部的个人信息组件
+- 个人信息组件包含作者头像、名称、文章数和标签数统计
+- 修改后侧边栏将不再显示这些个人信息
+
+**注意事项**：
+- 此修改直接修改了 node_modules 目录中的文件，升级主题版本后需要重新应用
+- 如需长期移除该组件，建议使用主题的自定义覆盖机制或创建本地组件覆盖
+
+#### 4.2 其他样式定制建议
+
+1. **自定义全局样式**：在 `.vuepress/styles/index.styl` 中添加自定义样式
+2. **覆盖主题组件**：在 `.vuepress/components/` 目录下创建同名组件覆盖默认组件
+3. **使用 CSS 变量**：主题支持通过 CSS 变量自定义颜色、间距等样式
+
+**示例**：修改主题主色调
+```css
+:root {
+  --accent-color: #3eaf7c;  /* 主题主色调 */
+  --text-color: #2c3e50;     /* 文本颜色 */
+  --background-color: #fff;  /* 背景颜色 */
+}
+```
+
 ## 维护建议
 
 1. 定期更新依赖，修复安全漏洞
