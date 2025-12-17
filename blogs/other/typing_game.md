@@ -16,13 +16,13 @@
 选择难度级别：
 <div id="difficultySelector" style="margin-bottom: 15px;">
   <label style="margin-right: 15px;">
-    <input type="radio" name="difficulty" value="easy" checked /> 简单（3-4个字母）
+    <input type="radio" name="difficulty" value="easy" checked /> 简单
   </label>
   <label style="margin-right: 15px;">
-    <input type="radio" name="difficulty" value="medium" /> 中等（5-6个字母）
+    <input type="radio" name="difficulty" value="medium" /> 中等
   </label>
   <label>
-    <input type="radio" name="difficulty" value="hard" /> 困难（7-8个字母）
+    <input type="radio" name="difficulty" value="hard" /> 困难
   </label>
 </div>
 
@@ -144,6 +144,36 @@
     return config.wordQueue.shift();
   }
 
+  // 辅助函数：禁用游戏控件（难度选择器和昵称输入框）
+  function disableGameControls() {
+    // 禁用难度选择器
+    const difficultyRadios = document.querySelectorAll('input[name="difficulty"]');
+    difficultyRadios.forEach(radio => {
+      radio.disabled = true;
+    });
+    
+    // 禁用昵称输入框
+    const nicknameInput = document.getElementById('nickname');
+    if (nicknameInput) {
+      nicknameInput.disabled = true;
+    }
+  }
+  
+  // 辅助函数：启用游戏控件（难度选择器和昵称输入框）
+  function enableGameControls() {
+    // 启用难度选择器
+    const difficultyRadios = document.querySelectorAll('input[name="difficulty"]');
+    difficultyRadios.forEach(radio => {
+      radio.disabled = false;
+    });
+    
+    // 启用昵称输入框
+    const nicknameInput = document.getElementById('nickname');
+    if (nicknameInput) {
+      nicknameInput.disabled = false;
+    }
+  }
+  
   // 开始游戏 - 暴露到全局
   window.startGame = function() {
     console.log('开始游戏函数被调用');
@@ -224,6 +254,9 @@
       clearInterval(config.timer);
     }
     
+    // 禁用游戏控件
+    disableGameControls();
+    
     // 开始计时
     config.timer = setInterval(() => {
       config.timeLeft--;
@@ -235,6 +268,8 @@
     }, 1000);
     
     console.log('游戏已开始');
+    console.log('游戏控件已禁用');
+    
   };
 
   // 暂停/继续游戏
@@ -311,7 +346,12 @@
       inputDisplay.textContent = '';
     }
     
+    // 启用游戏控件
+    enableGameControls();
+    
     console.log('游戏已停止，得分:', config.score);
+    console.log('游戏控件已启用');
+    
   };
   
   // 结束游戏（内部使用）
