@@ -349,7 +349,42 @@ npm run deploy
 - 建议在修改前备份原始文件，以便恢复
 - 响应式布局已在多种设备上测试，确保良好的显示效果
 
-#### 4.2 其他样式定制建议
+#### 4.3 隐藏页面标题组件
+
+**修改文件**：`node_modules/vuepress-theme-reco/components/Page.vue`
+
+**修改内容**：
+
+**原始代码**：
+```vue
+<ModuleTransition>
+  <div v-show="recoShowModule && $page.title" class="page-title">
+    <h1 class="title">{{$page.title}}</h1>
+    <PageInfo :pageInfo="$page" :showAccessNumber="showAccessNumber"></PageInfo>
+  </div>
+</ModuleTransition>
+```
+
+**修改后代码**：
+```vue
+<!-- <ModuleTransition>
+  <div v-show="recoShowModule && $page.title" class="page-title">
+    <h1 class="title">{{$page.title}}</h1>
+    <PageInfo :pageInfo="$page" :showAccessNumber="showAccessNumber"></PageInfo>
+  </div>
+</ModuleTransition> -->
+```
+
+**功能说明**：
+- 该修改用于隐藏页面顶部的标题和页面信息组件
+- 页面标题组件包含页面大标题和页面信息（作者、日期、阅读量等）
+- 修改后页面将不再显示这些顶部标题信息
+
+**注意事项**：
+- 此修改直接修改了 node_modules 目录中的文件，升级主题版本后需要重新应用
+- 如需长期隐藏该组件，建议使用主题的自定义覆盖机制或创建本地组件覆盖
+
+#### 4.4 其他样式定制建议
 
 1. **自定义全局样式**：在 `.vuepress/styles/index.styl` 中添加自定义样式
 2. **覆盖主题组件**：在 `.vuepress/components/` 目录下创建同名组件覆盖默认组件

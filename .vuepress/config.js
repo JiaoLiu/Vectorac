@@ -55,6 +55,11 @@ module.exports = {
             icon: 'reco-blog'
           },
           {
+            text: '打字游戏',
+            link: '/blogs/other/typing_game.md',
+            icon: 'reco-api'
+          },
+          {
             text: '智慧问答',
             link: 'https://chat.vectorac.com/',
             icon: 'reco-other'
