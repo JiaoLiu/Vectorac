@@ -100,7 +100,9 @@
   };
 
   // 初始化游戏状态
-  window.gameConfig = {
+  // 只在浏览器环境中设置游戏配置
+  if (typeof window !== 'undefined') {
+    window.gameConfig = {
     timeLimit: 60,
     // 难度配置
     difficultySettings: {
@@ -119,6 +121,7 @@
     timer: null,
     wordQueue: [] // 用于存储当前游戏会话的单词队列
   };
+  }
 
   // 打乱数组顺序的函数
   function shuffleArray(array) {
@@ -132,6 +135,8 @@
 
   // 生成随机单词
   function getRandomWord() {
+    // 只在浏览器环境中执行
+    if (typeof window === 'undefined') return '';
     const config = window.gameConfig;
     const difficulty = config.selectedDifficulty;
     
@@ -175,7 +180,10 @@
   }
   
   // 开始游戏 - 暴露到全局
-  window.startGame = function() {
+  if (typeof window !== 'undefined') {
+    window.startGame = function() {
+    // 只在浏览器环境中执行
+    if (typeof window === 'undefined') return;
     console.log('开始游戏函数被调用');
     
     // 直接获取元素，不依赖initGameElements
@@ -271,9 +279,13 @@
     console.log('游戏控件已禁用');
     
   };
+  }
 
   // 暂停/继续游戏
-  window.pauseGame = function() {
+  if (typeof window !== 'undefined') {
+    window.pauseGame = function() {
+    // 只在浏览器环境中执行
+    if (typeof window === 'undefined') return;
     const config = window.gameConfig;
     if (!config.gameRunning) return;
     
@@ -310,9 +322,13 @@
       console.log('游戏已暂停');
     }
   };
-  
+  }
+
   // 停止游戏
-  window.stopGame = function() {
+  if (typeof window !== 'undefined') {
+    window.stopGame = function() {
+    // 只在浏览器环境中执行
+    if (typeof window === 'undefined') return;
     const startButton = document.getElementById('startGame');
     const pauseButton = document.getElementById('pauseGame');
     const stopButton = document.getElementById('stopGame');
@@ -353,9 +369,12 @@
     console.log('游戏控件已启用');
     
   };
-  
+  }
+
   // 结束游戏（内部使用）
   function endGame() {
+    // 只在浏览器环境中执行
+    if (typeof window === 'undefined') return;
     const config = window.gameConfig;
     
     // 保存分数到localStorage
@@ -450,6 +469,8 @@
 
   // 处理键盘输入
   function handleKeyDown(event) {
+    // 只在浏览器环境中执行
+    if (typeof window === 'undefined') return;
     const config = window.gameConfig;
     if (!config.gameRunning || config.gamePaused) return;
     
@@ -571,7 +592,7 @@
         if (startButton && scoreDisplay && timeDisplay && wordDisplay && inputDisplay && gameStatus) {
           // 设置初始状态
           scoreDisplay.textContent = '0';
-          timeDisplay.textContent = window.gameConfig.timeLimit;
+          timeDisplay.textContent = typeof window !== 'undefined' && window.gameConfig ? window.gameConfig.timeLimit : '60';
           wordDisplay.textContent = '点击开始按钮';
           inputDisplay.textContent = '';
           gameStatus.textContent = '游戏已准备就绪，点击开始按钮';
