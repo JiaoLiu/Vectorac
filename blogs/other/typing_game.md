@@ -1,3 +1,8 @@
+<!-- 移动端优化：添加meta标签以控制视口和键盘行为 -->
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
 ::: warning 键盘打字游戏
 
 一个专业键盘打字学习游戏，通过有趣的游戏方式帮助所有人掌握键盘输入技能。
@@ -37,9 +42,12 @@
 <button id="pauseGame" style="padding: 10px 20px; background-color: #ff9800; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; pointer-events: auto; user-select: none; transition: all 0.3s ease; display: none; margin-left: 10px;">暂停游戏</button>
 <button id="stopGame" style="padding: 10px 20px; background-color: #f44336; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; pointer-events: auto; user-select: none; transition: all 0.3s ease; display: none; margin-left: 10px;">停止游戏</button>
 
+<!-- 移动设备键盘触发用的隐藏输入字段 -->
+<input type="text" id="mobileInput" style="position: absolute; opacity: 0; width: 1px; height: 1px; border: none; padding: 0; margin: 0; z-index: 1000; outline: none;" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+
 ## 游戏区域
 
-<div id="gameContainer" style="margin-top: 20px; padding: 15px; border: 2px solid #ddd; border-radius: 10px; background-color: #f9f9f9; max-width: 100%; box-sizing: border-box;">
+<div id="gameContainer" style="margin-top: 20px; padding: 15px; border: 2px solid #ddd; border-radius: 10px; background-color: #f9f9f9; max-width: 100%; box-sizing: border-box; min-height: 200px;">
   <div id="scoreDisplay" style="font-size: 20px; font-weight: bold; color: #333; margin-bottom: 10px;">得分: <span id="score">0</span></div>
   <div id="timeDisplay" style="font-size: 18px; color: #666; margin-bottom: 15px;">时间: <span id="time">60</span>秒</div>
   <div id="wordDisplay" style="font-size: 32px; font-weight: bold; text-align: center; margin-bottom: 15px; color: #4CAF50; height: 45px; word-break: break-word;">点击开始按钮</div>
@@ -257,6 +265,24 @@
     
     inputDisplay.textContent = '';
     
+    // 检测是否为移动设备
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    // 聚焦到隐藏的输入字段，仅在移动端触发键盘
+    const mobileInput = document.getElementById('mobileInput');
+    if (mobileInput && isMobile) {
+      // 确保移动设备上能正确弹出虚拟键盘
+      // 先点击再聚焦，解决某些移动设备上的兼容性问题
+      mobileInput.click();
+      mobileInput.focus();
+      console.log('游戏开始，已聚焦到隐藏输入字段');
+      console.log('移动设备检测:', isMobile);
+      console.log('mobileInput元素:', mobileInput);
+      
+      // 键盘弹出后，确保游戏区域保持在可视范围内
+      handleKeyboardScroll();
+    }
+    
     // 清除之前的定时器
     if (config.timer) {
       clearInterval(config.timer);
@@ -310,6 +336,19 @@
       if (pauseButton) pauseButton.textContent = '暂停游戏';
       if (gameStatus) gameStatus.textContent = '游戏进行中...';
       
+      // 检测是否为移动设备
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      
+      // 重新聚焦到隐藏输入字段，仅在移动端执行
+      const mobileInput = document.getElementById('mobileInput');
+      if (mobileInput && isMobile) {
+        mobileInput.focus();
+        console.log('游戏继续，已重新聚焦到隐藏输入字段');
+        
+        // 键盘弹出后，确保游戏区域保持在可视范围内
+        handleKeyboardScroll();
+      }
+      
       console.log('游戏已继续');
     } else {
       // 暂停游戏
@@ -318,6 +357,16 @@
       
       if (pauseButton) pauseButton.textContent = '继续游戏';
       if (gameStatus) gameStatus.textContent = '游戏已暂停...';
+      
+      // 检测是否为移动设备
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      
+      // 暂停时失去焦点，关闭键盘，仅在移动端执行
+      const mobileInput = document.getElementById('mobileInput');
+      if (mobileInput && isMobile) {
+        mobileInput.blur();
+        console.log('游戏暂停，已从隐藏输入字段失去焦点');
+      }
       
       console.log('游戏已暂停');
     }
@@ -360,6 +409,16 @@
     
     if (inputDisplay) {
       inputDisplay.textContent = '';
+    }
+    
+    // 检测是否为移动设备
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    // 停止时失去焦点，关闭键盘，仅在移动端执行
+    const mobileInput = document.getElementById('mobileInput');
+    if (mobileInput && isMobile) {
+      mobileInput.blur();
+      console.log('游戏停止，已从隐藏输入字段失去焦点');
     }
     
     // 启用游戏控件
@@ -565,6 +624,30 @@
     (function() {
       console.log('打字游戏脚本已加载');
       
+      // 移动设备检测函数
+      function isMobileDevice() {
+        return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      }
+      
+      // 移动端键盘弹出时的滚动处理函数
+      function handleKeyboardScroll() {
+        if (!isMobileDevice()) return;
+        
+        // 延迟执行，确保键盘已完全弹出
+      setTimeout(() => {
+        const gameContainer = document.getElementById('gameContainer');
+        if (gameContainer) {
+          // 将游戏区域滚动到可视范围内
+          gameContainer.scrollIntoView({ 
+            behavior: 'auto', 
+            block: 'center', 
+            inline: 'center' 
+          });
+          console.log('键盘弹出，已滚动到游戏区域');
+        }
+      }, 300);
+      }
+      
       // 确保DOM完全加载
       function waitForDOM() {
         if (document.readyState === 'loading') {
@@ -591,8 +674,9 @@
         // 确保所有元素都存在
         if (startButton && scoreDisplay && timeDisplay && wordDisplay && inputDisplay && gameStatus) {
           // 设置初始状态
-          scoreDisplay.textContent = '0';
-          timeDisplay.textContent = typeof window !== 'undefined' && window.gameConfig ? window.gameConfig.timeLimit : '60';
+          // 只更新分数和时间的数值部分，保留描述文本
+          document.getElementById('score').textContent = '0';
+          document.getElementById('time').textContent = typeof window !== 'undefined' && window.gameConfig ? window.gameConfig.timeLimit : '60';
           wordDisplay.textContent = '点击开始按钮';
           inputDisplay.textContent = '';
           gameStatus.textContent = '游戏已准备就绪，点击开始按钮';
@@ -607,6 +691,26 @@
             console.log('按钮点击事件被触发');
             window.startGame();
           });
+          
+          // 检测是否为移动设备
+          const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+          
+          // 游戏区域点击事件，用于移动端触发键盘
+          const gameContainer = document.getElementById('gameContainer');
+          const mobileInput = document.getElementById('mobileInput');
+          
+          if (gameContainer && mobileInput && isMobile) {
+            gameContainer.addEventListener('click', function() {
+              // 只要是移动设备，点击游戏区域就触发键盘
+              // 无论游戏是否运行，这样用户可以在开始前就准备好输入
+              mobileInput.click();
+              mobileInput.focus();
+              console.log('游戏区域被点击，已聚焦到隐藏输入字段');
+              console.log('移动设备检测:', isMobile);
+              console.log('游戏运行状态:', window.gameConfig ? window.gameConfig.gameRunning : '未初始化');
+              console.log('游戏暂停状态:', window.gameConfig ? window.gameConfig.gamePaused : '未初始化');
+            });
+          }
           
           // 键盘事件监听
           document.addEventListener('keydown', handleKeyDown);
@@ -630,6 +734,28 @@
           if (showHistoryButton) {
             showHistoryButton.addEventListener('click', function() {
               showHistory();
+            });
+          }
+          
+          // 处理隐藏输入字段的输入事件，防止输入内容被看到，仅在移动端执行
+          if (mobileInput && isMobile) {
+            mobileInput.addEventListener('input', function(e) {
+              // 清除输入内容，因为我们不需要在隐藏字段中保留任何内容
+              e.target.value = '';
+            });
+            
+            // 处理移动设备上的回车键
+            mobileInput.addEventListener('keydown', function(e) {
+              // 我们已经在document的keydown事件中处理了所有逻辑，这里只需要确保事件冒泡
+              // 并阻止默认行为，防止在隐藏字段中产生不必要的换行
+              if (e.key === 'Enter') {
+                e.preventDefault();
+              }
+            });
+            
+            // 添加focus事件监听器，确保每次获得焦点时触发滚动处理
+            mobileInput.addEventListener('focus', function() {
+              handleKeyboardScroll();
             });
           }
           
