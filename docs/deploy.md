@@ -189,6 +189,166 @@ npm run deploy
 - 此修改直接修改了 node_modules 目录中的文件，升级主题版本后需要重新应用
 - 如需长期移除该组件，建议使用主题的自定义覆盖机制或创建本地组件覆盖
 
+#### 4.2 自定义首页Features显示
+
+**修改文件**：`node_modules/vuepress-theme-reco/components/HomeBlog.vue`
+
+**修改内容**：
+
+**1. 注释掉home-blog-wrapper部分代码**
+```vue
+<!-- <ModuleTransition delay="0.16">
+  <div v-show="recoShowModule" class="home-blog-wrapper">
+    <div class="blog-list"> -->
+      <!-- 博客列表 -->
+      <!-- <note-abstract
+        :data="$recoPosts"
+        :currentPage="currentPage"></note-abstract> -->
+      <!-- 分页 -->
+      <!-- <pagation
+        class="pagation"
+        :total="$recoPosts.length"
+        :currentPage="currentPage"
+        @getCurrentPage="getCurrentPage" />
+    </div>
+    <div class="info-wrapper">
+      <PersonalInfo/>
+      <h4><i class="iconfont reco-category"></i> {{homeBlogCfg.category}}</h4>
+      <ul class="category-wrapper">
+        <li class="category-item" v-for="(item, index) in this.$categories.list" :key="index">
+          <router-link :to="item.path">
+            <span class="category-name">{{ item.name }}</span>
+            <span class="post-num" :style="{ 'backgroundColor': getOneColor() }">{{ item.pages.length }}</span>
+          </router-link>
+        </li>
+      </ul>
+      <hr>
+      <h4 v-if="$tags.list.length !== 0"><i class="iconfont reco-tag"></i> {{homeBlogCfg.tag}}</h4>
+      <TagList @getCurrentTag="getPagesByTags" />
+      <h4 v-if="$themeConfig.friendLink && $themeConfig.friendLink.length !== 0"><i class="iconfont reco-friend"></i> {{homeBlogCfg.friendLink}}</h4>
+      <FriendLink />
+    </div>
+  </div>
+</ModuleTransition> -->
+```
+
+**2. 调整feature部分布局**
+```vue
+<div class="features" v-if="recoShowModule && $frontmatter.features && $frontmatter.features.length">
+  <div v-for="(feature, index) in $frontmatter.features" :key="index" class="feature" :class="{ 'feature-reverse': index % 2 === 1 }">
+    <div class="feature-content">
+      <!-- <h2>{{ feature.title }}</h2> -->
+      <p>{{ feature.details }}</p>
+    </div>
+    <div class="feature-image-wrapper">
+      <img v-if="feature.image" :src="$withBase(feature.image)" alt="feature" class="feature-image" />
+    </div>
+  </div>
+</div>
+```
+
+**3. 修改.features和.feature样式**
+```stylus
+.features {
+  border-top: 1px solid var(--border-color);
+  padding: 2rem 0;
+  margin-top: 3rem;
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+  
+  .feature {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      margin-bottom: 3rem;
+      transition: all .3s ease;
+      
+      &:last-child {
+        margin-bottom: 0;
+      }
+      
+      &.feature-reverse {
+        flex-direction: row-reverse;
+      }
+      
+      &:hover {
+        transform: translateY(-5px);
+      }
+    
+    .feature-content {
+      flex: 1;
+      padding: 0 2rem;
+      
+      h2 {
+        font-size: 2rem;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 1rem;
+        border-bottom: none;
+        padding-bottom: 0;
+      }
+      
+      p {
+        font-size: 1.1rem;
+        line-height: 1.6;
+        color: #666;
+        margin: 0;
+      }
+    }
+    
+    .feature-image-wrapper {
+      flex: 0 0 50%;
+      
+      img.feature-image {
+        width: 100%;
+        max-height: 400px;
+        object-fit: contain;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      }
+    }
+  }
+}
+```
+
+**4. 移动端响应式样式**
+```stylus
+@media (max-width: $MQMobile) {
+  .features {
+    padding: 1rem 0;
+    margin-top: 2rem;
+    
+    .feature {
+      flex-direction: column !important;
+      max-width: 100%;
+      padding: 0 1.5rem;
+      margin-bottom: 2rem;
+      
+      .feature-content {
+        padding: 1rem 0 0 0 !important;
+      }
+      
+      .feature-image-wrapper {
+        flex: 0 0 100%;
+      }
+    }
+  }
+}
+```
+
+**功能说明**：
+- 注释掉了home-blog-wrapper部分代码，隐藏了博客列表和信息侧边栏
+- 调整了feature部分布局，实现图片与文本交替排列（第一个图片左文本右，第二个图片右文本左）
+- 修改了.features和.feature的CSS样式，使其更加现代和专业
+- 优化了移动端响应式布局，确保在竖屏手机端图片在上文本在下
+
+**注意事项**：
+- 此修改直接修改了 node_modules 目录中的文件，升级主题版本后需要重新应用
+- 修改了多个部分的样式，包括布局、颜色、间距等
+- 建议在修改前备份原始文件，以便恢复
+- 响应式布局已在多种设备上测试，确保良好的显示效果
+
 #### 4.2 其他样式定制建议
 
 1. **自定义全局样式**：在 `.vuepress/styles/index.styl` 中添加自定义样式
@@ -214,5 +374,5 @@ npm run deploy
 
 ---
 
-**更新时间**：2025-12-11
+**更新时间**：2025-12-17
 **维护人员**：Jiao
