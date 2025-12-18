@@ -54,10 +54,10 @@ module.exports = {
             link: '/blogs/other/chcharts.md',
             icon: 'reco-blog'
           },
-          {
-            text: '打字游戏',
-            link: '/blogs/other/typing_game.md',
-            icon: 'reco-api'
+          { 
+            text: '小游戏',
+            link: '/blogs/other/games.md',
+            icon: 'reco-api' 
           },
           {
             text: '智慧问答',
