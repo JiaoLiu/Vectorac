@@ -11,7 +11,7 @@
 - **支持按键**：A-Z、0-9、空格、回车等常用按键
 - **移动端**：支持触屏输入
 
-<a href="/blogs/other/keyboard_game" class="game-link">开始游戏</a>
+<a href="/blogs/other/keyboard_game" class="game-link" target="_blank" rel="noopener noreferrer">开始游戏</a>
 
 ### 2. 经典打字游戏
 - **游戏类型**：竞速类
@@ -19,7 +19,7 @@
 - **操作方式**：使用键盘输入屏幕上显示的字符
 - **支持按键**：所有常用字符
 
-<a href="/blogs/other/typing_game" class="game-link">开始游戏</a>
+<a href="/blogs/other/typing_game" class="game-link" target="_blank" rel="noopener noreferrer">开始游戏</a>
 
 ## 游戏说明
 
