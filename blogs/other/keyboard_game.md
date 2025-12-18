@@ -804,22 +804,25 @@ function initGame() {
     console.error('未找到虚拟键盘容器');
   }
   
-  // 只绑定一次事件
-  if (!eventListenersBound) {
+  // 每次都重新绑定按钮事件（因为在VuePress路由切换时DOM元素会重新渲染）
     // 绑定游戏控制按钮事件
     const startButton = document.getElementById('start-button');
     const pauseButton = document.getElementById('pause-button');
     const restartButton = document.getElementById('restart-button');
     
     if (startButton) {
+      // 移除可能存在的旧事件监听器，然后添加新的
+      startButton.removeEventListener('click', startGame);
       startButton.addEventListener('click', startGame);
     }
     
     if (pauseButton) {
+      pauseButton.removeEventListener('click', togglePauseGame);
       pauseButton.addEventListener('click', togglePauseGame);
     }
     
     if (restartButton) {
+      restartButton.removeEventListener('click', restartGame);
       restartButton.addEventListener('click', restartGame);
     }
     
@@ -896,7 +899,6 @@ function initGame() {
     
     eventListenersBound = true;
     console.log('游戏事件监听器绑定完成');
-  }
 }
 
 // 开始游戏
