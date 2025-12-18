@@ -828,9 +828,16 @@ function initGame() {
     
     // 监听键盘事件
     document.addEventListener('keydown', function(e) {
-      // 检查是否在输入框中输入，如果是则不拦截
-      if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
-        return; // 让浏览器正常处理输入框中的键盘事件
+      // 检查是否在输入框中输入
+      // - 如果是昵称输入框(#nickname)，则让浏览器正常处理
+      // - 如果是隐藏的移动端输入框(#mobileInput)，则继续处理游戏逻辑
+      const activeElement = document.activeElement;
+      const isNicknameInput = activeElement && activeElement.id === 'nickname';
+      const isMobileInput = activeElement && activeElement.id === 'mobileInput';
+      
+      if (['INPUT', 'TEXTAREA'].includes(activeElement.tagName) && !isMobileInput) {
+        // 如果是昵称输入框，让浏览器正常处理输入
+        return;
       }
       
       // 映射e.key到AVAILABLE_KEYS数组中的键名
