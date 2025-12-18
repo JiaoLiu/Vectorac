@@ -918,6 +918,14 @@ function startGame() {
   document.getElementById('pause-button').style.display = 'inline-block';
   document.getElementById('restart-button').style.display = 'none';
   
+  // 禁用昵称输入框，防止游戏进行时修改昵称
+  const nicknameInput = document.getElementById('nickname');
+  if (nicknameInput) {
+    nicknameInput.disabled = true;
+    nicknameInput.style.opacity = '0.6';
+    nicknameInput.style.cursor = 'not-allowed';
+  }
+  
   // 重置游戏状态
   resetGame();
   
@@ -981,6 +989,14 @@ function restartGame() {
   
   // 重置游戏状态
   resetGame();
+  
+  // 启用昵称输入框，允许重新输入昵称
+  const nicknameInput = document.getElementById('nickname');
+  if (nicknameInput) {
+    nicknameInput.disabled = false;
+    nicknameInput.style.opacity = '1';
+    nicknameInput.style.cursor = 'text';
+  }
   
   // 更新按钮状态
   document.getElementById('start-button').style.display = 'inline-block';
