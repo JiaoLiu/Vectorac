@@ -825,6 +825,11 @@ function initGame() {
     
     // 监听键盘事件
     document.addEventListener('keydown', function(e) {
+      // 检查是否在输入框中输入，如果是则不拦截
+      if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
+        return; // 让浏览器正常处理输入框中的键盘事件
+      }
+      
       // 映射e.key到AVAILABLE_KEYS数组中的键名
       let key;
       switch(e.key) {
