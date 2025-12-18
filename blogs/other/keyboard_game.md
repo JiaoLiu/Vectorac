@@ -541,139 +541,162 @@ function resetGame() {
 
 // 创建虚拟键盘
 function createVirtualKeyboard() {
-  const keyboardElement = document.getElementById('virtual-keyboard');
-  
-  // 检测是否为移动设备
-  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-  
-  // 键盘布局
-  let keyboardLayout;
-  
-  if (isMobile) {
-    // 移动设备布局：简化键盘，去掉功能键和游戏用不上的键
-    keyboardLayout = [
-      // 第一排：数字键
-      ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'],
-      // 第二排：字母键
-      ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
-      // 第三排：字母键
-      ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'],
-      // 第四排：字母键
-      ['Z', 'X', 'C', 'V', 'B', 'N', 'M']
-    ];
-  } else {
-    // 桌面设备布局（标准101/104键布局）
-    keyboardLayout = [
-      // 第一排：功能键和数字键
-      ['~', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', 'Backspace'],
-      // 第二排：Tab和字母键
-      ['Tab', 'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '[', ']', '\\'],
-      // 第三排：Caps Lock和字母键
-      ['Caps', 'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ';', "'", 'Enter'],
-      // 第四排：Shift和字母键
-      ['Shift', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', ',', '.', '/', 'Shift'],
-      // 第五排：Ctrl、Win、Alt、空格、Alt、Win、Menu、Ctrl
-      ['Ctrl', 'Win', 'Alt', 'SPACE', 'Alt', 'Win', 'Menu', 'Ctrl']
-    ];
-  }
-  
-  // 为每行创建一个容器
-  keyboardLayout.forEach(rowKeys => {
-    const rowElement = document.createElement('div');
-    rowElement.className = 'keyboard-row';
+  try {
+    console.log('开始创建虚拟键盘...');
+    const keyboardElement = document.getElementById('virtual-keyboard');
     
-    rowKeys.forEach(key => {
-      const keyElement = document.createElement('button');
-      keyElement.className = 'key-button';
-      keyElement.textContent = key;
+    if (!keyboardElement) {
+      console.error('未找到虚拟键盘容器元素');
+      return false;
+    }
+    
+    // 清空容器，防止重复创建
+    keyboardElement.innerHTML = '';
+    console.log('虚拟键盘容器已清空');
+    
+    // 检测是否为移动设备
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    console.log('设备类型检测:', isMobile ? '移动设备' : '桌面设备');
+    
+    // 键盘布局
+    let keyboardLayout;
+    
+    if (isMobile) {
+      // 移动设备布局：优化布局确保所有键都能正常点击
+      keyboardLayout = [
+        // 第一排：数字键
+        ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'],
+        // 第二排：字母键
+        ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
+        // 第三排：字母键
+        ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', '.'],
+        // 第四排：字母键
+        ['Z', 'X', 'C', 'V', 'B', 'N', 'M']
+      ];
+    } else {
+      // 桌面设备布局（标准101/104键布局）
+      keyboardLayout = [
+        // 第一排：功能键和数字键
+        ['~', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', 'Backspace'],
+        // 第二排：Tab和字母键
+        ['Tab', 'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '[', ']', '\\'],
+        // 第三排：Caps Lock和字母键
+        ['Caps', 'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ';', "'", 'Enter'],
+        // 第四排：Shift和字母键
+        ['Shift', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', ',', '.', '/', 'Shift'],
+        // 第五排：Ctrl、Win、Alt、空格、Alt、Win、Menu、Ctrl
+        ['Ctrl', 'Win', 'Alt', 'SPACE', 'Alt', 'Win', 'Menu', 'Ctrl']
+      ];
+    }
+    
+    console.log('键盘布局已确定，行数:', keyboardLayout.length);
+    
+    // 为每行创建一个容器
+    keyboardLayout.forEach((rowKeys, rowIndex) => {
+      const rowElement = document.createElement('div');
+      rowElement.className = 'keyboard-row';
       
-      // 设置不同按键的样式和大小
-      switch(key) {
-        case 'Backspace':
-          keyElement.style.width = '90px';
-          break;
-        case 'Tab':
-          keyElement.style.width = '60px';
-          break;
-        case 'Caps':
-          keyElement.style.width = '70px';
-          break;
-        case 'Enter':
-          keyElement.style.width = '80px';
-          break;
-        case 'Shift':
-          keyElement.style.width = '85px';
-          break;
-        case 'SPACE':
-          keyElement.style.width = '300px';
-          keyElement.textContent = 'Space';
-          break;
-        case 'Ctrl':
-        case 'Win':
-        case 'Alt':
-        case 'Menu':
-          keyElement.style.width = '55px';
-          break;
-        default:
-          keyElement.style.width = '45px';
-      }
+      console.log(`正在创建第${rowIndex + 1}行，包含${rowKeys.length}个按键`);
       
-      // 设置按键的data-key属性
-      let keyData;
-      switch(key) {
-        case 'SPACE':
-          keyData = ' ';
-          break;
-        case 'Enter':
-          keyData = 'Enter';
-          break;
-        case 'Backspace':
-          keyData = 'Backspace';
-          break;
-        case 'Tab':
-          keyData = 'Tab';
-          break;
-        case 'Caps':
-          keyData = 'CapsLock';
-          break;
-        case 'Shift':
-          keyData = 'Shift';
-          break;
-        case 'Ctrl':
-          keyData = 'Control';
-          break;
-        case 'Win':
-          keyData = 'Meta';
-          break;
-        case 'Alt':
-          keyData = 'Alt';
-          break;
-        case 'Menu':
-          keyData = 'ContextMenu';
-          break;
-        case '\\':
-          keyData = '\\';
-          break;
-        default:
-          keyData = key;
-      }
-      keyElement.dataset.key = keyData;
-      
-          keyElement.addEventListener('click', function() {
-        let key = this.dataset.key;
-        // 对于字母键，确保它是大写的
-        if (key.length === 1 && /[a-zA-Z]/.test(key)) {
-          key = key.toUpperCase();
+      rowKeys.forEach(key => {
+        const keyElement = document.createElement('button');
+        keyElement.className = 'key-button';
+        keyElement.textContent = key;
+        
+        // 设置不同按键的样式和大小
+        switch(key) {
+          case 'Backspace':
+            keyElement.style.width = '90px';
+            break;
+          case 'Tab':
+            keyElement.style.width = '60px';
+            break;
+          case 'Caps':
+            keyElement.style.width = '70px';
+            break;
+          case 'Enter':
+            keyElement.style.width = '80px';
+            break;
+          case 'Shift':
+            keyElement.style.width = '85px';
+            break;
+          case 'SPACE':
+            keyElement.style.width = '300px';
+            keyElement.textContent = 'Space';
+            break;
+          case 'Ctrl':
+          case 'Win':
+          case 'Alt':
+          case 'Menu':
+            keyElement.style.width = '55px';
+            break;
+          default:
+            keyElement.style.width = '45px';
         }
-        console.log('虚拟键盘点击:', key);
-        handleKeyPress(key);
+        
+        // 设置按键的data-key属性
+        let keyData;
+        switch(key) {
+          case 'SPACE':
+            keyData = ' ';
+            break;
+          case 'Enter':
+            keyData = 'Enter';
+            break;
+          case 'Backspace':
+            keyData = 'Backspace';
+            break;
+          case 'Tab':
+            keyData = 'Tab';
+            break;
+          case 'Caps':
+            keyData = 'CapsLock';
+            break;
+          case 'Shift':
+            keyData = 'Shift';
+            break;
+          case 'Ctrl':
+            keyData = 'Control';
+            break;
+          case 'Win':
+            keyData = 'Meta';
+            break;
+          case 'Alt':
+            keyData = 'Alt';
+            break;
+          case 'Menu':
+            keyData = 'ContextMenu';
+            break;
+          case '\\':
+            keyData = '\\';
+            break;
+          default:
+            keyData = key;
+        }
+        keyElement.dataset.key = keyData;
+        
+        keyElement.addEventListener('click', function() {
+          let key = this.dataset.key;
+          // 对于字母键，确保它是大写的
+          if (key.length === 1 && /[a-zA-Z]/.test(key)) {
+            key = key.toUpperCase();
+          }
+          console.log('虚拟键盘点击:', key);
+          handleKeyPress(key);
+        });
+        
+        rowElement.appendChild(keyElement);
       });
       
-      rowElement.appendChild(keyElement);
+      keyboardElement.appendChild(rowElement);
     });
     
-    keyboardElement.appendChild(rowElement);
-  });
+    console.log('虚拟键盘创建完成');
+    return true;
+  } catch (error) {
+    console.error('创建虚拟键盘失败:', error);
+    return false;
+  }
 }
 
 // 处理键盘按键
@@ -721,6 +744,48 @@ let gameControlState = {
   animationId: null
 };
 
+// 防止重复绑定事件的标记
+let eventListenersBound = false;
+
+// 游戏状态初始化
+function resetGameState() {
+  gameState = {
+    score: 0,
+    lives: GAME_CONFIG.initialLives,
+    balloons: [],
+    arrows: [],
+    keysPressed: new Set(),
+    balloonSpawnTimer: 0,
+    gameSpeed: 1
+  };
+  
+  gameControlState = {
+    isPlaying: false,
+    isPaused: false,
+    animationId: null
+  };
+}
+
+// 强制初始化游戏（用于解决VuePress路由问题）
+function forceInitializeGame() {
+  console.log('[键盘游戏] 强制初始化游戏...');
+  
+  // 重置游戏状态
+  resetGameState();
+  
+  // 立即调用初始化
+  initializeGame();
+  
+  // 尝试强制显示虚拟键盘
+  const keyboardElement = document.getElementById('virtual-keyboard');
+  if (keyboardElement) {
+    keyboardElement.style.display = 'block';
+    keyboardElement.style.visibility = 'visible';
+    keyboardElement.style.opacity = '1';
+    console.log('[键盘游戏] 虚拟键盘样式设置为显示');
+  }
+}
+
 // 初始化游戏
 function initGame() {
   // 确保DOM已经加载完成
@@ -728,94 +793,105 @@ function initGame() {
     return;
   }
   
-  // 创建虚拟键盘
+  // 创建虚拟键盘 - 确保每次都重新创建
   const keyboardElement = document.getElementById('virtual-keyboard');
   if (keyboardElement) {
-    createVirtualKeyboard();
+    console.log('创建虚拟键盘...');
+    const success = createVirtualKeyboard();
+    console.log('虚拟键盘创建结果:', success);
+    console.log('虚拟键盘子元素数量:', keyboardElement.children.length);
+  } else {
+    console.error('未找到虚拟键盘容器');
   }
   
-  // 绑定游戏控制按钮事件
-  const startButton = document.getElementById('start-button');
-  const pauseButton = document.getElementById('pause-button');
-  const restartButton = document.getElementById('restart-button');
-  
-  if (startButton) {
-    startButton.addEventListener('click', startGame);
-  }
-  
-  if (pauseButton) {
-    pauseButton.addEventListener('click', togglePauseGame);
-  }
-  
-  if (restartButton) {
-    restartButton.addEventListener('click', restartGame);
-  }
-  
-  // 监听键盘事件
-  document.addEventListener('keydown', function(e) {
-    // 映射e.key到AVAILABLE_KEYS数组中的键名
-    let key;
-    switch(e.key) {
-      case ' ': 
-        key = 'Space';
-        break;
-      case 'Enter':
-      case 'Backspace':
-      case 'Tab':
-      case 'CapsLock':
-      case 'Shift':
-      case 'Control':
-      case 'Alt':
-      case 'Meta':
-      case 'ContextMenu':
-        key = e.key;
-        break;
-      default:
-        // 字母键转为大写，其他键保持原样
-        key = e.key.length === 1 && /[a-zA-Z]/.test(e.key) ? e.key.toUpperCase() : e.key;
+  // 只绑定一次事件
+  if (!eventListenersBound) {
+    // 绑定游戏控制按钮事件
+    const startButton = document.getElementById('start-button');
+    const pauseButton = document.getElementById('pause-button');
+    const restartButton = document.getElementById('restart-button');
+    
+    if (startButton) {
+      startButton.addEventListener('click', startGame);
     }
     
-    if (AVAILABLE_KEYS.includes(key)) {
-      e.preventDefault();
-      // 对于特殊键，将它们转换为我们游戏中使用的键名
-      const gameKey = key === 'Space' ? ' ' : 
-                      key === 'Enter' ? 'Enter' : 
-                      key;
-      handleKeyPress(gameKey);
-    }
-  });
-  
-  document.addEventListener('keyup', function(e) {
-    // 映射e.key到AVAILABLE_KEYS数组中的键名
-    let key;
-    switch(e.key) {
-      case ' ': 
-        key = 'Space';
-        break;
-      case 'Enter':
-      case 'Backspace':
-      case 'Tab':
-      case 'CapsLock':
-      case 'Shift':
-      case 'Control':
-      case 'Alt':
-      case 'Meta':
-      case 'ContextMenu':
-        key = e.key;
-        break;
-      default:
-        // 字母键转为大写，其他键保持原样
-        key = e.key.length === 1 && /[a-zA-Z]/.test(e.key) ? e.key.toUpperCase() : e.key;
+    if (pauseButton) {
+      pauseButton.addEventListener('click', togglePauseGame);
     }
     
-    if (AVAILABLE_KEYS.includes(key)) {
-      // 对于特殊键，将它们转换为我们游戏中使用的键名
-      const gameKey = key === 'Space' ? ' ' : 
-                      key === 'Enter' ? 'Enter' : 
-                      key;
-      handleKeyRelease(gameKey);
+    if (restartButton) {
+      restartButton.addEventListener('click', restartGame);
     }
-  });
+    
+    // 监听键盘事件
+    document.addEventListener('keydown', function(e) {
+      // 映射e.key到AVAILABLE_KEYS数组中的键名
+      let key;
+      switch(e.key) {
+        case ' ': 
+          key = 'Space';
+          break;
+        case 'Enter':
+        case 'Backspace':
+        case 'Tab':
+        case 'CapsLock':
+        case 'Shift':
+        case 'Control':
+        case 'Alt':
+        case 'Meta':
+        case 'ContextMenu':
+          key = e.key;
+          break;
+        default:
+          // 字母键转为大写，其他键保持原样
+          key = e.key.length === 1 && /[a-zA-Z]/.test(e.key) ? e.key.toUpperCase() : e.key;
+      }
+      
+      if (AVAILABLE_KEYS.includes(key)) {
+        e.preventDefault();
+        // 对于特殊键，将它们转换为我们游戏中使用的键名
+        const gameKey = key === 'Space' ? ' ' : 
+                        key === 'Enter' ? 'Enter' : 
+                        key;
+        handleKeyPress(gameKey);
+      }
+    });
+    
+    document.addEventListener('keyup', function(e) {
+      // 映射e.key到AVAILABLE_KEYS数组中的键名
+      let key;
+      switch(e.key) {
+        case ' ': 
+          key = 'Space';
+          break;
+        case 'Enter':
+        case 'Backspace':
+        case 'Tab':
+        case 'CapsLock':
+        case 'Shift':
+        case 'Control':
+        case 'Alt':
+        case 'Meta':
+        case 'ContextMenu':
+          key = e.key;
+          break;
+        default:
+          // 字母键转为大写，其他键保持原样
+          key = e.key.length === 1 && /[a-zA-Z]/.test(e.key) ? e.key.toUpperCase() : e.key;
+      }
+      
+      if (AVAILABLE_KEYS.includes(key)) {
+        // 对于特殊键，将它们转换为我们游戏中使用的键名
+        const gameKey = key === 'Space' ? ' ' : 
+                        key === 'Enter' ? 'Enter' : 
+                        key;
+        handleKeyRelease(gameKey);
+      }
+    });
+    
+    eventListenersBound = true;
+    console.log('游戏事件监听器绑定完成');
+  }
 }
 
 // 开始游戏
@@ -878,75 +954,195 @@ function restartGame() {
   }
 }
 
-// 在客户端环境中初始化游戏
-if (typeof window !== 'undefined' && typeof document !== 'undefined') {
-  // 确保VuePress有足够时间渲染DOM
-  function initializeGameSafely() {
-    // 检查所有关键元素是否存在
-    const virtualKeyboard = document.getElementById('virtual-keyboard');
-    const gameCanvas = document.getElementById('game-canvas');
-    const showHistoryButton = document.getElementById('showHistory');
+// 简化的游戏初始化函数
+function initializeGame() {
+  try {
+    console.log('--- 开始初始化游戏 ---');
+    console.log('DOM状态:', {
+      document: !!document,
+      getElementById: !!document && !!document.getElementById
+    });
     
-    // 如果所有关键元素都存在，则初始化游戏
-    if (virtualKeyboard && gameCanvas && showHistoryButton) {
-      // 初始化游戏
+    // 延迟1秒加载键盘，确保DOM元素已经准备好
+    console.log('延迟1秒初始化游戏，等待DOM元素准备...');
+    
+    setTimeout(function() {
+      // 检查关键元素是否存在
+      const gameContainer = document.getElementById('game-container');
+      const keyboardContainer = document.getElementById('virtual-keyboard');
+      console.log('1秒后关键元素状态:', {
+        gameContainer: !!gameContainer,
+        keyboardContainer: !!keyboardContainer,
+        gameContainerChildren: gameContainer ? gameContainer.children.length : 0,
+        keyboardContainerChildren: keyboardContainer ? keyboardContainer.children.length : 0
+      });
+      
+      // 尝试初始化游戏
       initGame();
       
       // 绑定历史记录按钮点击事件
-      showHistoryButton.addEventListener('click', function() {
-        console.log('历史记录按钮被点击');
-        showHistory();
-      });
-      console.log('历史记录按钮事件绑定完成');
-      console.log('游戏初始化完成');
-    } else {
-      // 如果有元素不存在，则延迟重试
-      console.log('等待DOM元素渲染...');
-      setTimeout(initializeGameSafely, 100);
-    }
-  }
-  
-  // 移动端系统键盘支持
-  function initMobileKeyboardSupport() {
-    const isMobile = window.innerWidth <= 768;
-    const mobileInput = document.getElementById('mobileInput');
-    const gameContainer = document.getElementById('game-container');
+      const showHistoryButton = document.getElementById('showHistory');
+      if (showHistoryButton) {
+        showHistoryButton.addEventListener('click', function() {
+          console.log('历史记录按钮被点击');
+          showHistory();
+        });
+        console.log('历史记录按钮事件绑定完成');
+      }
+      
+      console.log('--- 延迟1秒后游戏初始化完成 ---');
+    }, 1000);
     
-    if (isMobile && mobileInput && gameContainer) {
-      // 点击游戏区域时让隐藏input获得焦点，触发系统键盘
-      gameContainer.addEventListener('click', function() {
-        mobileInput.click();
-        mobileInput.focus();
-      });
-      
-      // 处理隐藏输入字段的输入事件，防止输入内容被看到
-      mobileInput.addEventListener('input', function(e) {
-        e.target.value = '';
-      });
-      
-      // 处理移动设备上的回车键
-      mobileInput.addEventListener('keydown', function(e) {
-        // 我们已经在document的keydown事件中处理了所有逻辑，这里只需要确保事件冒泡
-        // 并阻止默认行为，防止在隐藏字段中产生不必要的换行
-        if (e.key === 'Enter') {
-          e.preventDefault();
-        }
-      });
-      
-      console.log('移动端键盘支持已初始化');
-    }
+    console.log('--- 游戏初始化设置完成 (等待1秒后实际初始化) ---');
+    return true;
+  } catch (error) {
+    console.error('--- 初始化游戏失败 ---', error);
+    return false;
   }
+}
+
+
+// 移动端系统键盘支持
+function initMobileKeyboardSupport() {
+  const isMobile = window.innerWidth <= 768;
+  const mobileInput = document.getElementById('mobileInput');
+  const gameContainer = document.getElementById('game-container');
   
-  // 页面加载完成后初始化游戏
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function() {
-      initializeGameSafely();
-      initMobileKeyboardSupport();
+  if (isMobile && mobileInput && gameContainer) {
+    // 点击游戏区域时让隐藏input获得焦点，触发系统键盘
+    gameContainer.addEventListener('click', function() {
+      mobileInput.click();
+      mobileInput.focus();
     });
-  } else {
-    initializeGameSafely();
+    
+    // 处理隐藏输入字段的输入事件，防止输入内容被看到
+    mobileInput.addEventListener('input', function(e) {
+      e.target.value = '';
+    });
+    
+    // 处理移动设备上的回车键
+    mobileInput.addEventListener('keydown', function(e) {
+      // 我们已经在document的keydown事件中处理了所有逻辑，这里只需要确保事件冒泡
+      // 并阻止默认行为，防止在隐藏字段中产生不必要的换行
+      if (e.key === 'Enter') {
+        e.preventDefault();
+      }
+    });
+    
+    console.log('移动端键盘支持已初始化');
+  }
+}
+
+// 在客户端环境中初始化游戏
+if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+  console.log('[键盘游戏] 客户端环境检测到，准备初始化...');
+  
+  // 初始化游戏的函数
+  function initGameOnPage() {
+    console.log('[键盘游戏] initGameOnPage 被调用');
+    // 立即调用简化的初始化函数
+    initializeGame();
     initMobileKeyboardSupport();
   }
+  
+  // 绑定DOMContentLoaded事件监听器
+  document.addEventListener('DOMContentLoaded', function() {
+    console.log('[键盘游戏] DOMContentLoaded 事件触发');
+    initGameOnPage();
+  });
+  
+  // 立即调用初始化
+  console.log('[键盘游戏] 立即调用初始化...');
+  initGameOnPage();
+  
+  // 游戏容器检查和初始化函数
+  function checkAndInitGame(observer) {
+    const gameContainer = document.getElementById('game-container');
+    const keyboardContainer = document.getElementById('virtual-keyboard');
+    
+    console.log('[键盘游戏] 检查游戏容器元素:', {gameContainer: !!gameContainer, keyboardContainer: !!keyboardContainer});
+    
+    if (gameContainer || keyboardContainer) {
+      console.log('[键盘游戏] 检测到游戏容器，初始化游戏...');
+      // 初始化游戏
+      initGameOnPage();
+      
+      // 如果观察器存在，停止观察
+      if (observer) {
+        console.log('[键盘游戏] 停止 DOM 观察器...');
+        observer.disconnect();
+      }
+      return true;
+    }
+    return false;
+  }
+  
+  // 使用 MutationObserver 监听 DOM 变化，用于单页应用场景（如 VuePress）
+  function setupDOMObserver() {
+    console.log('[键盘游戏] 设置 DOM 变化监听器...');
+    
+    let observer;
+    
+    // 立即检查一次
+    if (!checkAndInitGame(observer)) {
+      // 创建 MutationObserver 实例
+      observer = new MutationObserver(function(mutationsList) {
+        console.log('[键盘游戏] DOM 变化被检测到，检查游戏容器...');
+        checkAndInitGame(observer);
+      });
+      
+      // 配置并启动观察器
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true
+      });
+      
+      console.log('[键盘游戏] DOM 观察器已启动，等待游戏容器出现...');
+    }
+    
+    return observer;
+  }
+  
+  // 全局变量存储当前的 observer 实例
+  let globalObserver = null;
+  
+  // 设置路由变化监听器，用于 VuePress 单页应用
+  function setupRouteListeners() {
+    console.log('[键盘游戏] 设置路由变化监听器...');
+    
+    // 路由变化时的处理函数
+    const handleRouteChange = function() {
+      console.log('[键盘游戏] 路由变化被检测到，重新设置监听器...');
+      // 延迟检查，确保 VuePress 有足够时间渲染页面
+      setTimeout(function() {
+        // 重新设置 DOM 观察器
+        globalObserver = setupDOMObserver();
+      }, 1000);
+    };
+    
+    // 添加路由变化事件监听器
+    window.addEventListener('hashchange', handleRouteChange);
+    window.addEventListener('popstate', handleRouteChange);
+    
+    // 对于现代单页应用，也可以监听 visibilitychange 事件
+    window.addEventListener('visibilitychange', function() {
+      if (!document.hidden) {
+        console.log('[键盘游戏] 页面变为可见，重新设置监听器...');
+        setTimeout(function() {
+          // 重新设置 DOM 观察器
+          globalObserver = setupDOMObserver();
+        }, 500);
+      }
+    });
+    
+    console.log('[键盘游戏] 路由变化监听器已设置完成');
+  }
+  
+  // 初始化所有监听器
+  globalObserver = setupDOMObserver();
+  setupRouteListeners();
+  
+  console.log('[键盘游戏] 游戏初始化设置完成');
 }
 </script>
 
@@ -1069,21 +1265,23 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
   }
   
   .key-button {
-    padding: 6px 8px;
-    font-size: 12px;
-    min-width: 35px;
+    padding: 10px 12px;
+    font-size: 14px;
+    min-width: 40px;
+    min-height: 40px;
   }
   
   .virtual-keyboard {
-    gap: 3px;
-    padding: 8px;
+    padding: 15px;
     text-align: center;
+    margin-top: 15px;
   }
   
   .keyboard-row {
     justify-content: center;
     flex-wrap: wrap;
     width: 100%;
+    margin-bottom: 10px;
   }
 }
 
@@ -1102,23 +1300,25 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
   }
   
   .key-button {
-    padding: 4px 5px;
-    font-size: 10px;
-    min-width: 28px;
-    margin: 0;
+    padding: 8px 10px;
+    font-size: 12px;
+    min-width: 35px;
+    min-height: 35px;
+    margin: 0 1px 1px 0;
   }
   
   .keyboard-row {
-    gap: 2px;
+    gap: 3px;
     justify-content: center;
     flex-wrap: wrap;
     width: 100%;
+    margin-bottom: 5px;
   }
   
   .virtual-keyboard {
-    gap: 2px;
-    padding: 5px;
+    padding: 10px;
     text-align: center;
+    margin-top: 10px;
   }
 }
 </style>
