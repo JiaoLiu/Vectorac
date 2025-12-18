@@ -29,8 +29,8 @@
   <input type="text" id="nickname" placeholder="请输入昵称，不输入则显示为游客" style="padding: 8px; width: 250px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;" />
 </div>
 
-<!-- 移动端隐藏输入框，用于触发系统键盘 -->
-<input type="text" id="mobileInput" style="position: absolute; opacity: 0; width: 1px; height: 1px; border: none; padding: 0; margin: 0; z-index: 1000; outline: none;" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+<!-- 移动端隐藏输入框，用于触发系统键盘，位置设置在游戏界面背景中间 -->
+<input type="text" id="mobileInput" style="position: absolute; opacity: 0; width: 1px; height: 1px; border: none; padding: 0; margin: 0; z-index: 1000; outline: none; left: 50%; top: 50%; transform: translate(-50%, -50%);" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
 
 <div id="game-container">
   <div id="game-score">得分: <span id="score">0</span></div>
@@ -914,6 +914,19 @@ function startGame() {
   // 重置游戏状态
   resetGame();
   
+  // 移动端输入处理
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  const mobileInput = document.getElementById('mobileInput');
+  if (mobileInput && isMobile) {
+    // 确保移动设备上能正确弹出虚拟键盘
+    // 先点击再聚焦，解决某些移动设备上的兼容性问题
+    mobileInput.click();
+    mobileInput.focus();
+    console.log('游戏开始，已聚焦到隐藏输入字段');
+    console.log('移动设备检测:', isMobile);
+    console.log('mobileInput元素:', mobileInput);
+  }
+  
   // 开始游戏循环
   gameLoop(0);
 }
@@ -932,8 +945,23 @@ function togglePauseGame() {
     pauseButton.textContent = gameControlState.isPaused ? '继续游戏' : '暂停游戏';
   }
   
-  // 如果继续游戏，重新开始游戏循环
-  if (!gameControlState.isPaused) {
+  // 移动端输入处理
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  const mobileInput = document.getElementById('mobileInput');
+  
+  if (gameControlState.isPaused) {
+    // 暂停时失去焦点，关闭键盘
+    if (mobileInput && isMobile) {
+      mobileInput.blur();
+      console.log('游戏暂停，已从隐藏输入字段失去焦点');
+    }
+  } else {
+    // 继续时重新聚焦到隐藏输入字段
+    if (mobileInput && isMobile) {
+      mobileInput.focus();
+      console.log('游戏继续，已重新聚焦到隐藏输入字段');
+    }
+    // 重新开始游戏循环
     gameLoop(0);
   }
 }
@@ -1044,12 +1072,24 @@ function initMobileKeyboardSupport() {
 if (typeof window !== 'undefined' && typeof document !== 'undefined') {
   console.log('[键盘游戏] 客户端环境检测到，准备初始化...');
   
+  // 防止重复初始化的标志
+  let gameInitialized = false;
+  
   // 初始化游戏的函数
   function initGameOnPage() {
+    // 检查是否已经初始化过
+    if (gameInitialized) {
+      console.log('[键盘游戏] 游戏已经初始化过，跳过本次调用');
+      return;
+    }
+    
     console.log('[键盘游戏] initGameOnPage 被调用');
-    // 立即调用简化的初始化函数
-    initializeGame();
+    // 使用带循环检测的初始化方法
+    initGameWithRetry();
     initMobileKeyboardSupport();
+    
+    // 设置初始化标志为 true
+    gameInitialized = true;
   }
   
   // 绑定DOMContentLoaded事件监听器
@@ -1079,6 +1119,55 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
         console.log('[键盘游戏] 停止 DOM 观察器...');
         observer.disconnect();
       }
+      return true;
+    }
+    return false;
+  }
+
+  // 带循环检测的DOM初始化函数
+  function initGameWithRetry() {
+    console.log('[键盘游戏] 开始带重试机制的游戏初始化...');
+    
+    // 立即尝试一次
+    if (tryInitGame()) {
+      console.log('[键盘游戏] 游戏初始化成功');
+      return;
+    }
+    
+    // 如果失败，设置循环检测，每200ms尝试一次
+    let retryCount = 0;
+    const maxRetries = 50; // 最多尝试50次，总共10秒
+    
+    window.gameInitializationTimer = setInterval(() => {
+      retryCount++;
+      console.log(`[键盘游戏] 第${retryCount}次初始化尝试...`);
+      
+      if (tryInitGame()) {
+        console.log('[键盘游戏] 游戏初始化成功');
+        clearInterval(window.gameInitializationTimer);
+        window.gameInitializationTimer = null;
+        return;
+      }
+      
+      // 如果达到最大尝试次数
+      if (retryCount >= maxRetries) {
+        clearInterval(window.gameInitializationTimer);
+        window.gameInitializationTimer = null;
+        console.error('[键盘游戏] 游戏初始化超时，未能在10秒内检测到游戏容器');
+      }
+    }, 200);
+  }
+  
+  // 实际执行游戏初始化的函数
+  function tryInitGame() {
+    const gameContainer = document.getElementById('game-container');
+    
+    console.log('[键盘游戏] 检查游戏容器元素:', {gameContainer: !!gameContainer});
+    
+    if (gameContainer) {
+      console.log('[键盘游戏] 检测到游戏容器，执行实际初始化...');
+      // 直接初始化游戏，不调用 initGameOnPage() 避免循环
+      initGame();
       return true;
     }
     return false;
@@ -1120,6 +1209,8 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
     // 路由变化时的处理函数
     const handleRouteChange = function() {
       console.log('[键盘游戏] 路由变化被检测到，重新设置监听器...');
+      // 重置初始化标志，允许重新初始化
+      gameInitialized = false;
       // 延迟检查，确保 VuePress 有足够时间渲染页面
       setTimeout(function() {
         // 重新设置 DOM 观察器
@@ -1135,6 +1226,8 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
     window.addEventListener('visibilitychange', function() {
       if (!document.hidden) {
         console.log('[键盘游戏] 页面变为可见，重新设置监听器...');
+        // 重置初始化标志，允许重新初始化
+        gameInitialized = false;
         setTimeout(function() {
           // 重新设置 DOM 观察器
           globalObserver = setupDOMObserver();
