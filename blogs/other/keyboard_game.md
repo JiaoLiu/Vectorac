@@ -1,3 +1,5 @@
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+
 ::: warning 键盘学习游戏
 
 欢迎来到键盘学习游戏！这是一个有趣的教育类游戏，帮助你熟悉键盘布局。
@@ -26,6 +28,9 @@
 <div id="nicknameInput" style="margin-bottom: 15px; text-align: left;">
   <input type="text" id="nickname" placeholder="请输入昵称，不输入则显示为游客" style="padding: 8px; width: 250px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;" />
 </div>
+
+<!-- 移动端隐藏输入框，用于触发系统键盘 -->
+<input type="text" id="mobileInput" style="position: absolute; opacity: 0; width: 1px; height: 1px; border: none; padding: 0; margin: 0; z-index: 1000; outline: none;" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
 
 <div id="game-container">
   <div id="game-score">得分: <span id="score">0</span></div>
@@ -877,32 +882,70 @@ function restartGame() {
 if (typeof window !== 'undefined' && typeof document !== 'undefined') {
   // 确保VuePress有足够时间渲染DOM
   function initializeGameSafely() {
-    // 先尝试直接初始化
-    initGame();
-    
-    // 绑定历史记录按钮点击事件
+    // 检查所有关键元素是否存在
+    const virtualKeyboard = document.getElementById('virtual-keyboard');
+    const gameCanvas = document.getElementById('game-canvas');
     const showHistoryButton = document.getElementById('showHistory');
-    if (showHistoryButton) {
+    
+    // 如果所有关键元素都存在，则初始化游戏
+    if (virtualKeyboard && gameCanvas && showHistoryButton) {
+      // 初始化游戏
+      initGame();
+      
+      // 绑定历史记录按钮点击事件
       showHistoryButton.addEventListener('click', function() {
         console.log('历史记录按钮被点击');
         showHistory();
       });
       console.log('历史记录按钮事件绑定完成');
+      console.log('游戏初始化完成');
     } else {
-      console.log('历史记录按钮未找到');
-    }
-    
-    // 检查关键元素是否存在，如果不存在则延迟重试
-    if (!document.getElementById('virtual-keyboard') || !document.getElementById('game-canvas')) {
+      // 如果有元素不存在，则延迟重试
+      console.log('等待DOM元素渲染...');
       setTimeout(initializeGameSafely, 100);
+    }
+  }
+  
+  // 移动端系统键盘支持
+  function initMobileKeyboardSupport() {
+    const isMobile = window.innerWidth <= 768;
+    const mobileInput = document.getElementById('mobileInput');
+    const gameContainer = document.getElementById('game-container');
+    
+    if (isMobile && mobileInput && gameContainer) {
+      // 点击游戏区域时让隐藏input获得焦点，触发系统键盘
+      gameContainer.addEventListener('click', function() {
+        mobileInput.click();
+        mobileInput.focus();
+      });
+      
+      // 处理隐藏输入字段的输入事件，防止输入内容被看到
+      mobileInput.addEventListener('input', function(e) {
+        e.target.value = '';
+      });
+      
+      // 处理移动设备上的回车键
+      mobileInput.addEventListener('keydown', function(e) {
+        // 我们已经在document的keydown事件中处理了所有逻辑，这里只需要确保事件冒泡
+        // 并阻止默认行为，防止在隐藏字段中产生不必要的换行
+        if (e.key === 'Enter') {
+          e.preventDefault();
+        }
+      });
+      
+      console.log('移动端键盘支持已初始化');
     }
   }
   
   // 页面加载完成后初始化游戏
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeGameSafely);
+    document.addEventListener('DOMContentLoaded', function() {
+      initializeGameSafely();
+      initMobileKeyboardSupport();
+    });
   } else {
     initializeGameSafely();
+    initMobileKeyboardSupport();
   }
 }
 </script>

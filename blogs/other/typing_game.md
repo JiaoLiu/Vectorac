@@ -648,18 +648,9 @@
       }, 300);
       }
       
-      // 确保DOM完全加载
-      function waitForDOM() {
-        if (document.readyState === 'loading') {
-          document.addEventListener('DOMContentLoaded', initGameUI);
-        } else {
-          initGameUI();
-        }
-      }
-      
-      // 初始化游戏UI
-      function initGameUI() {
-        console.log('初始化游戏UI');
+      // 安全初始化游戏
+      function initializeGameSafely() {
+        console.log('尝试初始化游戏...');
         
         // 直接获取所有需要的元素
         const startButton = document.getElementById('startGame');
@@ -668,11 +659,14 @@
         const wordDisplay = document.getElementById('wordDisplay');
         const inputDisplay = document.getElementById('inputDisplay');
         const gameStatus = document.getElementById('gameStatus');
+        const gameContainer = document.getElementById('gameContainer');
+        const mobileInput = document.getElementById('mobileInput');
+        const showHistoryButton = document.getElementById('showHistory');
         
-        console.log('初始化时获取到的元素:', { startButton, scoreDisplay, timeDisplay, wordDisplay, inputDisplay, gameStatus });
+        console.log('初始化时获取到的元素:', { startButton, scoreDisplay, timeDisplay, wordDisplay, inputDisplay, gameStatus, gameContainer, mobileInput, showHistoryButton });
         
-        // 确保所有元素都存在
-        if (startButton && scoreDisplay && timeDisplay && wordDisplay && inputDisplay && gameStatus) {
+        // 确保所有关键元素都存在
+        if (startButton && scoreDisplay && timeDisplay && wordDisplay && inputDisplay && gameStatus && gameContainer && mobileInput && showHistoryButton) {
           // 设置初始状态
           // 只更新分数和时间的数值部分，保留描述文本
           document.getElementById('score').textContent = '0';
@@ -759,14 +753,18 @@
             });
           }
           
-          console.log('游戏UI初始化完成');
+          console.log('游戏初始化完成');
         } else {
-          console.error('游戏元素未找到，1秒后重试');
-          setTimeout(waitForDOM, 1000);
+          console.log('等待DOM元素渲染...');
+          setTimeout(initializeGameSafely, 100);
         }
       }
       
-      waitForDOM();
+      // 页面加载完成后初始化游戏
+      document.addEventListener('DOMContentLoaded', initializeGameSafely);
+      
+      // 立即尝试初始化，可能DOM已经准备好
+      initializeGameSafely();
     })();
   }
 </script>
