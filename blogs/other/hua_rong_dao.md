@@ -22,7 +22,7 @@
     <h3>操作方式</h3>
     <ul>
       <li>使用键盘方向键(↑ ↓ ← →)或WASD键移动方块</li>
-      <li>在移动设备上，可通过触摸滑动来移动方块</li>
+      <li>在移动设备上，可通过触摸点击来移动方块</li>
       <li>点击重新开始按钮可重置游戏</li>
     </ul>
   </div>
@@ -68,19 +68,57 @@ class HuaRongDaoGame {
 
   renderBoard() {
     const boardElement = document.getElementById('game-board');
+    if (!boardElement) {
+      console.error('游戏棋盘元素未找到！');
+      return;
+    }
+    
+    console.log('开始渲染棋盘，boardElement:', boardElement);
+    
     boardElement.innerHTML = '';
     
-    // 创建棋盘格子背景（包括空白格子）
+    // 根据屏幕大小动态调整格子大小，解决小屏幕显示问题
+    let cellWidth, cellHeight;
+    const screenWidth = window.innerWidth;
+    
+    if (screenWidth < 400) {
+      cellWidth = 60; // 小屏幕
+      cellHeight = 60;
+    } else if (screenWidth < 500) {
+      cellWidth = 65; // 中等屏幕
+      cellHeight = 65;
+    } else {
+      cellWidth = 75; // 大屏幕
+      cellHeight = 75;
+    }
+    
+    const boardWidth = cellWidth * this.board[0].length; // 4列
+    const boardHeight = cellHeight * this.board.length; // 5行
+    
+    // 设置棋盘的固定尺寸（保持5x4，不增加高度），并允许出口显示在下方
+    boardElement.style.width = `${boardWidth}px`;
+    boardElement.style.height = `${boardHeight}px`; // 5行高度
+    boardElement.style.position = 'relative'; // 确保子元素定位正确
+    boardElement.style.margin = '0 auto'; // 居中显示
+    boardElement.style.display = 'block';
+    boardElement.style.overflow = 'visible'; // 允许出口元素溢出棋盘显示在下方
+    
+    console.log('棋盘和格子大小:', { cellWidth, cellHeight, boardWidth, boardHeight });
+    
+    // 创建棋盘格子背景（不添加任何边框，移除灰色线）
+    // 只绘制5行棋盘格子，不绘制到出口区域
     for (let row = 0; row < this.board.length; row++) {
       for (let col = 0; col < this.board[row].length; col++) {
         const cellElement = document.createElement('div');
         cellElement.className = 'board-cell';
-        cellElement.style.width = '80px';
-        cellElement.style.height = '80px';
+        cellElement.style.width = `${cellWidth}px`;
+        cellElement.style.height = `${cellHeight}px`;
         cellElement.style.position = 'absolute';
-        cellElement.style.left = `${col * 80}px`;
-        cellElement.style.top = `${row * 80}px`;
+        cellElement.style.left = `${col * cellWidth}px`;
+        cellElement.style.top = `${row * cellHeight}px`;
         cellElement.style.zIndex = '1';
+        cellElement.style.backgroundColor = 'transparent'; // 移除背景色
+        cellElement.style.border = 'none'; // 移除所有边框
         cellElement.dataset.row = row;
         cellElement.dataset.col = col;
         
@@ -98,8 +136,10 @@ class HuaRongDaoGame {
         if (pieceId !== 0 && row === this.getTopLeftRow(row, col) && col === this.getTopLeftCol(row, col)) {
           const pieceElement = document.createElement('div');
           pieceElement.className = `game-piece piece-${pieceId}`;
-          pieceElement.style.width = `${piece.size.cols * 80}px`;
-          pieceElement.style.height = `${piece.size.rows * 80}px`;
+          // 调整棋子尺寸，确保完全适合格子
+          pieceElement.style.width = `${piece.size.cols * cellWidth - 2}px`; // 减去2px避免超出边框
+          pieceElement.style.height = `${piece.size.rows * cellHeight - 2}px`; // 减去2px避免超出边框
+          pieceElement.style.fontSize = `${cellHeight * 0.32}px`; // 字体大小与格子大小成比例
           pieceElement.style.backgroundColor = piece.color;
           // 选中状态的边框样式
           if (this.selectedPiece && this.selectedPiece.pieceId === pieceId &&
@@ -111,8 +151,8 @@ class HuaRongDaoGame {
           }
           pieceElement.style.borderRadius = '5px';
           pieceElement.style.position = 'absolute';
-          pieceElement.style.left = `${col * 80}px`;
-          pieceElement.style.top = `${row * 80}px`;
+          pieceElement.style.left = `${col * cellWidth}px`;
+          pieceElement.style.top = `${row * cellHeight}px`;
           pieceElement.style.display = 'flex';
           pieceElement.style.justifyContent = 'center';
           pieceElement.style.alignItems = 'center';
@@ -156,26 +196,40 @@ class HuaRongDaoGame {
   // 绘制出口标记
   renderExit() {
     const boardElement = document.getElementById('game-board');
-    const exitElement = document.createElement('div');
-    exitElement.className = 'exit-mark';
-    exitElement.textContent = '出口';
-    exitElement.style.position = 'absolute';
-    exitElement.style.width = `${2 * 80}px`; // 2格宽
-    exitElement.style.height = `${80}px`; // 1格高
-    exitElement.style.left = `${1 * 80}px`; // 第1列开始
-    exitElement.style.top = `${5 * 80}px`; // 棋盘下方
+    // 先检查是否已有出口元素，避免重复创建
+    let exitElement = boardElement.querySelector('.exit-mark');
+    
+    if (!exitElement) {
+      exitElement = document.createElement('div');
+      exitElement.className = 'exit-mark';
+      exitElement.textContent = '出口';
+      // 将出口元素添加到棋盘容器内部
+      boardElement.appendChild(exitElement);
+    }
+    
+    // 获取棋盘尺寸信息
+    const boardWidth = boardElement.offsetWidth;
+    const boardHeight = boardElement.offsetHeight;
+    
+    // 设置出口样式，显示在棋盘底部，在棋盘容器内部，不改变棋盘大小
+    exitElement.style.width = '120px'; // 小于2个格子但比1个格子大
+    exitElement.style.height = '60px'; // 比1个格子稍小
+    exitElement.style.position = 'absolute'; // 绝对定位在棋盘容器内
+    exitElement.style.left = `${(boardWidth - 120) / 2}px`; // 水平居中
+    exitElement.style.top = `${boardHeight - 55}px`; // 垂直定位在棋盘底部，靠近底部边缘
     exitElement.style.border = '2px dashed #ff6b6b';
     exitElement.style.borderRadius = '5px';
     exitElement.style.display = 'flex';
     exitElement.style.justifyContent = 'center';
     exitElement.style.alignItems = 'center';
-    exitElement.style.fontSize = '18px';
+    exitElement.style.fontSize = '14px'; // 适当大小字体
     exitElement.style.fontWeight = 'bold';
     exitElement.style.color = '#ff6b6b';
     exitElement.style.background = 'rgba(255, 107, 107, 0.1)';
-    exitElement.style.zIndex = '10';
-    
-    boardElement.appendChild(exitElement);
+    exitElement.style.visibility = 'visible';
+    exitElement.style.opacity = '1'; // 完全可见
+    exitElement.style.zIndex = '5'; // 在棋子和棋盘中间
+    exitElement.style.pointerEvents = 'none'; // 不影响交互
   }
 
   getTopLeftRow(row, col) {
@@ -390,6 +444,10 @@ class HuaRongDaoGame {
   
   // 尝试将选中的棋子移动到指定的格子
   tryMoveToCell(targetRow, targetCol) {
+    if (!this.selectedPiece) {
+      return false;
+    }
+    
     const { piece, row, col } = this.selectedPiece;
     
     // 对于不同大小的棋子，尝试所有可能的移动方向
@@ -427,11 +485,12 @@ class HuaRongDaoGame {
         if (isTargetInPieceArea) {
           // 移动棋子
           this.movePieceByCoordinates(piece, row, col, direction);
+          
           // 更新选中棋子的位置
           this.selectedPiece.row = newRow;
           this.selectedPiece.col = newCol;
-          this.renderBoard();
-          return true;
+          
+          return true; // 移动成功，返回true
         }
       }
     }
@@ -671,120 +730,264 @@ class HuaRongDaoGame {
   }
 }
 
-// 使用IIFE包装，避免变量污染全局作用域
-(() => {
-  // 初始化游戏的安全函数
-  function initializeGameSafely() {
-    if (document.getElementById('hua-rong-dao-game') && document.getElementById('game-board')) {
-      console.log('华容道游戏DOM元素已准备好，开始初始化游戏...');
-      new HuaRongDaoGame();
-    } else {
-      console.log('等待华容道游戏DOM元素渲染...');
-      setTimeout(initializeGameSafely, 100);
-    }
+// 初始化游戏函数
+function initHuaRongDao() {
+  console.log('尝试初始化华容道游戏...');
+  
+  // 检查DOM元素是否存在
+  const gameBoard = document.getElementById('game-board');
+  if (!gameBoard) {
+    console.error('游戏棋盘元素不存在！');
+    return false;
   }
   
-  // 页面加载完成后初始化游戏
-  document.addEventListener('DOMContentLoaded', initializeGameSafely);
+  try {
+    console.log('创建游戏实例...');
+    new HuaRongDaoGame();
+    console.log('游戏初始化成功！');
+    return true;
+  } catch (error) {
+    console.error('游戏初始化失败:', error);
+    return false;
+  }
+}
+
+// 检查游戏容器并初始化
+function checkAndInitGame(observer) {
+  const gameBoard = document.getElementById('game-board');
+  const gameContainer = document.getElementById('hua-rong-dao-game');
   
-  // 立即尝试初始化，可能DOM已经准备好
-  initializeGameSafely();
-})();
+  console.log('[华容道游戏] 检查游戏容器元素:', {gameBoard: !!gameBoard, gameContainer: !!gameContainer});
+  
+  if (gameBoard && gameContainer) {
+    console.log('[华容道游戏] 检测到游戏容器，初始化游戏...');
+    // 初始化游戏
+    initHuaRongDao();
+    
+    // 如果观察器存在，停止观察
+    if (observer) {
+      console.log('[华容道游戏] 停止 DOM 观察器...');
+      observer.disconnect();
+    }
+    return true;
+  }
+  return false;
+}
+
+// 使用 MutationObserver 监听 DOM 变化，用于单页应用场景（如 VuePress）
+function setupDOMObserver() {
+  console.log('[华容道游戏] 设置 DOM 观察器...');
+  
+  let observer;
+  
+  // 首先尝试立即初始化
+  if (!checkAndInitGame(observer)) {
+    // 创建 MutationObserver 实例
+    observer = new MutationObserver(function(mutationsList) {
+      console.log('[华容道游戏] DOM 变化观察到:', mutationsList.length, '个变化');
+      checkAndInitGame(observer);
+    });
+    
+    // 开始观察 body 元素的变化
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: false,
+      characterData: false
+    });
+    
+    console.log('[华容道游戏] DOM 观察器已启动，正在监听 body 元素变化...');
+  }
+  
+  return observer;
+}
+
+// 全局变量存储当前的 observer 实例
+let globalObserver = null;
+
+// 设置路由变化监听器，用于 VuePress 单页应用
+function setupRouteListeners() {
+  console.log('[华容道游戏] 设置路由变化监听器...');
+  
+  // 路由变化时的处理函数
+  const handleRouteChange = function() {
+    console.log('[华容道游戏] 路由变化被检测到，重新设置监听器...');
+    // 延迟检查，确保 VuePress 有足够时间渲染页面
+    setTimeout(function() {
+      // 重新设置 DOM 观察器
+      globalObserver = setupDOMObserver();
+    }, 1000);
+  };
+  
+  // 添加路由变化事件监听器
+  window.addEventListener('hashchange', handleRouteChange);
+  window.addEventListener('popstate', handleRouteChange);
+  
+  console.log('[华容道游戏] 路由变化监听器已设置完成');
+}
+
+// 在多种情况下尝试初始化游戏
+// 1. 立即尝试
+console.log('立即尝试初始化...');
+setTimeout(function() {
+  if (!checkAndInitGame()) {
+    // 如果立即初始化失败，设置 DOM 观察器
+    globalObserver = setupDOMObserver();
+  }
+}, 200);
+
+// 2. DOMContentLoaded事件
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('DOMContentLoaded事件触发...');
+  setTimeout(function() {
+    if (!checkAndInitGame()) {
+      globalObserver = setupDOMObserver();
+    }
+  }, 100);
+});
+
+// 3. window.load事件
+window.addEventListener('load', function() {
+  console.log('window.load事件触发...');
+  setTimeout(function() {
+    if (!checkAndInitGame()) {
+      globalObserver = setupDOMObserver();
+    }
+  }, 50);
+});
+
+// 4. 2秒后再次尝试（作为备用）
+setTimeout(function() {
+  console.log('2秒后备用尝试...');
+  const gamePieces = document.querySelectorAll('.game-piece');
+  if (gamePieces.length === 0) {
+    if (!checkAndInitGame()) {
+      globalObserver = setupDOMObserver();
+    }
+  }
+}, 2000);
+
+// 5. 5秒后最后尝试
+setTimeout(function() {
+  console.log('5秒后最后尝试...');
+  const gamePieces = document.querySelectorAll('.game-piece');
+  if (gamePieces.length === 0) {
+    console.log('强制初始化游戏...');
+    initHuaRongDao();
+  }
+}, 5000);
+
+// 初始化所有监听器
+globalObserver = setupDOMObserver();
+setupRouteListeners();
+
+console.log('[华容道游戏] 游戏初始化设置完成');
 </script>
 
 <style>
-/* 华容道游戏样式 */
+/* 游戏容器样式 */
 .game-container {
-  max-width: 600px;
+  max-width: 100%;
   margin: 0 auto;
-  padding: 20px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  padding: 0;
+  background-color: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  font-family: 'Microsoft YaHei', 'SimHei', sans-serif;
 }
 
+/* 游戏标题 */
 .game-header {
   text-align: center;
-  margin-bottom: 20px;
+  margin-bottom: 15px;
+  padding: 15px;
+  background-color: transparent;
+  border-bottom: none;
 }
 
 .game-header .game-title {
-  font-size: 28px;
-  color: #333;
-  margin-bottom: 10px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  font-size: 24px;
   font-weight: bold;
-  text-align: center;
+  color: #2c3e50;
+  margin: 0 0 10px 0;
+  text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.1);
 }
 
 .game-stats {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 20px;
+  gap: 15px;
+  margin-bottom: 20px;
   font-size: 16px;
   color: #666;
 }
 
 .btn-restart {
-  padding: 8px 16px;
+  padding: 12px 28px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   border: none;
-  border-radius: 20px;
-  font-size: 14px;
-  font-weight: bold;
+  border-radius: 25px;
+  font-size: 16px;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+  font-family: 'Microsoft YaHei', 'SimHei', sans-serif;
 }
 
 .btn-restart:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
 }
 
 .btn-restart:active {
   transform: translateY(0);
 }
 
+/* 游戏棋盘样式 */
+.game-board-container {
+  text-align: center;
+  margin: 0 auto;
+  padding: 0;
+}
+
 .game-board {
   position: relative;
-  width: 320px;
-  height: 400px;
-  margin: 0 auto 20px;
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  width: 100%;
+  max-width: 320px;
+  height: auto;
+  margin: 0 auto;
+  background: linear-gradient(135deg, #e8e8e8 0%, #d0d0d0 100%);
   border-radius: 10px;
-  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.1);
+  overflow: visible;
+  aspect-ratio: 4/5;
+}
+
+.board-cell {
+  /* 格子样式已在JavaScript中动态设置 */
 }
 
 .game-piece {
-  position: absolute;
-  border: 2px solid #2c3e50;
-  border-radius: 5px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-size: 24px;
-  font-weight: bold;
-  color: white;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-  user-select: none;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
+  /* 棋子样式已在JavaScript中动态设置 */
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  text-align: center !important;
 }
 
-.game-piece:hover {
-  transform: scale(1.05);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-}
-
-.game-piece:active {
-  transform: scale(0.98);
+/* 游戏信息展示 */
+.game-status {
+  text-align: center;
+  padding: 15px;
+  margin: 0 15px 20px;
+  background: linear-gradient(135deg, #e8f4f8 0%, #d9ecf2 100%);
+  border-radius: 10px;
+  font-size: 14px;
+  color: #2c3e50;
+  border-left: 4px solid #3498db;
 }
 
 .game-info {
@@ -831,16 +1034,17 @@ class HuaRongDaoGame {
 /* 响应式设计 */
 @media (max-width: 768px) {
   .game-container {
-    padding: 15px;
+    max-width: 100%;
+    padding: 0;
   }
   
-  .game-header h2 {
-    font-size: 24px;
+  .game-header .game-title {
+    font-size: 22px;
   }
   
   .game-board {
-    width: 280px;
-    height: 350px;
+    max-width: 90%;
+    margin: 0 auto;
   }
   
   .game-piece {
@@ -849,25 +1053,65 @@ class HuaRongDaoGame {
   
   .game-info {
     padding: 15px;
+    margin-top: 15px;
   }
 }
 
 @media (max-width: 480px) {
   .game-container {
-    padding: 10px;
+    max-width: 100%;
+    padding: 0;
   }
   
-  .game-header h2 {
-    font-size: 22px;
+  .game-header .game-title {
+    font-size: 20px;
+  }
+  
+  .game-stats {
+    gap: 10px;
+    font-size: 12px;
+  }
+  
+  .btn-restart {
+    padding: 10px 20px;
+    font-size: 14px;
   }
   
   .game-board {
-    width: 240px;
-    height: 300px;
+    max-width: 95%;
+    margin: 0 auto;
   }
   
   .game-piece {
     font-size: 18px;
+  }
+  
+  .game-info {
+    padding: 10px;
+    font-size: 14px;
+  }
+}
+
+/* 小于360px屏幕的专门适配 */
+@media (max-width: 360px) {
+  .game-header {
+    padding: 12px;
+  }
+  
+  .game-header .game-title {
+    font-size: 18px;
+  }
+  
+  .game-board {
+    max-width: 98%;
+  }
+  
+  .game-piece {
+    font-size: 16px;
+  }
+  
+  .game-info {
+    font-size: 12px;
   }
 }
 </style>
