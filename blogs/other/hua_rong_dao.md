@@ -826,60 +826,67 @@ function setupRouteListeners() {
   console.log('[华容道游戏] 路由变化监听器已设置完成');
 }
 
+// 检查是否在浏览器环境中
+function isBrowser() {
+  return typeof window !== 'undefined' && typeof document !== 'undefined';
+}
+
 // 在多种情况下尝试初始化游戏
-// 1. 立即尝试
-console.log('立即尝试初始化...');
-setTimeout(function() {
-  if (!checkAndInitGame()) {
-    // 如果立即初始化失败，设置 DOM 观察器
-    globalObserver = setupDOMObserver();
-  }
-}, 200);
-
-// 2. DOMContentLoaded事件
-document.addEventListener('DOMContentLoaded', function() {
-  console.log('DOMContentLoaded事件触发...');
+if (isBrowser()) {
+  // 1. 立即尝试
+  console.log('立即尝试初始化...');
   setTimeout(function() {
     if (!checkAndInitGame()) {
+      // 如果立即初始化失败，设置 DOM 观察器
       globalObserver = setupDOMObserver();
     }
-  }, 100);
-});
-
-// 3. window.load事件
-window.addEventListener('load', function() {
-  console.log('window.load事件触发...');
+  }, 200);
+  
+  // 2. DOMContentLoaded事件
+  document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOMContentLoaded事件触发...');
+    setTimeout(function() {
+      if (!checkAndInitGame()) {
+        globalObserver = setupDOMObserver();
+      }
+    }, 100);
+  });
+  
+  // 3. window.load事件
+  window.addEventListener('load', function() {
+    console.log('window.load事件触发...');
+    setTimeout(function() {
+      if (!checkAndInitGame()) {
+        globalObserver = setupDOMObserver();
+      }
+    }, 50);
+  });
+  
+  // 4. 2秒后再次尝试（作为备用）
   setTimeout(function() {
-    if (!checkAndInitGame()) {
-      globalObserver = setupDOMObserver();
+    console.log('2秒后备用尝试...');
+    const gamePieces = document.querySelectorAll('.game-piece');
+    if (gamePieces.length === 0) {
+      if (!checkAndInitGame()) {
+        globalObserver = setupDOMObserver();
+      }
     }
-  }, 50);
-});
-
-// 4. 2秒后再次尝试（作为备用）
-setTimeout(function() {
-  console.log('2秒后备用尝试...');
-  const gamePieces = document.querySelectorAll('.game-piece');
-  if (gamePieces.length === 0) {
-    if (!checkAndInitGame()) {
-      globalObserver = setupDOMObserver();
+  }, 2000);
+  
+  // 5. 5秒后最后尝试
+  setTimeout(function() {
+    console.log('5秒后最后尝试...');
+    const gamePieces = document.querySelectorAll('.game-piece');
+    if (gamePieces.length === 0) {
+      console.log('强制初始化游戏...');
+      initHuaRongDao();
     }
-  }
-}, 2000);
-
-// 5. 5秒后最后尝试
-setTimeout(function() {
-  console.log('5秒后最后尝试...');
-  const gamePieces = document.querySelectorAll('.game-piece');
-  if (gamePieces.length === 0) {
-    console.log('强制初始化游戏...');
-    initHuaRongDao();
-  }
-}, 5000);
-
-// 初始化所有监听器
-globalObserver = setupDOMObserver();
-setupRouteListeners();
+  }, 5000);
+  
+  // 初始化所有监听器
+  globalObserver = setupDOMObserver();
+  setupRouteListeners();
+}
 
 console.log('[华容道游戏] 游戏初始化设置完成');
 </script>
