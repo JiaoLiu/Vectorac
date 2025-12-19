@@ -59,6 +59,7 @@ class HuaRongDaoGame {
     };
     this.moveCount = 0;
     this.emptyPos = { row: 0, col: 3 }; // 初始空位置（第一个空格）
+    this.gameWon = false; // 游戏是否已获胜
     this.init();
   }
 
@@ -748,14 +749,15 @@ class HuaRongDaoGame {
 
   checkWin() {
     // 检查曹操是否到达出口位置(第4行，第1、2列 - 5x4棋盘底部中央)
-    if (this.board[4][1] === 1 && this.board[4][2] === 1 && 
+    if (!this.gameWon && this.board[4][1] === 1 && this.board[4][2] === 1 && 
         this.board[3][1] === 1 && this.board[3][2] === 1) {
+      this.gameWon = true; // 设置游戏已获胜状态
       setTimeout(() => {
         alert(`恭喜你获胜了！\n\n使用了 ${this.moveCount} 步！\n\n挑战更高难度，尝试用更少的步数完成吧！`);
       }, 300);
       return true;
     }
-    return false;
+    return this.gameWon;
   }
 
   restart() {
@@ -769,6 +771,7 @@ class HuaRongDaoGame {
     ];
     this.moveCount = 0;
     this.selectedPiece = null; // 重置选中状态
+    this.gameWon = false; // 重置游戏获胜状态
     // 设置初始空位置
     this.emptyPos = { row: 4, col: 1 };
     this.renderBoard();
