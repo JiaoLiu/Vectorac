@@ -18,11 +18,12 @@
   
   <div class="game-info">
     <h3>游戏目标</h3>
-    <p>滑动方块，将曹操(大方块)移动到棋盘底部的出口位置即可获胜。</p>
+    <p>移动方块，将曹操(大方块)移动到棋盘底部的出口位置即可获胜。</p>
     <h3>操作方式</h3>
     <ul>
       <li>使用键盘方向键(↑ ↓ ← →)或WASD键移动方块</li>
-      <li>在移动设备上，可通过触摸点击来移动方块</li>
+      <li>在移动设备上，通过点击选中方块，再点击目标位置移动</li>
+      <li>在电脑上，通过点击选中方块，再点击目标位置移动</li>
       <li>点击重新开始按钮可重置游戏</li>
     </ul>
   </div>
@@ -294,29 +295,45 @@ class HuaRongDaoGame {
       }
     });
     
-    // 触摸事件 - 改为点击操作，与鼠标点击一致
+    // 触摸事件 - 处理移动端点击操作
     boardElement.addEventListener('touchstart', (e) => {
-      // 防止触摸事件触发鼠标事件
-      e.preventDefault();
+      // 记录触摸起始位置
+      const touch = e.changedTouches[0];
+      boardElement.touchStartX = touch.clientX;
+      boardElement.touchStartY = touch.clientY;
     });
     
     boardElement.addEventListener('touchend', (e) => {
-      e.preventDefault();
-      
       const touch = e.changedTouches[0];
-      const touchX = touch.clientX;
-      const touchY = touch.clientY;
+      const touchEndX = touch.clientX;
+      const touchEndY = touch.clientY;
       
-      // 创建一个鼠标事件，模拟点击
-      const clickEvent = new MouseEvent('click', {
-        clientX: touchX,
-        clientY: touchY,
-        bubbles: true,
-        cancelable: true
-      });
+      // 计算触摸位移，判断是点击还是滑动
+      const deltaX = Math.abs(touchEndX - boardElement.touchStartX);
+      const deltaY = Math.abs(touchEndY - boardElement.touchStartY);
       
-      // 触发点击事件
-      document.elementFromPoint(touchX, touchY).dispatchEvent(clickEvent);
+      // 如果位移很小，视为点击
+      if (deltaX < 20 && deltaY < 20) {
+        // 找到触摸位置的元素
+        const targetElement = document.elementFromPoint(touchEndX, touchEndY);
+        
+        if (targetElement) {
+          // 查找是否点击在棋子上
+          const clickedPiece = targetElement.closest('.game-piece');
+          if (clickedPiece) {
+            // 点击了棋子，处理选择
+            this.tryMovePiece(clickedPiece);
+          } else {
+            // 点击了空白区域，尝试移动选中的棋子
+            const clickedCell = targetElement.closest('.board-cell');
+            if (clickedCell && this.selectedPiece) {
+              const row = parseInt(clickedCell.dataset.row);
+              const col = parseInt(clickedCell.dataset.col);
+              this.tryMoveToCell(row, col);
+            }
+          }
+        }
+      }
     });
   }
 
