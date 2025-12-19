@@ -21,6 +21,14 @@
 
 <router-link to="/blogs/other/typing_game" class="game-link">开始游戏</router-link>
 
+### 3. 华容道游戏
+- **游戏类型**：益智类
+- **游戏目标**：通过滑动方块，帮助曹操从棋盘底部的出口逃脱
+- **操作方式**：使用键盘方向键或WASD键移动方块，在移动设备上可通过触摸滑动
+- **游戏特色**：经典中国传统益智游戏，锻炼逻辑思维能力
+
+<router-link to="/blogs/other/hua_rong_dao" class="game-link">开始游戏</router-link>
+
 ## 游戏说明
 
 - 所有游戏都支持键盘和触屏操作
