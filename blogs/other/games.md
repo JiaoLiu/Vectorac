@@ -29,6 +29,14 @@
 
 <router-link to="/blogs/other/hua_rong_dao" class="game-link">开始游戏</router-link>
 
+### 4. 数独游戏
+- **游戏类型**：逻辑推理类
+- **游戏目标**：填充9x9网格，使每行、每列和每个3x3小宫格内的数字1-9都不重复
+- **操作方式**：点击空白格子选择位置，使用数字键盘或点击数字按钮输入数字
+- **游戏特色**：经典逻辑游戏，锻炼推理能力和专注力，支持多个难度级别
+
+<router-link to="/blogs/other/sudoku" class="game-link">开始游戏</router-link>
+
 ## 游戏说明
 
 - 所有游戏都支持键盘和触屏操作
