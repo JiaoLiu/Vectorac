@@ -295,30 +295,74 @@ class HuaRongDaoGame {
       }
     });
     
-    // 触摸事件 - 改为点击操作，与鼠标点击一致
+    // 触摸事件 - 针对iOS设备优化，确保可以正确选中和移动棋子
+    let touchStartTime = 0;
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let lastTouchTarget = null;
+    
     boardElement.addEventListener('touchstart', (e) => {
-      // 防止触摸事件触发鼠标事件
-      e.preventDefault();
-    });
+      // 记录触摸开始时间和位置
+      const touch = e.touches[0];
+      touchStartTime = Date.now();
+      touchStartX = touch.clientX;
+      touchStartY = touch.clientY;
+      
+      // 记录触摸开始时的目标元素
+      lastTouchTarget = document.elementFromPoint(touch.clientX, touch.clientY);
+    }, { passive: false });
     
     boardElement.addEventListener('touchend', (e) => {
-      e.preventDefault();
-      
       const touch = e.changedTouches[0];
-      const touchX = touch.clientX;
-      const touchY = touch.clientY;
+      const touchEndX = touch.clientX;
+      const touchEndY = touch.clientY;
       
-      // 创建一个鼠标事件，模拟点击
-      const clickEvent = new MouseEvent('click', {
-        clientX: touchX,
-        clientY: touchY,
-        bubbles: true,
-        cancelable: true
-      });
+      // 计算触摸时间和移动距离，判断是点击还是滑动
+      const touchDuration = Date.now() - touchStartTime;
+      const touchDistance = Math.sqrt(
+        Math.pow(touchEndX - touchStartX, 2) + 
+        Math.pow(touchEndY - touchStartY, 2)
+      );
       
-      // 触发点击事件
-      document.elementFromPoint(touchX, touchY).dispatchEvent(clickEvent);
-    });
+      // 如果触摸时间短且移动距离小，视为点击操作
+      if (touchDuration < 500 && touchDistance < 20) {
+        e.preventDefault();
+        
+        try {
+          // 使用触摸开始时的目标元素，避免触摸结束时元素位置变化
+          let targetElement = lastTouchTarget;
+          
+          // 如果之前的目标元素不存在，尝试使用结束位置的元素
+          if (!targetElement) {
+            targetElement = document.elementFromPoint(touchEndX, touchEndY);
+          }
+          
+          if (targetElement) {
+            // 查找是否点击在棋子上
+            const clickedPiece = targetElement.closest('.game-piece');
+            
+            if (clickedPiece) {
+              // 直接调用tryMovePiece处理棋子点击
+              // 对于大尺寸棋子（如曹操），确保正确识别点击
+              console.log('触摸点击棋子:', clickedPiece.dataset.pieceId, clickedPiece.textContent);
+              this.tryMovePiece(clickedPiece);
+            } else {
+              // 点击了空白格子
+              if (this.selectedPiece) {
+                const clickedCell = targetElement.closest('.board-cell');
+                if (clickedCell) {
+                  const row = parseInt(clickedCell.dataset.row);
+                  const col = parseInt(clickedCell.dataset.col);
+                  this.tryMoveToCell(row, col);
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.error('触摸事件处理错误:', error);
+        }
+      }
+    }, { passive: false });
   }
 
   handleKeyDown(e) {
@@ -597,6 +641,13 @@ class HuaRongDaoGame {
     
     // 更新步数
     this.moveCount++;
+    
+    // 如果移动的是当前选中的棋子，更新选中棋子的位置信息
+    if (this.selectedPiece && this.selectedPiece.piece === piece &&
+        this.selectedPiece.row === topLeftRow && this.selectedPiece.col === topLeftCol) {
+      this.selectedPiece.row = newTopLeftRow;
+      this.selectedPiece.col = newTopLeftCol;
+    }
     
     // 重新渲染棋盘
     this.renderBoard();
