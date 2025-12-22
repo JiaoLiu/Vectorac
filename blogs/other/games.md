@@ -37,6 +37,14 @@
 
 <router-link to="/blogs/other/sudoku" class="game-link">开始游戏</router-link>
 
+### 5. 2048 游戏
+- **游戏类型**：益智类
+- **游戏目标**：通过合并相同数字的方块，获得2048或更高分数
+- **操作方式**：使用键盘方向键或WASD键移动方块；支持触屏滑动操作
+- **游戏特色**：简单易懂的规则，富有挑战性的玩法，合并时有炫酷的碰撞特效
+
+<router-link to="/blogs/other/2048" class="game-link">开始游戏</router-link>
+
 ## 游戏说明
 
 - 所有游戏都支持键盘和触屏操作
