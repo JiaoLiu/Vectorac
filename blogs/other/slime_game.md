@@ -694,7 +694,7 @@ class SlimeGame {
   
       // 创建气泡的独立方法
       createBubbles() {
-        if (this.bubbles.length > 0) return;
+        if (this.bubbles.length > 5) return;
         const bubbleCount = Math.floor(Math.random() * 10) + 5; // 生成5-14个气泡
         const centerX = this.width / 2;
         const centerY = this.height / 2;
