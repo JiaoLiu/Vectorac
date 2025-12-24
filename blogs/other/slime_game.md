@@ -709,6 +709,8 @@ class SlimeGame {
               // 为每个气泡分配一个节点
               const nodeIndex = Math.floor(Math.random() * this.nodes.length);
               const node = this.nodes[nodeIndex];
+              // 获取节点颜色
+              const nodeColor = this.colorMap[nodeIndex];
               
               // 计算从节点到中心点的向量
               const dxToCenter = centerX - node.x;
@@ -736,7 +738,8 @@ class SlimeGame {
               animating: false,
               nodeIndex: nodeIndex,
               offsetX: offsetX,
-              offsetY: offsetY
+              offsetY: offsetY,
+              color: nodeColor // 添加气泡颜色属性，初始化为节点颜色
               });
           }
         }
@@ -792,6 +795,25 @@ class SlimeGame {
           const blendRatio = (1 - dist / 120) * 0.5; // 混合比例，靠近鼠标的地方混合更多新颜色
           const blendedColor = this.mixColors(currentColor, newColor, blendRatio);
           this.colorMap[i] = blendedColor;
+        }
+        
+        // 同时更新气泡颜色：为绑定到该节点的气泡应用相同的颜色叠加
+        for (let j = 0; j < this.bubbles.length; j++) {
+          const bubble = this.bubbles[j];
+          if (bubble.nodeIndex === i) {
+            const bubbleX = node.x + bubble.offsetX;
+            const bubbleY = node.y + bubble.offsetY;
+            const bubbleDx = this.mouseX - bubbleX;
+            const bubbleDy = this.mouseY - bubbleY;
+            const bubbleDist = Math.sqrt(bubbleDx * bubbleDx + bubbleDy * bubbleDy);
+            
+            if (bubbleDist < 120) {
+              const currentColor = bubble.color || this.colorMap[i];
+              const blendRatio = (1 - bubbleDist / 120) * 0.5; // 气泡也使用相同的混合比例
+              const blendedColor = this.mixColors(currentColor, newColor, blendRatio);
+              bubble.color = blendedColor;
+            }
+          }
         }
         
         // 根据工具类型应用不同效果
@@ -963,54 +985,7 @@ class SlimeGame {
     this.ctx.fill();
   }
 
-  drawBubbles() {
-    const currentColor = this.hexToRgb(this.selectedColor);
-    const centerX = this.width / 2;
-    const centerY = this.height / 2;
-    const slimeRadius = Math.min(this.width, this.height) * 0.45; // 史莱姆的实际半径
-    
-    for (let i = 0; i < this.bubbles.length; i++) {
-      const bubble = this.bubbles[i];
-      if (bubble.visible) {
-        // 获取气泡附加的节点位置
-        let bubbleX = bubble.x;
-        let bubbleY = bubble.y;
-        
-        if (bubble.nodeIndex !== undefined && this.nodes && this.nodes.length > 0) {
-          const nodeIndex = bubble.nodeIndex % this.nodes.length;
-          const node = this.nodes[nodeIndex];
-          bubbleX = node.x + bubble.offsetX;
-          bubbleY = node.y + bubble.offsetY;
-          
-          // 验证气泡位置是否在 slime 内部，如果超出则调整
-          const distanceToCenter = Math.sqrt(
-            Math.pow(bubbleX - centerX, 2) + Math.pow(bubbleY - centerY, 2)
-          );
-          
-          if (distanceToCenter > slimeRadius) {
-            // 将气泡移回 slime 内部
-            const angle = Math.atan2(bubbleY - centerY, bubbleX - centerX);
-            bubbleX = centerX + Math.cos(angle) * (slimeRadius - bubble.radius);
-            bubbleY = centerY + Math.sin(angle) * (slimeRadius - bubble.radius);
-          }
-        }
-        
-        // 使用选择的颜色加透明度
-        this.ctx.beginPath();
-        this.ctx.fillStyle = `rgba(${currentColor.r}, ${currentColor.g}, ${currentColor.b}, ${0.7 * bubble.alpha})`;
-        this.ctx.arc(bubbleX, bubbleY, bubble.radius, 0, Math.PI * 2);
-        this.ctx.fill();
-        
-        // 气泡高光
-        this.ctx.beginPath();
-        this.ctx.fillStyle = `rgba(255, 255, 255, ${0.4 * bubble.alpha})`;
-        this.ctx.arc(bubbleX - bubble.radius * 0.3, bubbleY - bubble.radius * 0.3, bubble.radius * 0.3, 0, Math.PI * 2);
-        this.ctx.fill();
-      }
-    }
-  }
-
-  drawDecorations() {
+    drawDecorations() {
     // 确保decorations数组有元素
     if (!this.decorations || this.decorations.length === 0) {
       return;
@@ -1135,7 +1110,6 @@ class SlimeGame {
   }
 
   drawBubbles() {
-    const currentColor = this.hexToRgb(this.selectedColor);
     for (let i = 0; i < this.bubbles.length; i++) {
       const bubble = this.bubbles[i];
       if (bubble.visible) {
@@ -1150,9 +1124,10 @@ class SlimeGame {
           bubbleY = node.y + bubble.offsetY;
         }
         
-        // 使用选择的颜色加透明度
+        // 使用气泡自身的颜色
+        const bubbleColor = bubble.color || this.hexToRgb(this.selectedColor);
         this.ctx.beginPath();
-        this.ctx.fillStyle = `rgba(${currentColor.r}, ${currentColor.g}, ${currentColor.b}, ${0.7 * bubble.alpha})`;
+        this.ctx.fillStyle = `rgba(${bubbleColor.r}, ${bubbleColor.g}, ${bubbleColor.b}, ${0.7 * bubble.alpha})`;
         this.ctx.arc(bubbleX, bubbleY, bubble.radius, 0, Math.PI * 2);
         this.ctx.fill();
         
