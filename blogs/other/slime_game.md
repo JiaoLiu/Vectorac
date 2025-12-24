@@ -23,6 +23,20 @@
       <button class="color-btn" data-color="#95E1D3" style="background: #95E1D3;"></button>
       <button class="color-btn" data-color="#F38181" style="background: #F38181;"></button>
       <button class="color-btn" data-color="#AA96DA" style="background: #AA96DA;"></button>
+      <button class="color-btn" data-color="#FF9FF3" style="background: #FF9FF3;"></button>
+      <button class="color-btn" data-color="#54A0FF" style="background: #54A0FF;"></button>
+      <button class="color-btn" data-color="#00D2D3" style="background: #00D2D3;"></button>
+      <button class="color-btn" data-color="#5F27CD" style="background: #5F27CD;"></button>
+      <button class="color-btn" data-color="#FF6B6B" style="background: #FF6B6B;"></button>
+      <button class="color-btn" data-color="#48DBFB" style="background: #48DBFB;"></button>
+      <button class="color-btn" data-color="#00C851" style="background: #00C851;"></button>
+      <button class="color-btn" data-color="#FFD54F" style="background: #FFD54F;"></button>
+      <button class="color-btn" data-color="#FF8A65" style="background: #FF8A65;"></button>
+      <button class="color-btn" data-color="#BA68C8" style="background: #BA68C8;"></button>
+      <button class="color-btn" data-color="#64B5F6" style="background: #64B5F6;"></button>
+      <button class="color-btn" data-color="#81C784" style="background: #81C784;"></button>
+      <button class="color-btn" data-color="#FFB74D" style="background: #FFB74D;"></button>
+      <button class="color-btn" data-color="#E57373" style="background: #E57373;"></button>
     </div>
   </div>
 </div>
