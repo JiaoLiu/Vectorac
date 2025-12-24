@@ -676,24 +676,44 @@ class SlimeGame {
         const bubbleCount = Math.floor(Math.random() * 10) + 5; // 生成5-14个气泡
         const centerX = this.width / 2;
         const centerY = this.height / 2;
-        const slimeRadius = Math.min(this.width, this.height) * 0.45; // 史莱姆的实际半径
-        const maxBubbleOffset = 50; // 气泡最大偏移量
         this.bubbles = [];
         
-        for (let i = 0; i < bubbleCount; i++) {
-            const radius = Math.random() * 40 + 10; // 随机半径10-50s
-            this.bubbles.push({
-            x: centerX,
-            y: centerY,
-            radius: radius,
-            targetRadius: radius,
-            visible: true,
-            alpha: 1,
-            animating: false,
-            nodeIndex: Math.floor(Math.random() * this.nodes.length), // 为每个气泡分配一个节点
-            offsetX: (Math.random() - 0.5) * maxBubbleOffset, // 限制气泡偏移量
-            offsetY: (Math.random() - 0.5) * maxBubbleOffset  // 限制气泡偏移量
-            });
+        if (this.nodes && this.nodes.length > 0) {
+          for (let i = 0; i < bubbleCount; i++) {
+              const radius = Math.random() * 40 + 10; // 随机半径10-50
+              // 为每个气泡分配一个节点
+              const nodeIndex = Math.floor(Math.random() * this.nodes.length);
+              const node = this.nodes[nodeIndex];
+              
+              // 计算从节点到中心点的向量
+              const dxToCenter = centerX - node.x;
+              const dyToCenter = centerY - node.y;
+              const distanceToCenter = Math.sqrt(dxToCenter * dxToCenter + dyToCenter * dyToCenter);
+              
+              // 将偏移量限制在朝向中心的方向，确保气泡始终在slime内部
+              // 最大偏移量基于节点到中心的距离，越靠近边缘，允许的偏移量越小
+              const maxAllowedOffset = Math.max(20, distanceToCenter * 0.7);
+              // 生成朝向中心的随机偏移
+              const offsetRatio = (Math.random() * 0.8) + 0.1; // 0.1 到 0.9，确保不会太靠近边缘
+              const offsetDistance = maxAllowedOffset * offsetRatio;
+              const offsetAngle = Math.atan2(dyToCenter, dxToCenter);
+              
+              const offsetX = Math.cos(offsetAngle) * offsetDistance;
+              const offsetY = Math.sin(offsetAngle) * offsetDistance;
+              
+              this.bubbles.push({
+              x: centerX,
+              y: centerY,
+              radius: radius,
+              targetRadius: radius,
+              visible: true,
+              alpha: 1,
+              animating: false,
+              nodeIndex: nodeIndex,
+              offsetX: offsetX,
+              offsetY: offsetY
+              });
+          }
         }
       }
   
@@ -900,18 +920,47 @@ class SlimeGame {
   }
 
   drawBubbles() {
+    const currentColor = this.hexToRgb(this.selectedColor);
+    const centerX = this.width / 2;
+    const centerY = this.height / 2;
+    const slimeRadius = Math.min(this.width, this.height) * 0.45; // 史莱姆的实际半径
+    
     for (let i = 0; i < this.bubbles.length; i++) {
       const bubble = this.bubbles[i];
       if (bubble.visible) {
+        // 获取气泡附加的节点位置
+        let bubbleX = bubble.x;
+        let bubbleY = bubble.y;
+        
+        if (bubble.nodeIndex !== undefined && this.nodes && this.nodes.length > 0) {
+          const nodeIndex = bubble.nodeIndex % this.nodes.length;
+          const node = this.nodes[nodeIndex];
+          bubbleX = node.x + bubble.offsetX;
+          bubbleY = node.y + bubble.offsetY;
+          
+          // 验证气泡位置是否在 slime 内部，如果超出则调整
+          const distanceToCenter = Math.sqrt(
+            Math.pow(bubbleX - centerX, 2) + Math.pow(bubbleY - centerY, 2)
+          );
+          
+          if (distanceToCenter > slimeRadius) {
+            // 将气泡移回 slime 内部
+            const angle = Math.atan2(bubbleY - centerY, bubbleX - centerX);
+            bubbleX = centerX + Math.cos(angle) * (slimeRadius - bubble.radius);
+            bubbleY = centerY + Math.sin(angle) * (slimeRadius - bubble.radius);
+          }
+        }
+        
+        // 使用选择的颜色加透明度
         this.ctx.beginPath();
-        this.ctx.fillStyle = '#FFFFFF';
-        this.ctx.arc(bubble.x, bubble.y, bubble.radius, 0, Math.PI * 2);
+        this.ctx.fillStyle = `rgba(${currentColor.r}, ${currentColor.g}, ${currentColor.b}, ${0.7 * bubble.alpha})`;
+        this.ctx.arc(bubbleX, bubbleY, bubble.radius, 0, Math.PI * 2);
         this.ctx.fill();
         
         // 气泡高光
         this.ctx.beginPath();
-        this.ctx.fillStyle = '#E8F4F8';
-        this.ctx.arc(bubble.x - bubble.radius * 0.3, bubble.y - bubble.radius * 0.3, bubble.radius * 0.3, 0, Math.PI * 2);
+        this.ctx.fillStyle = `rgba(255, 255, 255, ${0.4 * bubble.alpha})`;
+        this.ctx.arc(bubbleX - bubble.radius * 0.3, bubbleY - bubble.radius * 0.3, bubble.radius * 0.3, 0, Math.PI * 2);
         this.ctx.fill();
       }
     }
