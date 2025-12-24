@@ -590,8 +590,22 @@ class SlimeGame {
   }
 
   splitBubble(bubble) {
-    const index = this.bubbles.indexOf(bubble);
-    if (index === -1 || bubble.radius < 20) return; // 防止气泡过小
+    // 通过坐标和半径比较找到气泡索引，而不是直接使用 indexOf
+    let index = -1;
+    for (let i = 0; i < this.bubbles.length; i++) {
+      const b = this.bubbles[i];
+      if (Math.abs(b.x - bubble.x) < 0.1 && Math.abs(b.y - bubble.y) < 0.1 && Math.abs(b.radius - bubble.radius) < 0.1) {
+        index = i;
+        break;
+      }
+    }
+    if (index === -1) return;
+    
+    // 当气泡小于最小尺寸时，直接消失
+    if (bubble.radius < 20) {
+      this.bubbles.splice(index, 1);
+      return;
+    }
     
     this.bubbles.splice(index, 1);
     
@@ -604,8 +618,7 @@ class SlimeGame {
       radius: 0,
       targetRadius: newRadius,
       visible: true,
-      alpha: 0,
-      isMoving: true,
+      alpha: 0, 
       animating: true
     });
     this.bubbles.push({
@@ -614,8 +627,7 @@ class SlimeGame {
       radius: 0,
       targetRadius: newRadius,
       visible: true,
-      alpha: 0,
-      isMoving: true,
+      alpha: 0, 
       animating: true
     });
   }
@@ -624,20 +636,32 @@ class SlimeGame {
     for (let i = 0; i < this.bubbles.length; i++) {
       const bubble = this.bubbles[i];
       
+      // 确保气泡有必要的属性
+      if (!bubble.targetRadius) {
+        // 对于旧的气泡对象（没有 targetRadius），设置初始值
+        bubble.targetRadius = bubble.radius;
+        bubble.alpha = 1;
+        bubble.animating = false;
+      }
+      
+      // 气泡动画：半径从0增加到目标值
       if (bubble.radius < bubble.targetRadius) {
         bubble.radius += (bubble.targetRadius - bubble.radius) * 0.2;
       }
       
+      // 透明度动画
       if (bubble.alpha < 1) {
         bubble.alpha += (1 - bubble.alpha) * 0.2;
       }
       
-      // 只有动画状态的气泡才移动
+      // 只有动画状态的气泡才执行漂浮动画
       if (bubble.animating) {
-        // 动画完成后停止移动
+        bubble.x += Math.sin(Date.now() * 0.001 + i) * 0.2;
+        bubble.y += Math.cos(Date.now() * 0.001 + i) * 0.1;
+        
+        // 检查动画是否完成，如果完成则停止动画
         if (Math.abs(bubble.radius - bubble.targetRadius) < 0.1 && bubble.alpha > 0.95) {
           bubble.animating = false;
-          bubble.isMoving = false;
         }
       }
     }
@@ -785,36 +809,18 @@ class SlimeGame {
           }
         } else if (this.selectedTool === 'pop') {
           // 戳破气泡效果：分裂气泡
-          for (let j = 0; j < this.bubbles.length; j++) {
-            const bubble = this.bubbles[j];
+          // 保存需要处理的气泡索引，避免遍历过程中数组长度变化
+          const bubblesToProcess = [...this.bubbles];
+          for (let j = 0; j < bubblesToProcess.length; j++) {
+            const bubble = bubblesToProcess[j];
             const bubbleDx = this.mouseX - bubble.x;
             const bubbleDy = this.mouseY - bubble.y;
             const bubbleDist = Math.sqrt(bubbleDx * bubbleDx + bubbleDy * bubbleDy);
             
             if (bubbleDist < bubble.radius + 10) {
-              if (bubble.radius >= 20) {
-                // 分裂当前气泡
-                this.bubbles.splice(j, 1);
-                const newRadius = bubble.radius * 0.7;
-                
-                // 添加两个新气泡
-                this.bubbles.push({
-                  x: bubble.x + (Math.random() - 0.5) * 40,
-                  y: bubble.y + (Math.random() - 0.5) * 40,
-                  radius: newRadius,
-                  visible: true
-                });
-                this.bubbles.push({
-                  x: bubble.x + (Math.random() - 0.5) * 40,
-                  y: bubble.y + (Math.random() - 0.5) * 40,
-                  radius: newRadius,
-                  visible: true
-                });
-              } else {
-                // 小气泡直接消失
-                this.bubbles.splice(j, 1);
-              }
-              break;
+              // 使用 splitBubble 方法来处理气泡分裂，确保动画效果
+              this.splitBubble(bubble);
+              // 移除 break 语句，允许同时处理多个气泡
             }
           }
         }
@@ -1026,7 +1032,13 @@ class SlimeGame {
 
   splitBubble(bubble) {
     const index = this.bubbles.indexOf(bubble);
-    if (index === -1 || bubble.radius < 20) return; // 防止气泡过小
+    if (index === -1) return;
+    
+    // 当气泡小于最小尺寸时，直接消失
+    if (bubble.radius < 20) {
+      this.bubbles.splice(index, 1);
+      return;
+    }
     
     this.bubbles.splice(index, 1);
     
@@ -1036,10 +1048,10 @@ class SlimeGame {
     this.bubbles.push({
       x: bubble.x + (Math.random() - 0.5) * 30,
       y: bubble.y + (Math.random() - 0.5) * 30,
-      radius: 0, // 初始半径为0，用于动画
+      radius: 0,
       targetRadius: newRadius,
       visible: true,
-      alpha: 0
+      alpha: 0, animating: true
     });
     this.bubbles.push({
       x: bubble.x + (Math.random() - 0.5) * 30,
@@ -1047,7 +1059,7 @@ class SlimeGame {
       radius: 0,
       targetRadius: newRadius,
       visible: true,
-      alpha: 0
+      alpha: 0, animating: true
     });
   }
 
@@ -1065,9 +1077,16 @@ class SlimeGame {
         bubble.alpha += (1 - bubble.alpha) * 0.2;
       }
       
-      // 添加轻微的漂浮动画
-      bubble.x += Math.sin(Date.now() * 0.001 + i) * 0.2;
-      bubble.y += Math.cos(Date.now() * 0.001 + i) * 0.1;
+      // 只有动画状态的气泡才执行漂浮动画
+      if (bubble.animating) {
+        bubble.x += Math.sin(Date.now() * 0.001 + i) * 0.2;
+        bubble.y += Math.cos(Date.now() * 0.001 + i) * 0.1;
+        
+        // 检查动画是否完成，如果完成则停止动画
+        if (Math.abs(bubble.radius - bubble.targetRadius) < 0.1 && bubble.alpha > 0.95) {
+          bubble.animating = false;
+        }
+      }
     }
   }
 }
