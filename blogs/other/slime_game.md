@@ -577,7 +577,7 @@ class SlimeGame {
   }
 
   handleBubbleClick(bubble) {
-    // 如果气泡半径 >= 20，分裂成小气泡
+    // 如果气泡半径 >= 20，分裂成小气泡，否则消失
     if (bubble.radius >= 20) {
       this.splitBubble(bubble);
     } else {
@@ -591,12 +591,13 @@ class SlimeGame {
 
   splitBubble(bubble) {
     const index = this.bubbles.indexOf(bubble);
-    if (index === -1 || bubble.radius < 20) return;
+    if (index === -1 || bubble.radius < 20) return; // 防止气泡过小
     
     this.bubbles.splice(index, 1);
     
-    const newRadius = bubble.radius * 0.5;
+    const newRadius = bubble.radius * 0.7;
     
+    // 创建两个新气泡，带有分裂动画
     this.bubbles.push({
       x: bubble.x + (Math.random() - 0.5) * 30,
       y: bubble.y + (Math.random() - 0.5) * 30,
@@ -720,8 +721,6 @@ class SlimeGame {
 
   handleMouseMove(e) {
     this.updateMousePosition(e);
-    // 拖动时重置气泡
-    this.bubbles = [{x: this.width/2, y: this.height/2, radius: 30, targetRadius: 30, visible: true, alpha: 1}];
   }
 
   handleTouchMove(e) {
@@ -793,23 +792,28 @@ class SlimeGame {
             const bubbleDist = Math.sqrt(bubbleDx * bubbleDx + bubbleDy * bubbleDy);
             
             if (bubbleDist < bubble.radius + 10) {
-              // 分裂当前气泡
-              this.bubbles.splice(j, 1);
-              const newRadius = bubble.radius * 0.7;
-              
-              // 添加两个新气泡
-              this.bubbles.push({
-                x: bubble.x + (Math.random() - 0.5) * 40,
-                y: bubble.y + (Math.random() - 0.5) * 40,
-                radius: newRadius,
-                visible: true
-              });
-              this.bubbles.push({
-                x: bubble.x + (Math.random() - 0.5) * 40,
-                y: bubble.y + (Math.random() - 0.5) * 40,
-                radius: newRadius,
-                visible: true
-              });
+              if (bubble.radius >= 20) {
+                // 分裂当前气泡
+                this.bubbles.splice(j, 1);
+                const newRadius = bubble.radius * 0.7;
+                
+                // 添加两个新气泡
+                this.bubbles.push({
+                  x: bubble.x + (Math.random() - 0.5) * 40,
+                  y: bubble.y + (Math.random() - 0.5) * 40,
+                  radius: newRadius,
+                  visible: true
+                });
+                this.bubbles.push({
+                  x: bubble.x + (Math.random() - 0.5) * 40,
+                  y: bubble.y + (Math.random() - 0.5) * 40,
+                  radius: newRadius,
+                  visible: true
+                });
+              } else {
+                // 小气泡直接消失
+                this.bubbles.splice(j, 1);
+              }
               break;
             }
           }
@@ -817,7 +821,7 @@ class SlimeGame {
       }
     } else {
       // 鼠标释放时，如果是戳破模式则重置气泡
-      if (this.selectedTool === 'pop') {
+      if (this.selectedTool != 'pop') {
         this.bubbles = [{x: this.width/2, y: this.height/2, radius: 30, visible: true}];
       }
     }
@@ -1022,7 +1026,7 @@ class SlimeGame {
 
   splitBubble(bubble) {
     const index = this.bubbles.indexOf(bubble);
-    if (index === -1 || bubble.radius < 15) return; // 防止气泡过小
+    if (index === -1 || bubble.radius < 20) return; // 防止气泡过小
     
     this.bubbles.splice(index, 1);
     
