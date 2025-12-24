@@ -786,6 +786,14 @@ class SlimeGame {
         const dy = this.mouseY - node.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
         
+        // 颜色叠加功能：无论工具类型，只要鼠标交互就会变色
+        if (dist < 120) {
+          const currentColor = this.colorMap[i];
+          const blendRatio = (1 - dist / 120) * 0.5; // 混合比例，靠近鼠标的地方混合更多新颜色
+          const blendedColor = this.mixColors(currentColor, newColor, blendRatio);
+          this.colorMap[i] = blendedColor;
+        }
+        
         // 根据工具类型应用不同效果
         if (this.selectedTool === 'pump' && dist < 120) {
           // 按压凹陷效果：优化为平滑凹陷，避免放射状撕裂
