@@ -30,8 +30,7 @@
   <div class="tool-selector">
     <div class="selector-label">工具:</div>
     <div class="tool-buttons">
-      <button class="tool-btn active" data-tool="finger">👆 手指</button>
-      <button class="tool-btn" data-tool="pump">🔨 按压</button>
+      <button class="tool-btn active" data-tool="pump">🔨 按压</button>
       <button class="tool-btn" data-tool="pop">🫧 戳破</button>
     </div>
   </div>
@@ -354,15 +353,16 @@ class SlimeGame {
     this.mouseX = 0;
     this.mouseY = 0;
     this.selectedColor = '#FF6B9D';
-    this.selectedTool = 'finger';
+    this.selectedTool = 'pump';
     this.nodes = [];
     this.decorations = [];
-    this.numNodes = 30;
-    this.spacing = 18;
+    this.numNodes = 80;
     this.targetPositions = [];
-    this.damping = 0.97;
-    this.spring = 0.05;
-    this.dragForce = 8;
+    this.damping = 0.96;
+    this.spring = 0.03;
+    this.dragForce = 20;
+    this.colorMap = [];
+    this.bubbles = []; // 默认没有气泡
     this.init();
   }
 
@@ -381,10 +381,14 @@ class SlimeGame {
     
     this.initNodes();
     this.initDecorations();
-    this.setupEventListeners();
-    this.animate();
+    this.initColorMap();
+    
+    this.setupEventListeners(); // 添加事件监听
+    this.animate(); // 开始动画
     
     console.log('[史莱姆游戏] 游戏初始化完成');
+    
+    this.bubbles = []; // 默认没有气泡
   }
 
   adjustCanvasSize() {
@@ -394,17 +398,18 @@ class SlimeGame {
     const padding = parseFloat(containerStyle.paddingLeft) + parseFloat(containerStyle.paddingRight);
     
     this.width = Math.min(containerWidth - padding, 600);
-    this.height = this.width * 0.7; // 保持合适的宽高比
+    this.height = this.width * 0.7;
     
     this.canvas.width = this.width;
     this.canvas.height = this.height;
     this.canvas.style.width = '100%';
     this.canvas.style.height = 'auto';
     
-    console.log(`[史莱姆游戏] Canvas尺寸调整: ${this.width}x${this.height}`);
-    
     this.initNodes();
     this.initDecorations();
+    this.initColorMap();
+    
+    this.bubbles = []; // 默认没有气泡
   }
 
   initNodes() {
@@ -413,43 +418,260 @@ class SlimeGame {
     
     const centerX = this.width / 2;
     const centerY = this.height / 2;
-    const radius = Math.min(this.width, this.height) * 0.4;
+    const radius = Math.min(this.width, this.height) * 0.45;
     
+    // 使用极坐标均匀分布节点，形成完整的圆形
+    const thetaStep = (2 * Math.PI) / this.numNodes;
     for (let i = 0; i < this.numNodes; i++) {
-      for (let j = 0; j < this.numNodes; j++) {
-        const x = centerX + (j - this.numNodes / 2) * this.spacing;
-        const y = centerY + (i - this.numNodes / 2) * this.spacing;
+      const theta = i * thetaStep;
+      const x = centerX + radius * Math.cos(theta);
+      const y = centerY + radius * Math.sin(theta);
+      
+      this.nodes.push({
+        x: x,
+        y: y,
+        targetX: x,
+        targetY: y,
+        vx: 0,
+        vy: 0
+      });
+      
+      this.targetPositions.push({ x: x, y: y });
+    }
+  }
+
+  initColorMap() {
+    this.colorMap = [];
+    for (let i = 0; i < this.nodes.length; i++) {
+      this.colorMap.push({ r: 255, g: 107, b: 157 }); // 默认粉色
+    }
+  }
+
+  hexToRgb(hex) {
+    // 移除#符号
+    hex = hex.replace(/^#/, '');
+    
+    // 处理3个字符的十六进制颜色
+    if (hex.length === 3) {
+      hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+    }
+    
+    const bigint = parseInt(hex, 16);
+    return {
+      r: (bigint >> 16) & 255,
+      g: (bigint >> 8) & 255,
+      b: bigint & 255
+    };
+  }
+
+  updateNodes() {
+    let bubblePoppedThisFrame = false;
+    
+    for (let i = 0; i < this.nodes.length; i++) {
+      const node = this.nodes[i];
+      
+      const centerX = this.width / 2;
+      const centerY = this.height / 2;
+      const radius = Math.min(this.width, this.height) * 0.4;
+      
+      const dx = node.x - centerX;
+      const dy = node.y - centerY;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      
+      if (distance > 0) {
+        const targetX = centerX + (dx / distance) * radius;
+        const targetY = centerY + (dy / distance) * radius;
         
-        const distToCenter = Math.sqrt((x - centerX) ** 2 + (y - centerY) ** 2);
-        if (distToCenter < radius) {
-          this.nodes.push({
-            x: x,
-            y: y,
-            targetX: x,
-            targetY: y,
-            vx: 0,
-            vy: 0
-          });
+        node.vx += (targetX - node.x) * this.spring;
+        node.vy += (targetY - node.y) * this.spring;
+      }
+      
+      if (this.isMouseDown) {
+        const mouseDx = node.x - this.mouseX;
+        const mouseDy = node.y - this.mouseY;
+        const mouseDistance = Math.sqrt(mouseDx * mouseDx + mouseDy * mouseDy);
+        
+        if (mouseDistance < 120 && this.selectedTool === 'pump') {
+          const force = this.dragForce * 1.8;
+          const angle = Math.atan2(mouseDy, mouseDx);
+          const normalizedDistance = mouseDistance / 120;
+          const distanceFactor = 1 - normalizedDistance;
+          const normalizedForce = force * distanceFactor;
+          node.vx -= (mouseDx / mouseDistance) * normalizedForce;
+          node.vy -= (mouseDy / mouseDistance) * normalizedForce;
           
-          this.targetPositions.push({ x: x, y: y });
+          // 按压模式下随机生成气泡
+          if (Math.random() < 0.1) {
+            this.addRandomBubble();
+          }
+        } else if (mouseDistance < 70 && this.selectedTool === 'pop' && !bubblePoppedThisFrame) {
+          const clickedBubble = this.findNearestBubble(this.mouseX, this.mouseY);
+          if (clickedBubble) {
+            this.handleBubbleClick(clickedBubble);
+            bubblePoppedThisFrame = true;
+          }
+        }
+      }
+      
+      const prevIndex = (i - 1 + this.nodes.length) % this.nodes.length;
+      const nextIndex = (i + 1) % this.nodes.length;
+      const prevNode = this.nodes[prevIndex];
+      const nextNode = this.nodes[nextIndex];
+      
+      const prevDx = node.x - prevNode.x;
+      const prevDy = node.y - prevNode.y;
+      const prevDistance = Math.sqrt(prevDx * prevDx + prevDy * prevDy);
+      const idealPrevDistance = (Math.PI * 2 * radius) / this.numNodes;
+      
+      const nextDx = node.x - nextNode.x;
+      const nextDy = node.y - nextNode.y;
+      const nextDistance = Math.sqrt(nextDx * nextDx + nextDy * nextDistance);
+      const idealNextDistance = idealPrevDistance;
+      
+      if (prevDistance > idealPrevDistance * 1.2) {
+        const correction = (prevDistance - idealPrevDistance) * 0.1;
+        node.x -= (prevDx / prevDistance) * correction;
+        node.y -= (prevDy / prevDistance) * correction;
+        prevNode.x += (prevDx / prevDistance) * correction;
+        prevNode.y += (prevDy / prevDistance) * correction;
+      }
+      
+      if (nextDistance > idealNextDistance * 1.2) {
+        const correction = (nextDistance - idealNextDistance) * 0.1;
+        node.x -= (nextDx / nextDistance) * correction;
+        node.y -= (nextDy / nextDistance) * correction;
+        nextNode.x += (nextDx / nextDistance) * correction;
+        nextNode.y += (nextDy / nextDistance) * correction;
+      }
+      
+      node.vx *= this.damping;
+      node.vy *= this.damping;
+      
+      node.x += node.vx;
+      node.y += node.vy;
+    }
+    
+    this.updateBubbles();
+  }
+
+  addRandomBubble() {
+    const centerX = this.width / 2;
+    const centerY = this.height / 2;
+    const maxDistance = Math.min(this.width, this.height) * 0.4;
+    
+    const angle = Math.random() * Math.PI * 2;
+    const distance = Math.random() * maxDistance * 0.8;
+    const x = centerX + Math.cos(angle) * distance;
+    const y = centerY + Math.sin(angle) * distance;
+    
+    this.bubbles.push({
+      x: x,
+      y: y,
+      radius: 0,
+      targetRadius: 15 + Math.random() * 20,
+      visible: true,
+      alpha: 0,
+      isMoving: false,
+      animating: true
+    });
+  }
+
+  handleBubbleClick(bubble) {
+    // 如果气泡半径 >= 20，分裂成小气泡
+    if (bubble.radius >= 20) {
+      this.splitBubble(bubble);
+    } else {
+      // 小气泡直接消失
+      const index = this.bubbles.indexOf(bubble);
+      if (index !== -1) {
+        this.bubbles.splice(index, 1);
+      }
+    }
+  }
+
+  splitBubble(bubble) {
+    const index = this.bubbles.indexOf(bubble);
+    if (index === -1 || bubble.radius < 20) return;
+    
+    this.bubbles.splice(index, 1);
+    
+    const newRadius = bubble.radius * 0.5;
+    
+    this.bubbles.push({
+      x: bubble.x + (Math.random() - 0.5) * 30,
+      y: bubble.y + (Math.random() - 0.5) * 30,
+      radius: 0,
+      targetRadius: newRadius,
+      visible: true,
+      alpha: 0,
+      isMoving: true,
+      animating: true
+    });
+    this.bubbles.push({
+      x: bubble.x + (Math.random() - 0.5) * 30,
+      y: bubble.y + (Math.random() - 0.5) * 30,
+      radius: 0,
+      targetRadius: newRadius,
+      visible: true,
+      alpha: 0,
+      isMoving: true,
+      animating: true
+    });
+  }
+
+  updateBubbles() {
+    for (let i = 0; i < this.bubbles.length; i++) {
+      const bubble = this.bubbles[i];
+      
+      if (bubble.radius < bubble.targetRadius) {
+        bubble.radius += (bubble.targetRadius - bubble.radius) * 0.2;
+      }
+      
+      if (bubble.alpha < 1) {
+        bubble.alpha += (1 - bubble.alpha) * 0.2;
+      }
+      
+      // 只有动画状态的气泡才移动
+      if (bubble.animating) {
+        // 动画完成后停止移动
+        if (Math.abs(bubble.radius - bubble.targetRadius) < 0.1 && bubble.alpha > 0.95) {
+          bubble.animating = false;
+          bubble.isMoving = false;
         }
       }
     }
+  }
+
+  rgbToHex(r, g, b) {
+    return '#' + [r, g, b].map(x => {
+      const hex = Math.max(0, Math.min(255, Math.round(x))).toString(16);
+      return hex.length === 1 ? '0' + hex : hex;
+    }).join('');
+  }
+
+  mixColors(c1, c2, ratio = 0.5) {
+    return {
+      r: Math.round(c1.r * (1 - ratio) + c2.r * ratio),
+      g: Math.round(c1.g * (1 - ratio) + c2.g * ratio),
+      b: Math.round(c1.b * (1 - ratio) + c2.b * ratio)
+    };
   }
 
   initDecorations() {
     this.decorations = [];
     const colors = ['#FFFFFF', '#FFD700', '#FF69B4', '#87CEEB', '#90EE90'];
     
-    for (let i = 0; i < 15; i++) {
-      this.decorations.push({
-        x: this.width / 2 + (Math.random() - 0.5) * 250,
-        y: this.height / 2 + (Math.random() - 0.5) * 250,
-        radius: 3 + Math.random() * 7,
-        color: colors[Math.floor(Math.random() * colors.length)],
-        type: Math.random() > 0.5 ? 'circle' : 'triangle',
-        nodeIndex: Math.floor(Math.random() * this.nodes.length)
-      });
+    // 确保nodes数组已初始化
+    if (this.nodes && this.nodes.length > 0) {
+      for (let i = 0; i < 20; i++) {
+        this.decorations.push({
+          x: this.width / 2 + (Math.random() - 0.5) * 250,
+          y: this.height / 2 + (Math.random() - 0.5) * 250,
+          radius: 2 + Math.random() * 6,
+          color: colors[Math.floor(Math.random() * colors.length)],
+          nodeIndex: Math.floor(Math.random() * this.nodes.length)
+        });
+      }
     }
   }
 
@@ -486,35 +708,49 @@ class SlimeGame {
     this.updateMousePosition(e);
   }
 
+  animate() {
+    this.ctx.clearRect(0, 0, this.width, this.height);
+    this.updateNodes();
+    this.updateBubbles(); // 更新气泡动画
+    this.drawSlime();
+    this.drawBubbles();
+    this.drawDecorations();
+    requestAnimationFrame(() => this.animate());
+  }
+
   handleMouseMove(e) {
     this.updateMousePosition(e);
-  }
-
-  handleMouseUp() {
-    this.isMouseDown = false;
-  }
-
-  handleTouchStart(e) {
-    e.preventDefault();
-    this.isMouseDown = true;
-    const touch = e.touches[0];
-    const rect = this.canvas.getBoundingClientRect();
-    this.mouseX = touch.clientX - rect.left;
-    this.mouseY = touch.clientY - rect.top;
+    // 拖动时重置气泡
+    this.bubbles = [{x: this.width/2, y: this.height/2, radius: 30, targetRadius: 30, visible: true, alpha: 1}];
   }
 
   handleTouchMove(e) {
-    e.preventDefault();
-    const touch = e.touches[0];
-    const rect = this.canvas.getBoundingClientRect();
-    this.mouseX = touch.clientX - rect.left;
-    this.mouseY = touch.clientY - rect.top;
-  }
-
-  handleTouchEnd(e) {
-    e.preventDefault();
-    this.isMouseDown = false;
-  }
+      if (e) e.preventDefault();
+      const touch = e && e.touches[0];
+      if (!touch) return;
+      const rect = this.canvas.getBoundingClientRect();
+      this.mouseX = touch.clientX - rect.left;
+      this.mouseY = touch.clientY - rect.top;
+      }
+  
+      handleTouchEnd(e) {
+      if (e) e.preventDefault();
+      this.isMouseDown = false;
+      }
+  
+      handleMouseUp() {
+      this.isMouseDown = false;
+      }
+  
+      handleTouchStart(e) {
+      if (e) e.preventDefault();
+      this.isMouseDown = true;
+      const touch = e && e.touches[0];
+      if (!touch) return;
+      const rect = this.canvas.getBoundingClientRect();
+      this.mouseX = touch.clientX - rect.left;
+      this.mouseY = touch.clientY - rect.top;
+      }
 
   updateMousePosition(e) {
     const rect = this.canvas.getBoundingClientRect();
@@ -522,27 +758,97 @@ class SlimeGame {
     this.mouseY = e.clientY - rect.top;
   }
 
-  animate() {
-    this.ctx.clearRect(0, 0, this.width, this.height);
-    this.updateNodes();
-    this.drawSlime();
-    this.drawDecorations();
-    requestAnimationFrame(() => this.animate());
-  }
-
   updateNodes() {
     if (this.isMouseDown) {
+      const newColor = this.hexToRgb(this.selectedColor);
+      const centerX = this.width / 2;
+      const centerY = this.height / 2;
+      const ballRadius = Math.min(this.width, this.height) * 0.45;
+      
       for (let i = 0; i < this.nodes.length; i++) {
         const node = this.nodes[i];
         const dx = this.mouseX - node.x;
         const dy = this.mouseY - node.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
         
-        if (dist < 80) {
-          const force = (1 - dist / 80) * this.dragForce;
-          node.vx += (dx / dist) * force;
-          node.vy += (dy / dist) * force;
+        // 根据工具类型应用不同效果
+        if (this.selectedTool === 'pump' && dist < 120) {
+          // 按压凹陷效果：优化为平滑凹陷，避免放射状撕裂
+          // 使用更平滑的力分布，考虑节点与鼠标的相对位置和距离
+          const force = (1 - dist / 120) * this.dragForce * 1.8;
+          
+          // 计算向量方向，并调整力的大小，使凹陷更自然
+          if (dist > 0.1) {
+            // 添加阻尼效果，防止节点过度分离
+            const normalizedForce = force * (1 + dist / 120) * 0.8;
+            node.vx -= (dx / dist) * normalizedForce;
+            node.vy -= (dy / dist) * normalizedForce;
+          }
+        } else if (this.selectedTool === 'pop') {
+          // 戳破气泡效果：分裂气泡
+          for (let j = 0; j < this.bubbles.length; j++) {
+            const bubble = this.bubbles[j];
+            const bubbleDx = this.mouseX - bubble.x;
+            const bubbleDy = this.mouseY - bubble.y;
+            const bubbleDist = Math.sqrt(bubbleDx * bubbleDx + bubbleDy * bubbleDy);
+            
+            if (bubbleDist < bubble.radius + 10) {
+              // 分裂当前气泡
+              this.bubbles.splice(j, 1);
+              const newRadius = bubble.radius * 0.7;
+              
+              // 添加两个新气泡
+              this.bubbles.push({
+                x: bubble.x + (Math.random() - 0.5) * 40,
+                y: bubble.y + (Math.random() - 0.5) * 40,
+                radius: newRadius,
+                visible: true
+              });
+              this.bubbles.push({
+                x: bubble.x + (Math.random() - 0.5) * 40,
+                y: bubble.y + (Math.random() - 0.5) * 40,
+                radius: newRadius,
+                visible: true
+              });
+              break;
+            }
+          }
         }
+      }
+    } else {
+      // 鼠标释放时，如果是戳破模式则重置气泡
+      if (this.selectedTool === 'pop') {
+        this.bubbles = [{x: this.width/2, y: this.height/2, radius: 30, visible: true}];
+      }
+    }
+    
+    // 添加节点之间的连接力，防止撕裂
+    for (let i = 0; i < this.nodes.length; i++) {
+      const node = this.nodes[i];
+      const prevNode = this.nodes[(i - 1 + this.nodes.length) % this.nodes.length];
+      const nextNode = this.nodes[(i + 1) % this.nodes.length];
+      
+      // 连接前一个节点
+      const prevDx = prevNode.x - node.x;
+      const prevDy = prevNode.y - node.y;
+      const prevDist = Math.sqrt(prevDx * prevDx + prevDy * prevDy);
+      const idealPrevDist = 2 * Math.PI * Math.min(this.width, this.height) * 0.45 / this.numNodes;
+      
+      if (prevDist > idealPrevDist * 1.5 || prevDist < idealPrevDist * 0.5) {
+        const correction = (prevDist - idealPrevDist) * 0.1;
+        node.vx += (prevDx / prevDist) * correction;
+        node.vy += (prevDy / prevDist) * correction;
+      }
+      
+      // 连接后一个节点
+      const nextDx = nextNode.x - node.x;
+      const nextDy = nextNode.y - node.y;
+      const nextDist = Math.sqrt(nextDx * nextDx + nextDy * nextDy);
+      
+      if (nextDist > idealPrevDist * 1.5 || nextDist < idealPrevDist * 0.5) {
+        const correction = (nextDist - idealPrevDist) * 0.1;
+        node.vx += (nextDx / nextDist) * correction;
+        node.vy += (nextDy / nextDist) * correction;
       }
     }
     
@@ -565,32 +871,203 @@ class SlimeGame {
   drawSlime() {
     if (this.nodes.length === 0) return;
     
+    // 绘制填充的圆形液体效果
     this.ctx.beginPath();
-    this.ctx.fillStyle = this.selectedColor;
-    this.ctx.globalAlpha = 0.9;
     
-    for (let i = 0; i < this.nodes.length; i++) {
-      const node = this.nodes[i];
-      this.ctx.beginPath();
-      this.ctx.arc(node.x, node.y, this.spacing / 2, 0, Math.PI * 2);
-      this.ctx.fill();
+    // 移动到第一个节点
+    this.ctx.moveTo(this.nodes[0].x, this.nodes[0].y);
+    
+    // 绘制平滑的曲线连接所有节点
+    for (let i = 1; i < this.nodes.length; i++) {
+      const prev = this.nodes[i - 1];
+      const curr = this.nodes[i];
+      const next = this.nodes[(i + 1) % this.nodes.length];
+      
+      const cx1 = prev.x + (curr.x - prev.x) / 2;
+      const cy1 = prev.y + (curr.y - prev.y) / 2;
+      const cx2 = curr.x - (next.x - curr.x) / 2;
+      const cy2 = curr.y - (next.y - curr.y) / 2;
+      
+      this.ctx.bezierCurveTo(cx1, cy1, cx2, cy2, curr.x, curr.y);
     }
     
-    this.ctx.globalAlpha = 1.0;
+    // 连接最后一个节点到第一个节点
+    const lastNode = this.nodes[this.nodes.length - 1];
+    const firstNode = this.nodes[0];
+    const secondNode = this.nodes[1];
+    const cx1 = lastNode.x + (firstNode.x - lastNode.x) / 2;
+    const cy1 = lastNode.y + (firstNode.y - lastNode.y) / 2;
+    const cx2 = firstNode.x - (secondNode.x - firstNode.x) / 2;
+    const cy2 = firstNode.y - (secondNode.y - firstNode.y) / 2;
+    this.ctx.bezierCurveTo(cx1, cy1, cx2, cy2, firstNode.x, firstNode.y);
+    
+    this.ctx.closePath();
+    
+    // 计算中心点用于渐变
+    let centerX = 0, centerY = 0;
+    for (let i = 0; i < this.nodes.length; i++) {
+      centerX += this.nodes[i].x;
+      centerY += this.nodes[i].y;
+    }
+    centerX /= this.nodes.length;
+    centerY /= this.nodes.length;
+    
+    // 渐变填充
+    const gradient = this.ctx.createRadialGradient(
+      centerX - 20, centerY - 20, 0,
+      centerX, centerY, Math.min(this.width, this.height) * 0.45
+    );
+    
+    // 计算平均颜色用于渐变
+    let avgR = 0, avgG = 0, avgB = 0;
+    for (let i = 0; i < this.nodes.length; i++) {
+      const color = this.colorMap[i];
+      avgR += color.r;
+      avgG += color.g;
+      avgB += color.b;
+    }
+    avgR /= this.nodes.length;
+    avgG /= this.nodes.length;
+    avgB /= this.nodes.length;
+    
+    gradient.addColorStop(0, `rgba(${Math.min(255, avgR + 50)}, ${Math.min(255, avgG + 50)}, ${Math.min(255, avgB + 50)}, 1)`);
+    gradient.addColorStop(1, this.rgbToHex(avgR, avgG, avgB));
+    this.ctx.fillStyle = gradient;
+    this.ctx.fill();
+    
+    // 绘制高光
+    this.ctx.beginPath();
+    this.ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+    this.ctx.arc(centerX - 30, centerY - 30, 50, 0, Math.PI * 2);
+    this.ctx.fill();
+  }
+
+  drawBubbles() {
+    for (let i = 0; i < this.bubbles.length; i++) {
+      const bubble = this.bubbles[i];
+      if (bubble.visible) {
+        this.ctx.beginPath();
+        this.ctx.fillStyle = '#FFFFFF';
+        this.ctx.arc(bubble.x, bubble.y, bubble.radius, 0, Math.PI * 2);
+        this.ctx.fill();
+        
+        // 气泡高光
+        this.ctx.beginPath();
+        this.ctx.fillStyle = '#E8F4F8';
+        this.ctx.arc(bubble.x - bubble.radius * 0.3, bubble.y - bubble.radius * 0.3, bubble.radius * 0.3, 0, Math.PI * 2);
+        this.ctx.fill();
+      }
+    }
   }
 
   drawDecorations() {
+    // 确保nodes数组和decorations数组都有元素
+    if (!this.nodes || this.nodes.length === 0 || !this.decorations || this.decorations.length === 0) {
+      return;
+    }
+    
     for (let i = 0; i < this.decorations.length; i++) {
       const dec = this.decorations[i];
-      const node = this.nodes[dec.nodeIndex % this.nodes.length];
+      const nodeIndex = dec.nodeIndex % this.nodes.length;
+      const node = this.nodes[nodeIndex];
       
-      this.ctx.beginPath();
-      this.ctx.fillStyle = dec.color;
-      this.ctx.arc(node.x, node.y, dec.radius, 0, Math.PI * 2);
-      this.ctx.fill();
+      // 确保node存在
+      if (node && node.x !== undefined && node.y !== undefined) {
+        this.ctx.beginPath();
+        this.ctx.fillStyle = dec.color;
+        this.ctx.arc(node.x, node.y, dec.radius, 0, Math.PI * 2);
+        this.ctx.fill();
+      }
+    }
+  }
+
+  drawBubbles() {
+    const currentColor = this.hexToRgb(this.selectedColor);
+    for (let i = 0; i < this.bubbles.length; i++) {
+      const bubble = this.bubbles[i];
+      if (bubble.visible) {
+        // 使用选择的颜色加透明度
+        this.ctx.beginPath();
+        this.ctx.fillStyle = `rgba(${currentColor.r}, ${currentColor.g}, ${currentColor.b}, ${0.7 * bubble.alpha})`;
+        this.ctx.arc(bubble.x, bubble.y, bubble.radius, 0, Math.PI * 2);
+        this.ctx.fill();
+        
+        // 气泡高光
+        this.ctx.beginPath();
+        this.ctx.fillStyle = `rgba(255, 255, 255, ${0.4 * bubble.alpha})`;
+        this.ctx.arc(bubble.x - bubble.radius * 0.3, bubble.y - bubble.radius * 0.3, bubble.radius * 0.3, 0, Math.PI * 2);
+        this.ctx.fill();
+      }
+    }
+  }
+
+  findNearestBubble(mx, my) {
+    let nearest = null;
+    let minDistance = 50; // 最大搜索距离
+    
+    for (let i = 0; i < this.bubbles.length; i++) {
+      const bubble = this.bubbles[i];
+      const dx = mx - bubble.x;
+      const dy = my - bubble.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      
+      if (distance < bubble.radius + 10 && (nearest === null || distance < minDistance)) {
+        nearest = bubble;
+        minDistance = distance;
+      }
+    }
+    
+    return nearest;
+  }
+
+  splitBubble(bubble) {
+    const index = this.bubbles.indexOf(bubble);
+    if (index === -1 || bubble.radius < 15) return; // 防止气泡过小
+    
+    this.bubbles.splice(index, 1);
+    
+    const newRadius = bubble.radius * 0.7;
+    
+    // 创建两个新气泡，带有分裂动画
+    this.bubbles.push({
+      x: bubble.x + (Math.random() - 0.5) * 30,
+      y: bubble.y + (Math.random() - 0.5) * 30,
+      radius: 0, // 初始半径为0，用于动画
+      targetRadius: newRadius,
+      visible: true,
+      alpha: 0
+    });
+    this.bubbles.push({
+      x: bubble.x + (Math.random() - 0.5) * 30,
+      y: bubble.y + (Math.random() - 0.5) * 30,
+      radius: 0,
+      targetRadius: newRadius,
+      visible: true,
+      alpha: 0
+    });
+  }
+
+  updateBubbles() {
+    for (let i = 0; i < this.bubbles.length; i++) {
+      const bubble = this.bubbles[i];
+      
+      // 气泡动画：半径从0增加到目标值
+      if (bubble.radius < bubble.targetRadius) {
+        bubble.radius += (bubble.targetRadius - bubble.radius) * 0.2;
+      }
+      
+      // 透明度动画
+      if (bubble.alpha < 1) {
+        bubble.alpha += (1 - bubble.alpha) * 0.2;
+      }
+      
+      // 添加轻微的漂浮动画
+      bubble.x += Math.sin(Date.now() * 0.001 + i) * 0.2;
+      bubble.y += Math.cos(Date.now() * 0.001 + i) * 0.1;
     }
   }
 }
+
 
 // 初始化史莱姆游戏函数
 function initSlimeGame() {
@@ -690,26 +1167,13 @@ function isBrowser() {
   return typeof window !== 'undefined' && typeof document !== 'undefined';
 }
 
-// 在多种情况下尝试初始化游戏
+// 在浏览器环境中初始化
 if (isBrowser()) {
-  // 1. 立即尝试
-  console.log('立即尝试初始化...');
-  setTimeout(function() {
-    if (!checkAndInitGame()) {
-      // 如果立即初始化失败，设置 DOM 观察器
-      globalObserver = setupDOMObserver();
-    }
-  }, 200);
+  console.log('[史莱姆游戏] 在浏览器环境中，准备初始化...');
+  // 设置 DOM 观察器
+  globalObserver = setupDOMObserver();
   
-  // 2. DOMContentLoaded事件
-  document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOMContentLoaded 事件触发，初始化游戏...');
-    setTimeout(function() {
-      checkAndInitGame();
-    }, 500);
-  });
-  
-  // 3. 设置路由监听器
+  // 设置路由变化监听器
   setupRouteListeners();
 }
 </script>
