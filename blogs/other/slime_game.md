@@ -498,26 +498,48 @@ class SlimeGame {
     this.bubbles.splice(index, 1);
     
     const newRadius = bubble.radius * 0.7;
+    const centerX = this.width / 2;
+    const centerY = this.height / 2;
     
-    // 创建两个新气泡，带有分裂动画
-    this.bubbles.push({
-      x: bubble.x + (Math.random() - 0.5) * 30,
-      y: bubble.y + (Math.random() - 0.5) * 30,
-      radius: 0,
-      targetRadius: newRadius,
-      visible: true,
-      alpha: 0, 
-      animating: true
-    });
-    this.bubbles.push({
-      x: bubble.x + (Math.random() - 0.5) * 30,
-      y: bubble.y + (Math.random() - 0.5) * 30,
-      radius: 0,
-      targetRadius: newRadius,
-      visible: true,
-      alpha: 0, 
-      animating: true
-    });
+    // 确定新气泡要绑定的节点
+    let nodeIndex;
+    if (bubble.nodeIndex !== undefined && this.nodes && this.nodes.length > 0) {
+      nodeIndex = bubble.nodeIndex;
+    } else {
+      nodeIndex = Math.floor(Math.random() * this.nodes.length);
+    }
+    
+    const node = this.nodes[nodeIndex];
+    
+    // 创建两个新气泡，带有分裂动画，并绑定到同一节点
+    for (let i = 0; i < 2; i++) {
+      // 计算从节点到中心点的向量
+      const dxToCenter = centerX - node.x;
+      const dyToCenter = centerY - node.y;
+      const distanceToCenter = Math.sqrt(dxToCenter * dxToCenter + dyToCenter * dyToCenter);
+      
+      // 将偏移量限制在朝向中心的方向，确保气泡始终在slime内部
+      const maxAllowedOffset = Math.max(20, distanceToCenter * 0.7);
+      const offsetRatio = (Math.random() * 0.8) + 0.1;
+      const offsetDistance = maxAllowedOffset * offsetRatio;
+      const offsetAngle = Math.atan2(dyToCenter, dxToCenter);
+      
+      const offsetX = Math.cos(offsetAngle) * offsetDistance;
+      const offsetY = Math.sin(offsetAngle) * offsetDistance;
+      
+      this.bubbles.push({
+        x: centerX,
+        y: centerY,
+        radius: 0,
+        targetRadius: newRadius,
+        visible: true,
+        alpha: 0,
+        animating: true,
+        nodeIndex: nodeIndex,
+        offsetX: offsetX,
+        offsetY: offsetY
+      });
+    }
   }
 
   updateBubbles() {
@@ -676,11 +698,14 @@ class SlimeGame {
         const bubbleCount = Math.floor(Math.random() * 10) + 5; // 生成5-14个气泡
         const centerX = this.width / 2;
         const centerY = this.height / 2;
+        const slimeRadius = Math.min(this.width, this.height) * 0.45; // 史莱姆的实际半径
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        const maxBubbleRadius = isMobile ? slimeRadius / 4 : 50; // 移动端最大气泡半径为slime的1/4，PC端50
         this.bubbles = [];
         
         if (this.nodes && this.nodes.length > 0) {
           for (let i = 0; i < bubbleCount; i++) {
-              const radius = Math.random() * 40 + 10; // 随机半径10-50
+              const radius = Math.random() * (maxBubbleRadius - 10) + 10; // 随机半径10到maxBubbleRadius
               // 为每个气泡分配一个节点
               const nodeIndex = Math.floor(Math.random() * this.nodes.length);
               const node = this.nodes[nodeIndex];
@@ -780,8 +805,19 @@ class SlimeGame {
           const bubblesToProcess = [...this.bubbles];
           for (let j = 0; j < bubblesToProcess.length; j++) {
             const bubble = bubblesToProcess[j];
-            const bubbleDx = this.mouseX - bubble.x;
-            const bubbleDy = this.mouseY - bubble.y;
+            // 根据气泡绑定的 nodeIndex 计算实际位置
+            let bubbleX = bubble.x;
+            let bubbleY = bubble.y;
+            
+            if (bubble.nodeIndex !== undefined && this.nodes && this.nodes.length > 0) {
+              const nodeIndex = bubble.nodeIndex % this.nodes.length;
+              const bubbleNode = this.nodes[nodeIndex];
+              bubbleX = bubbleNode.x + bubble.offsetX;
+              bubbleY = bubbleNode.y + bubble.offsetY;
+            }
+            
+            const bubbleDx = this.mouseX - bubbleX;
+            const bubbleDy = this.mouseY - bubbleY;
             const bubbleDist = Math.sqrt(bubbleDx * bubbleDx + bubbleDy * bubbleDy);
             
             if (bubbleDist < bubble.radius + 10) {
@@ -1141,7 +1177,15 @@ class SlimeGame {
   }
 
   splitBubble(bubble) {
-    const index = this.bubbles.indexOf(bubble);
+    // 通过坐标和半径比较找到气泡索引，而不是直接使用 indexOf
+    let index = -1;
+    for (let i = 0; i < this.bubbles.length; i++) {
+      const b = this.bubbles[i];
+      if (Math.abs(b.x - bubble.x) < 0.1 && Math.abs(b.y - bubble.y) < 0.1 && Math.abs(b.radius - bubble.radius) < 0.1) {
+        index = i;
+        break;
+      }
+    }
     if (index === -1) return;
     
     // 当气泡小于最小尺寸时，直接消失
@@ -1153,24 +1197,48 @@ class SlimeGame {
     this.bubbles.splice(index, 1);
     
     const newRadius = bubble.radius * 0.7;
+    const centerX = this.width / 2;
+    const centerY = this.height / 2;
     
-    // 创建两个新气泡，带有分裂动画
-    this.bubbles.push({
-      x: bubble.x + (Math.random() - 0.5) * 30,
-      y: bubble.y + (Math.random() - 0.5) * 30,
-      radius: 0,
-      targetRadius: newRadius,
-      visible: true,
-      alpha: 0, animating: true
-    });
-    this.bubbles.push({
-      x: bubble.x + (Math.random() - 0.5) * 30,
-      y: bubble.y + (Math.random() - 0.5) * 30,
-      radius: 0,
-      targetRadius: newRadius,
-      visible: true,
-      alpha: 0, animating: true
-    });
+    // 确定新气泡要绑定的节点
+    let nodeIndex;
+    if (bubble.nodeIndex !== undefined && this.nodes && this.nodes.length > 0) {
+      nodeIndex = bubble.nodeIndex;
+    } else {
+      nodeIndex = Math.floor(Math.random() * this.nodes.length);
+    }
+    
+    const node = this.nodes[nodeIndex];
+    
+    // 创建两个新气泡，带有分裂动画，并绑定到同一节点
+    for (let i = 0; i < 2; i++) {
+      // 计算从节点到中心点的向量
+      const dxToCenter = centerX - node.x;
+      const dyToCenter = centerY - node.y;
+      const distanceToCenter = Math.sqrt(dxToCenter * dxToCenter + dyToCenter * dyToCenter);
+      
+      // 将偏移量限制在朝向中心的方向，确保气泡始终在slime内部
+      const maxAllowedOffset = Math.max(20, distanceToCenter * 0.7);
+      const offsetRatio = (Math.random() * 0.8) + 0.1;
+      const offsetDistance = maxAllowedOffset * offsetRatio;
+      const offsetAngle = Math.atan2(dyToCenter, dxToCenter);
+      
+      const offsetX = Math.cos(offsetAngle) * offsetDistance;
+      const offsetY = Math.sin(offsetAngle) * offsetDistance;
+      
+      this.bubbles.push({
+        x: centerX,
+        y: centerY,
+        radius: 0,
+        targetRadius: newRadius,
+        visible: true,
+        alpha: 0,
+        animating: true,
+        nodeIndex: nodeIndex,
+        offsetX: offsetX,
+        offsetY: offsetY
+      });
+    }
   }
 
   updateBubbles() {
