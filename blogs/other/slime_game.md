@@ -464,96 +464,6 @@ class SlimeGame {
     };
   }
 
-  updateNodes() {
-    let bubblePoppedThisFrame = false;
-    
-    for (let i = 0; i < this.nodes.length; i++) {
-      const node = this.nodes[i];
-      
-      const centerX = this.width / 2;
-      const centerY = this.height / 2;
-      const radius = Math.min(this.width, this.height) * 0.4;
-      
-      const dx = node.x - centerX;
-      const dy = node.y - centerY;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-      
-      if (distance > 0) {
-        const targetX = centerX + (dx / distance) * radius;
-        const targetY = centerY + (dy / distance) * radius;
-        
-        node.vx += (targetX - node.x) * this.spring;
-        node.vy += (targetY - node.y) * this.spring;
-      }
-      
-      if (this.isMouseDown) {
-        const mouseDx = node.x - this.mouseX;
-        const mouseDy = node.y - this.mouseY;
-        const mouseDistance = Math.sqrt(mouseDx * mouseDx + mouseDy * mouseDy);
-        
-        if (mouseDistance < 120 && this.selectedTool === 'pump') {
-          const force = this.dragForce * 1.8;
-          const angle = Math.atan2(mouseDy, mouseDx);
-          const normalizedDistance = mouseDistance / 120;
-          const distanceFactor = 1 - normalizedDistance;
-          const normalizedForce = force * distanceFactor;
-          node.vx -= (mouseDx / mouseDistance) * normalizedForce;
-          node.vy -= (mouseDy / mouseDistance) * normalizedForce;
-          
-          // 按压模式下随机生成气泡
-          if (Math.random() < 0.1) {
-            this.addRandomBubble();
-          }
-        } else if (mouseDistance < 70 && this.selectedTool === 'pop' && !bubblePoppedThisFrame) {
-          const clickedBubble = this.findNearestBubble(this.mouseX, this.mouseY);
-          if (clickedBubble) {
-            this.handleBubbleClick(clickedBubble);
-            bubblePoppedThisFrame = true;
-          }
-        }
-      }
-      
-      const prevIndex = (i - 1 + this.nodes.length) % this.nodes.length;
-      const nextIndex = (i + 1) % this.nodes.length;
-      const prevNode = this.nodes[prevIndex];
-      const nextNode = this.nodes[nextIndex];
-      
-      const prevDx = node.x - prevNode.x;
-      const prevDy = node.y - prevNode.y;
-      const prevDistance = Math.sqrt(prevDx * prevDx + prevDy * prevDy);
-      const idealPrevDistance = (Math.PI * 2 * radius) / this.numNodes;
-      
-      const nextDx = node.x - nextNode.x;
-      const nextDy = node.y - nextNode.y;
-      const nextDistance = Math.sqrt(nextDx * nextDx + nextDy * nextDistance);
-      const idealNextDistance = idealPrevDistance;
-      
-      if (prevDistance > idealPrevDistance * 1.2) {
-        const correction = (prevDistance - idealPrevDistance) * 0.1;
-        node.x -= (prevDx / prevDistance) * correction;
-        node.y -= (prevDy / prevDistance) * correction;
-        prevNode.x += (prevDx / prevDistance) * correction;
-        prevNode.y += (prevDy / prevDistance) * correction;
-      }
-      
-      if (nextDistance > idealNextDistance * 1.2) {
-        const correction = (nextDistance - idealNextDistance) * 0.1;
-        node.x -= (nextDx / nextDistance) * correction;
-        node.y -= (nextDy / nextDistance) * correction;
-        nextNode.x += (nextDx / nextDistance) * correction;
-        nextNode.y += (nextDy / nextDistance) * correction;
-      }
-      
-      node.vx *= this.damping;
-      node.vy *= this.damping;
-      
-      node.x += node.vx;
-      node.y += node.vy;
-    }
-    
-    this.updateBubbles();
-  }
-
   addRandomBubble() {
     const centerX = this.width / 2;
     const centerY = this.height / 2;
@@ -756,13 +666,45 @@ class SlimeGame {
       this.mouseY = touch.clientY - rect.top;
       }
   
+      // 创建气泡的独立方法
+      createBubbles() {
+        const bubbleCount = Math.floor(Math.random() * 10) + 5; // 生成5-14个气泡
+        const centerX = this.width / 2;
+        const centerY = this.height / 2;
+        const slimeRadius = Math.min(this.width, this.height) * 0.45; // 史莱姆的实际半径
+        this.bubbles = [];
+        
+        for (let i = 0; i < bubbleCount; i++) {
+            const radius = Math.random() * 40 + 10; // 随机半径10-50
+            const maxDistance = slimeRadius - radius; // 确保气泡边缘不超出史莱姆
+            const angle = Math.random() * Math.PI * 2;
+            const distance = Math.random() * maxDistance; // 气泡中心到史莱姆中心的距离
+            
+            this.bubbles.push({
+            x: centerX + Math.cos(angle) * distance,
+            y: centerY + Math.sin(angle) * distance,
+            radius: radius,
+            targetRadius: radius,
+            visible: true,
+            alpha: 1,
+            animating: false
+            });
+        }
+      }
+  
       handleTouchEnd(e) {
-      if (e) e.preventDefault();
-      this.isMouseDown = false;
+        if (e) e.preventDefault();
+        this.isMouseDown = false;
+        if (this.selectedTool === 'pump') {
+          this.createBubbles(); // 调用创建气泡的方法
+        }
       }
   
       handleMouseUp() {
-      this.isMouseDown = false;
+        this.isMouseDown = false;
+        if (this.selectedTool === 'pump') {
+          this.createBubbles(); // 调用创建气泡的方法
+        }
       }
   
       handleTouchStart(e) {
@@ -827,9 +769,9 @@ class SlimeGame {
       }
     } else {
       // 鼠标释放时，如果是戳破模式则重置气泡
-      if (this.selectedTool != 'pop') {
-        this.bubbles = [{x: this.width/2, y: this.height/2, radius: 30, visible: true}];
-      }
+    //   if (this.selectedTool != 'pop') {
+    //     this.bubbles = [{x: this.width/2, y: this.height/2, radius: 30, visible: true}];
+    //   }
     }
     
     // 添加节点之间的连接力，防止撕裂
