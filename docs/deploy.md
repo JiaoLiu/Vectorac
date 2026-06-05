@@ -384,7 +384,38 @@ npm run deploy
 - 此修改直接修改了 node_modules 目录中的文件，升级主题版本后需要重新应用
 - 如需长期隐藏该组件，建议使用主题的自定义覆盖机制或创建本地组件覆盖
 
-#### 4.4 其他样式定制建议
+#### 4.4 移除底部主题推广链接
+
+**修改文件**：`node_modules/vuepress-theme-reco/components/Footer.vue`
+
+**修改内容**：
+
+**原始代码**：
+```vue
+<span>
+  <i class="iconfont reco-theme"></i>
+  <a target="blank" href="https://vuepress-theme-reco.recoluan.com">{{`vuepress-theme-reco@${version}`}}</a>
+</span>
+```
+
+**修改后代码**：
+```vue
+<!-- <span>
+  <i class="iconfont reco-theme"></i>
+  <a target="blank" href="https://vuepress-theme-reco.recoluan.com">{{`vuepress-theme-reco@${version}`}}</a>
+</span> -->
+```
+
+**功能说明**：
+- 该修改用于移除网页底部显示的 `vuepress-theme-reco@版本号` 推广链接
+- 该链接指向主题官网 `https://vuepress-theme-reco.recoluan.com`
+- 修改后底部将不再显示该主题推广信息，仅保留备案信息和版权信息
+
+**注意事项**：
+- 此修改直接修改了 node_modules 目录中的文件，升级主题版本后需要重新应用
+- 如需长期移除，建议使用主题的自定义覆盖机制
+
+#### 4.5 其他样式定制建议
 
 1. **自定义全局样式**：在 `.vuepress/styles/index.styl` 中添加自定义样式
 2. **覆盖主题组件**：在 `.vuepress/components/` 目录下创建同名组件覆盖默认组件
@@ -409,5 +440,5 @@ npm run deploy
 
 ---
 
-**更新时间**：2025-12-17
+**更新时间**：2026-06-05
 **维护人员**：Jiao
