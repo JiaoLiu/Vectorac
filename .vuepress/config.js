@@ -27,6 +27,7 @@ module.exports = {
       }
     ]
   ],
+  plugins: [require('./plugins/chat-widget')],
   theme: 'reco',
   themeConfig: {
     nav: [
