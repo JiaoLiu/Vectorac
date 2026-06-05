@@ -1,5 +1,6 @@
 // Chat Widget — injected into every page
 ;(function () {
+  if (typeof document === 'undefined') return
   if (document.getElementById('cw-fab')) return
 
   // ── CSS ──────────────────────────────────────────────────
