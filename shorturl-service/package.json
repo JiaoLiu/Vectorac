@@ -1,0 +1,17 @@
+{
+  "name": "vectorac-shorturl",
+  "version": "1.0.0",
+  "description": "Vectorac 短链跳转 API 服务（独立 Node.js 服务，零外部数据库，零 nginx 改动）",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=16"
+  },
+  "dependencies": {
+    "express": "^4.17.1",
+    "write-file-atomic": "^3.0.3"
+  }
+}

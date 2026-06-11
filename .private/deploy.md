@@ -1,6 +1,8 @@
 ## 项目概述
 这是一个基于 **VuePress 1.5.4** 构建的静态网站项目，使用了 **vuepress-theme-reco** 主题，主要用于展示成都向量加速科技有限公司的信息。
 
+项目同时包含一个独立的 **短链跳转 API 服务**（`shorturl-service/`），用于为官网「产品 → 短链跳转」提供后端能力。部署流程与官网静态站不同，详见 [短链服务部署](#短链服务部署一建) 章节。
+
 ## 运行方式
 
 ### 1. 安装依赖
@@ -25,6 +27,123 @@ npm run build
 ```
 - 构建输出目录：`public/`（在 `.vuepress/config.js` 中配置）
 - 生成的静态文件可以直接部署到任何静态网站托管服务
+
+## 短链服务部署（一键）
+
+短链服务 (`shorturl-service/`) 是独立 Node.js 进程，**不依赖 npm install 到服务器**，用打包好的 tarball + 一行 `install.sh` 部署，systemd 守护 + 崩溃自动拉起 + 开机自启。
+
+### 1. 本地打包（含 node_modules）
+
+```bash
+cd shorturl-service
+bash scripts/bundle.sh
+# → dist/shorturl-service-20260611-1530.tar.gz
+scp dist/shorturl-service-*.tar.gz <user>@<server>:
+```
+
+打包脚本做的事：
+- 复制 `server.js` / `db.js` / `public` / `views` / `scripts` / `package.json` / `README.md`
+- 运行 `npm install --omit=dev` 把生产依赖（express + write-file-atomic）装到 `node_modules/`
+- 排除 `data/` `test.js` `.git` 等无关文件
+- 整个产物约 5MB，**服务器无需 `npm install`**
+
+### 2. 服务器部署
+
+```bash
+# 先解压 tarball
+tar -xzf shorturl-service-*.tar.gz
+cd shorturl-service
+
+# 再运行安装脚本（一行命令，直接复制粘贴）
+sudo SHORT_BASE_URL=https://s.vectorac.com ADMIN_TOKEN=$(openssl rand -hex 16) bash scripts/install.sh
+```
+
+`install.sh` 幂等可重跑，会：
+- 把当前目录的文件复制到 `/home/www/vectorac/shorturl-service/`（跟静态站 `dist/` 平级；`INSTALL_DIR` env 可改）
+- 写 `INSTALL_DIR/.env`（`PORT` `HOST` `SHORT_BASE_URL` `ADMIN_TOKEN`，权限 600）
+- 自动用 `/home/www/vectorac` 的所有者当运行用户（一般是 `www-data`）
+- 装 `/etc/systemd/system/shorturl.service`（`Restart=on-failure`，崩了自动拉起）
+- `systemctl enable shorturl`（开机自启）
+- `systemctl restart shorturl`（立即启动）
+- 校验 `/healthz`、监听端口
+
+### 3. nginx 反代（最少改动）
+
+```bash
+sudo cp /home/www/vectorac/shorturl-service/scripts/shorturl-proxy.conf /etc/nginx/conf.d/shorturl.conf
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+`nginx.conf` 默认 `include /etc/nginx/conf.d/*.conf`，所以新文件直接生效。
+
+或者把 `shorturl-proxy.conf` 里的两个 `location` 块合并进 `/etc/nginx/conf.d/vectorac.conf` 的 `server { }` 里。
+
+DNS 不用动（`*.vectorac.com` 通配已经覆盖 `s.vectorac.com`）。改完 nginx `s.vectorac.com/s/aB3xY7z` 直接能用。
+
+> 端口说明：服务默认跑 `127.0.0.1:3030`（因为 3000 在服务器上被占）。如要改：`PORT=xxxx bash install.sh ...`，同时改 `shorturl-proxy.conf` 里的 `proxy_pass` 行。
+
+### 4. 完全不动 nginx 的备选
+
+```bash
+# Cloudflare Tunnel（推荐，无需公网 IP）
+cloudflared tunnel create shorturl
+cloudflared tunnel route dns shorturl s.vectorac.com
+cloudflared tunnel --url http://localhost:3030 run
+```
+
+### 5. 升级
+
+```bash
+# 本地
+bash scripts/bundle.sh
+scp dist/shorturl-service-*.tar.gz <user>@<server>:
+
+# 服务器（解压后重跑 install.sh；数据文件不会被覆盖）
+tar -xzf shorturl-service-*.tar.gz
+cd shorturl-service
+sudo SHORT_BASE_URL=https://s.vectorac.com \
+     ADMIN_TOKEN=$(openssl rand -hex 16) \
+     bash scripts/install.sh
+```
+
+### 6. 常用运维命令
+
+```bash
+sudo systemctl status shorturl       # 状态
+sudo systemctl restart shorturl      # 重启
+sudo journalctl -u shorturl -f       # 实时日志
+sudo journalctl -u shorturl -n 200   # 最近 200 行日志
+sudo vim /home/www/vectorac/shorturl-service/.env  # 改配置
+sudo systemctl restart shorturl
+curl http://127.0.0.1:3030/healthz   # 健康检查
+```
+
+### 7. 部署后目录结构（跟 dist/ 平级）
+
+```
+/home/www/vectorac/
+├── dist/                          # 静态官网（已有）
+└── shorturl-service/              # 短链服务（install.sh 装的）
+    ├── server.js  db.js  package.json
+    ├── node_modules/              # 已装好，无需再 npm install
+    ├── public/  views/  scripts/
+    ├── data/                      # shorturl.json（备份这个）
+    └── .env                       # PORT / SHORT_BASE_URL / ADMIN_TOKEN
+
+/etc/systemd/system/shorturl.service
+```
+
+### 8. 关于 `SHORT_BASE_URL`
+
+`SHORT_BASE_URL` 决定了「用户在演示页 / API 拿到的短链前缀」长什么样：
+
+| 场景 | 建议值 |
+| --- | --- |
+| 本地开发 | `http://localhost:3000`（默认） |
+| 线上公网 (`s.vectorac.com`) | `https://s.vectorac.com` |
+| Cloudflare Tunnel | `https://s.vectorac.com`（外部访问域名） |
+
+改完之后必须 `sudo systemctl restart shorturl` 才生效。旧短链不受影响（短码存的是目标 URL，前缀只是展示）。
 
 ## 部署配置
 

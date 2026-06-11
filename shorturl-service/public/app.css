@@ -1,0 +1,125 @@
+/* === 全局 === */
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB",
+    "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  background: #f6f8fb;
+  color: #1f2937;
+  line-height: 1.6;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+code { font-family: "SFMono-Regular", Menlo, Consolas, monospace; background: #f1f3f7; padding: 1px 6px; border-radius: 4px; font-size: 0.9em; }
+code.big { font-size: 1.05em; padding: 4px 8px; background: #eef6ff; color: #0a5ec5; }
+a { color: #0a5ec5; text-decoration: none; }
+a:hover { text-decoration: underline; }
+.muted { color: #6b7280; }
+.small { font-size: 12px; }
+.err { color: #c0392b; }
+.grad { background: linear-gradient(90deg,#3eaf7c,#0a5ec5); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+/* === 顶栏 === */
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 28px; background: #fff; border-bottom: 1px solid #eaeef2;
+  position: sticky; top: 0; z-index: 10;
+}
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 700; color: #111827; }
+.brand em { font-style: normal; color: #3eaf7c; margin-left: 4px; }
+.brand .dot { width: 10px; height: 10px; border-radius: 50%; background: #3eaf7c; box-shadow: 0 0 0 4px rgba(62,175,124,.18); }
+.nav { display: flex; gap: 6px; flex-wrap: wrap; }
+.nav a { padding: 6px 12px; border-radius: 8px; color: #4b5563; font-size: 14px; }
+.nav a:hover { background: #f1f3f7; text-decoration: none; }
+.nav a.on { background: #eef6ff; color: #0a5ec5; }
+
+/* === 主体 === */
+.page { flex: 1; max-width: 960px; width: 100%; margin: 0 auto; padding: 28px 20px 60px; }
+.hero { text-align: center; padding: 36px 0 18px; }
+.hero h1 { font-size: 38px; margin: 0 0 12px; color: #111827; }
+.hero .lead { font-size: 16px; color: #4b5563; }
+.cta { margin-top: 22px; display: flex; gap: 12px; justify-content: center; }
+
+.card {
+  background: #fff; border: 1px solid #eaeef2; border-radius: 12px;
+  padding: 22px 24px; margin: 16px 0; box-shadow: 0 1px 2px rgba(15,23,42,.04);
+}
+.card h2 { margin-top: 0; font-size: 20px; }
+.card h3 { font-size: 16px; margin-top: 22px; }
+.grid.two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 720px) { .grid.two { grid-template-columns: 1fr; } }
+
+/* === 表单 === */
+.form { display: grid; gap: 12px; }
+.form label { display: grid; gap: 6px; font-size: 14px; color: #374151; }
+.form input, input, select, textarea {
+  font: inherit; padding: 10px 12px; border: 1px solid #d6dbe1; border-radius: 8px;
+  background: #fff; color: #111827; outline: none; transition: border-color .15s, box-shadow .15s;
+}
+.form input:focus, input:focus, select:focus, textarea:focus {
+  border-color: #3eaf7c; box-shadow: 0 0 0 3px rgba(62,175,124,.18);
+}
+/* 行内 input（如统计页的令牌输入框）要能放下 placeholder，且自适应宽度 */
+.row > input { min-width: 220px; flex: 1 1 200px; }
+@media (max-width: 600px) {
+  .row > input { min-width: 0; flex: 1 1 100%; }
+}
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.row.spread { justify-content: space-between; }
+.grow { flex: 1; min-width: 0; }
+.actions { display: flex; gap: 8px; margin-top: 4px; }
+
+/* === 按钮 === */
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 9px 16px; border-radius: 8px; border: 1px solid #d6dbe1;
+  background: #fff; color: #111827; cursor: pointer; font-size: 14px;
+  transition: all .15s; text-decoration: none;
+}
+.btn:hover { border-color: #b6bcc4; background: #fafbfc; }
+.btn.primary { background: #3eaf7c; border-color: #3eaf7c; color: #fff; }
+.btn.primary:hover { background: #34a06c; }
+.btn.xs { padding: 4px 10px; font-size: 12px; }
+.btn.danger { color: #c0392b; border-color: #f4c7c1; }
+.btn.danger:hover { background: #fdf1ef; }
+
+/* === 列表 === */
+.list { display: grid; gap: 8px; }
+.item {
+  padding: 10px 12px; background: #fafbfc; border: 1px solid #eef0f3; border-radius: 8px;
+}
+
+/* === 输出 === */
+.out { margin-top: 12px; }
+.kv { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 14px; flex-wrap: wrap; }
+.kv > span:first-child { color: #6b7280; min-width: 60px; }
+.result { background: #f8fbf7; border: 1px dashed #b9e0c8; border-radius: 8px; padding: 12px 14px; }
+.bar { width: 140px; height: 6px; background: #eef0f3; border-radius: 3px; overflow: hidden; }
+.bar span { display: block; height: 100%; background: linear-gradient(90deg,#3eaf7c,#0a5ec5); }
+
+/* === KPI === */
+.kpi { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 8px; }
+.kpi-cell { background: linear-gradient(135deg,#eef6ff,#f1faf3); border-radius: 10px; padding: 16px; text-align: center; }
+.kpi-cell .num { font-size: 28px; font-weight: 700; color: #0a5ec5; }
+.kpi-cell > div:last-child { color: #6b7280; font-size: 13px; }
+@media (max-width: 600px) { .kpi { grid-template-columns: repeat(2, 1fr); } }
+
+/* === 文档 === */
+.code { background: #0f172a; color: #e2e8f0; padding: 14px 16px; border-radius: 8px; overflow-x: auto; font-size: 13px; line-height: 1.6; }
+
+/* === Toast === */
+.toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
+  background: #111827; color: #fff; padding: 10px 16px; border-radius: 8px;
+  font-size: 14px; opacity: 0; pointer-events: none; transition: all .25s; z-index: 100;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.err { background: #c0392b; }
+
+/* === Footer === */
+.footer {
+  text-align: center; padding: 16px; color: #6b7280; font-size: 13px;
+  border-top: 1px solid #eaeef2; background: #fff; display: flex; gap: 16px;
+  justify-content: center; align-items: center; flex-wrap: wrap;
+}

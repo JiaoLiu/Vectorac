@@ -2,8 +2,25 @@ module.exports = {
   title: '成都向量加速科技有限公司',
   description: 'Vectorac',
   dest: 'public',
+  patterns: [
+    '**/*.md',
+    '**/*.vue',
+    '!shorturl-service/**',
+    '!**/node_modules/**'
+  ],
+  // dev 模式所有响应都强制 no-store，修改 shorturl-demo.js 等文件后无需硬刷即可生效
+  chainWebpack(config, isServer) {
+    if (!isServer && config.devServer) {
+      config.devServer.set('headers', {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      });
+    }
+  },
   head: [
     ['script', { type: 'text/javascript', src: '/js/bdPush.js' }],
+    ['script', { type: 'text/javascript', src: '/js/shorturl-demo.js' }],
     [
       'meta',
       {
@@ -51,14 +68,19 @@ module.exports = {
             icon: 'reco-document'
           },
           {
+            text: '短链跳转',
+            link: '/blogs/other/shorturl.md',
+            icon: 'reco-api'
+          },
+          {
             text: '图表组件',
             link: '/blogs/other/chcharts.md',
             icon: 'reco-blog'
           },
-          { 
+          {
             text: '小游戏',
             link: '/blogs/other/games.md',
-            icon: 'reco-api' 
+            icon: 'reco-api'
           },
           {
             text: '智慧问答',
