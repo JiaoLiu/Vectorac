@@ -65,25 +65,37 @@ echo "==> Node.js 路径: $NODE_PATH"
 # 1. 复制文件到安装目录（直接覆盖升级）
 echo "==> 复制文件 → $INSTALL_DIR"
 mkdir -p "$INSTALL_DIR"
-# 用 rsync 复制，排除 scripts 目录中不需要的 bundle.sh
+# 用 rsync 同步，排除要保留的本地状态文件
+# --exclude：tarball 里没有 .env / data / node_modules，不让 --delete 把它们删掉
 rsync -a --delete \
-  --exclude='scripts/bundle.sh' \
+  --exclude='.env' \
   --exclude='data/' \
+  --exclude='node_modules/' \
+  --exclude='scripts/bundle.sh' \
   "$SCRIPT_DIR/../" "$INSTALL_DIR/"
 # 保留已有的 data 目录
 [ -d "$INSTALL_DIR/data" ] || mkdir -p "$INSTALL_DIR/data"
 
-# 2. 写 .env（systemd 的 EnvironmentFile 会读它；每次 install 重新生成）
+# 2. 写 .env（systemd 的 EnvironmentFile 会读它）
+# 升级时保留已有 .env，只补缺失字段，避免覆盖生产配置（如 SHORT_BASE_URL）
 ENV_FILE="$INSTALL_DIR/.env"
-echo "==> 写入 $ENV_FILE"
-cat > "$ENV_FILE" <<EOF
-# Vectorac 短链服务环境变量（install.sh 生成，权限 600）
-PORT=$PORT
-HOST=127.0.0.1
-SHORT_BASE_URL=$SHORT_BASE_URL
-ADMIN_TOKEN=$ADMIN_TOKEN
-EOF
+echo "==> 处理 $ENV_FILE"
+touch "$ENV_FILE"
 chmod 600 "$ENV_FILE"
+# 缺失字段才写入；已有值不动
+ensure_env() {
+  local key="$1" val="$2"
+  if grep -qE "^${key}=" "$ENV_FILE" 2>/dev/null; then
+    echo "    · $key 已有，保留"
+  else
+    echo "    + $key=$val"
+    echo "$key=$val" >> "$ENV_FILE"
+  fi
+}
+ensure_env PORT "$PORT"
+ensure_env HOST "127.0.0.1"
+ensure_env SHORT_BASE_URL "$SHORT_BASE_URL"
+ensure_env ADMIN_TOKEN "$ADMIN_TOKEN"
 
 # 3. 生成 systemd unit（替换占位符）
 UNIT_FILE="/etc/systemd/system/shorturl.service"

@@ -96,13 +96,45 @@ cloudflared tunnel --url http://localhost:3030 run
 
 ### 升级
 
-```bash
-# 本地
-bash scripts/bundle.sh
-scp dist/shorturl-service-*.tar.gz <user>@<server>:
+**⚠️ 不要 `rm -rf` 老目录！** 老目录里有 `.env`、`data/shorturl.json`、`node_modules/`，新 tarball 都没有，`rsync --delete` 会把它们清掉。
 
-# 服务器（脚本幂等，会自动 stop 旧版本、起新版本；data/ 和 .env 不会被覆盖）
-sudo bash install.sh ~/shorturl-service-*.tar.gz
+```bash
+# 1. 本地打包
+cd shorturl-service
+bash scripts/bundle.sh
+# 产物：dist/shorturl-service-YYYYMMDD-HHMM.tar.gz
+scp dist/shorturl-service-*.tar.gz <user>@<server>:/tmp/
+
+# 2. 服务器：备份数据 + 同步代码（保留 .env / data / node_modules）
+ssh <user>@<server>
+sudo cp /home/www/vectorac/shorturl-service/.env /tmp/shorturl.env.bak
+sudo cp /home/www/vectorac/shorturl-service/data/shorturl.json /tmp/shorturl.json.bak
+
+mkdir -p /tmp/shorturl-new
+tar -xzf /tmp/shorturl-service-*.tar.gz -C /tmp/shorturl-new
+
+# 把新代码同步到老目录，显式排除要保留的文件
+sudo rsync -a /tmp/shorturl-new/shorturl-service/ /home/www/vectorac/shorturl-service/ \
+  --exclude='.env' \
+  --exclude='data/' \
+  --exclude='node_modules/'
+
+# 3. 跑 install.sh 触发重启（不传 SHORT_BASE_URL / ADMIN_TOKEN，保留原 .env）
+cd /home/www/vectorac/shorturl-service
+sudo bash scripts/install.sh
+```
+
+> **不需要 `npm install`**：`bundle.sh` 已经把生产依赖（`--omit=dev`）打进 tarball 的 `node_modules/` 里了，直接复用就行。
+
+`install.sh` 会自动 `systemctl restart shorturl`，改完立即生效。
+
+**升级失败回滚：**
+
+```bash
+# 恢复 .env 和数据
+sudo cp /tmp/shorturl.env.bak /home/www/vectorac/shorturl-service/.env
+sudo cp /tmp/shorturl.json.bak /home/www/vectorac/shorturl-service/data/shorturl.json
+sudo systemctl restart shorturl
 ```
 
 ### 常用运维命令

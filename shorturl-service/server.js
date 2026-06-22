@@ -95,13 +95,59 @@ function layout(title, body, opts = {}) {
     <a href="/stats" class="${active==='stats'?'on':''}">数据统计</a>
     <a href="/api-docs" class="${active==='api'?'on':''}">API 文档</a>
   </nav>
+  <button class="sidebar-toggle" id="sidebarToggle" aria-label="打开菜单">
+    <span></span>
+  </button>
 </header>
+
+<!-- 移动端侧边栏遮罩 -->
+<div class="sidebar-mask" id="sidebarMask"></div>
+
+<!-- 移动端侧边栏 -->
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-links">
+    <a href="/" class="${active==='home'?'on':''}">首页</a>
+    <a href="/create" class="${active==='create'?'on':''}">创建短链</a>
+    <a href="/links" class="${active==='links'?'on':''}">短链管理</a>
+    <a href="/stats" class="${active==='stats'?'on':''}">数据统计</a>
+    <a href="/api-docs" class="${active==='api'?'on':''}">API 文档</a>
+  </div>
+</nav>
+
 <main class="page">${body}</main>
 <footer class="footer">
   <span>Vectorac 短链服务 · 演示版</span>
   <span class="muted">短链前缀：<code>${escapeHtml(SHORT_BASE_URL)}</code></span>
 </footer>
-<script src="/static/app.js"></script>
+<script>
+(function(){
+  var toggle = document.getElementById('sidebarToggle');
+  var sidebar = document.getElementById('sidebar');
+  var mask = document.getElementById('sidebarMask');
+
+  function openSidebar() {
+    sidebar.classList.add('open');
+    mask.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeSidebar() {
+    sidebar.classList.remove('open');
+    mask.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  toggle.addEventListener('click', openSidebar);
+  mask.addEventListener('click', closeSidebar);
+
+  sidebar.querySelectorAll('a').forEach(function(a) {
+    a.addEventListener('click', closeSidebar);
+  });
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeSidebar();
+  });
+})();
+</script>
 ${opts.script || ''}
 </body>
 </html>`;
