@@ -1,0 +1,89 @@
+.private/flasher-dev.md
+  4a68a259acc17f46 1-90
+.vuepress/public/firmware/README.txt
+  4a68a259acc17f46 1-20
+.vuepress/config.js
+  4a68a259acc17f46 25,68-70
+.vuepress/public/js/flasher.js
+  4a68a259acc17f46 1-1167
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.5",
+  "base_commit_sha": "de6c51b1bf12fbacc70f9fe86863253bf6d751ef",
+  "prompts": {
+    "4a68a259acc17f46": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a7152c27fd21251a8b13b6c",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 1641,
+      "total_deletions": 301,
+      "accepted_lines": 1406,
+      "overriden_lines": 0
+    }
+  },
+  "commit_stats": {
+    "git_diff_added_lines": 1365,
+    "git_diff_deleted_lines": 10,
+    "ai_additions": 1281,
+    "ai_accepted": 1281,
+    "BYMC": 73,
+    "mixed_additions": 0,
+    "BYAC": 1281,
+    "BYRC": 0,
+    "per_file": {
+      ".private/flasher-dev.md": {
+        "BYMC": [],
+        "BYAC": [
+          "1-90"
+        ],
+        "BYRC": []
+      },
+      ".vuepress/config.js": {
+        "BYMC": [
+          "9",
+          "76"
+        ],
+        "BYAC": [
+          "25",
+          "68-70"
+        ],
+        "BYRC": []
+      },
+      ".vuepress/public/firmware/README.txt": {
+        "BYMC": [],
+        "BYAC": [
+          "1-20"
+        ],
+        "BYRC": []
+      },
+      ".vuepress/public/firmware/manifest.json": {
+        "BYMC": [
+          "1-15"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      ".vuepress/public/js/flasher.js": {
+        "BYMC": [],
+        "BYAC": [
+          "1-1167"
+        ],
+        "BYRC": []
+      },
+      "blogs/other/flasher.md": {
+        "BYMC": [
+          "1-56"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      }
+    }
+  },
+  "commit_timestamp": 1785832756,
+  "requirement_id": ""
+}
