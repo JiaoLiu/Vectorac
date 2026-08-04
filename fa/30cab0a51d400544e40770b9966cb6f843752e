@@ -1,0 +1,32 @@
+.private/flasher-dev.md
+  4a68a259acc17f46 1-90
+.vuepress/public/js/flasher.js
+  4a68a259acc17f46 1-1167
+.vuepress/public/firmware/README.txt
+  4a68a259acc17f46 1-20
+.vuepress/config.js
+  4a68a259acc17f46 25,68-70
+.gitignore
+  4a68a259acc17f46 5-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.5",
+  "base_commit_sha": "fa30cab0a51d400544e40770b9966cb6f843752e",
+  "prompts": {
+    "4a68a259acc17f46": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a7152c27fd21251a8b13b6c",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 1648,
+      "total_deletions": 302,
+      "accepted_lines": 1288,
+      "overriden_lines": 0
+    }
+  },
+  "requirement_id": ""
+}
