@@ -1,0 +1,15 @@
+[
+  {
+    "id": "xiaov-0.0.1-alpha",
+    "name": "Vectorac 小V机器人固件",
+    "version": "0.0.1-alpha",
+    "file": "/firmware/xiaov-0.0.1-alpha.bin",
+    "address": "0x0",
+    "flashMode": "dio",
+    "flashFreq": "80m",
+    "flashSize": "16MB",
+    "baudrate": 921600,
+    "date": "2026-08-04",
+    "note": "首个可用 Alpha 版本；ESP32-S3 出厂完整镜像，包含 bootloader、分区表、应用、LittleFS 提示音和语音模型。"
+  }
+]

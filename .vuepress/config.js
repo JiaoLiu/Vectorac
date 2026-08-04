@@ -6,6 +6,7 @@ module.exports = {
     '**/*.md',
     '**/*.vue',
     '!shorturl-service/**',
+    '!.private/**',
     '!**/node_modules/**'
   ],
   // dev 模式所有响应都强制 no-store，修改 shorturl-demo.js 等文件后无需硬刷即可生效
@@ -21,6 +22,7 @@ module.exports = {
   head: [
     ['script', { type: 'text/javascript', src: '/js/bdPush.js' }],
     ['script', { type: 'text/javascript', src: '/js/shorturl-demo.js' }],
+    ['script', { type: 'text/javascript', src: '/js/flasher.js' }],
     [
       'meta',
       {
@@ -58,6 +60,21 @@ module.exports = {
         icon: 'reco-category',
         items: [
           {
+            text: '短链跳转',
+            link: '/blogs/other/shorturl.md',
+            icon: 'reco-api'
+          },
+          {
+            text: '固件烧录',
+            link: '/blogs/other/flasher.md',
+            icon: 'reco-coding'
+          },
+          {
+            text: '小游戏',
+            link: '/blogs/other/games.md',
+            icon: 'reco-api'
+          },
+          {
             text: '人脸匹配',
             link: '/blogs/other/face_compare.md',
             icon: 'reco-account'
@@ -68,19 +85,9 @@ module.exports = {
             icon: 'reco-document'
           },
           {
-            text: '短链跳转',
-            link: '/blogs/other/shorturl.md',
-            icon: 'reco-api'
-          },
-          {
             text: '图表组件',
             link: '/blogs/other/chcharts.md',
             icon: 'reco-blog'
-          },
-          {
-            text: '小游戏',
-            link: '/blogs/other/games.md',
-            icon: 'reco-api'
           },
           {
             text: '智慧问答',
