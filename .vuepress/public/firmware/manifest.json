@@ -3,7 +3,7 @@
     "id": "xiaov-0.0.1-alpha",
     "name": "Vectorac 小V机器人固件",
     "version": "0.0.1-alpha",
-    "file": "/firmware/xiaov-0.0.1-alpha.bin",
+    "file": "/firmware/xiaov/xiaov-0.0.1-alpha.bin",
     "address": "0x0",
     "flashMode": "dio",
     "flashFreq": "80m",

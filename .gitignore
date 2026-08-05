@@ -5,7 +5,7 @@ node_modules/
 .claude/
 
 # 固件二进制（可能含密钥，不入 git；通过 rsync 单独上传到服务器）
-.vuepress/public/firmware/*.bin
-.vuepress/public/firmware/*.hex
-.vuepress/public/firmware/*.img
-.vuepress/public/firmware/*.elf
+.vuepress/public/firmware/**/*.bin
+.vuepress/public/firmware/**/*.hex
+.vuepress/public/firmware/**/*.img
+.vuepress/public/firmware/**/*.elf
