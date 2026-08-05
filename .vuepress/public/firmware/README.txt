@@ -34,10 +34,42 @@
 # --- OTA / Recovery 接口 {product}/{type}/latest.json 字段 ---
 #   设备 GET /firmware/{product}/{type}/latest.json 拉取最新版本信息，对比 version 字段决定是否升级。
 #   type 取值：ota（app 升级包，写 0x10000） / recovery（完整镜像，写 0x0）
-#   必填字段：version / url / address / size / checksum (格式 sha256:xxx)
-#   可选字段：flashMode / flashFreq / flashSize / date / release_notes
+#
+#   必填字段：
+#     version        版本号
+#     url            固件下载 URL
+#     address        烧录起始地址（ota 用 0x10000，recovery 用 0x0）
+#     size           文件字节数
+#     checksum       格式 sha256:xxx
+#     flashMode      dio/qio/qout/dout
+#     flashFreq      40m/80m/26m/20m
+#     flashSize      4MB/2MB/8MB/16MB
+#     date           发布日期
+#     release_notes  发布说明
+#
+#   可选字段（app + LittleFS 双文件 OTA 时使用）：
+#     littlefs_url        LittleFS 镜像 URL
+#     littlefs_size       LittleFS 字节数
+#     littlefs_checksum   格式 sha256:xxx
+#
 #   checksum 用 `shasum -a 256 xxx.bin` 计算；size 用 `stat -f %z xxx.bin` (macOS)。
 #   暂无升级包时，version 设为 "0.0.0"、url 设为 ""，设备端识别后跳过升级。
+#
+#   示例 1：只发 app（90% 场景）
+#     { "version": "1.0.1", "url": ".../xiaov-1.0.1.bin",
+#       "address": "0x10000", "size": 2451431,
+#       "checksum": "sha256:xxxxx...",
+#       "flashMode": "dio", "flashFreq": "80m", "flashSize": "16MB",
+#       "date": "2026-08-05", "release_notes": "..." }
+#
+#   示例 2：app + LittleFS（提示音/数据文件变化时）
+#     { "version": "1.0.1", "url": ".../xiaov-1.0.1.bin",
+#       "address": "0x10000", "size": 2451431,
+#       "checksum": "sha256:xxxxx...",
+#       "flashMode": "dio", "flashFreq": "80m", "flashSize": "16MB",
+#       "date": "2026-08-05", "release_notes": "...",
+#       "littlefs_url": ".../xiaov-1.0.1-littlefs.bin",
+#       "littlefs_size": 1100000, "littlefs_checksum": "sha256:yyyyy..." }
 #
 # --- 发布流程 ---
 #   1. 把编译出的 .bin 拷到对应产品子目录
