@@ -1,0 +1,45 @@
+.vuepress/public/firmware/README.txt
+  4a68a259acc17f46 37-54,58-72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.5",
+  "base_commit_sha": "9d07af0b630da5f70965026ad33d34b5e85cd0ca",
+  "prompts": {
+    "4a68a259acc17f46": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a7152c27fd21251a8b13b6c",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 50,
+      "total_deletions": 18,
+      "accepted_lines": 46,
+      "overriden_lines": 0
+    }
+  },
+  "commit_stats": {
+    "git_diff_added_lines": 34,
+    "git_diff_deleted_lines": 2,
+    "ai_additions": 33,
+    "ai_accepted": 33,
+    "BYMC": 0,
+    "mixed_additions": 0,
+    "BYAC": 33,
+    "BYRC": 0,
+    "per_file": {
+      ".vuepress/public/firmware/README.txt": {
+        "BYMC": [],
+        "BYAC": [
+          "37-54",
+          "58-72"
+        ],
+        "BYRC": []
+      }
+    }
+  },
+  "commit_timestamp": 1785918878,
+  "requirement_id": ""
+}
