@@ -1,0 +1,12 @@
+{
+  "version": "0.0.0",
+  "url": "",
+  "address": "0x10000",
+  "size": 0,
+  "checksum": "",
+  "flashMode": "dio",
+  "flashFreq": "80m",
+  "flashSize": "16MB",
+  "date": "",
+  "release_notes": "暂无 OTA 升级包。请通过网页刷机工具烧录完整镜像后使用。"
+}

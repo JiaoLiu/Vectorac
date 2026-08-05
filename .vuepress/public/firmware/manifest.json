@@ -1,15 +1,28 @@
 [
   {
-    "id": "xiaov-0.0.1-alpha",
-    "name": "Vectorac 小V机器人固件",
+    "id": "xiaov-0.0.1-alpha-full",
+    "name": "Vectorac 小V 完整镜像（出厂/恢复）",
     "version": "0.0.1-alpha",
-    "file": "/firmware/xiaov/xiaov-0.0.1-alpha.bin",
+    "file": "/firmware/xiaov/xiaov-0.0.1-alpha-full.bin",
     "address": "0x0",
     "flashMode": "dio",
     "flashFreq": "80m",
     "flashSize": "16MB",
     "baudrate": 921600,
     "date": "2026-08-04",
-    "note": "首个可用 Alpha 版本；ESP32-S3 出厂完整镜像，包含 bootloader、分区表、应用、LittleFS 提示音和语音模型。"
+    "note": "ESP32-S3 完整镜像：bootloader + 分区表 + app + LittleFS。刷 0x0，用于出厂烧录或恢复出厂。"
+  },
+  {
+    "id": "xiaov-0.0.1-alpha-app",
+    "name": "Vectorac 小V App 升级包",
+    "version": "0.0.1-alpha",
+    "file": "/firmware/xiaov/xiaov-0.0.1-alpha-app.bin",
+    "address": "0x10000",
+    "flashMode": "dio",
+    "flashFreq": "80m",
+    "flashSize": "16MB",
+    "baudrate": 921600,
+    "date": "2026-08-04",
+    "note": "仅 app 段，刷 0x10000，用于局部升级（不擦 bootloader/分区表）。体积小，刷得快。"
   }
 ]
