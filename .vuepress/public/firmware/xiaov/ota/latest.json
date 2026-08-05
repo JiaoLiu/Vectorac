@@ -1,12 +1,19 @@
 {
-  "version": "0.0.0",
-  "url": "",
-  "address": "0x10000",
-  "size": 0,
-  "checksum": "",
-  "flashMode": "dio",
-  "flashFreq": "80m",
-  "flashSize": "16MB",
-  "date": "",
-  "release_notes": "暂无 OTA 升级包。请通过网页刷机工具烧录完整镜像后使用。"
+  "version": "0.0.1-alpha",
+  "date": "2026-08-05",
+  "release_notes": "首个 OTA 测试包：app 固件 + LittleFS 提示音双分区升级。",
+  "parts": [
+    {
+      "type": "littlefs",
+      "url": "https://vectorac.com/firmware/xiaov/ota/xiaov-0.0.1-alpha-littlefs.bin",
+      "size": 3145728,
+      "checksum": "sha256:0ae7442d7c9127231d91a4191fd4321a9e4333ea914f5bae79614353c8a4a48a"
+    },
+    {
+      "type": "app",
+      "url": "https://vectorac.com/firmware/xiaov/ota/xiaov-0.0.1-alpha-ota.bin",
+      "size": 2451840,
+      "checksum": "sha256:c8016df5ae7a8ba7aa4e537df5be32726ceece831874fc2f5d9b721f58622f10"
+    }
+  ]
 }
