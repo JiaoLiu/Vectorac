@@ -1,0 +1,29 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.5",
+  "base_commit_sha": "e775a6a437e0d87a9e95a1bc0c20c502abb7ad78",
+  "prompts": {},
+  "commit_stats": {
+    "git_diff_added_lines": 4,
+    "git_diff_deleted_lines": 4,
+    "ai_additions": 0,
+    "ai_accepted": 0,
+    "BYMC": 4,
+    "mixed_additions": 0,
+    "BYAC": 0,
+    "BYRC": 0,
+    "per_file": {
+      ".vuepress/public/firmware/xiaov/ota/latest.json": {
+        "BYMC": [
+          "9-10",
+          "15-16"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      }
+    }
+  },
+  "commit_timestamp": 1785925007,
+  "requirement_id": ""
+}
