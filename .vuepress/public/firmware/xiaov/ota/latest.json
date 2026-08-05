@@ -6,14 +6,14 @@
     {
       "type": "littlefs",
       "url": "https://vectorac.com/firmware/xiaov/ota/xiaov-0.0.1-alpha-littlefs.bin",
-      "size": 3145728,
-      "checksum": "sha256:0ae7442d7c9127231d91a4191fd4321a9e4333ea914f5bae79614353c8a4a48a"
+      "size": 2686976,
+      "checksum": "sha256:1f73ca6f7c8db8e580a401252d8a3b56160c9a283497fcf6ca501dc03605d527"
     },
     {
       "type": "app",
       "url": "https://vectorac.com/firmware/xiaov/ota/xiaov-0.0.1-alpha-ota.bin",
-      "size": 2451840,
-      "checksum": "sha256:c8016df5ae7a8ba7aa4e537df5be32726ceece831874fc2f5d9b721f58622f10"
+      "size": 2455664,
+      "checksum": "sha256:ade413edce3e9f04f04f0ce5962b8b04dc4c146580674bfe0a26276f75ac4aa1"
     }
   ]
 }
