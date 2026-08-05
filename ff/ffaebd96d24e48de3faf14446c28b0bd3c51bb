@@ -1,0 +1,82 @@
+.vuepress/public/firmware/README.txt
+  4a68a259acc17f46 5-11,15-19,25-26,34-36,40,43-48,52-55
+.vuepress/public/firmware/xiaov/recovery/latest.json
+  4a68a259acc17f46 3
+.vuepress/public/firmware/manifest.json
+  4a68a259acc17f46 3-4,6,13-26
+.vuepress/public/firmware/xiaov/ota/latest.json
+  4a68a259acc17f46 1-12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.5",
+  "base_commit_sha": "ffffaebd96d24e48de3faf14446c28b0bd3c51bb",
+  "prompts": {
+    "4a68a259acc17f46": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a7152c27fd21251a8b13b6c",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 59,
+      "total_deletions": 21,
+      "accepted_lines": 59,
+      "overriden_lines": 0
+    }
+  },
+  "commit_stats": {
+    "git_diff_added_lines": 70,
+    "git_diff_deleted_lines": 32,
+    "ai_additions": 58,
+    "ai_accepted": 58,
+    "BYMC": 11,
+    "mixed_additions": 0,
+    "BYAC": 58,
+    "BYRC": 0,
+    "per_file": {
+      ".vuepress/public/firmware/README.txt": {
+        "BYMC": [],
+        "BYAC": [
+          "5-11",
+          "15-19",
+          "25-26",
+          "34-36",
+          "40",
+          "43-48",
+          "52-55"
+        ],
+        "BYRC": []
+      },
+      ".vuepress/public/firmware/manifest.json": {
+        "BYMC": [],
+        "BYAC": [
+          "3-4",
+          "6",
+          "13-26"
+        ],
+        "BYRC": []
+      },
+      ".vuepress/public/firmware/xiaov/ota/latest.json": {
+        "BYMC": [],
+        "BYAC": [
+          "1-12"
+        ],
+        "BYRC": []
+      },
+      ".vuepress/public/firmware/xiaov/recovery/latest.json": {
+        "BYMC": [
+          "1-2",
+          "4-12"
+        ],
+        "BYAC": [
+          "3"
+        ],
+        "BYRC": []
+      }
+    }
+  },
+  "commit_timestamp": 1785918686,
+  "requirement_id": ""
+}
