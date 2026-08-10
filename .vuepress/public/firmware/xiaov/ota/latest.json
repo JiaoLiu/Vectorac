@@ -1,19 +1,19 @@
 {
-  "version": "0.0.1-alpha",
-  "date": "2026-08-05",
-  "release_notes": "首个 OTA 测试包：app 固件 + LittleFS 提示音双分区升级。",
+  "version": "0.0.2-alpha",
+  "date": "2026-08-07",
+  "release_notes": "音色选择 + 设备动作优先规则；O 版与 SC 2.0 双字段适配；身份约束 + 95alive 电台下线。",
   "parts": [
     {
       "type": "littlefs",
-      "url": "https://vectorac.com/firmware/xiaov/ota/xiaov-0.0.1-alpha-littlefs.bin",
+      "url": "https://vectorac.com/firmware/xiaov/ota/xiaov-0.0.2-alpha-littlefs.bin",
       "size": 2686976,
-      "checksum": "sha256:1f73ca6f7c8db8e580a401252d8a3b56160c9a283497fcf6ca501dc03605d527"
+      "checksum": "sha256:52dd6b21fd8fb43095393e75c764cb98fa92cd3675473eabc5e80855a27e3945"
     },
     {
       "type": "app",
-      "url": "https://vectorac.com/firmware/xiaov/ota/xiaov-0.0.1-alpha-ota-r2.bin",
-      "size": 2455680,
-      "checksum": "sha256:2e3232d2bcc6c1237bbf252bc0884b725a03d50ff2a95b05549b2c3d3113a3b3"
+      "url": "https://vectorac.com/firmware/xiaov/ota/xiaov-0.0.2-alpha-app.bin",
+      "size": 2512512,
+      "checksum": "sha256:e6e017bcbc69999b5b966d34a73a1cbbdc611f170b9951884f570d7a6556282a"
     }
   ]
 }

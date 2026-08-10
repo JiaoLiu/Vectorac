@@ -1,12 +1,12 @@
 {
-  "version": "0.0.1-alpha",
-  "url": "https://vectorac.com/firmware/xiaov/xiaov-0.0.1-alpha-full.bin",
+  "version": "0.0.2-alpha",
+  "url": "https://vectorac.com/firmware/xiaov/recovery/xiaov-0.0.2-alpha-full.bin",
   "address": "0x0",
   "size": 8102059,
-  "checksum": "sha256:0046c216966a252d8d12da0a59489c202663c8d899c6fedc54d36ffd6f2ba04e",
+  "checksum": "sha256:9a63519f822244730525f10ba66c47561f5e6e78cdcbf4f844b9221432441004",
   "flashMode": "dio",
   "flashFreq": "80m",
   "flashSize": "16MB",
-  "date": "2026-08-04",
-  "release_notes": "首个可用 Alpha 版本；ESP32-S3 出厂完整镜像，包含 bootloader、分区表、应用、LittleFS 提示音和语音模型。"
+  "date": "2026-08-07",
+  "release_notes": "0.0.2-alpha：音色选择 + 设备动作优先规则；O 版与 SC 2.0 双字段适配；身份约束 + 95alive 电台下线。"
 }
