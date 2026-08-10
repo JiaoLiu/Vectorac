@@ -1,0 +1,47 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.8",
+  "base_commit_sha": "79377260f0d49a93290b4b27724349e2bcb6ad3f",
+  "prompts": {},
+  "commit_stats": {
+    "git_diff_added_lines": 39,
+    "git_diff_deleted_lines": 13,
+    "ai_additions": 0,
+    "ai_accepted": 0,
+    "BYMC": 38,
+    "mixed_additions": 0,
+    "BYAC": 0,
+    "BYRC": 0,
+    "per_file": {
+      ".vuepress/public/firmware/manifest.json": {
+        "BYMC": [
+          "3-27"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      ".vuepress/public/firmware/xiaov/ota/latest.json": {
+        "BYMC": [
+          "2-4",
+          "8",
+          "10",
+          "14-16"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      ".vuepress/public/firmware/xiaov/recovery/latest.json": {
+        "BYMC": [
+          "2-3",
+          "6",
+          "10-11"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      }
+    }
+  },
+  "commit_timestamp": 1786347567,
+  "requirement_id": ""
+}
