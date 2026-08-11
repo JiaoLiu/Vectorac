@@ -1,0 +1,19 @@
+{
+  "name": "vectorac-usermgr",
+  "version": "1.0.0",
+  "description": "Vectorac 用户管理与设备 key 分发服务（多产品、SQLite、扫码激活）",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=16"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.0.0",
+    "dotenv": "^17.4.2",
+    "express": "^4.17.1",
+    "jsonwebtoken": "^9.0.0"
+  }
+}

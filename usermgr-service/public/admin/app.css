@@ -1,0 +1,347 @@
+/* === 全局 === */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB",
+    "Microsoft YaHei", sans-serif;
+  background: #0d1117; color: #c9d1d9; line-height: 1.6;
+}
+a { color: #3eaf7c; text-decoration: none; }
+a:hover { text-decoration: underline; }
+* { -webkit-tap-highlight-color: rgba(62,175,124,.18); }
+
+/* === 变量 === */
+:root {
+  --primary: #3eaf7c;
+  --primary-dark: #34a06c;
+  --danger: #f87171;
+  --warn: #fbbf24;
+  --border: #21262d;
+  --border-light: #30363d;
+  --text: #c9d1d9;
+  --text-muted: #7d8590;
+  --card: #161b22;
+  --card-hover: #1c2128;
+  --bg: #0d1117;
+  --hover: rgba(62,175,124,.08);
+  --active-bg: rgba(62,175,124,.12);
+}
+
+/* === 按钮 === */
+button, .btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border-light);
+  background: var(--card); color: var(--text); cursor: pointer; font-size: 14px;
+  transition: all .15s; -webkit-tap-highlight-color: transparent;
+}
+button:focus, .btn:focus { outline: none; box-shadow: 0 0 0 3px rgba(62,175,124,.25); }
+button:focus:not(:focus-visible) { box-shadow: none; }
+button:hover:not(:disabled) { border-color: var(--primary); background: var(--card-hover); }
+button.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+button.primary:hover:not(:disabled) { background: var(--primary-dark); border-color: var(--primary-dark); }
+button.danger { color: var(--danger); border-color: rgba(248,113,113,.3); }
+button.danger:hover:not(:disabled) { background: rgba(248,113,113,.1); border-color: var(--danger); }
+button:disabled { opacity: .5; cursor: not-allowed; }
+
+/* === 输入框 === */
+input, select, textarea {
+  font: inherit; padding: 9px 12px; border: 1px solid var(--border-light); border-radius: 8px;
+  background: var(--bg); color: var(--text); outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--primary); box-shadow: 0 0 0 3px rgba(62,175,124,.18);
+}
+input::placeholder { color: var(--text-muted); }
+/* ===== Air Datepicker · Material Design 3 Dark 重写 ===== */
+:root {
+  --m3-surface: #1c1b1f;
+  --m3-surface-container: #211f26;
+  --m3-on-surface: #e6e0e9;
+  --m3-on-surface-variant: #cac4d0;
+  --m3-outline: #938f99;
+  --m3-primary: #3eaf7c;
+  --m3-on-primary: #003824;
+  --m3-primary-container: #005236;
+  --m3-on-primary-container: #9ef5c7;
+}
+/* 用更高优先级 ID/类覆盖 air-datepicker.css 默认浅色样式 */
+body .air-datepicker,
+.air-datepicker.-is-active- {
+  --adp-background: #211f26 !important;
+  --adp-text-color: #e6e0e9 !important;
+  --adp-text-color-current: #3eaf7c !important;
+  --adp-day-name-color: #cac4d0 !important;
+  --adp-day-color: #e6e0e9 !important;
+  --adp-day-color-other-month: rgba(230,224,233,.35) !important;
+  --adp-day-color-disabled: rgba(230,224,233,.25) !important;
+  --adp-day-color-hover: #ffffff !important;
+  --adp-day-bg-hover: rgba(62,175,124,.14) !important;
+  --adp-day-bg-current: transparent !important;
+  --adp-day-bg-selected: #3eaf7c !important;
+  --adp-day-bg-selected-hover: #4cc78e !important;
+  --adp-border-color: transparent !important;
+  --adp-border-color-inner: transparent !important;
+  --adp-nav-color: #cac4d0 !important;
+  --adp-nav-color-hover: #e6e0e9 !important;
+  --adp-cell-border-radius: 999px !important;
+  --adp-cell-background-color-selected: #3eaf7c !important;
+  --adp-cell-background-color-selected-hover: #4cc78e !important;
+  --adp-cell-background-color-in-range: rgba(62,175,124,.14) !important;
+  --adp-cell-background-color-range-start: #3eaf7c !important;
+  --adp-cell-background-color-range-end: #3eaf7c !important;
+  --adp-cell-border-color-inner: transparent !important;
+  background: #211f26 !important;
+  color: #e6e0e9 !important;
+  border: none !important;
+  border-radius: 28px !important;
+  box-shadow:
+    0 4px 8px 0 rgba(0,0,0,.5),
+    0 8px 24px 4px rgba(0,0,0,.5) !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "PingFang SC", "Hiragino Sans GB", sans-serif;
+  padding: 16px 12px;
+  min-width: 320px;
+}
+.air-datepicker-nav {
+  padding: 4px 12px 12px !important;
+  background: transparent !important;
+  border: none !important;
+  color: #e6e0e9 !important;
+}
+.air-datepicker-nav--title {
+  font-size: 16px !important;
+  font-weight: 500 !important;
+  letter-spacing: .15px !important;
+  color: #e6e0e9 !important;
+  border-radius: 999px;
+  transition: background .15s;
+}
+.air-datepicker-nav--title:hover { background: rgba(255,255,255,.08) !important; }
+.air-datepicker-nav--action {
+  width: 40px !important; height: 40px !important;
+  border-radius: 999px !important;
+  background: transparent !important;
+  transition: background .15s;
+  display: inline-flex !important; align-items: center !important; justify-content: center !important;
+}
+.air-datepicker-nav--action:hover { background: rgba(255,255,255,.08) !important; }
+.air-datepicker-nav--action path { stroke: #cac4d0 !important; stroke-width: 2.4 !important; }
+.air-datepicker--content {
+  padding: 0 4px !important;
+  background: transparent !important;
+  color: #e6e0e9 !important;
+}
+.air-datepicker-body--day-names { margin-bottom: 6px; }
+.-air-datepicker-body--day-name- {
+  color: #cac4d0 !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  letter-spacing: .5px !important;
+  text-transform: uppercase !important;
+  height: 32px !important;
+  background: transparent !important;
+}
+.air-datepicker-body--cells.-days- { grid-gap: 2px; }
+.air-datepicker-cell {
+  height: 40px !important;
+  width: 40px !important;
+  margin: 0 !important;
+  border-radius: 999px !important;
+  font-size: 14px !important;
+  font-weight: 400 !important;
+  display: inline-flex !important; align-items: center !important; justify-content: center !important;
+  transition: background .15s, color .15s !important;
+  color: #e6e0e9 !important;
+  background: transparent !important;
+  border: none !important;
+}
+.air-datepicker-cell:hover { background: rgba(255,255,255,.08) !important; color: #ffffff !important; }
+.air-datepicker-cell.-current- {
+  color: #3eaf7c !important;
+  font-weight: 600 !important;
+  background: transparent !important;
+}
+.air-datepicker-cell.-current-.-focus- {
+  background: rgba(62,175,124,.18) !important;
+  color: #3eaf7c !important;
+}
+.air-datepicker-cell.-selected- {
+  background: #3eaf7c !important;
+  color: #ffffff !important;
+  font-weight: 500 !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,.4), 0 1px 3px 1px rgba(0,0,0,.2) !important;
+}
+.air-datepicker-cell.-selected-:hover { background: #4cc78e !important; }
+.air-datepicker-cell.-other-month- { color: rgba(230,224,233,.35) !important; background: transparent !important; }
+.air-datepicker-cell.-disabled- { color: rgba(230,224,233,.20) !important; background: transparent !important; pointer-events: none !important; }
+/* 按钮 footer */
+.air-datepicker-buttons {
+  padding: 12px 4px 4px !important;
+  border-top: none !important;
+  background: transparent !important;
+  gap: 8px !important;
+  justify-content: flex-end !important;
+}
+.air-datepicker-buttons span {
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  letter-spacing: .1px !important;
+  padding: 8px 14px !important;
+  border-radius: 999px !important;
+  cursor: pointer !important;
+  transition: background .15s !important;
+  color: #3eaf7c !important;
+  background: transparent !important;
+  text-transform: none !important;
+}
+.air-datepicker-buttons span:hover { background: rgba(62,175,124,.12) !important; }
+/* 防止年月日下拉/输入是白底 */
+.air-datepicker-nav--title select,
+.air-datepicker-nav--title input {
+  background: transparent !important;
+  color: #e6e0e9 !important;
+  border: none !important;
+}
+/* 时间面板（如启用） */
+.air-datepicker--time {
+  background: transparent !important;
+  border-top: 1px solid rgba(255,255,255,.08) !important;
+  color: #e6e0e9 !important;
+}
+.air-datepicker--time > div { color: #e6e0e9 !important; }
+/* 弹窗左上角白色箭头：直接隐藏（卡片风格不需要小三角） */
+.air-datepicker--pointer { display: none !important; }
+
+/* === 表格 === */
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+th { color: var(--text-muted); font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: .5px; }
+tr:hover td { background: var(--hover); }
+
+/* === 布局 === */
+.layout { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+
+/* === 侧边栏 === */
+.sidebar {
+  background: var(--card); border-right: 1px solid var(--border);
+  padding: 0; display: flex; flex-direction: column;
+}
+.sidebar .brand {
+  padding: 18px 20px; font-weight: 700; font-size: 16px; color: #e6edf3;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 8px;
+}
+.sidebar .brand .dot {
+  width: 10px; height: 10px; border-radius: 50%; background: var(--primary);
+  box-shadow: 0 0 0 4px rgba(62,175,124,.18), 0 0 8px rgba(62,175,124,.4); flex-shrink: 0;
+}
+.sidebar nav { padding: 8px; flex: 1; overflow-y: auto; }
+
+.nav-section { padding: 6px 0; border-bottom: 1px solid var(--border); }
+.nav-section:last-child { border-bottom: none; }
+.nav-label {
+  padding: 8px 12px 4px; font-size: 11px; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: .5px; font-weight: 600;
+}
+.sidebar nav a {
+  display: block; padding: 10px 12px; border-radius: 8px;
+  color: var(--text-muted); font-size: 14px; font-weight: 500;
+  transition: background .15s, color .15s;
+}
+.sidebar nav a:hover { background: var(--hover); color: var(--text); text-decoration: none; }
+.sidebar nav a.on { background: var(--active-bg); color: var(--primary); font-weight: 600; }
+
+/* === 产品选择器（自定义下拉） === */
+.product-dropdown { position: relative; margin: 4px 0 8px; }
+.product-trigger {
+  width: 100%; justify-content: space-between; padding: 10px 12px;
+  border: 1px solid var(--border-light); border-radius: 8px; background: var(--bg);
+  color: var(--text); font-size: 14px; font-weight: 500; cursor: pointer;
+  transition: border-color .15s, box-shadow .15s;
+  display: flex; align-items: center;
+}
+.product-trigger:hover { border-color: var(--primary); }
+.product-trigger .chevron { color: var(--text-muted); transition: transform .2s; flex-shrink: 0; }
+.product-trigger .chevron.up { transform: rotate(180deg); }
+.product-menu {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 50;
+  background: var(--card); border: 1px solid var(--border-light); border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.4); overflow: hidden; padding: 4px;
+}
+.product-menu a {
+  display: block; padding: 9px 12px; border-radius: 6px;
+  color: var(--text); font-size: 14px; font-weight: 500;
+  transition: background .12s; text-decoration: none;
+}
+.product-menu a:hover { background: var(--hover); }
+.product-menu a.on { background: var(--active-bg); color: var(--primary); }
+.product-menu-empty { padding: 9px 12px; color: var(--text-muted); font-size: 14px; }
+.dropdown-mask { position: fixed; inset: 0; z-index: 40; }
+
+/* === 确认弹窗 === */
+.confirm-dialog { max-width: 360px; text-align: center; padding: 28px 24px 20px; }
+.confirm-icon {
+  width: 56px; height: 56px; border-radius: 50%; background: rgba(251,191,36,.12);
+  margin: 0 auto 14px; display: flex; align-items: center; justify-content: center;
+}
+.confirm-dialog h3 { margin-bottom: 6px; font-size: 17px; color: #e6edf3; }
+.confirm-dialog p { color: var(--text-muted); font-size: 14px; margin-bottom: 20px; }
+.confirm-dialog .modal-actions { justify-content: center; }
+.confirm-dialog .modal-actions button { min-width: 90px; justify-content: center; }
+
+/* === 主区域 === */
+.main { padding: 24px; overflow-y: auto; }
+.main h1 { font-size: 20px; margin-bottom: 16px; color: #e6edf3; }
+.main h2 { font-size: 16px; margin-bottom: 12px; color: #e6edf3; }
+
+/* === 卡片 === */
+.card {
+  background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+  padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.2);
+}
+
+/* === 布局工具 === */
+.row { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+.row > * { margin-bottom: 0; }
+.row.spread { justify-content: space-between; }
+
+/* === 徽章 === */
+.badge {
+  display: inline-block; padding: 2px 10px; border-radius: 6px; font-size: 12px;
+  background: var(--border); color: var(--text-muted); font-weight: 500;
+}
+.badge.active { background: rgba(62,175,124,.15); color: #4ade80; }
+.badge.disabled { background: rgba(248,113,113,.15); color: var(--danger); }
+.badge.shared { background: rgba(96,165,250,.15); color: #60a5fa; }
+.badge.dedicated { background: rgba(251,191,36,.15); color: var(--warn); }
+.badge.free { background: var(--border); color: var(--text-muted); }
+.badge.annual { background: rgba(251,191,36,.15); color: var(--warn); }
+
+/* === 提示条 === */
+.alert {
+  padding: 10px 14px; border-radius: 8px; margin-bottom: 12px; font-size: 14px;
+}
+.alert.error { background: rgba(248,113,113,.1); border: 1px solid rgba(248,113,113,.3); color: var(--danger); }
+.alert.success { background: rgba(62,175,124,.1); border: 1px solid rgba(62,175,124,.3); color: #4ade80; }
+
+/* === Modal === */
+.modal {
+  position: fixed; inset: 0; background: rgba(0,0,0,.65); display: flex;
+  align-items: center; justify-content: center; z-index: 100;
+  backdrop-filter: blur(4px);
+}
+.modal-content {
+  background: var(--card); border: 1px solid var(--border-light); border-radius: 12px;
+  padding: 24px; width: 90%; max-width: 480px;
+  box-shadow: 0 16px 48px rgba(0,0,0,.5);
+}
+.modal-content h3 { margin-bottom: 8px; font-size: 18px; color: #e6edf3; }
+.modal-content label { display: block; margin-bottom: 4px; color: var(--text); font-size: 14px; font-weight: 500; }
+.modal-content input, .modal-content select {
+  width: 100%; margin-bottom: 12px; padding: 9px 12px;
+}
+.modal-content p { color: var(--text-muted); font-size: 14px; }
+/* 居中版（图标型弹窗：删除/确认/解绑/退出等） */
+.modal-actions.center { justify-content: center; }
+.modal-actions.center button { min-width: 96px; justify-content: center; }
+/* 默认靠右（表单型弹窗：改套餐/确认收款/完成续期） */
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }

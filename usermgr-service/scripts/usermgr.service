@@ -1,0 +1,16 @@
+[Unit]
+Description=Vectorac User Management Service
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/home/www/vectorac/usermgr-service
+EnvironmentFile=/home/www/vectorac/usermgr-service/.env
+ExecStart=/usr/bin/node /home/www/vectorac/usermgr-service/server.js
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
