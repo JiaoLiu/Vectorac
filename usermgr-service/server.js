@@ -653,7 +653,7 @@ app.post('/:product/api/device/bind/confirm', userAuth, (req, res) => {
 
 // ==================== 设备：激活（核心改动②③⑧） ====================
 // 设备用 eFuse 中的 FactoryKey 计算 HMAC，签名内容：v1|activate|hardware_id|timestamp|nonce
-app.post('/:product/api/device/activate', (req, res) => {
+app.post('/:product/api/device/activate', async (req, res) => {
   const productId = DB.getProductIdByCode(req.params.product);
   if (!productId) return res.status(404).json({ error: 'product_not_found' });
 
@@ -705,25 +705,24 @@ app.post('/:product/api/device/activate', (req, res) => {
     return res.status(500).json({ error: 'product_volcano_not_configured' });
   }
 
-  volcano.dynamicRegister({
-    instance_id: productConfig.instance_id,
-    product_key: productConfig.product_key,
-    product_secret: productConfig.product_secret,
-    device_name: cred.volcano_device_name,
-  }, (err, result) => {
-    if (err) {
-      console.error('[volcano] DynamicRegister 失败:', err);
-      return res.status(502).json({ error: 'volcano_register_failed', message: err.message });
-    }
+  try {
+    const result = await volcano.dynamicRegister({
+      instance_id: productConfig.instance_id,
+      product_key: productConfig.product_key,
+      product_secret: productConfig.product_secret,
+    }, cred.volcano_device_name);
     DB.saveVolcanoDeviceSecret(cred.id, result.device_secret);
-    res.json({
+    return res.json({
       ok: true,
       recovered: false,
       sn: cred.sn,
       volcano_device_name: cred.volcano_device_name,
       device_secret: result.device_secret,
     });
-  });
+  } catch (err) {
+    console.error('[volcano] DynamicRegister 失败:', err);
+    return res.status(502).json({ error: 'volcano_register_failed', message: err.message });
+  }
 });
 
 // ==================== 设备：状态查询（新增⑦ + v4 ⑩） ====================

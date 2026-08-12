@@ -34,6 +34,19 @@ for (const ext of ['-wal', '-shm']) {
 
 const { app, buildSignString } = require('./server');
 const DB = require('./db');
+const volcano = require('./volcano');
+
+// DynamicRegister payload 必须先 AES 解密，不能把 Base64 密文当 DeviceSecret。
+{
+  const productSecret = '0123456789abcdef-product-secret';
+  const key = Buffer.from(productSecret, 'utf8').subarray(0, 16);
+  const expectedSecret = 'device-secret-for-esp32';
+  const cipher = crypto.createCipheriv('aes-128-cbc', key, key);
+  const payload = Buffer.concat([cipher.update(expectedSecret, 'utf8'), cipher.final()]).toString('base64');
+  if (volcano.decryptDeviceSecret(payload, productSecret) !== expectedSecret) {
+    throw new Error('DynamicRegister DeviceSecret decrypt regression');
+  }
+}
 
 function req(method, path, body, headers = {}) {
   return new Promise((resolve, reject) => {

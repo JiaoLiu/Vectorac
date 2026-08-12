@@ -19,6 +19,37 @@ function signSignature(productSecret, params) {
 }
 
 /**
+ * DynamicRegister returns DeviceSecret encrypted as Base64(AES-128-CBC).
+ * key = first 16 UTF-8 bytes of ProductSecret, IV = key, padding = PKCS#7.
+ */
+function decryptDeviceSecret(payloadB64, productSecret) {
+  const productSecretBytes = Buffer.from(productSecret, 'utf8');
+  if (productSecretBytes.length < 16) {
+    throw new Error('ProductSecret must contain at least 16 bytes');
+  }
+  if (typeof payloadB64 !== 'string' || !payloadB64.length) {
+    throw new Error('Volcano API: empty encrypted payload');
+  }
+
+  const key = productSecretBytes.subarray(0, 16);
+  const encrypted = Buffer.from(payloadB64, 'base64');
+  if (!encrypted.length || encrypted.length % 16 !== 0) {
+    throw new Error('Volcano API: invalid encrypted payload');
+  }
+
+  try {
+    const decipher = crypto.createDecipheriv('aes-128-cbc', key, key);
+    const deviceSecret = Buffer.concat([decipher.update(encrypted), decipher.final()])
+      .toString('utf8')
+      .trim();
+    if (!deviceSecret) throw new Error('empty DeviceSecret');
+    return deviceSecret;
+  } catch (e) {
+    throw new Error(`Volcano DeviceSecret decrypt failed: ${e.message}`);
+  }
+}
+
+/**
  * 调用火山 DynamicRegister
  * @param {Object} cfg - { instance_id, product_key, product_secret }
  * @param {String} deviceName - 设备名（产品下唯一，推荐 SN）
@@ -71,11 +102,8 @@ function dynamicRegister(cfg, deviceName) {
           if (!json.Result || !json.Result.payload) {
             return reject(new Error('Volcano API: missing payload'));
           }
-          // payload 是加密的 device_secret，Base64 编码
-          // 注意：火山返回的 payload 可能需要用 product_secret 解密，
-          // 但根据文档说明，payload 即为 device_secret（Base64）。
-          // 实际接入时如需解密，在此处理。
-          resolve({ device_secret: json.Result.payload });
+          const deviceSecret = decryptDeviceSecret(json.Result.payload, cfg.product_secret);
+          resolve({ device_secret: deviceSecret });
         } catch (e) {
           reject(new Error(`Volcano API parse error: ${e.message}`));
         }
@@ -126,4 +154,4 @@ function renewLicense(cfg, params) {
   });
 }
 
-module.exports = { dynamicRegister, signSignature, renewLicense };
+module.exports = { dynamicRegister, signSignature, decryptDeviceSecret, renewLicense };
