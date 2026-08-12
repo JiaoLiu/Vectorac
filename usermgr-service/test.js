@@ -66,13 +66,13 @@ function req(method, path, body, headers = {}) {
 
 function sign(factoryKey, action, hardwareId, timestamp, nonce) {
   const s = buildSignString(action, hardwareId, timestamp, nonce);
-  return crypto.createHmac('sha256', factoryKey).update(s).digest('base64');
+  return crypto.createHmac('sha256', Buffer.from(factoryKey, 'hex')).update(s).digest('base64');
 }
 
 // provision verify 签名：v1|provision_verify|hardwareId|challenge → HMAC hex
 function signVerify(factoryKey, hardwareId, challenge) {
   const s = `v1|provision_verify|${hardwareId}|${challenge}`;
-  return crypto.createHmac('sha256', factoryKey).update(s).digest('hex');
+  return crypto.createHmac('sha256', Buffer.from(factoryKey, 'hex')).update(s).digest('hex');
 }
 
 let pass = 0, fail = 0;

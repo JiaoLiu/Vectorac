@@ -118,7 +118,9 @@ function verifySignature(action, factoryKey, hardwareId, timestamp, nonce, signa
   if (DB.isNonceUsed(nonce)) return { ok: false, reason: 'nonce_reused' };
 
   const expected = buildSignString(action, hardwareId, ts, nonce);
-  const expectedSig = crypto.createHmac('sha256', factoryKey).update(expected).digest();
+  // FactoryKey is persisted as 64 hex characters, while ESP32 HMAC_UP uses
+  // the represented 32 raw bytes as its key.
+  const expectedSig = crypto.createHmac('sha256', Buffer.from(factoryKey, 'hex')).update(expected).digest();
   let got;
   try {
     got = Buffer.from(signatureB64, 'base64');

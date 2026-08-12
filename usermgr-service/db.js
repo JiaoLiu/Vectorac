@@ -384,7 +384,9 @@ function verifyProvision(productId, hardwareId, challenge, responseHex) {
   // 验证 HMAC
   const factoryKey = decrypt(cred.factory_key);
   const expected = `v1|provision_verify|${hardwareId}|${challenge}`;
-  const expectedSig = crypto.createHmac('sha256', factoryKey).update(expected).digest();
+  // FactoryKey is returned to the factory tool as hex, but the eFuse contains
+  // the corresponding 32 raw bytes. Verify against those same bytes.
+  const expectedSig = crypto.createHmac('sha256', Buffer.from(factoryKey, 'hex')).update(expected).digest();
   let got;
   try {
     got = Buffer.from(responseHex, 'hex');
