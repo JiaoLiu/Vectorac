@@ -58,23 +58,18 @@ function decryptDeviceSecret(payloadB64, productSecret) {
 function dynamicRegister(cfg, deviceName) {
   return new Promise((resolve, reject) => {
     const params = {
+      InstanceID: cfg.instance_id,
       product_key: cfg.product_key,
       device_name: deviceName,
-      random_num: Math.floor(Math.random() * 1000000),
+      random_num: crypto.randomInt(1, 2000000001),
       timestamp: Date.now(),
       auth_type: 1,
     };
     params.signature = signSignature(cfg.product_secret, params);
 
-    const body = new URLSearchParams({
-      InstanceID: cfg.instance_id,
-      product_key: params.product_key,
-      device_name: params.device_name,
-      random_num: String(params.random_num),
-      timestamp: String(params.timestamp),
-      auth_type: String(params.auth_type),
-      signature: params.signature,
-    }).toString();
+    // The DynamicRegister endpoint expects a JSON body. InstanceID is part of
+    // that body (but not part of the HMAC signing string).
+    const body = JSON.stringify(params);
 
     const query = 'Action=DynamicRegister&Version=2021-12-14';
     const path = `${VOLCANO_API_PATH}?${query}`;
@@ -85,7 +80,7 @@ function dynamicRegister(cfg, deviceName) {
       path,
       method: 'POST',
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Type': 'application/json',
         'Content-Length': Buffer.byteLength(body),
       },
       timeout: 10000,
