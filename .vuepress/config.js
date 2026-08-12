@@ -6,6 +6,7 @@ module.exports = {
     '**/*.md',
     '**/*.vue',
     '!shorturl-service/**',
+    '!usermgr-service/**',
     '!.private/**',
     '!**/node_modules/**'
   ],

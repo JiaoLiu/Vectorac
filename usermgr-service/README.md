@@ -17,7 +17,14 @@ Vectorac 全产品统一的**产品/用户/设备/订单/服务期管理平台**
 | `/{product}/api/*` | 指定产品用户/设备 API，例如 `/xiaov/api/*` |
 | `/healthz` | 健康检查（nginx/systemd 用） |
 
-ESP32、烧录工具接口及 HMAC 规范见 [`docs/ESP32_API.md`](docs/ESP32_API.md)。
+## 文档目录
+
+本服务的说明统一从本 README 进入：
+
+- 本文件：平台架构、公开地址、构建、部署和运维
+- [`docs/ESP32_API.md`](docs/ESP32_API.md)：ESP32、工厂烧录工具、HMAC 签名及完整设备 API
+
+`usermgr-service/**` 已在 VuePress `patterns` 中整体排除，不会构建到 vectorac.com，也不会进入官网站内搜索。注意仓库本身是 Public，因此这些源文件仍可在 GitHub 被查看。
 
 ## 本地开发
 
