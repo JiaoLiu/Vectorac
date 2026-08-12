@@ -145,6 +145,48 @@ curl http://127.0.0.1:3030/healthz   # 健康检查
 
 改完之后必须 `sudo systemctl restart shorturl` 才生效。旧短链不受影响（短码存的是目标 URL，前缀只是展示）。
 
+## usermgr-service 部署（一键）
+
+设备端用户/设备/订单/服务期管理服务。完整文档见 `usermgr-service/README.md`，下面是最少步骤：
+
+### 构建 Linux x64 部署包
+
+在 GitHub Actions 手动运行 **Build usermgr Linux x64 package**，下载 artifact 并解压得到 `.tar.gz`。包内已经包含 Rocky Linux 8 / Node 22 的 Linux x64 依赖，服务器不运行 npm。
+
+```bash
+scp usermgr-service-linux-x64-*.tar.gz root@jane66.com:/tmp/
+```
+
+### 服务器一键部署
+```bash
+ssh root@jane66.com
+rm -rf /tmp/usermgr-release && mkdir /tmp/usermgr-release
+tar -xzf /tmp/usermgr-service-linux-x64-*.tar.gz -C /tmp/usermgr-release
+cd /tmp/usermgr-release/usermgr-service
+sudo PORT=3031 \
+     JWT_SECRET=$(openssl rand -hex 32) \
+     ADMIN_PASSWORD=$(openssl rand -hex 8) \
+     KEY_ENCRYPTION_SECRET=$(openssl rand -hex 32) \
+     bash scripts/install.sh
+```
+
+### nginx 反代（合并进 vectorac.conf）
+```bash
+sudo cp /home/www/vectorac/usermgr-service/scripts/usermgr-proxy.conf /etc/nginx/conf.d/usermgr.conf
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+### 必须备份
+- `data/usermgr.db` — SQLite 数据库（所有用户/设备/订单/服务期数据）
+- `.env` — `JWT_SECRET` / `ADMIN_PASSWORD` / `KEY_ENCRYPTION_SECRET`（**KEY_ENCRYPTION_SECRET 绝对不能丢**，丢了所有设备 FactoryKey 全部失效需重新烧录）
+
+### 运维命令
+```bash
+sudo systemctl status usermgr
+sudo systemctl restart usermgr
+sudo journalctl -u usermgr -f
+```
+
 ## 部署配置
 
 ### 1. 核心配置文件

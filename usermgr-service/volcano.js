@@ -64,11 +64,11 @@ function dynamicRegister(cfg, deviceName) {
       res.on('end', () => {
         try {
           const json = JSON.parse(data);
-          if (json.ResponseMetadata?.Error) {
+          if (json.ResponseMetadata && json.ResponseMetadata.Error) {
             const e = json.ResponseMetadata.Error;
             return reject(new Error(`Volcano API error: ${e.Code || ''} ${e.Message || ''}`));
           }
-          if (!json.Result?.payload) {
+          if (!json.Result || !json.Result.payload) {
             return reject(new Error('Volcano API: missing payload'));
           }
           // payload 是加密的 device_secret，Base64 编码

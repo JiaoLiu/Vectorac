@@ -1,0 +1,53 @@
+name: Build usermgr Linux x64 package
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    container: rockylinux:8
+    timeout-minutes: 15
+
+    steps:
+      - name: Install build tools and Node.js
+        run: |
+          dnf install -y git curl xz tar gzip file
+          curl -fsSLO https://nodejs.org/dist/v22.22.0/node-v22.22.0-linux-x64.tar.xz
+          tar -xJf node-v22.22.0-linux-x64.tar.xz -C /usr/local --strip-components=1
+          node --version
+          npm --version
+
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Linux production dependencies
+        working-directory: usermgr-service
+        run: npm ci --omit=dev --no-audit --no-fund
+
+      - name: Verify native module
+        working-directory: usermgr-service
+        run: |
+          node -e "const D=require('better-sqlite3'); const db=new D(':memory:'); console.log(db.prepare('select sqlite_version() version').get()); db.close()"
+          file node_modules/better-sqlite3/build/Release/better_sqlite3.node
+          file node_modules/better-sqlite3/build/Release/better_sqlite3.node | grep -q 'ELF 64-bit.*x86-64'
+
+      - name: Create deployment archive
+        run: |
+          mkdir -p package/usermgr-service
+          cp -a usermgr-service/server.js usermgr-service/db.js usermgr-service/volcano.js \
+            usermgr-service/package.json usermgr-service/package-lock.json usermgr-service/README.md \
+            usermgr-service/public usermgr-service/scripts usermgr-service/node_modules \
+            package/usermgr-service/
+          tar -czf usermgr-service-linux-x64-${GITHUB_SHA::7}.tar.gz -C package usermgr-service
+
+      - name: Upload deployment package
+        uses: actions/upload-artifact@v4
+        with:
+          name: usermgr-service-linux-x64-${{ github.sha }}
+          path: usermgr-service-linux-x64-*.tar.gz
+          if-no-files-found: error
+          retention-days: 14

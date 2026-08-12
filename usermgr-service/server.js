@@ -52,10 +52,11 @@ function clientIp(req) {
     || req.socket.remoteAddress || 'unknown';
 }
 // 定期清理过期 bucket，防内存泄漏
-setInterval(() => {
+const _cleanupTimer = setInterval(() => {
   const now = Date.now();
   for (const [k, b] of rateBuckets) if (b.resetAt <= now) rateBuckets.delete(k);
-}, 5 * 60 * 1000).unref?.();
+}, 5 * 60 * 1000);
+if (_cleanupTimer.unref) _cleanupTimer.unref();
 
 // ==================== SMS Stub ====================
 // 真实环境替换为阿里云/腾讯云短信 SDK。dev/test 模式不发送，返回验证码供联调。
