@@ -101,6 +101,8 @@ async function main() {
     r = await req('GET', '/admin/api/products', null, { Authorization: `Bearer ${ADMIN}` });
     check('管理员产品列表', r.status === 200 && Array.isArray(r.body));
     const xiaovId = r.body.find(p => p.code === 'xiaov')?.id;
+    r = await req('GET', '/admin/api/products', null, { Authorization: `Bearer ${PROV}` });
+    check('烧录令牌不可访问管理接口', r.status === 401);
     check('xiaov 产品存在', !!xiaovId);
 
     // ===== 3. 出厂录入阶段 1（返回 SN + FactoryKey + challenge，status=provisioning） =====

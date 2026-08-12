@@ -74,10 +74,11 @@ sudo PORT=3031 \
 | `PORT` | 否 | 监听端口，默认 3031 |
 | `JWT_SECRET` | **是** | 用户 JWT 签名密钥 |
 | `ADMIN_PASSWORD` | **是** | 管理后台登录密码 |
+| `PROVISION_TOKEN` | 首次安装自动生成 | 工厂烧录工具调用 provision API 的专用令牌，禁止写入量产固件 |
 | `KEY_ENCRYPTION_SECRET` | **是** | 设备 FactoryKey / 火山 Secret AES 加密密钥（**改了所有现存设备密钥失效**） |
 | `ADMIN_IP_WHITELIST` | 否 | 管理后台 IP 白名单，逗号分隔。留空只靠密码 |
-| `VOLCANO_ENABLED` | 否 | 是否启用火山后台自动续期，默认 false |
-| `VOLCANO_API_KEY` | 火山启用时必填 | 火山引擎 API Key |
+| `VOLCANO_ENABLED` | 否 | 是否启用火山集成，默认 false；产品密钥在管理平台的产品配置中填写 |
+| `SMS_API_KEY` | 否 | 短信供应商配置占位；当前真实短信发送尚未实现，留空为开发模式 |
 
 `install.sh` 做的事：
 - 把文件复制到 `/home/www/vectorac/usermgr-service/`（`INSTALL_DIR` env 可改）

@@ -71,6 +71,8 @@ if [[ ! -f "$EXISTING_ENV" ]]; then
   KEY_ENCRYPTION_SECRET="${KEY_ENCRYPTION_SECRET:?首次安装必须设置 KEY_ENCRYPTION_SECRET}"
 fi
 ADMIN_IP_WHITELIST="${ADMIN_IP_WHITELIST:-}"  # 留空则只靠密码
+VOLCANO_ENABLED="${VOLCANO_ENABLED:-false}"
+SMS_API_KEY="${SMS_API_KEY:-}"
 
 # 运行用户：跟 vectorac 目录所有者一致
 DETECTED_OWNER="$(stat -c '%U:%G' /home/www/vectorac 2>/dev/null || true)"
@@ -104,16 +106,33 @@ echo "==> 使用部署包内预构建的 Linux x64 依赖（服务器不运行 n
 
 # ---- .env ----
 if [[ ! -f "$INSTALL_DIR/.env" ]]; then
+PROVISION_TOKEN="${PROVISION_TOKEN:-$(openssl rand -hex 32)}"
 cat > "$INSTALL_DIR/.env" <<EOF
 PORT=$PORT
 HOST=$HOST
 JWT_SECRET=$JWT_SECRET
 ADMIN_PASSWORD=$ADMIN_PASSWORD
+PROVISION_TOKEN=$PROVISION_TOKEN
 KEY_ENCRYPTION_SECRET=$KEY_ENCRYPTION_SECRET
 ADMIN_IP_WHITELIST=$ADMIN_IP_WHITELIST
+VOLCANO_ENABLED=$VOLCANO_ENABLED
+SMS_API_KEY=$SMS_API_KEY
 EOF
 else
-  echo "==> 保留现有 .env（密钥不变）"
+  echo "==> 保留现有 .env，并补齐缺失字段（已有密钥不变）"
+  ensure_env() {
+    local key="$1" value="$2"
+    if ! grep -q "^${key}=" "$INSTALL_DIR/.env"; then
+      printf '%s=%s\n' "$key" "$value" >> "$INSTALL_DIR/.env"
+      echo "    + 已补充 $key"
+    fi
+  }
+  ensure_env PORT "$PORT"
+  ensure_env HOST "$HOST"
+  ensure_env PROVISION_TOKEN "${PROVISION_TOKEN:-$(openssl rand -hex 32)}"
+  ensure_env ADMIN_IP_WHITELIST "$ADMIN_IP_WHITELIST"
+  ensure_env VOLCANO_ENABLED "$VOLCANO_ENABLED"
+  ensure_env SMS_API_KEY "$SMS_API_KEY"
 fi
 chmod 600 "$INSTALL_DIR/.env"
 chown -R "$RUN_USER:$RUN_GROUP" "$INSTALL_DIR"
@@ -159,6 +178,7 @@ if [[ -n "${ADMIN_PASSWORD:-}" ]]; then
 else
   echo "    管理密码: 沿用现有 .env"
 fi
+echo "    烧录令牌: 保存在 $INSTALL_DIR/.env 的 PROVISION_TOKEN（不要写入量产固件）"
 echo "    nginx 配置: 参考 $INSTALL_DIR/scripts/usermgr-proxy.conf"
 echo ""
 echo "常用命令:"

@@ -29,7 +29,7 @@ app.use(express.json());
 const PORT = process.env.PORT || 3031;
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin';
-const PROVISION_TOKEN = process.env.PROVISION_TOKEN || 'provision';
+const PROVISION_TOKEN = process.env.PROVISION_TOKEN;
 const VOLCANO_ENABLED = process.env.VOLCANO_ENABLED === 'true';
 const ALLOWED_DRIFT_MS = 5 * 60 * 1000;  // ±5 分钟时间窗
 
@@ -74,9 +74,17 @@ async function sendSms(phone, code) {
 // ==================== 中间件 ====================
 function adminAuth(req, res, next) {
   const auth = req.headers.authorization;
-  if (auth !== `Bearer ${ADMIN_PASSWORD}` && auth !== `Bearer ${PROVISION_TOKEN}`) {
+  if (auth !== `Bearer ${ADMIN_PASSWORD}`) {
     return res.status(401).json({ error: 'unauthorized' });
   }
+  next();
+}
+
+function provisionAuth(req, res, next) {
+  const auth = req.headers.authorization;
+  const adminAllowed = auth === `Bearer ${ADMIN_PASSWORD}`;
+  const provisionAllowed = !!PROVISION_TOKEN && auth === `Bearer ${PROVISION_TOKEN}`;
+  if (!adminAllowed && !provisionAllowed) return res.status(401).json({ error: 'unauthorized' });
   next();
 }
 
@@ -170,7 +178,7 @@ app.delete('/admin/api/products/:id', adminAuth, (req, res) => {
 
 // ==================== 管理员：出厂录入 ====================
 // 改动①：只收 product + hardware_id，SN 和 FactoryKey 由服务器生成
-app.post('/admin/api/provision', adminAuth, (req, res) => {
+app.post('/admin/api/provision', provisionAuth, (req, res) => {
   const { product, hardware_id } = req.body;
   if (!product || !hardware_id) return res.status(400).json({ error: 'missing_params' });
 
@@ -190,7 +198,7 @@ app.post('/admin/api/provision', adminAuth, (req, res) => {
 });
 
 // 阶段 2：验证 eFuse HMAC challenge
-app.post('/admin/api/provision/verify', adminAuth, (req, res) => {
+app.post('/admin/api/provision/verify', provisionAuth, (req, res) => {
   const { product, hardware_id, challenge, response } = req.body;
   if (!product || !hardware_id || !challenge || !response) {
     return res.status(400).json({ error: 'missing_params' });
@@ -213,7 +221,7 @@ app.post('/admin/api/provision/verify', adminAuth, (req, res) => {
 });
 
 // 标记烧录失败
-app.post('/admin/api/provision/fail', adminAuth, (req, res) => {
+app.post('/admin/api/provision/fail', provisionAuth, (req, res) => {
   const { product, hardware_id, reason } = req.body;
   if (!product || !hardware_id) return res.status(400).json({ error: 'missing_params' });
   const productId = DB.getProductIdByCode(product);
