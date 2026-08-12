@@ -848,7 +848,6 @@ const adminDir = path.join(__dirname, 'public', 'admin');
 if (fs.existsSync(accountDir)) app.use('/account', express.static(accountDir));
 if (fs.existsSync(adminDir)) app.use('/admin', express.static(adminDir));
 
-app.get('/:product/account', (req, res) => res.redirect(301, `/${req.params.product}/account/`));
 if (fs.existsSync(accountDir)) app.use('/:product/account', express.static(accountDir));
 
 app.get('/admin', (req, res) => res.sendFile(path.join(adminDir, 'index.html')));

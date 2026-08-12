@@ -91,6 +91,12 @@ async function main() {
     let r = await req('GET', '/healthz');
     check('健康检查', r.status === 200);
 
+    r = await req('GET', '/xiaov/account/');
+    check('产品用户页带尾斜杠直接返回', r.status === 200);
+
+    r = await req('GET', '/xiaov/account');
+    check('产品用户页无尾斜杠只重定向一次', r.status === 301 && r.body._raw.includes('/xiaov/account/'));
+
     // ===== 2. 管理员产品列表 =====
     r = await req('GET', '/admin/api/products', null, { Authorization: `Bearer ${ADMIN}` });
     check('管理员产品列表', r.status === 200 && Array.isArray(r.body));
