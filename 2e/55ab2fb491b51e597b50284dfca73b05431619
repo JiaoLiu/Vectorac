@@ -1,0 +1,102 @@
+usermgr-service/db.js
+  f36f3bac29a5715f 387-389
+usermgr-service/server.js
+  8538c752b39f3dac 121-123
+usermgr-service/test.js
+  f36f3bac29a5715f 69,75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.8",
+  "base_commit_sha": "2e55ab2fb491b51e597b50284dfca73b05431619",
+  "prompts": {
+    "056992989d58fd24": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a38e6391d55a586f6a882f6",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 2950,
+      "overriden_lines": 0
+    },
+    "4a68a259acc17f46": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a7152c27fd21251a8b13b6c",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1116,
+      "overriden_lines": 0
+    },
+    "8538c752b39f3dac": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a72ec597fd21251a8b14509",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 3,
+      "total_deletions": 1,
+      "accepted_lines": 3,
+      "overriden_lines": 0
+    },
+    "f36f3bac29a5715f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ff04e-8a7a-7f23-9f72-f400e68f268d",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 5,
+      "total_deletions": 3,
+      "accepted_lines": 5,
+      "overriden_lines": 0
+    }
+  },
+  "commit_stats": {
+    "git_diff_added_lines": 8,
+    "git_diff_deleted_lines": 4,
+    "ai_additions": 8,
+    "ai_accepted": 8,
+    "BYMC": 0,
+    "mixed_additions": 0,
+    "BYAC": 8,
+    "BYRC": 0,
+    "per_file": {
+      "usermgr-service/db.js": {
+        "BYMC": [],
+        "BYAC": [
+          "387-389"
+        ],
+        "BYRC": []
+      },
+      "usermgr-service/server.js": {
+        "BYMC": [],
+        "BYAC": [
+          "121-123"
+        ],
+        "BYRC": []
+      },
+      "usermgr-service/test.js": {
+        "BYMC": [],
+        "BYAC": [
+          "69",
+          "75"
+        ],
+        "BYRC": []
+      }
+    }
+  },
+  "commit_timestamp": 1786522833,
+  "requirement_id": ""
+}
