@@ -6,7 +6,7 @@
 // v4 新增：
 //   - 订单查看 + 手动确认收款
 //   - 设备服务期查看
-const API = '/admin/api';
+const API = 'api';
 const $ = (s) => document.querySelector(s);
 
 const state = {
