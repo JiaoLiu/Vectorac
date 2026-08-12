@@ -805,7 +805,7 @@ app.post('/:product/api/device/bind/qrcode', (req, res) => {
 
   const { temp_token, expires_at } = DB.createBindToken(cred.id);
   // 二维码内容：只含 temp_token，不含 SN
-  const qrUrl = `https://vectorac.com/${req.params.product}/account/bind?t=${temp_token}`;
+  const qrUrl = `https://vectorac.com/${req.params.product}/account/#/bind?t=${temp_token}`;
   res.json({
     ok: true,
     qr_url: qrUrl,

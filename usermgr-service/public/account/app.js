@@ -1,4 +1,4 @@
-// 小V 用户前台 SPA v4
+// Vectorac 多产品用户前台 SPA
 // 改动：
 //   - 绑定页不再传 SN（二维码里只有 temp_token，服务器自查 SN）
 //   - device_name 改 nickname
@@ -9,6 +9,7 @@
 // 路由：#/login  #/register  #/me  #/bind?t=xxx  #/orders
 const PRODUCT = location.pathname.match(/^\/([a-z][a-z0-9_]{1,30})\/account(?:\/|$)/)?.[1] || 'xiaov';
 const API = `/${PRODUCT}/api`;
+const PENDING_BIND_KEY = `pending_bind_token:${PRODUCT}`;
 const $ = (s) => document.querySelector(s);
 
 const state = {
@@ -208,7 +209,9 @@ function route() {
   state.alert = null;   // 切页清 alert
   if (path === '/bind') {
     // 二维码里只有 t，没有 sn
-    state.bindParams = { t: params.get('t') || '' };
+    const token = params.get('t') || sessionStorage.getItem(PENDING_BIND_KEY) || '';
+    state.bindParams = { t: token };
+    if (token) sessionStorage.setItem(PENDING_BIND_KEY, token);
   }
   if ((path === '/me' || path === '/orders') && !state.token) {
     location.hash = '/login';
@@ -217,6 +220,11 @@ function route() {
   render();
   if (path === '/me') loadMe();
   if (path === '/orders') loadOrders();
+}
+
+function continueAfterAuth() {
+  const token = sessionStorage.getItem(PENDING_BIND_KEY);
+  location.hash = token ? `/bind?t=${encodeURIComponent(token)}` : '/me';
 }
 
 window.addEventListener('hashchange', route);
@@ -229,7 +237,7 @@ async function doRegister(phone, password, email) {
     state.token = data.token;
     localStorage.setItem('user_token', data.token);
     state.user = data.user;
-    location.hash = '/me';
+    continueAfterAuth();
   } catch (e) { setAlert('error', e.message); }
 }
 
@@ -239,7 +247,7 @@ async function doLogin(phone, password) {
     state.token = data.token;
     localStorage.setItem('user_token', data.token);
     state.user = data.user;
-    location.hash = '/me';
+    continueAfterAuth();
   } catch (e) { setAlert('error', e.message); }
 }
 
@@ -395,9 +403,11 @@ async function doConfirmBind() {
       method: 'POST',
       body: JSON.stringify({
         temp_token: state.bindParams.t,
-        nickname: $('#bind-name').value || '我的小V',
+        nickname: $('#bind-name').value.trim(),
       }),
     });
+    sessionStorage.removeItem(PENDING_BIND_KEY);
+    state.bindParams = null;
     setAlert('success', '设备绑定成功');
     setTimeout(() => location.hash = '/me', 1500);
   } catch (e) { setAlert('error', e.message); }
@@ -427,7 +437,7 @@ function render() {
   let html = '';
   const topbar = `
     <div class="topbar">
-      <div class="brand">小V <em>账号</em></div>
+      <div class="brand">Vectorac <em>设备账号</em></div>
       <nav>
         ${state.token ? '<a href="#/me">我的</a><a href="#/orders">订单</a><a href="#" onclick="logout()">退出</a>' : '<a href="#/login">登录</a><a href="#/register">注册</a>'}
       </nav>
@@ -586,7 +596,7 @@ function render() {
           ${!state.token ? '<p>请先<a href="#/login">登录</a>后再绑定设备</p>' : `
             <p class="hint">扫描的设备将与你的账号绑定，可使用 AI 对话功能</p>
             <label>设备昵称（可选）</label>
-            <input id="bind-name" type="text" placeholder="给我的小V起个名字" />
+            <input id="bind-name" type="text" placeholder="可选；留空时显示设备 SN" />
             <button class="primary" onclick="doConfirmBind()">确认绑定</button>
           `}
         </div>

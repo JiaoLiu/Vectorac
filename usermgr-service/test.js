@@ -333,6 +333,7 @@ async function main() {
     });
     check('生成二维码成功', r.body.ok && !!r.body.temp_token);
     check('二维码 URL 不含 SN', !r.body.qr_url.includes('sn='));
+    check('二维码 URL 使用 SPA bind 路由', r.body.qr_url.includes('/account/#/bind?t='));
     const tempToken = r.body.temp_token;
 
     // 已绑定时不再生成

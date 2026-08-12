@@ -23,6 +23,9 @@ for (const [name, html] of [['admin', adminHtml], ['account', accountHtml]]) {
 
 check(admin.includes("const API = 'api';"), 'admin: API base must be relative to /admin/');
 check(account.includes('const API = `/${PRODUCT}/api`;'), 'account: API base must derive from product URL');
+check(account.includes('sessionStorage.setItem(PENDING_BIND_KEY, token)'), 'account: bind token must persist before auth');
+check(account.includes('continueAfterAuth();'), 'account: login/register must resume pending bind');
+check(account.includes('sessionStorage.removeItem(PENDING_BIND_KEY)'), 'account: completed bind must clear pending token');
 
 const serverRoutes = [...server.matchAll(/app\.(?:get|post|patch|put|delete)\(['"]([^'"]+)/g)]
   .map((m) => m[1]);

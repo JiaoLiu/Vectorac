@@ -210,7 +210,7 @@ ESP32 在开启 AI/火山会话前调用该接口，以 `ai_allowed` 作为最�
 ```json
 {
   "ok": true,
-  "qr_url": "https://vectorac.com/xiaov/account/bind?t=...",
+  "qr_url": "https://vectorac.com/xiaov/account/#/bind?t=...",
   "temp_token": "16-character-hex",
   "expires_at": "2026-08-12T01:00:00.000Z"
 }
