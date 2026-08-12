@@ -15,7 +15,8 @@ jobs:
     steps:
       - name: Install build tools and Node.js
         run: |
-          dnf install -y git curl xz tar gzip file binutils gcc gcc-c++ make python3.11
+          dnf install -y git curl xz tar gzip file binutils make python3.11 \
+            gcc-toolset-13-gcc gcc-toolset-13-gcc-c++
           curl -fsSLO https://nodejs.org/dist/v22.22.0/node-v22.22.0-linux-x64.tar.xz
           tar -xJf node-v22.22.0-linux-x64.tar.xz -C /usr/local --strip-components=1
           node --version
@@ -28,8 +29,12 @@ jobs:
         working-directory: usermgr-service
         env:
           PYTHON: /usr/bin/python3.11
+          CC: /opt/rh/gcc-toolset-13/root/usr/bin/gcc
+          CXX: /opt/rh/gcc-toolset-13/root/usr/bin/g++
           npm_config_build_from_source: "true"
-        run: npm ci --omit=dev --no-audit --no-fund
+        run: |
+          "$CXX" --version
+          npm ci --omit=dev --no-audit --no-fund
 
       - name: Verify native module
         working-directory: usermgr-service
