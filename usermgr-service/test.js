@@ -497,15 +497,16 @@ async function main() {
     const expiresAfter = r.body[0].service_expires_at;
     check('确认收款后服务期延长', new Date(expiresAfter).getTime() > new Date(expiresBefore).getTime());
 
-    // mark-paid 后 provider_renew_status=pending → ai_allowed=false（服务正在开通，不直接连火山）
+    // mark-paid 只让新 License 进入 pending；当前 License 未到期时仍可使用。
     ts = Date.now(); nonce = crypto.randomBytes(8).toString('hex');
     sig = sign(factoryKey, 'status', hwid, ts, nonce);
     r = await req('POST', '/xiaov/api/device/status', {
       hardware_id: hwid, timestamp: ts, nonce, signature: sig,
     });
     check('续费确认后 service_status=active', r.body.service_status === 'active');
-    check('续费确认后 ai_allowed=false（provider 待续期）', r.body.ai_allowed === false);
-    check('续费确认后 provider_available=false', r.body.provider_available === false);
+    check('续费 pending 不停用当前有效 License', r.body.ai_allowed === true);
+    check('当前火山 License 未到期仍 available', r.body.provider_available === true);
+    check('status 返回火山 License 到期日', !!r.body.provider_expires_at);
 
     // 管理员完成续期后 ai_allowed=true
     await req('POST', `/admin/api/orders/${orderId}/complete-renew`, { license_id: 'LIC-19' }, { Authorization: `Bearer ${ADMIN}` });

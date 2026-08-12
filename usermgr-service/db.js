@@ -126,6 +126,7 @@ CREATE TABLE IF NOT EXISTS device_services (
   provider_renew_at TEXT,
   provider_renew_error TEXT,
   provider_license_id TEXT,                  -- 火山 License ID（如适用）
+  provider_expires_at TEXT,                  -- 当前已实际开通的火山 License 到期时间
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT DEFAULT (datetime('now')),
   FOREIGN KEY (credential_id) REFERENCES device_credentials(id),
@@ -180,6 +181,25 @@ CREATE INDEX IF NOT EXISTS idx_bind_tokens_temp ON device_bind_tokens(temp_token
   if (cols.length > 0 && !cols.some(c => c.name === 'phone')) {
     db.exec("ALTER TABLE users ADD COLUMN phone TEXT");
   }
+}
+
+// 迁移：供应商当前 License 到期日与平台套餐到期日分开记录。
+// 老设备首个火山 License 从 DynamicRegister 成功时间起按一年回填；这不会把
+// 尚未在火山确认的续费误算成已生效。
+{
+  const cols = db.prepare("PRAGMA table_info(device_services)").all();
+  if (cols.length > 0 && !cols.some(c => c.name === 'provider_expires_at')) {
+    db.exec("ALTER TABLE device_services ADD COLUMN provider_expires_at TEXT");
+  }
+  db.exec(`
+    UPDATE device_services
+    SET provider_expires_at = COALESCE(
+      (SELECT datetime(c.volcano_activated_at, '+1 year')
+       FROM device_credentials c WHERE c.id = device_services.credential_id),
+      expires_at
+    )
+    WHERE provider_expires_at IS NULL
+  `);
 }
 
 // 迁移：device_credentials 加 provision_challenge / challenge_expires_at / failure_reason
@@ -689,13 +709,13 @@ function createServiceForBinding(userId, credentialId, productId, plan = 'annual
   const startAt = now.toISOString();
   const exp = new Date(now.getTime() + years * 365 * 24 * 60 * 60 * 1000);
   db.prepare(`
-    INSERT INTO device_services (credential_id, user_id, product_id, start_at, expires_at, plan)
-    VALUES (?, ?, ?, ?, ?, ?)
+    INSERT INTO device_services (credential_id, user_id, product_id, start_at, expires_at, plan, provider_expires_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(credential_id) DO UPDATE SET
       user_id = excluded.user_id,
       plan = excluded.plan,
       updated_at = datetime('now')
-  `).run(credentialId, userId, productId, startAt, exp.toISOString(), plan);
+  `).run(credentialId, userId, productId, startAt, exp.toISOString(), plan, exp.toISOString());
   return getServiceByCredential(credentialId);
 }
 
@@ -722,15 +742,16 @@ function extendService(credentialId, userId, years = 1) {
   return getServiceByCredential(credentialId);
 }
 
-function setServiceRenewStatus(credentialId, status, { error = null, licenseId = null } = {}) {
+function setServiceRenewStatus(credentialId, status, { error = null, licenseId = null, providerExpiresAt = null } = {}) {
   db.prepare(`
     UPDATE device_services
     SET provider_renew_status = ?,
         provider_renew_error = ?,
         provider_license_id = COALESCE(?, provider_license_id),
+        provider_expires_at = COALESCE(?, provider_expires_at),
         updated_at = datetime('now')
     WHERE credential_id = ?
-  `).run(status, error, licenseId, credentialId);
+  `).run(status, error, licenseId, providerExpiresAt, credentialId);
 }
 
 function listServicesByProduct(productId) {
@@ -833,7 +854,17 @@ function completeOrderRenew(orderId, licenseId, operatorId) {
   `).run(operatorId || 'admin', licenseId || null, orderId);
   if (info.changes !== 1) return false;
   // device_services.provider_license_id 记录"当前正在使用的 License"
-  setServiceRenewStatus(order0.credential_id, 'completed', { licenseId: licenseId || null });
+  const service = getServiceByCredential(order0.credential_id);
+  const currentProviderExpiry = service && new Date(service.provider_expires_at).getTime();
+  const providerBase = Number.isFinite(currentProviderExpiry) && currentProviderExpiry > Date.now()
+    ? currentProviderExpiry : Date.now();
+  const providerExpiresAt = new Date(
+    providerBase + order0.years * 365 * 24 * 60 * 60 * 1000
+  ).toISOString();
+  setServiceRenewStatus(order0.credential_id, 'completed', {
+    licenseId: licenseId || null,
+    providerExpiresAt,
+  });
   return true;
 }
 

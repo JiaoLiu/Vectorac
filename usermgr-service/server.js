@@ -756,18 +756,14 @@ app.post('/:product/api/device/status', (req, res) => {
     service_status = new Date(service.expires_at).getTime() > Date.now() ? 'active' : 'expired';
   }
 
-  // provider_available：原火山 License 是否仍有效
-  //   none       → 首年未续费，DynamicRegister 时获得的 License 有效
-  //   completed  → 续期完成，新 License 已绑定
-  //   pending    → 续费已确认但管理员还没在火山完成续期，原 License 可能已到期 → 不可用
-  //   processing → 自动模式正在调火山 API（短暂）→ 保守不可用
-  //   failed     → 续期失败 → 不可用
+  // 续费状态仅描述新 License 的处理进度；不能覆盖当前 License 的有效期。
+  // 旧 License 未到期时，即使新续费 pending/processing/failed，设备仍可使用。
+  const provider_expires_at = service ? service.provider_expires_at : null;
   const provider_available = !service
-    || service.provider_renew_status === 'none'
-    || service.provider_renew_status === 'completed';
+    || !provider_expires_at
+    || new Date(provider_expires_at).getTime() > Date.now();
 
-  // ai_allowed = 已绑定 + 服务期有效 + 供应商 License 可用
-  // provider_renew_status=pending 时设备应显示"服务续费已确认，AI 服务正在开通"
+  // ai_allowed = 已绑定 + 平台服务期有效 + 当前供应商 License 有效。
   const ai_allowed = !!binding && service_status === 'active' && provider_available;
 
   res.json({
@@ -781,6 +777,7 @@ app.post('/:product/api/device/status', (req, res) => {
     service_expires_at,        // ISO 时间
     ai_allowed,                // 综合判断：是否允许开火山会话
     provider_renew_status: service ? service.provider_renew_status : 'none',
+    provider_expires_at,
     provider_available,        // 火山 License 是否可用（供设备显示提示）
   });
 });
@@ -922,7 +919,10 @@ setInterval(async () => {
         }
       );
       DB.setOrderRenewStatus(order.id, 'completed', { licenseId: result.license_id });
-      DB.setServiceRenewStatus(order.credential_id, 'completed', { licenseId: result.license_id });
+      DB.setServiceRenewStatus(order.credential_id, 'completed', {
+        licenseId: result.license_id,
+        providerExpiresAt: result.expires_at,
+      });
       console.log(`[renew] order ${order.order_no} completed, license=${result.license_id}`);
     } catch (e) {
       DB.setOrderRenewStatus(order.id, 'failed', { error: e.message });
