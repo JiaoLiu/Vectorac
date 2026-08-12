@@ -16,12 +16,12 @@ function check(ok, message) {
   if (!ok) failures.push(message);
 }
 
-// Public assets must remain relative so both /admin/ and /xiaov/admin/ work.
+// Public assets must remain relative under /admin/ and /<product>/account/.
 for (const [name, html] of [['admin', adminHtml], ['account', accountHtml]]) {
   check(!/(?:src|href)=["']\//.test(html), `${name}: static asset uses a root-absolute URL`);
 }
 
-check(admin.includes("const API = 'api';"), 'admin: API base must be relative to /xiaov/admin/');
+check(admin.includes("const API = 'api';"), 'admin: API base must be relative to /admin/');
 check(account.includes('const API = `/${PRODUCT}/api`;'), 'account: API base must derive from product URL');
 
 const serverRoutes = [...server.matchAll(/app\.(?:get|post|patch|put|delete)\(['"]([^'"]+)/g)]

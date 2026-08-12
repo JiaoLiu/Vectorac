@@ -57,7 +57,7 @@ jobs:
           mkdir -p package/usermgr-service
           cp -a usermgr-service/server.js usermgr-service/db.js usermgr-service/volcano.js \
             usermgr-service/package.json usermgr-service/package-lock.json usermgr-service/README.md \
-            usermgr-service/public usermgr-service/scripts usermgr-service/node_modules \
+            usermgr-service/public usermgr-service/scripts usermgr-service/docs usermgr-service/node_modules \
             package/usermgr-service/
           tar -czf "usermgr-service-linux-x64-${SHORT_SHA}.tar.gz" -C package usermgr-service
 

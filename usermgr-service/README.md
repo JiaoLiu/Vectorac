@@ -1,6 +1,6 @@
-# usermgr-service
+# Vectorac 全产品设备管理平台
 
-Vectorac 设备的**用户/设备/订单/服务期管理服务**。
+Vectorac 全产品统一的**产品/用户/设备/订单/服务期管理平台**。`xiaov` 是其中一个产品代码，不是管理平台本身。
 
 ## 功能
 - **用户端（手机端）**：手机号注册登录、扫码绑定设备、续费下单、转账备注提交
@@ -11,11 +11,13 @@ Vectorac 设备的**用户/设备/订单/服务期管理服务**。
 
 | 路径 | 用途 |
 | --- | --- |
-| `/account/` | 用户端（手机端 SPA） |
-| `/admin/` | 管理后台（PC 端 SPA） |
-| `/xiaov/api/*` | 用户端 API（手机端调用） |
+| `/admin/` | 全产品管理后台（PC 端 SPA） |
 | `/admin/api/*` | 管理端 API（管理后台调用） |
+| `/{product}/account/` | 指定产品用户端，例如 `/xiaov/account/` |
+| `/{product}/api/*` | 指定产品用户/设备 API，例如 `/xiaov/api/*` |
 | `/healthz` | 健康检查（nginx/systemd 用） |
+
+ESP32、烧录工具接口及 HMAC 规范见 [`docs/ESP32_API.md`](docs/ESP32_API.md)。
 
 ## 本地开发
 
@@ -83,18 +85,19 @@ sudo PORT=3031 \
 ### 4. nginx 反代
 
 ```bash
-sudo cp /home/www/vectorac/usermgr-service/scripts/usermgr-proxy.conf /etc/nginx/conf.d/usermgr.conf
+# 将下面文件中的 location 块合并到 vectorac.com 的现有 server { } 内：
+sudo vim /home/www/vectorac/usermgr-service/scripts/usermgr-proxy.conf
+sudo vim /etc/nginx/conf.d/vectorac.conf
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
-`/etc/nginx/conf.d/*.conf` 默认会被 nginx.conf include，新文件直接生效。
+不要把 `usermgr-proxy.conf` 直接复制成独立 conf；其中是 `location` 指令，必须位于现有 `server { }` 内。
 
-反代把：
-- `vectorac.com/xiaov/account/*` → 静态 SPA
-- `vectorac.com/xiaov/api/*` → 反代到 `127.0.0.1:3031`
-- 管理后台**建议不绑域名**，直接用 IP + 端口访问（如 `http://服务器IP:3031/admin/`），避免暴露到公网
-
-如果想让管理后台也走 nginx（方便 IP 白名单），取消 `usermgr-proxy.conf` 里 `/admin/` 的注释。
+反代公开地址：
+- `https://vectorac.com/admin/` → 全产品管理平台
+- `https://vectorac.com/admin/api/*` → 全局管理 API
+- `https://vectorac.com/{product}/account/*` → 产品用户端
+- `https://vectorac.com/{product}/api/*` → 产品用户/设备 API
 
 ### 5. 验证
 
@@ -195,4 +198,4 @@ node test.js    # 全量回归测试 155+ 用例
 
 ---
 
-更新时间：2026-08-11
+更新时间：2026-08-12

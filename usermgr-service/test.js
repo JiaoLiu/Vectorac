@@ -727,6 +727,24 @@ async function main() {
     r = await req('DELETE', `/admin/api/products/1`, null, { Authorization: `Bearer ${ADMIN}` });
     check('22.8 有引用的产品删除被拒', r.status >= 400);
 
+    // ===== 23. 多产品用户身份隔离 =====
+    r = await req('POST', '/admin/api/products', {
+      code: 'product_b', name: '产品B', sn_prefix: 'PB',
+    }, { Authorization: `Bearer ${ADMIN}` });
+    check('23.1 创建隔离测试产品', r.status === 200 && r.body.ok);
+
+    r = await req('POST', '/product_b/api/auth/register', {
+      phone: '13600136000', password: 'password123',
+    });
+    check('23.2 产品B用户注册成功', r.status === 200 && !!r.body.token);
+    const productBToken = r.body.token;
+
+    r = await req('GET', '/xiaov/api/me', null, { Authorization: `Bearer ${productBToken}` });
+    check('23.3 产品B JWT 不可访问 xiaov', r.status === 403 && r.body.error === 'product_mismatch');
+
+    r = await req('GET', '/product_b/api/me', null, { Authorization: `Bearer ${userToken}` });
+    check('23.4 xiaov JWT 不可访问产品B', r.status === 403 && r.body.error === 'product_mismatch');
+
     // ===== 20. 两阶段 provision：fail + delete =====
     // 新设备 provision → fail → delete
     r = await req('POST', '/admin/api/provision', {

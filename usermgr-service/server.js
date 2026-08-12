@@ -85,6 +85,9 @@ function userAuth(req, res, next) {
   if (!auth || !auth.startsWith('Bearer ')) return res.status(401).json({ error: 'no_token' });
   try {
     req.user = jwt.verify(auth.slice(7), JWT_SECRET);
+    const productId = DB.getProductIdByCode(req.params.product);
+    if (!productId) return res.status(404).json({ error: 'product_not_found' });
+    if (req.user.pid !== productId) return res.status(403).json({ error: 'product_mismatch' });
     next();
   } catch (e) {
     return res.status(401).json({ error: 'invalid_token' });
@@ -609,6 +612,10 @@ app.post('/:product/api/device/bind/confirm', userAuth, (req, res) => {
   const { temp_token, nickname } = req.body;
   const t = DB.getBindToken(temp_token);
   if (!t) return res.status(400).json({ error: 'invalid_or_expired_token' });
+  const tokenCredential = DB.getCredentialById(t.credential_id);
+  if (!tokenCredential || tokenCredential.product_id !== req.user.pid) {
+    return res.status(403).json({ error: 'product_mismatch' });
+  }
 
   const existingBinding = DB.getBindingByCredential(t.credential_id);
   if (existingBinding) return res.status(409).json({ error: 'device_already_bound' });
@@ -841,10 +848,12 @@ const adminDir = path.join(__dirname, 'public', 'admin');
 if (fs.existsSync(accountDir)) app.use('/account', express.static(accountDir));
 if (fs.existsSync(adminDir)) app.use('/admin', express.static(adminDir));
 
+app.get('/:product/account', (req, res) => res.redirect(301, `/${req.params.product}/account/`));
+if (fs.existsSync(accountDir)) app.use('/:product/account', express.static(accountDir));
+
 app.get('/admin', (req, res) => res.sendFile(path.join(adminDir, 'index.html')));
 app.get('/admin/*', (req, res) => res.sendFile(path.join(adminDir, 'index.html')));
 
-app.get('/:product/account', (req, res) => res.sendFile(path.join(accountDir, 'index.html')));
 app.get('/:product/account/*', (req, res) => res.sendFile(path.join(accountDir, 'index.html')));
 
 app.get('/healthz', (req, res) => res.send('ok'));
