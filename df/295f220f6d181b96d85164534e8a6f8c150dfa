@@ -1,0 +1,100 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.8",
+  "base_commit_sha": "df295f220f6d181b96d85164534e8a6f8c150dfa",
+  "prompts": {
+    "056992989d58fd24": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a38e6391d55a586f6a882f6",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1867,
+      "overriden_lines": 0
+    },
+    "4a68a259acc17f46": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a7152c27fd21251a8b13b6c",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 441,
+      "overriden_lines": 0
+    },
+    "8538c752b39f3dac": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a72ec597fd21251a8b14509",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "f36f3bac29a5715f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ff04e-8a7a-7f23-9f72-f400e68f268d",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    }
+  },
+  "commit_stats": {
+    "git_diff_added_lines": 59,
+    "git_diff_deleted_lines": 19,
+    "ai_additions": 0,
+    "ai_accepted": 0,
+    "BYMC": 58,
+    "mixed_additions": 0,
+    "BYAC": 0,
+    "BYRC": 0,
+    "per_file": {
+      "usermgr-service/server.js": {
+        "BYMC": [
+          "656",
+          "708-713",
+          "715",
+          "722-725"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "usermgr-service/test.js": {
+        "BYMC": [
+          "37-49"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "usermgr-service/volcano.js": {
+        "BYMC": [
+          "22-51",
+          "105-106",
+          "157"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      }
+    }
+  },
+  "commit_timestamp": 1786525421,
+  "requirement_id": ""
+}
