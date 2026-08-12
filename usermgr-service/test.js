@@ -105,6 +105,9 @@ async function main() {
     check('烧录令牌不可访问管理接口', r.status === 401);
     check('xiaov 产品存在', !!xiaovId);
 
+    r = await req('GET', '/xiaov/api/product');
+    check('产品用户页返回自身品牌', r.status === 200 && r.body.code === 'xiaov' && r.body.name === '小V机器人');
+
     // ===== 3. 出厂录入阶段 1（返回 SN + FactoryKey + challenge，status=provisioning） =====
     r = await req('POST', '/admin/api/provision', {
       product: 'xiaov',

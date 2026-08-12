@@ -383,6 +383,14 @@ app.post('/admin/api/orders/:id/complete-renew', adminAuth, (req, res) => {
 // phone 为主登录账号，email 备选（可空）。手机号入库前统一标准化为 11 位裸数字。
 const EMAIL_REGEX = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
+// 产品用户页公开信息：只返回展示字段，不返回任何火山或密钥配置。
+app.get('/:product/api/product', (req, res) => {
+  const productId = DB.getProductIdByCode(req.params.product);
+  if (!productId) return res.status(404).json({ error: 'product_not_found' });
+  const product = DB.getProductRow(productId);
+  res.json({ code: product.code, name: product.name });
+});
+
 app.post('/:product/api/auth/register', async (req, res) => {
   const productId = DB.getProductIdByCode(req.params.product);
   if (!productId) return res.status(404).json({ error: 'product_not_found' });

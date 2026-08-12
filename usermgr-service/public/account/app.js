@@ -21,11 +21,21 @@ const state = {
   orders: [],
   forgotPhone: null,
   forgotDevCode: null,
+  productName: PRODUCT,
   // 模态弹窗
   modal: null,             // { type, ... }  type: 'renew'|'voucher'|'unbind'
   renewYears: 1,           // 用户选的年限
   renewYearsDropdown: false,
 };
+
+async function loadProductBrand() {
+  try {
+    const product = await api('/product');
+    state.productName = product.name || product.code || PRODUCT;
+    document.title = `${state.productName}账号 · Vectorac`;
+    render();
+  } catch { /* 路由本身仍可显示 product code */ }
+}
 
 // 年卡 19.9 元/年（与服务端 DEFAULT_ANNUAL_AMOUNT 同步）
 const PRICE_PER_YEAR_CENTS = 1990;
@@ -437,7 +447,7 @@ function render() {
   let html = '';
   const topbar = `
     <div class="topbar">
-      <div class="brand">Vectorac <em>设备账号</em></div>
+      <div class="brand">${state.productName} <em>账号</em></div>
       <nav>
         ${state.token ? '<a href="#/me">我的</a><a href="#/orders">订单</a><a href="#" onclick="logout()">退出</a>' : '<a href="#/login">登录</a><a href="#/register">注册</a>'}
       </nav>
@@ -701,3 +711,4 @@ function setRenewYears(y) {
 }
 
 route();
+loadProductBrand();
