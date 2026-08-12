@@ -47,6 +47,10 @@ jobs:
           printf 'Maximum required glibc: %s\n' "$MAX_GLIBC"
           test "$(printf '%s\n' "$MAX_GLIBC" GLIBC_2.28 | sort -V | tail -1)" = GLIBC_2.28
 
+      - name: Audit public routes
+        working-directory: usermgr-service
+        run: node scripts/check-public-routes.js
+
       - name: Create deployment archive
         run: |
           SHORT_SHA="$(printf '%s' "$GITHUB_SHA" | cut -c1-7)"

@@ -7,7 +7,8 @@
 //   - 设备列表显示服务期 + 续费按钮
 //   - 订单页（创建续费订单 → 模拟支付）
 // 路由：#/login  #/register  #/me  #/bind?t=xxx  #/orders
-const API = '/xiaov/api';
+const PRODUCT = location.pathname.match(/^\/([a-z][a-z0-9_]{1,30})\/account(?:\/|$)/)?.[1] || 'xiaov';
+const API = `/${PRODUCT}/api`;
 const $ = (s) => document.querySelector(s);
 
 const state = {
