@@ -1,0 +1,71 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.8",
+  "base_commit_sha": "de8f3cb24e0f4dcbd32367a9568162c3f78bd7e1",
+  "prompts": {
+    "056992989d58fd24": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a38e6391d55a586f6a882f6",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 2952,
+      "overriden_lines": 0
+    },
+    "4a68a259acc17f46": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a7152c27fd21251a8b13b6c",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1125,
+      "overriden_lines": 0
+    }
+  },
+  "commit_stats": {
+    "git_diff_added_lines": 7,
+    "git_diff_deleted_lines": 7,
+    "ai_additions": 0,
+    "ai_accepted": 0,
+    "BYMC": 7,
+    "mixed_additions": 0,
+    "BYAC": 0,
+    "BYRC": 0,
+    "per_file": {
+      "usermgr-service/public/account/index.html": {
+        "BYMC": [
+          "7",
+          "11"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "usermgr-service/public/admin/app.js": {
+        "BYMC": [
+          "9"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "usermgr-service/public/admin/index.html": {
+        "BYMC": [
+          "7-8",
+          "12-13"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      }
+    }
+  },
+  "commit_timestamp": 1786502369,
+  "requirement_id": ""
+}
