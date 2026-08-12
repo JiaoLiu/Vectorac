@@ -1,0 +1,115 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.8",
+  "base_commit_sha": "c05d655d7717ce63685ecdcb235a148dac75f0c2",
+  "prompts": {
+    "056992989d58fd24": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a38e6391d55a586f6a882f6",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 2952,
+      "overriden_lines": 0
+    },
+    "4a68a259acc17f46": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a7152c27fd21251a8b13b6c",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1124,
+      "overriden_lines": 0
+    }
+  },
+  "commit_stats": {
+    "git_diff_added_lines": 348,
+    "git_diff_deleted_lines": 44,
+    "ai_additions": 0,
+    "ai_accepted": 0,
+    "BYMC": 343,
+    "mixed_additions": 0,
+    "BYAC": 0,
+    "BYRC": 0,
+    "per_file": {
+      ".github/workflows/build-usermgr-linux.yml": {
+        "BYMC": [
+          "60"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "usermgr-service/README.md": {
+        "BYMC": [
+          "1",
+          "3",
+          "14",
+          "16-17",
+          "20",
+          "88-90",
+          "94",
+          "96-100",
+          "201"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "usermgr-service/docs/ESP32_API.md": {
+        "BYMC": [
+          "1-280"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "usermgr-service/scripts/check-public-routes.js": {
+        "BYMC": [
+          "19",
+          "24"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "usermgr-service/scripts/usermgr-proxy.conf": {
+        "BYMC": [
+          "12-16",
+          "18-20",
+          "23",
+          "28-29",
+          "32-33",
+          "46",
+          "48",
+          "52"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "usermgr-service/server.js": {
+        "BYMC": [
+          "88-90",
+          "615-618",
+          "851-853"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "usermgr-service/test.js": {
+        "BYMC": [
+          "730-747"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      }
+    }
+  },
+  "commit_timestamp": 1786503573,
+  "requirement_id": ""
+}
