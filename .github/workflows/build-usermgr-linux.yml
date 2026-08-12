@@ -22,7 +22,7 @@ jobs:
           npm --version
 
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install Linux production dependencies
         working-directory: usermgr-service
@@ -37,12 +37,13 @@ jobs:
 
       - name: Create deployment archive
         run: |
+          SHORT_SHA="$(printf '%s' "$GITHUB_SHA" | cut -c1-7)"
           mkdir -p package/usermgr-service
           cp -a usermgr-service/server.js usermgr-service/db.js usermgr-service/volcano.js \
             usermgr-service/package.json usermgr-service/package-lock.json usermgr-service/README.md \
             usermgr-service/public usermgr-service/scripts usermgr-service/node_modules \
             package/usermgr-service/
-          tar -czf usermgr-service-linux-x64-${GITHUB_SHA::7}.tar.gz -C package usermgr-service
+          tar -czf "usermgr-service-linux-x64-${SHORT_SHA}.tar.gz" -C package usermgr-service
 
       - name: Upload deployment package
         uses: actions/upload-artifact@v4
