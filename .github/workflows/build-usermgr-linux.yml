@@ -15,7 +15,7 @@ jobs:
     steps:
       - name: Install build tools and Node.js
         run: |
-          dnf install -y git curl xz tar gzip file
+          dnf install -y git curl xz tar gzip file binutils gcc gcc-c++ make python3.11
           curl -fsSLO https://nodejs.org/dist/v22.22.0/node-v22.22.0-linux-x64.tar.xz
           tar -xJf node-v22.22.0-linux-x64.tar.xz -C /usr/local --strip-components=1
           node --version
@@ -26,6 +26,9 @@ jobs:
 
       - name: Install Linux production dependencies
         working-directory: usermgr-service
+        env:
+          PYTHON: /usr/bin/python3.11
+          npm_config_build_from_source: "true"
         run: npm ci --omit=dev --no-audit --no-fund
 
       - name: Verify native module
@@ -34,6 +37,10 @@ jobs:
           node -e "const D=require('better-sqlite3'); const db=new D(':memory:'); console.log(db.prepare('select sqlite_version() version').get()); db.close()"
           file node_modules/better-sqlite3/build/Release/better_sqlite3.node
           file node_modules/better-sqlite3/build/Release/better_sqlite3.node | grep -q 'ELF 64-bit.*x86-64'
+          MAX_GLIBC="$(objdump -T node_modules/better-sqlite3/build/Release/better_sqlite3.node \
+            | grep -o 'GLIBC_[0-9.]*' | sort -Vu | tail -1)"
+          printf 'Maximum required glibc: %s\n' "$MAX_GLIBC"
+          test "$(printf '%s\n' "$MAX_GLIBC" GLIBC_2.28 | sort -V | tail -1)" = GLIBC_2.28
 
       - name: Create deployment archive
         run: |
