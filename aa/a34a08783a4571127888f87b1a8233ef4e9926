@@ -1,0 +1,196 @@
+usermgr-service/README.md
+  056992989d58fd24 1-32,39-42,44-49,54-76,78-116,119-121,126-155,157-198
+  f36f3bac29a5715f 33-38,43,50-53,77,117-118,122-125,156
+usermgr-service/scripts/usermgr-proxy.conf
+  056992989d58fd24 1-2,4-5,7-10,12-15,19-20,22-26,31-36,38-40,43-50
+  4a68a259acc17f46 11,51
+.private/deploy.md
+  056992989d58fd24 148-151,156,158-162,166-189
+usermgr-service/scripts/bundle.sh
+  f36f3bac29a5715f 4-6
+usermgr-service/.gitignore
+  3a20c79936c605c5 5
+usermgr-service/scripts/install.sh
+  f36f3bac29a5715f 31-41,51-61,67-72,95,103,106,115-117,157-161
+  056992989d58fd24 24,27,134
+usermgr-service/package.json
+  f36f3bac29a5715f 14
+usermgr-service/server.js
+  056992989d58fd24 55,58-59
+usermgr-service/volcano.js
+  056992989d58fd24 67,71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.8",
+  "base_commit_sha": "aaa34a08783a4571127888f87b1a8233ef4e9926",
+  "prompts": {
+    "056992989d58fd24": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a38e6391d55a586f6a882f6",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 4710,
+      "total_deletions": 1256,
+      "accepted_lines": 3729,
+      "overriden_lines": 0
+    },
+    "3a20c79936c605c5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ff04d-1092-7990-94ab-f20e9b754afb",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 1,
+      "total_deletions": 0,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    },
+    "4a68a259acc17f46": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a7152c27fd21251a8b13b6c",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 3558,
+      "total_deletions": 1377,
+      "accepted_lines": 1565,
+      "overriden_lines": 0
+    },
+    "f36f3bac29a5715f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ff04e-8a7a-7f23-9f72-f400e68f268d",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 95,
+      "total_deletions": 115,
+      "accepted_lines": 62,
+      "overriden_lines": 0
+    }
+  },
+  "commit_stats": {
+    "git_diff_added_lines": 395,
+    "git_diff_deleted_lines": 80,
+    "ai_additions": 322,
+    "ai_accepted": 322,
+    "BYMC": 73,
+    "mixed_additions": 0,
+    "BYAC": 322,
+    "BYRC": 0,
+    "per_file": {
+      ".github/workflows/build-usermgr-linux.yml": {
+        "BYMC": [
+          "1-53"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      ".private/deploy.md": {
+        "BYMC": [
+          "152-155",
+          "157",
+          "163-165"
+        ],
+        "BYAC": [
+          "148-151",
+          "156",
+          "158-162",
+          "166-189"
+        ],
+        "BYRC": []
+      },
+      "usermgr-service/.gitignore": {
+        "BYMC": [],
+        "BYAC": [
+          "5"
+        ],
+        "BYRC": []
+      },
+      "usermgr-service/README.md": {
+        "BYMC": [],
+        "BYAC": [
+          "1-198"
+        ],
+        "BYRC": []
+      },
+      "usermgr-service/package.json": {
+        "BYMC": [],
+        "BYAC": [
+          "14"
+        ],
+        "BYRC": []
+      },
+      "usermgr-service/scripts/bundle.sh": {
+        "BYMC": [],
+        "BYAC": [
+          "4-6"
+        ],
+        "BYRC": []
+      },
+      "usermgr-service/scripts/install.sh": {
+        "BYMC": [
+          "19-23",
+          "25-26",
+          "28-30",
+          "42-43"
+        ],
+        "BYAC": [
+          "24",
+          "27",
+          "31-41",
+          "51-61",
+          "67-72",
+          "95",
+          "103",
+          "106",
+          "115-117",
+          "134",
+          "157-161"
+        ],
+        "BYRC": []
+      },
+      "usermgr-service/scripts/usermgr-proxy.conf": {
+        "BYMC": [],
+        "BYAC": [
+          "1-2",
+          "4-5",
+          "7-15",
+          "19-20",
+          "22-26",
+          "31-36",
+          "38-40",
+          "43-51"
+        ],
+        "BYRC": []
+      },
+      "usermgr-service/server.js": {
+        "BYMC": [],
+        "BYAC": [
+          "55",
+          "58-59"
+        ],
+        "BYRC": []
+      },
+      "usermgr-service/volcano.js": {
+        "BYMC": [],
+        "BYAC": [
+          "67",
+          "71"
+        ],
+        "BYRC": []
+      }
+    }
+  },
+  "commit_timestamp": 1786498052,
+  "requirement_id": ""
+}
