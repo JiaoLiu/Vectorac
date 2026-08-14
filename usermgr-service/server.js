@@ -58,16 +58,26 @@ const _cleanupTimer = setInterval(() => {
 }, 5 * 60 * 1000);
 if (_cleanupTimer.unref) _cleanupTimer.unref();
 
-// ==================== SMS Stub ====================
-// 真实环境替换为阿里云/腾讯云短信 SDK。dev/test 模式不发送，返回验证码供联调。
-const SMS_ENABLED = !!process.env.SMS_API_KEY;
+// ==================== SMS 配置（阿里云） ====================
+// 敏感配置只从环境变量读取，绝不写进代码/仓库；真实值在服务器 .env 里填
+// 开通入口：https://dysms.console.aliyun.com/
+// 所需字段：SMS_ACCESS_KEY_ID / SMS_ACCESS_KEY_SECRET / SMS_SIGN_NAME / SMS_TEMPLATE_CODE
+const SMS_CONFIG = {
+  accessKeyId:     process.env.SMS_ACCESS_KEY_ID     || '',
+  accessKeySecret: process.env.SMS_ACCESS_KEY_SECRET || '',
+  signName:         process.env.SMS_SIGN_NAME         || '',
+  templateCode:     process.env.SMS_TEMPLATE_CODE     || '',
+  endpoint:         process.env.SMS_ENDPOINT          || 'dysmsapi.aliyuncs.com',
+};
+// 4 个必填字段都有值才视为已启用；任一缺失走 dev 模式（不发送，回传 dev_code 供联调）
+const SMS_ENABLED = !!(SMS_CONFIG.accessKeyId && SMS_CONFIG.accessKeySecret && SMS_CONFIG.signName && SMS_CONFIG.templateCode);
 async function sendSms(phone, code) {
   if (SMS_ENABLED) {
-    // TODO: 接入真实短信供应商
-    // await smsProvider.send(phone, `您的验证码是 ${code}，5 分钟内有效`);
+    // TODO: 接入阿里云 dysmsapi SDK（@alicloud/dysmsapi20170525）
+    // 用 SMS_CONFIG 调用 SendSms，模板变量 {code}
     console.log(`[sms] TODO: real send to ${phone}: ${code}`);
   } else {
-    console.log(`[sms:dev] ${phone} -> ${code}`);
+    console.log(`[sms:dev] ${phone} -> ${code}  (配置 SMS_ACCESS_KEY_ID 等环境变量后启用真实发送)`);
   }
 }
 
@@ -453,9 +463,20 @@ app.post('/:product/api/auth/sms-code', async (req, res) => {
   const phone = DB.normalizePhone(rawPhone);
   if (!phone) return res.status(400).json({ error: 'invalid_phone' });
 
-  // rate limit：1 次/分钟/手机号，防短信轰炸
+  // rate limit：分层限流防短信轰炸
+  const _ip = clientIp(req);
+  const _today = new Date().toISOString().slice(0, 10);  // YYYY-MM-DD
   if (!rateLimit(`sms:${phone}`, 1, 60 * 1000)) {
     return res.status(429).json({ error: 'rate_limited', message: '验证码发送过于频繁，请 60 秒后再试' });
+  }
+  if (!rateLimit(`sms:phone-day:${phone}:${_today}`, 10, 24 * 60 * 60 * 1000)) {
+    return res.status(429).json({ error: 'rate_limited', message: '该手机号今日验证码发送次数已达上限，请明日再试' });
+  }
+  if (!rateLimit(`sms:ip-hour:${_ip}`, 5, 60 * 60 * 1000)) {
+    return res.status(429).json({ error: 'rate_limited', message: '请求过于频繁，请稍后再试' });
+  }
+  if (!rateLimit(`sms:ip-day:${_ip}:${_today}`, 20, 24 * 60 * 60 * 1000)) {
+    return res.status(429).json({ error: 'rate_limited', message: '今日请求次数已达上限，请明日再试' });
   }
 
   const code = String(Math.floor(100000 + Math.random() * 900000));

@@ -72,7 +72,12 @@ if [[ ! -f "$EXISTING_ENV" ]]; then
 fi
 ADMIN_IP_WHITELIST="${ADMIN_IP_WHITELIST:-}"  # 留空则只靠密码
 VOLCANO_ENABLED="${VOLCANO_ENABLED:-false}"
-SMS_API_KEY="${SMS_API_KEY:-}"
+# 阿里云短信：敏感 key 只在服务器 .env 里填，不进仓库；4 项都填齐才启用真实发送
+SMS_ACCESS_KEY_ID="${SMS_ACCESS_KEY_ID:-}"
+SMS_ACCESS_KEY_SECRET="${SMS_ACCESS_KEY_SECRET:-}"
+SMS_SIGN_NAME="${SMS_SIGN_NAME:-}"
+SMS_TEMPLATE_CODE="${SMS_TEMPLATE_CODE:-}"
+SMS_ENDPOINT="${SMS_ENDPOINT:-dysmsapi.aliyuncs.com}"
 
 # 运行用户：跟 vectorac 目录所有者一致
 DETECTED_OWNER="$(stat -c '%U:%G' /home/www/vectorac 2>/dev/null || true)"
@@ -116,7 +121,13 @@ PROVISION_TOKEN=$PROVISION_TOKEN
 KEY_ENCRYPTION_SECRET=$KEY_ENCRYPTION_SECRET
 ADMIN_IP_WHITELIST=$ADMIN_IP_WHITELIST
 VOLCANO_ENABLED=$VOLCANO_ENABLED
-SMS_API_KEY=$SMS_API_KEY
+# 阿里云短信：以下 4 项需在阿里云控制台申请后手动填入，绝不写入仓库
+# 开通入口：https://dysms.console.aliyun.com/
+SMS_ACCESS_KEY_ID=$SMS_ACCESS_KEY_ID
+SMS_ACCESS_KEY_SECRET=$SMS_ACCESS_KEY_SECRET
+SMS_SIGN_NAME=$SMS_SIGN_NAME
+SMS_TEMPLATE_CODE=$SMS_TEMPLATE_CODE
+SMS_ENDPOINT=$SMS_ENDPOINT
 EOF
 else
   echo "==> 保留现有 .env，并补齐缺失字段（已有密钥不变）"
@@ -132,7 +143,12 @@ else
   ensure_env PROVISION_TOKEN "${PROVISION_TOKEN:-$(openssl rand -hex 32)}"
   ensure_env ADMIN_IP_WHITELIST "$ADMIN_IP_WHITELIST"
   ensure_env VOLCANO_ENABLED "$VOLCANO_ENABLED"
-  ensure_env SMS_API_KEY "$SMS_API_KEY"
+  # 阿里云短信字段补齐为空（真实值由用户在服务器 .env 手填，不通过脚本参数传入）
+  ensure_env SMS_ACCESS_KEY_ID "$SMS_ACCESS_KEY_ID"
+  ensure_env SMS_ACCESS_KEY_SECRET "$SMS_ACCESS_KEY_SECRET"
+  ensure_env SMS_SIGN_NAME "$SMS_SIGN_NAME"
+  ensure_env SMS_TEMPLATE_CODE "$SMS_TEMPLATE_CODE"
+  ensure_env SMS_ENDPOINT "$SMS_ENDPOINT"
 fi
 chmod 600 "$INSTALL_DIR/.env"
 chown -R "$RUN_USER:$RUN_GROUP" "$INSTALL_DIR"
