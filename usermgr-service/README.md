@@ -32,7 +32,7 @@ Vectorac 全产品统一的**产品/用户/设备/订单/服务期管理平台**
 npm install
 node server.js          # 默认监听 :3031
 node seed-mock.js       # 灌入演示数据（可选）
-node test.js            # 跑全量回归测试（155+ 用例）
+node test.js            # 跑全量回归测试（169+ 用例）
 ```
 
 ## 部署到服务器
@@ -42,30 +42,43 @@ node test.js            # 跑全量回归测试（155+ 用例）
 ### 1. GitHub Actions 构建 Linux x64 部署包
 
 在 GitHub 仓库进入 **Actions → Build usermgr Linux x64 package → Run workflow**。
-完成后下载 Artifacts 中的 `usermgr-service-linux-x64-*`，解压下载的 zip，得到 `.tar.gz` 部署包。
+完成后下载 Artifacts 中的 `usermgr-service-linux-x64-*`。GitHub 下载的是 zip，里面包含 `.tar.gz` 部署包；无需在 Mac 解压，直接把 zip 上传服务器。
 
 工作流使用 Rocky Linux 8 + Node.js 22.22.0 构建并验证 Linux x64 原生模块。服务器不会运行 npm，也不会编译 SQLite。
 
 ### 2. 上传到服务器
 
 ```bash
-scp usermgr-service-linux-x64-*.tar.gz root@jane66.com:/tmp/
+cd ~/Downloads
+scp usermgr-service-linux-x64-*.zip root@jane66.com:/home/www/vectorac/
 ```
+
+上传前请确保 `~/Downloads` 里只保留本次 Artifact，避免通配符上传多个旧版本。
 
 ### 3. 服务器一键部署
 
 ```bash
 ssh root@jane66.com
-rm -rf /tmp/usermgr-release
-mkdir /tmp/usermgr-release
-tar -xzf /tmp/usermgr-service-linux-x64-*.tar.gz -C /tmp/usermgr-release
-cd /tmp/usermgr-release/usermgr-service
+cd /home/www/vectorac
+rm -rf usermgr-release
+mkdir usermgr-release
+unzip -j usermgr-service-linux-x64-*.zip -d usermgr-release
+tar -xzf usermgr-release/usermgr-service-linux-x64-*.tar.gz -C usermgr-release
+cd usermgr-release/usermgr-service
 sudo PORT=3031 \
      JWT_SECRET=$(openssl rand -hex 32) \
      ADMIN_PASSWORD=$(openssl rand -hex 8) \
      KEY_ENCRYPTION_SECRET=$(openssl rand -hex 32) \
      bash scripts/install.sh
+
+# 确认服务正常后清理上传包和临时发布目录
+cd /home/www/vectorac
+curl http://127.0.0.1:3031/healthz
+rm -rf usermgr-release
+rm -f usermgr-service-linux-x64-*.zip
 ```
+
+以上带三个随机密钥的命令只用于首次安装。升级时不能重新生成密钥，见下方“升级”。
 
 环境变量说明：
 
@@ -122,19 +135,34 @@ curl http://服务器IP:3031/admin/         # 管理后台首页
 3. 烧录工具调用 `/admin/api/provision`（PROVISION_TOKEN 在 `.env`）录入设备
 4. 用户扫码绑定设备、续费下单
 
+小V RTC 固件不需要写死 RTCAppID。首次 `DynamicRegister` 后平台把 `Result.RTCAppID` 保存到产品的 `products.rtc_app_id`；旧设备缺少该字段时，下一次 `/activate` 自动补取一次并返回 `rtc_app_id`，设备保存到 NVS。该过程不重写 eFuse，也不重新绑定用户。
+
 ## 升级
 
 ```bash
 # GitHub Actions 手动运行 Build usermgr Linux x64 package，下载 artifact
-scp usermgr-service-linux-x64-*.tar.gz root@jane66.com:/tmp/
+cd ~/Downloads
+scp usermgr-service-linux-x64-*.zip root@jane66.com:/home/www/vectorac/
 
-# 服务器（重跑 install.sh；数据目录不会被覆盖）
+# 服务器：只保留一个本次 Artifact；重跑 install.sh 不覆盖 .env 和 data/
 ssh root@jane66.com
-rm -rf /tmp/usermgr-release && mkdir /tmp/usermgr-release
-tar -xzf /tmp/usermgr-service-linux-x64-*.tar.gz -C /tmp/usermgr-release
-cd /tmp/usermgr-release/usermgr-service
-sudo PORT=3031 bash scripts/install.sh   # 自动保留生产目录中的 .env 和 data/
+cd /home/www/vectorac
+rm -rf usermgr-release
+mkdir usermgr-release
+unzip -j usermgr-service-linux-x64-*.zip -d usermgr-release
+tar -xzf usermgr-release/usermgr-service-linux-x64-*.tar.gz -C usermgr-release
+cd usermgr-release/usermgr-service
+PORT=3031 bash scripts/install.sh
+
+# 验证并清理；正式目录是 /home/www/vectorac/usermgr-service
+curl http://127.0.0.1:3031/healthz
+systemctl status usermgr --no-pager
+cd /home/www/vectorac
+rm -rf usermgr-release
+rm -f usermgr-service-linux-x64-*.zip
 ```
+
+升级命令不会重新生成 `JWT_SECRET`、`ADMIN_PASSWORD`、`PROVISION_TOKEN` 或 `KEY_ENCRYPTION_SECRET`；安装脚本保留正式目录里的 `.env` 与 `data/`。
 
 如果改了 `.env`：
 ```bash
@@ -193,7 +221,7 @@ sudo PORT=3032 bash scripts/install.sh
 ## 测试
 
 ```bash
-node test.js    # 全量回归测试 155+ 用例
+node test.js    # 全量回归测试 169+ 用例
 ```
 
 测试会用内存 sqlite（不污染生产 db），覆盖：
@@ -206,4 +234,4 @@ node test.js    # 全量回归测试 155+ 用例
 
 ---
 
-更新时间：2026-08-12
+更新时间：2026-08-14

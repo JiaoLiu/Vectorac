@@ -167,11 +167,12 @@ base64_encode(digest, 32, signature);
   "recovered": false,
   "sn": "XV000001",
   "volcano_device_name": "xiaov-aca70428c910",
-  "device_secret": "provider-device-secret"
+  "device_secret": "provider-device-secret",
+  "rtc_app_id": "provider-rtc-app-id"
 }
 ```
 
-设备应安全保存 `sn`、`volcano_device_name`、`device_secret`。擦除 Flash 后可凭 eFuse FactoryKey 重新调用；`recovered=true` 时返回原 device secret。
+设备应保存 `sn`、`volcano_device_name`、`device_secret`、`rtc_app_id`。擦除 Flash 后可凭 eFuse FactoryKey 重新调用；`recovered=true` 时返回原有凭证。老设备缺少 `rtc_app_id` 时应再次调用 activate，平台会自动补齐。
 
 ### 5.2 查询绑定和服务状态
 

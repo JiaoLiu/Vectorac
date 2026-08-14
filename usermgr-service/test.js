@@ -180,7 +180,21 @@ async function main() {
     check('首次激活成功', r.body.ok === true && r.body.recovered === false);
     check('激活返回 SN', r.body.sn === sn);
     check('激活返回 device_secret', !!r.body.device_secret);
-    const deviceSecret1 = r.body.device_secret;
+    check('激活返回 rtc_app_id', !!r.body.rtc_app_id);
+    let deviceSecret1 = r.body.device_secret;
+    let rtcAppId1 = r.body.rtc_app_id;
+
+    // 模拟历史平台：设备已有 DeviceSecret，但产品 RTCAppID 尚未保存。
+    DB.db.prepare("UPDATE products SET rtc_app_id = NULL WHERE id = ?").run(xiaovId);
+    ts = Date.now(); nonce = crypto.randomBytes(8).toString('hex');
+    sig = sign(factoryKey, 'activate', hwid, ts, nonce);
+    r = await req('POST', '/xiaov/api/device/activate', {
+      hardware_id: hwid, timestamp: ts, nonce, signature: sig,
+    });
+    check('产品缺 RTCAppID 时补调用激活', r.body.ok === true && r.body.recovered === false);
+    check('补调用后产品永久保存 RTCAppID', DB.getProductRow(xiaovId).rtc_app_id === r.body.rtc_app_id);
+    deviceSecret1 = r.body.device_secret;
+    rtcAppId1 = r.body.rtc_app_id;
 
     // ===== 5. erase_flash 恢复（同一个 HardwareID 二次激活，应返回原 device_secret） =====
     ts = Date.now(); nonce = crypto.randomBytes(8).toString('hex');
@@ -189,6 +203,7 @@ async function main() {
       hardware_id: hwid, timestamp: ts, nonce, signature: sig,
     });
     check('二次激活返回原 device_secret', r.body.recovered === true && r.body.device_secret === deviceSecret1);
+    check('二次激活返回原 rtc_app_id', r.body.rtc_app_id === rtcAppId1);
 
     // ===== 6. 错误签名被拒绝 =====
     ts = Date.now(); nonce = crypto.randomBytes(8).toString('hex');

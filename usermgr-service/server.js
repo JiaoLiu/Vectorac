@@ -672,9 +672,12 @@ app.post('/:product/api/device/activate', async (req, res) => {
   const v = verifySignature('activate', factoryKey, hardware_id, timestamp, nonce, signature);
   if (!v.ok) return res.status(401).json({ error: 'auth_failed', reason: v.reason });
 
-  // 检查是否已有火山 device_secret
+  // 两项都齐全才可恢复；老设备只有 DeviceSecret 时重新 DynamicRegister
+  // 补取 RTCAppID，固件无需清 NVS 或重新绑定。
   const existingSecret = DB.getDecryptedDeviceSecret(cred);
-  if (existingSecret) {
+  const productConfig = DB.getProductConfig(productId);
+  const existingRtcAppId = productConfig.rtc_app_id || '';
+  if (existingSecret && existingRtcAppId) {
     // 老设备/erase_flash 恢复：直接下发原 device_secret，不重复 DynamicRegister
     return res.json({
       ok: true,
@@ -682,6 +685,7 @@ app.post('/:product/api/device/activate', async (req, res) => {
       sn: cred.sn,                                  // 顺便返回 SN，设备可缓存显示
       volcano_device_name: cred.volcano_device_name,
       device_secret: existingSecret,
+      rtc_app_id: existingRtcAppId,
     });
   }
 
@@ -689,7 +693,8 @@ app.post('/:product/api/device/activate', async (req, res) => {
   if (!VOLCANO_ENABLED) {
     // 测试模式：返回假的 device_secret
     const fakeSecret = 'TEST_' + crypto.randomBytes(16).toString('hex');
-    DB.saveVolcanoDeviceSecret(cred.id, fakeSecret);
+    const fakeRtcAppId = 'TEST_RTC_APP_ID';
+    const savedRtcAppId = DB.saveVolcanoCredentials(productId, cred.id, fakeSecret, fakeRtcAppId);
     return res.json({
       ok: true,
       recovered: false,
@@ -697,10 +702,10 @@ app.post('/:product/api/device/activate', async (req, res) => {
       sn: cred.sn,
       volcano_device_name: cred.volcano_device_name,
       device_secret: fakeSecret,
+      rtc_app_id: savedRtcAppId,
     });
   }
 
-  const productConfig = DB.getProductConfig(productId);
   if (!productConfig.instance_id || !productConfig.product_key || !productConfig.product_secret) {
     return res.status(500).json({ error: 'product_volcano_not_configured' });
   }
@@ -711,13 +716,16 @@ app.post('/:product/api/device/activate', async (req, res) => {
       product_key: productConfig.product_key,
       product_secret: productConfig.product_secret,
     }, cred.volcano_device_name);
-    DB.saveVolcanoDeviceSecret(cred.id, result.device_secret);
+    const savedRtcAppId = DB.saveVolcanoCredentials(
+      productId, cred.id, result.device_secret, result.rtc_app_id
+    );
     return res.json({
       ok: true,
       recovered: false,
       sn: cred.sn,
       volcano_device_name: cred.volcano_device_name,
       device_secret: result.device_secret,
+      rtc_app_id: savedRtcAppId,
     });
   } catch (err) {
     console.error('[volcano] DynamicRegister 失败:', err);

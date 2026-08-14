@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS products (
   product_key TEXT,
   product_secret BLOB,
   bot_id TEXT,
+  rtc_app_id TEXT,                -- DynamicRegister 返回的产品级 RTCAppID
   sn_prefix TEXT,                 -- SN 前缀，如 "XV"
   sn_seq INTEGER DEFAULT 0,       -- 当前 SN 序列号
   created_at TEXT DEFAULT (datetime('now'))
@@ -183,6 +184,14 @@ CREATE INDEX IF NOT EXISTS idx_bind_tokens_temp ON device_bind_tokens(temp_token
   }
 }
 
+// 迁移：RTCAppID 属于火山产品，不属于单台设备。
+{
+  const cols = db.prepare("PRAGMA table_info(products)").all();
+  if (cols.length > 0 && !cols.some(c => c.name === 'rtc_app_id')) {
+    db.exec("ALTER TABLE products ADD COLUMN rtc_app_id TEXT");
+  }
+}
+
 // 迁移：供应商当前 License 到期日与平台套餐到期日分开记录。
 // 老设备首个火山 License 从 DynamicRegister 成功时间起按一年回填；这不会把
 // 尚未在火山确认的续费误算成已生效。
@@ -259,7 +268,7 @@ function getProductIdByCode(code) {
 }
 
 function listProducts() {
-  return db.prepare("SELECT id, code, name, instance_id, product_key, bot_id, sn_prefix, created_at FROM products ORDER BY id").all();
+  return db.prepare("SELECT id, code, name, instance_id, product_key, bot_id, rtc_app_id, sn_prefix, created_at FROM products ORDER BY id").all();
 }
 
 function getProductRow(productId) {
@@ -474,13 +483,22 @@ function getDecryptedDeviceSecret(cred) {
   return decrypt(cred.volcano_device_secret);
 }
 
-function saveVolcanoDeviceSecret(credId, deviceSecret) {
+const saveVolcanoCredentials = db.transaction((productId, credId, deviceSecret, rtcAppId) => {
   db.prepare(`
     UPDATE device_credentials
-    SET volcano_device_secret = ?, volcano_activated_at = datetime('now'), status = 'volcano_registered'
+    SET volcano_device_secret = ?,
+        volcano_activated_at = COALESCE(volcano_activated_at, datetime('now')),
+        status = 'volcano_registered'
     WHERE id = ?
   `).run(encrypt(deviceSecret), credId);
-}
+  db.prepare(`
+    UPDATE products
+    SET rtc_app_id = CASE
+      WHEN rtc_app_id IS NULL OR rtc_app_id = '' THEN ? ELSE rtc_app_id END
+    WHERE id = ?
+  `).run(rtcAppId, productId);
+  return db.prepare("SELECT rtc_app_id FROM products WHERE id = ?").get(productId).rtc_app_id;
+});
 
 function listCredentials(productId) {
   return db.prepare(`
@@ -960,7 +978,7 @@ module.exports = {
   getCredentialById,
   getDecryptedFactoryKey,
   getDecryptedDeviceSecret,
-  saveVolcanoDeviceSecret,
+  saveVolcanoCredentials,
   listCredentials,
   setCredentialStatus,
   // users

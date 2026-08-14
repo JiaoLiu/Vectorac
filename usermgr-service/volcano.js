@@ -53,7 +53,7 @@ function decryptDeviceSecret(payloadB64, productSecret) {
  * 调用火山 DynamicRegister
  * @param {Object} cfg - { instance_id, product_key, product_secret }
  * @param {String} deviceName - 设备名（产品下唯一，推荐 SN）
- * @returns {Promise<{device_secret: string}>}
+ * @returns {Promise<{device_secret: string, rtc_app_id: string}>}
  */
 function dynamicRegister(cfg, deviceName) {
   return new Promise((resolve, reject) => {
@@ -97,8 +97,11 @@ function dynamicRegister(cfg, deviceName) {
           if (!json.Result || !json.Result.payload) {
             return reject(new Error('Volcano API: missing payload'));
           }
+          const rtcAppId = typeof json.Result.RTCAppID === 'string'
+            ? json.Result.RTCAppID.trim() : '';
+          if (!rtcAppId) return reject(new Error('Volcano API: missing RTCAppID'));
           const deviceSecret = decryptDeviceSecret(json.Result.payload, cfg.product_secret);
-          resolve({ device_secret: deviceSecret });
+          resolve({ device_secret: deviceSecret, rtc_app_id: rtcAppId });
         } catch (e) {
           reject(new Error(`Volcano API parse error: ${e.message}`));
         }
