@@ -1,27 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Vectorac">
-  <defs>
-    <style>
-      .mark-stroke { stroke: #202123; }
-      .mark-fill { fill: #202123; }
-    </style>
-    <mask id="arrow-through-v" maskUnits="userSpaceOnUse" x="0" y="0" width="64" height="64">
-      <rect width="64" height="64" fill="#FFF"/>
-      <path d="m17.3 27 4.7 12h11L29 27Z" fill="#000"/>
-    </mask>
-  </defs>
-  <rect x="1" y="1" width="62" height="62" rx="13" fill="#F7F7F5"/>
-
-  <!-- A true outlined ribbon: both edges of the V are visible and the body stays hollow. -->
-  <path class="mark-stroke" d="M13 13h10l9 26 9-26h10L37 49.2c-.8 2.5-2.6 3.8-5 3.8s-4.2-1.3-5-3.8L13 13Z" fill="none" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
-
-  <!-- A closed, streamlined fletching leaves clear air before the V. -->
-  <g mask="url(#arrow-through-v)">
-    <g class="mark-stroke" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M4 32h49"/>
-      <path d="M7 28.5h3.5c2.4 0 4.3.9 5.5 2.5v2c-1.2 1.6-3.1 2.5-5.5 2.5H7l-1.5-3.5L7 28.5Z"/>
-      <path d="m8 28.8 3.2 3.2M11 28.7l3.2 3.3M8 35.2l3.2-3.2M11 35.3l3.2-3.3" stroke-width="1.25"/>
-    </g>
-    <!-- A short, narrow spear point replaces the oversized equilateral arrowhead. -->
-    <path class="mark-fill" d="m49 28.8 10 3.2-10 3.2 2.5-3.2-2.5-3.2Z"/>
-  </g>
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 1280" role="img" aria-label="Vectorac">
+  <rect x="22" y="20" width="1236" height="1218" rx="180" fill="#f8f8f8"/>
+  <path d="M 392 693 L 457 803 L 458 780 L 465 752 L 496 693 Z M 232 660 L 173 660 L 113 717 L 174 717 Z M 889 674 L 964 674 L 982 652 L 964 630 L 914 630 Z M 199 717 L 253 717 L 259 715 L 301 676 L 306 674 L 509 674 L 535 630 L 308 630 L 301 628 L 268 596 L 257 588 L 199 587 L 265 652 Z M 113 587 L 173 643 L 232 643 L 174 587 Z M 957 724 L 1058 686 L 1140 652 L 958 582 L 996 640 L 1085 652 L 1083 654 L 997 664 Z M 966 299 L 945 290 L 922 286 L 790 286 L 774 288 L 757 293 L 734 306 L 712 328 L 639 452 L 636 460 L 688 544 L 776 387 L 787 377 L 799 373 L 904 373 L 916 378 L 921 383 L 925 391 L 926 398 L 922 412 L 837 556 L 650 892 L 642 900 L 635 903 L 624 903 L 616 899 L 610 893 L 572 826 L 566 811 L 565 800 L 568 786 L 621 699 L 583 630 L 557 631 L 507 714 L 485 754 L 478 776 L 476 788 L 476 813 L 480 831 L 489 852 L 544 945 L 567 970 L 585 982 L 603 989 L 618 992 L 640 992 L 664 986 L 686 974 L 697 965 L 712 948 L 802 792 L 888 638 L 1006 439 L 1013 422 L 1017 404 L 1018 383 L 1014 360 L 1004 337 L 996 325 L 984 312 Z M 264 308 L 251 321 L 241 335 L 231 358 L 227 378 L 227 397 L 230 415 L 240 440 L 347 614 L 446 613 L 374 492 L 324 412 L 320 401 L 322 387 L 330 377 L 338 373 L 452 373 L 458 375 L 473 389 L 689 776 L 710 741 L 721 716 L 726 693 L 726 675 L 749 674 L 774 630 L 711 630 L 546 344 L 530 321 L 519 310 L 500 297 L 482 289 L 462 285 L 319 285 L 302 288 L 288 293 Z"
+        fill="#23262b" fill-rule="evenodd"/>
 </svg>

@@ -4,8 +4,10 @@ heroText: null
 tagline: Vectorac专注于互联网+领域
 heroImage: /logo.png
 heroImageStyle: {
-  maxWidth: '200px',
-  width: '100%',
+  height: '165px',
+  width: 'auto',
+  maxWidth: '100%',
+  objectFit: 'contain',
   display: block,
   # margin: '9rem auto 2rem',
   # background: '#fff',
