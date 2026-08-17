@@ -198,11 +198,18 @@ sudo journalctl -u usermgr -f
   - 元数据配置（viewport、备案信息等）
   - 百度推送脚本
 
-### 2. 部署步骤
-1. **构建生产版本**：`npm run build`
-2. **部署静态文件**：将 `public/` 目录下的所有文件部署到静态网站托管服务
-   - 支持的托管服务：GitHub Pages、Netlify、Vercel、阿里云OSS、腾讯云COS等
-   - 可以使用 CI/CD 工具（如GitHub Actions、GitLab CI）自动化部署
+### 2. 部署步骤（生产服务器 jane66.com）
+1. **构建生产版本**：`npm run build` → 产物输出到 `public/`（在 `.vuepress/config.js` 中配置）
+2. **上传到服务器**：将本地 `public/` 目录的所有文件同步到服务器 `/home/www/vectorac/dist/`：
+   ```bash
+   rsync -avz --delete public/ root@jane66.com:/home/www/vectorac/dist/
+   ```
+3. **验证**：浏览器访问 `https://vectorac.com/` 看页面是否更新；如改了 `<link>` 标签可执行：
+   ```bash
+   curl -s https://vectorac.com/ | grep -i 'rel="icon\|rel="shortcut'
+   ```
+
+> 其他托管服务（GitHub Pages、Netlify、Vercel、阿里云OSS、腾讯云COS）也可用，将 `public/` 目录上传即可，但生产环境使用 rsync 到 jane66.com 服务器的 `/home/www/vectorac/dist/` 目录。
 
 ### 3. 项目结构
 ```
