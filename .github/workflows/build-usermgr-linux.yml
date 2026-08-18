@@ -36,6 +36,35 @@ jobs:
           "$CXX" --version
           npm ci --omit=dev --no-audit --no-fund
 
+      - name: Build @alicloud/dysmsapi20170525 (npm package missing dist)
+        working-directory: usermgr-service
+        run: |
+          if [ ! -f node_modules/@alicloud/dysmsapi20170525/dist/client.js ]; then
+            echo "dist/client.js missing, compiling from src..."
+            cd node_modules/@alicloud/dysmsapi20170525
+            npm install --no-save typescript@5
+            cat > tsconfig.json <<'TC'
+          {
+            "compilerOptions": {
+              "target": "ES2018",
+              "module": "CommonJS",
+              "declaration": true,
+              "outDir": "./dist",
+              "rootDir": "./src",
+              "strict": false,
+              "esModuleInterop": true,
+              "skipLibCheck": true,
+              "resolveJsonModule": true
+            },
+            "include": ["src/**/*"]
+          }
+          TC
+            npx tsc
+            test -f dist/client.js && echo "dist/client.js OK"
+          else
+            echo "dist/client.js already exists"
+          fi
+
       - name: Verify native module
         working-directory: usermgr-service
         run: |
