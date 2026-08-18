@@ -22,6 +22,7 @@ const path = require('path');
 const fs = require('fs');
 const DB = require('./db');
 const volcano = require('./volcano');
+const captcha = require('./captcha');
 
 const app = express();
 app.use(express.json());
@@ -71,11 +72,40 @@ const SMS_CONFIG = {
 };
 // 4 个必填字段都有值才视为已启用；任一缺失走 dev 模式（不发送，回传 dev_code 供联调）
 const SMS_ENABLED = !!(SMS_CONFIG.accessKeyId && SMS_CONFIG.accessKeySecret && SMS_CONFIG.signName && SMS_CONFIG.templateCode);
+
+// 阿里云短信客户端（懒加载，仅在 SMS_ENABLED 时创建）
+let _smsClient = null;
+function getSmsClient() {
+  if (_smsClient) return _smsClient;
+  const Dysmsapi = require('@alicloud/dysmsapi20170525');
+  const OpenApi = require('@alicloud/openapi-client');
+  const Util = require('@alicloud/tea-util');
+  const config = new OpenApi.Config({
+    accessKeyId: SMS_CONFIG.accessKeyId,
+    accessKeySecret: SMS_CONFIG.accessKeySecret,
+    endpoint: SMS_CONFIG.endpoint,
+  });
+  _smsClient = new Dysmsapi.default(config);
+  _smsClient._runtime = new Util.RuntimeOptions({});
+  return _smsClient;
+}
+
 async function sendSms(phone, code) {
   if (SMS_ENABLED) {
-    // TODO: 接入阿里云 dysmsapi SDK（@alicloud/dysmsapi20170525）
-    // 用 SMS_CONFIG 调用 SendSms，模板变量 {code}
-    console.log(`[sms] TODO: real send to ${phone}: ${code}`);
+    const client = getSmsClient();
+    const Dysmsapi = require('@alicloud/dysmsapi20170525');
+    const req = new Dysmsapi.SendSmsRequest({
+      phoneNumbers: phone,
+      signName: SMS_CONFIG.signName,
+      templateCode: SMS_CONFIG.templateCode,
+      templateParam: JSON.stringify({ code, time: '5' }),
+    });
+    const resp = await client.sendSmsWithOptions(req, client._runtime);
+    if (resp.body.code !== 'OK') {
+      console.error(`[sms] 发送失败: ${resp.body.code} ${resp.body.message}`);
+      throw new Error(`短信发送失败: ${resp.body.message}`);
+    }
+    console.log(`[sms] 已发送至 ${phone} (bizId=${resp.body.bizId})`);
   } else {
     console.log(`[sms:dev] ${phone} -> ${code}  (配置 SMS_ACCESS_KEY_ID 等环境变量后启用真实发送)`);
   }
@@ -412,7 +442,7 @@ app.post('/:product/api/auth/register', async (req, res) => {
     return res.status(429).json({ error: 'rate_limited', message: '注册过于频繁，请稍后再试' });
   }
 
-  const { phone: rawPhone, password, email } = req.body || {};
+  const { phone: rawPhone, password, email, code: smsCode } = req.body || {};
   if (!rawPhone || !password) return res.status(400).json({ error: 'missing_params' });
   const phone = DB.normalizePhone(rawPhone);
   if (!phone) return res.status(400).json({ error: 'invalid_phone' });
@@ -423,6 +453,16 @@ app.post('/:product/api/auth/register', async (req, res) => {
 
   const existing = DB.getUserByPhone(productId, phone);
   if (existing) return res.status(409).json({ error: 'phone_exists' });
+
+  if (!smsCode) return res.status(400).json({ error: 'missing_code', message: '请输入短信验证码' });
+
+  // 校验短信验证码
+  if (!rateLimit(`verify:${phone}`, 5, 60 * 1000)) {
+    return res.status(429).json({ error: 'rate_limited', message: '操作过于频繁，请稍后再试' });
+  }
+  if (!DB.verifyPhoneCode(phone, String(smsCode), 'register')) {
+    return res.status(401).json({ error: 'invalid_or_expired_code', message: '验证码不正确或已过期' });
+  }
 
   const hash = await bcryptHash(password);
   const user = DB.createUser(productId, phone, hash, email || null);
@@ -452,21 +492,99 @@ app.post('/:product/api/auth/login', async (req, res) => {
   res.json({ token, user: { id: user.id, phone: user.phone, email: user.email } });
 });
 
-// 发送短信验证码（密码找回用）
-// dev/test 模式（未配置 SMS_API_KEY）直接返回 dev_code，便于联调
+// 验证码登录（手机号 + 短信验证码，免密码）
+app.post('/:product/api/auth/login-by-code', async (req, res) => {
+  const productId = DB.getProductIdByCode(req.params.product);
+  if (!productId) return res.status(404).json({ error: 'product_not_found' });
+
+  const { phone: rawPhone, code } = req.body || {};
+  if (!rawPhone || !code) return res.status(400).json({ error: 'missing_params' });
+  const phone = DB.normalizePhone(rawPhone);
+  if (!phone) return res.status(400).json({ error: 'invalid_phone' });
+
+  if (!rateLimit(`login:${phone}`, 20, 60 * 1000)) {
+    return res.status(429).json({ error: 'rate_limited', message: '登录尝试过于频繁，请稍后再试' });
+  }
+  if (!DB.verifyPhoneCode(phone, String(code), 'login')) {
+    return res.status(401).json({ error: 'invalid_or_expired_code', message: '验证码不正确或已过期' });
+  }
+
+  const user = DB.getUserByPhone(productId, phone);
+  if (!user) return res.status(401).json({ error: 'invalid_credentials' });
+  const token = jwt.sign({ uid: user.id, pid: productId }, JWT_SECRET, { expiresIn: '30d' });
+  res.json({ token, user: { id: user.id, phone: user.phone, email: user.email } });
+});
+
+// ==================== 滑块人机校验（防短信接口被机器人刷） ====================
+// 生成滑块挑战：返回背景图（含缺口）+ 拼图块 + captcha_id
+app.get('/:product/api/captcha/slider', (req, res) => {
+  const productId = DB.getProductIdByCode(req.params.product);
+  if (!productId) return res.status(404).json({ error: 'product_not_found' });
+  res.json(captcha.create());
+});
+
+// 校验滑动结果：通过后颁发一次性 captcha_token，供短信接口消费
+app.post('/:product/api/captcha/verify', (req, res) => {
+  const productId = DB.getProductIdByCode(req.params.product);
+  if (!productId) return res.status(404).json({ error: 'product_not_found' });
+
+  const { captcha_id, slider_x, trail } = req.body || {};
+  if (!captcha_id || slider_x === undefined) {
+    return res.status(400).json({ error: 'missing_params' });
+  }
+  const r = captcha.verify(captcha_id, slider_x, trail);
+  if (!r.ok) {
+    const code = r.reason || 'verify_failed';
+    const status = (code === 'captcha_not_found' || code === 'captcha_expired' || code === 'captcha_consumed') ? 410 : 400;
+    const CN = {
+      position_mismatch: '滑块未对齐缺口，请重新拖动',
+      trail_too_short: '拖动轨迹过短，请重新拖动',
+      trail_too_fast: '拖动过快，请重新拖动',
+      bad_start: '起点异常，请重新拖动',
+      bad_slider_x: '滑动数据异常，请重新拖动',
+      captcha_not_found: '校验已失效，请重新获取滑块',
+      captcha_expired: '校验已过期，请重新获取滑块',
+      captcha_consumed: '校验已使用，请重新获取滑块',
+      verify_failed: '校验失败，请重新拖动',
+    };
+    return res.status(status).json({ error: 'captcha_failed', reason: code, message: CN[code] || '校验失败，请重新拖动' });
+  }
+  res.json({ ok: true, captcha_token: r.token, expires_in: r.expires_in });
+});
+
+// 发送短信验证码（注册 / 登录 / 找回密码 / 修改密码）
+// dev/test 模式（未配置短信）直接返回 dev_code，便于联调
+// 必须先通过滑块校验，携带一次性 captcha_token
+const SMS_PURPOSES = ['register', 'login', 'reset_password', 'change_password'];
 app.post('/:product/api/auth/sms-code', async (req, res) => {
   const productId = DB.getProductIdByCode(req.params.product);
   if (!productId) return res.status(404).json({ error: 'product_not_found' });
 
-  const { phone: rawPhone, purpose = 'reset_password' } = req.body || {};
+  const { phone: rawPhone, purpose = 'reset_password', captcha_token } = req.body || {};
   if (!rawPhone) return res.status(400).json({ error: 'missing_params' });
+  if (!SMS_PURPOSES.includes(purpose)) {
+    return res.status(400).json({ error: 'invalid_purpose', message: '验证码用途不合法' });
+  }
+  // 先校验滑块 token（一次性消费）
+  if (!captcha_token || !captcha.consumeToken(captcha_token)) {
+    return res.status(403).json({ error: 'captcha_required', message: '请先完成滑块校验' });
+  }
   const phone = DB.normalizePhone(rawPhone);
   if (!phone) return res.status(400).json({ error: 'invalid_phone' });
+
+  // 按用途校验手机号状态
+  const existingUser = DB.getUserByPhone(productId, phone);
+  if (purpose === 'register' && existingUser) {
+    return res.status(409).json({ error: 'phone_exists', message: '该手机号已注册' });
+  }
+  if ((purpose === 'login' || purpose === 'change_password') && !existingUser) {
+    return res.status(404).json({ error: 'user_not_found', message: '该手机号尚未注册' });
+  }
 
   // rate limit：分层限流防短信轰炸
   const _ip = clientIp(req);
   const _today = new Date().toISOString().slice(0, 10);  // YYYY-MM-DD
-  if (!rateLimit(`sms:${phone}`, 1, 60 * 1000)) {
+  if (!rateLimit(`sms:${phone}:${purpose}`, 1, 60 * 1000)) {
     return res.status(429).json({ error: 'rate_limited', message: '验证码发送过于频繁，请 60 秒后再试' });
   }
   if (!rateLimit(`sms:phone-day:${phone}:${_today}`, 10, 24 * 60 * 60 * 1000)) {
@@ -481,7 +599,12 @@ app.post('/:product/api/auth/sms-code', async (req, res) => {
 
   const code = String(Math.floor(100000 + Math.random() * 900000));
   const expiresAt = DB.createPhoneCode(phone, code, purpose, 5);
-  await sendSms(phone, code);
+  try {
+    await sendSms(phone, code);
+  } catch (e) {
+    console.error('[sms] 发送失败:', e.message);
+    return res.status(500).json({ error: 'sms_send_failed', message: '短信发送失败，请稍后重试' });
+  }
 
   res.json({
     ok: true,
@@ -518,8 +641,50 @@ app.post('/:product/api/auth/reset-password', async (req, res) => {
   res.json({ ok: true });
 });
 
+// 修改密码（已登录用户）：旧密码 + 新密码
+app.post('/:product/api/auth/change-password', userAuth, async (req, res) => {
+  const { old_password, new_password } = req.body || {};
+  if (!old_password || !new_password) return res.status(400).json({ error: 'missing_params' });
+  if (new_password.length < 8) return res.status(400).json({ error: 'password_too_short' });
+
+  if (!rateLimit(`change:${req.user.uid}`, 5, 60 * 1000)) {
+    return res.status(429).json({ error: 'rate_limited', message: '操作过于频繁，请稍后再试' });
+  }
+
+  const user = DB.getUserById(req.user.uid);
+  if (!user) return res.status(404).json({ error: 'user_not_found' });
+  const ok = await bcryptCompare(old_password, user.password_hash);
+  if (!ok) return res.status(401).json({ error: 'wrong_password', message: '旧密码不正确' });
+
+  const hash = await bcryptHash(new_password);
+  DB.updateUserPassword(user.id, hash);
+  res.json({ ok: true });
+});
+
+// 修改密码（已登录用户）：短信验证码 + 新密码（忘记旧密码时用）
+app.post('/:product/api/auth/change-password-by-code', userAuth, async (req, res) => {
+  const { code, new_password } = req.body || {};
+  if (!code || !new_password) return res.status(400).json({ error: 'missing_params' });
+  if (new_password.length < 8) return res.status(400).json({ error: 'password_too_short' });
+
+  if (!rateLimit(`change:${req.user.uid}`, 5, 60 * 1000)) {
+    return res.status(429).json({ error: 'rate_limited', message: '操作过于频繁，请稍后再试' });
+  }
+
+  const user = DB.getUserById(req.user.uid);
+  if (!user) return res.status(404).json({ error: 'user_not_found' });
+  if (!DB.verifyPhoneCode(user.phone, String(code), 'change_password')) {
+    return res.status(401).json({ error: 'invalid_or_expired_code', message: '验证码不正确或已过期' });
+  }
+
+  const hash = await bcryptHash(new_password);
+  DB.updateUserPassword(user.id, hash);
+  res.json({ ok: true });
+});
+
 app.get('/:product/api/me', userAuth, (req, res) => {
   const user = DB.getUserById(req.user.uid);
+  if (!user) return res.status(404).json({ error: 'user_not_found' });
   // 套餐按设备：返回该用户的所有绑定设备，每台带服务期 / 续期状态
   const bindings = DB.listBindingsByUser(req.user.uid);
   const devices = bindings.map(b => {
@@ -967,4 +1132,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { app, verifySignature, buildSignString };
+module.exports = { app, verifySignature, buildSignString, rateBuckets };

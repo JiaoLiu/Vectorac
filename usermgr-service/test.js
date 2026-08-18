@@ -23,6 +23,12 @@ process.env.PROVISION_TOKEN = PROV;
 process.env.VOLCANO_ENABLED = 'false';
 process.env.JWT_SECRET = 'testsecret';
 process.env.KEY_ENCRYPTION_SECRET = 'a'.repeat(64);
+// 测试用 dev 模式（不真实发短信），设置 SMS 变量为空字符串
+// dotenv 不覆盖已存在的 process.env 值，所以空字符串会阻止真实短信
+process.env.SMS_ACCESS_KEY_ID = '';
+process.env.SMS_ACCESS_KEY_SECRET = '';
+process.env.SMS_SIGN_NAME = '';
+process.env.SMS_TEMPLATE_CODE = '';
 
 // 清空数据库文件（必须在 require server/db 之前，否则会连到旧文件）
 const dbFile = path.join(__dirname, 'data', 'usermgr.db');
@@ -32,9 +38,46 @@ for (const ext of ['-wal', '-shm']) {
   if (fs.existsSync(f)) fs.unlinkSync(f);
 }
 
-const { app, buildSignString } = require('./server');
+const { app, buildSignString, rateBuckets } = require('./server');
 const DB = require('./db');
 const volcano = require('./volcano');
+const captcha = require('./captcha');
+
+// 测试辅助：清除某手机号的短信 rate limit（测试中需要连续发码，生产不会这样）
+function clearSmsRateLimit(phone) {
+  const today = new Date().toISOString().slice(0, 10);
+  for (const key of rateBuckets.keys()) {
+    if (key.startsWith(`sms:${phone}:`) || key === `sms:phone-day:${phone}:${today}`) {
+      rateBuckets.delete(key);
+    }
+  }
+}
+
+// 测试辅助：清除所有 IP 维度的短信 rate limit（测试在同一 IP 发大量短信）
+function clearIpSmsRateLimit() {
+  for (const key of rateBuckets.keys()) {
+    if (key.startsWith('sms:ip-')) rateBuckets.delete(key);
+  }
+}
+
+// 辅助：完成一次滑块校验，返回一次性 captcha_token
+async function getCaptchaToken() {
+  const c = await req('GET', '/xiaov/api/captcha/slider');
+  const targetX = captcha.__testGetTarget(c.body.captcha_id);
+  // 构造合理拖拽轨迹（>200ms、起点≈0、>=3 点）
+  const trail = [];
+  const t0 = Date.now();
+  for (let i = 0; i <= 8; i++) {
+    trail.push({ x: Math.round(targetX * i / 8), t: t0 + i * 60 });
+  }
+  const v = await req('POST', '/xiaov/api/captcha/verify', {
+    captcha_id: c.body.captcha_id,
+    slider_x: targetX,
+    trail,
+  });
+  if (!v.body.captcha_token) throw new Error('captcha verify failed: ' + JSON.stringify(v.body));
+  return v.body.captcha_token;
+}
 
 // DynamicRegister payload 必须先 AES 解密，不能把 Base64 密文当 DeviceSecret。
 {
@@ -234,13 +277,25 @@ async function main() {
     });
     check('nonce 重放被拒', r.status === 401 && r.body.reason === 'nonce_reused');
 
-    // ===== 9. 用户注册（phone 为主登录账号，email 备选） =====
+    // ===== 9. 用户注册（需短信验证码） =====
+    // 先发注册验证码
+    clearIpSmsRateLimit();
+    let regToken = await getCaptchaToken();
+    r = await req('POST', '/xiaov/api/auth/sms-code', { phone: '13800138000', purpose: 'register', captcha_token: regToken });
+    check('注册验证码发送成功', r.status === 200 && r.body.ok);
+    const regCode = r.body.dev_code;
+    // 注册时带验证码
     r = await req('POST', '/xiaov/api/auth/register', {
-      phone: '13800138000', password: 'test12345',
+      phone: '13800138000', password: 'test12345', code: regCode,
     });
     check('用户注册成功', r.body.token && r.body.user);
     check('注册返回 phone', r.body.user.phone === '13800138000');
     const userToken = r.body.token;
+
+    // 重复注册被拒
+    regToken = await getCaptchaToken();
+    r = await req('POST', '/xiaov/api/auth/sms-code', { phone: '13800138000', purpose: 'register', captcha_token: regToken });
+    check('已注册手机号发注册验证码被拒', r.status === 409);
 
     // ===== 9b. phone 登录 + 校验 =====
     // 登录用 phone
@@ -263,30 +318,42 @@ async function main() {
 
     // 手机号格式校验
     r = await req('POST', '/xiaov/api/auth/register', {
-      phone: '12345', password: 'test12345',
+      phone: '12345', password: 'test12345', code: '123456',
     });
     check('非法手机号被拒', r.status === 400 && r.body.error === 'invalid_phone');
 
     r = await req('POST', '/xiaov/api/auth/register', {
-      phone: '10999999999', password: 'test12345',
+      phone: '10999999999', password: 'test12345', code: '123456',
     });
     check('非 1[3-9] 开头手机号被拒', r.status === 400 && r.body.error === 'invalid_phone');
 
-    // 重复 phone 被拒
+    // 缺少验证码被拒
     r = await req('POST', '/xiaov/api/auth/register', {
-      phone: '13800138000', password: 'test12345',
+      phone: '13800138001', password: 'test12345',
+    });
+    check('注册缺验证码被拒', r.status === 400 && r.body.error === 'missing_code');
+
+    // 重复 phone 被拒（需先发码，但已注册手机号发码会被拒，所以直接注册不带码）
+    r = await req('POST', '/xiaov/api/auth/register', {
+      phone: '13800138000', password: 'test12345', code: '123456',
     });
     check('重复 phone 注册被拒', r.status === 409 && r.body.error === 'phone_exists');
 
     // email 选填：注册一个带 email 的用户
+    clearIpSmsRateLimit();
+    let emailToken = await getCaptchaToken();
+    r = await req('POST', '/xiaov/api/auth/sms-code', { phone: '13900139001', purpose: 'register', captcha_token: emailToken });
+    check('13900139001 注册验证码发送', r.status === 200);
     r = await req('POST', '/xiaov/api/auth/register', {
-      phone: '13900139001', password: 'test12345', email: 'alice@example.com',
+      phone: '13900139001', password: 'test12345', email: 'alice@example.com', code: r.body.dev_code,
     });
     check('带 email 注册成功', r.body.token && r.body.user.email === 'alice@example.com');
 
     // 非法 email 被拒
+    emailToken = await getCaptchaToken();
+    r = await req('POST', '/xiaov/api/auth/sms-code', { phone: '13900139002', purpose: 'register', captcha_token: emailToken });
     r = await req('POST', '/xiaov/api/auth/register', {
-      phone: '13900139002', password: 'test12345', email: 'not-an-email',
+      phone: '13900139002', password: 'test12345', email: 'not-an-email', code: r.body.dev_code,
     });
     check('非法 email 被拒', r.status === 400 && r.body.error === 'invalid_email');
 
@@ -318,11 +385,24 @@ async function main() {
     check('标准化后重复检测', r.status === 409 && r.body.error === 'phone_exists');
 
     // ===== 9d. 密码找回：短信验证码 + 重置密码 =====
-    r = await req('POST', '/xiaov/api/auth/register', { phone: '13700137000', password: 'oldpass123' });
+    // 13700137000 专门用于重置密码测试，注册时先发注册验证码
+    clearIpSmsRateLimit();
+    let forgotToken = await getCaptchaToken();
+    r = await req('POST', '/xiaov/api/auth/sms-code', { phone: '13700137000', purpose: 'register', captcha_token: forgotToken });
+    check('密码找回测试号注册验证码发送', r.status === 200);
+    const forgotRegCode = r.body.dev_code;
+    r = await req('POST', '/xiaov/api/auth/register', { phone: '13700137000', password: 'oldpass123', code: forgotRegCode });
     check('密码找回测试号注册成功', r.body.token);
 
-    // 发送验证码（dev 模式返回 dev_code）
+    // 发送重置验证码（dev 模式返回 dev_code）；需先通过滑块校验
+    // 无 token 应被拒
     r = await req('POST', '/xiaov/api/auth/sms-code', { phone: '13700137000', purpose: 'reset_password' });
+    check('短信接口无滑块 token 被拒', r.status === 403 && r.body.error === 'captcha_required');
+    // 拿到 token 后再发
+    clearSmsRateLimit('13700137000');
+    clearIpSmsRateLimit();
+    const captchaToken = await getCaptchaToken();
+    r = await req('POST', '/xiaov/api/auth/sms-code', { phone: '13700137000', purpose: 'reset_password', captcha_token: captchaToken });
     check('发送验证码成功', r.body.ok && !!r.body.dev_code && r.body.expires_in === 300);
     const resetCode = r.body.dev_code;
 
@@ -350,11 +430,91 @@ async function main() {
     r = await req('POST', '/xiaov/api/auth/login', { phone: '13700137000', password: 'newpass456' });
     check('新密码登录成功', r.body.token && r.body.user.phone === '13700137000');
 
+    // ===== 9d2. 滑块本身：位置错误 / 轨迹过短 / token 一次性 =====
+    {
+      clearIpSmsRateLimit();
+      const c = await req('GET', '/xiaov/api/captcha/slider');
+      check('滑块挑战生成', !!c.body.captcha_id && !!c.body.bg_image && !!c.body.slider_image);
+      // 位置错误
+      r = await req('POST', '/xiaov/api/captcha/verify', { captcha_id: c.body.captcha_id, slider_x: 1, trail: [{x:0,t:Date.now()},{x:1,t:Date.now()+300}] });
+      check('滑块位置错误被拒', r.status === 400 && r.body.error === 'captcha_failed');
+      // 轨迹过快（3 个点但总时长 < 200ms）
+      const tx = captcha.__testGetTarget(c.body.captcha_id);
+      const t0 = Date.now();
+      r = await req('POST', '/xiaov/api/captcha/verify', { captcha_id: c.body.captcha_id, slider_x: tx, trail: [{x:0,t:t0},{x:Math.round(tx/2),t:t0+30},{x:tx,t:t0+60}] });
+      check('滑块轨迹过快被拒', r.status === 400 && r.body.error === 'captcha_failed' && r.body.reason === 'trail_too_fast');
+      // 同一挑战已被消费过（位置错时未消费，这里再用错位置仍应失败；正常流程见 getCaptchaToken）
+    }
+    // token 一次性：同一个 token 不能发两次短信
+    {
+      const tk = await getCaptchaToken();
+      r = await req('POST', '/xiaov/api/auth/sms-code', { phone: '13700999001', purpose: 'reset_password', captcha_token: tk });
+      check('一次性 token 首次可用', r.body.ok === true);
+      r = await req('POST', '/xiaov/api/auth/sms-code', { phone: '13700999001', purpose: 'reset_password', captcha_token: tk });
+      check('一次性 token 重复使用被拒', r.status === 403 && r.body.error === 'captcha_required');
+    }
+
     // ===== 9e. Rate limit：短信验证码 1 次/分钟/手机号 =====
-    r = await req('POST', '/xiaov/api/auth/sms-code', { phone: '13700137001' });
-    check('rate limit: 首次发送成功', r.body.ok === true);
-    r = await req('POST', '/xiaov/api/auth/sms-code', { phone: '13700137001' });
-    check('rate limit: 60秒内第二次被拒', r.status === 429 && r.body.error === 'rate_limited');
+    {
+      clearIpSmsRateLimit();
+      const tk = await getCaptchaToken();
+      r = await req('POST', '/xiaov/api/auth/sms-code', { phone: '13700137001', purpose: 'reset_password', captcha_token: tk });
+      check('rate limit: 首次发送成功', r.body.ok === true);
+    }
+    {
+      const tk = await getCaptchaToken();
+      r = await req('POST', '/xiaov/api/auth/sms-code', { phone: '13700137001', purpose: 'reset_password', captcha_token: tk });
+      check('rate limit: 60秒内第二次被拒', r.status === 429 && r.body.error === 'rate_limited');
+    }
+
+    // ===== 9f. 验证码登录 =====
+    {
+      clearIpSmsRateLimit();
+      // 先发登录验证码
+      clearSmsRateLimit('13800138000');
+      const tk = await getCaptchaToken();
+      r = await req('POST', '/xiaov/api/auth/sms-code', { phone: '13800138000', purpose: 'login', captcha_token: tk });
+      check('登录验证码发送成功', r.body.ok && !!r.body.dev_code);
+      const loginCode = r.body.dev_code;
+      // 验证码登录
+      r = await req('POST', '/xiaov/api/auth/login-by-code', { phone: '13800138000', code: loginCode });
+      check('验证码登录成功', r.body.token && r.body.user.phone === '13800138000');
+      // 错误验证码
+      r = await req('POST', '/xiaov/api/auth/login-by-code', { phone: '13800138000', code: '000000' });
+      check('验证码登录错误码被拒', r.status === 401);
+      // 未注册手机号发码被拒
+      const tk2 = await getCaptchaToken();
+      r = await req('POST', '/xiaov/api/auth/sms-code', { phone: '13900000099', purpose: 'login', captcha_token: tk2 });
+      check('未注册手机号登录验证码被拒', r.status === 404);
+    }
+
+    // ===== 9g. 修改密码（已登录） =====
+    {
+      clearIpSmsRateLimit();
+      // 旧密码方式
+      r = await req('POST', '/xiaov/api/auth/change-password', { old_password: 'test12345', new_password: 'changed123' }, { Authorization: `Bearer ${userToken}` });
+      check('旧密码修改密码成功', r.body.ok === true);
+      // 用旧密码登录应失败
+      r = await req('POST', '/xiaov/api/auth/login', { phone: '13800138000', password: 'test12345' });
+      check('旧密码登录失败', r.status === 401);
+      // 用新密码登录成功
+      r = await req('POST', '/xiaov/api/auth/login', { phone: '13800138000', password: 'changed123' });
+      check('新密码登录成功', r.body.token);
+      // 旧密码错误
+      r = await req('POST', '/xiaov/api/auth/change-password', { old_password: 'wrongpwd', new_password: 'newpwd123' }, { Authorization: `Bearer ${userToken}` });
+      check('旧密码错误被拒', r.status === 401 && r.body.error === 'wrong_password');
+      // 短信验证码方式
+      clearSmsRateLimit('13800138000');
+      const tk = await getCaptchaToken();
+      r = await req('POST', '/xiaov/api/auth/sms-code', { phone: '13800138000', purpose: 'change_password', captcha_token: tk });
+      check('修改密码验证码发送', r.body.ok && !!r.body.dev_code);
+      const changeCode = r.body.dev_code;
+      r = await req('POST', '/xiaov/api/auth/change-password-by-code', { code: changeCode, new_password: 'changed456' }, { Authorization: `Bearer ${userToken}` });
+      check('短信验证码修改密码成功', r.body.ok === true);
+      // 错误验证码
+      r = await req('POST', '/xiaov/api/auth/change-password-by-code', { code: '000000', new_password: 'changed789' }, { Authorization: `Bearer ${userToken}` });
+      check('修改密码错误验证码被拒', r.status === 401);
+    }
 
     // ===== 10. 生成绑定二维码（改动④：只返回 temp_token，不含 SN） =====
     ts = Date.now(); nonce = crypto.randomBytes(8).toString('hex');
@@ -774,8 +934,12 @@ async function main() {
     }, { Authorization: `Bearer ${ADMIN}` });
     check('23.1 创建隔离测试产品', r.status === 200 && r.body.ok);
 
+    let pbToken = await getCaptchaToken();
+    clearIpSmsRateLimit();
+    r = await req('POST', '/product_b/api/auth/sms-code', { phone: '13600136000', purpose: 'register', captcha_token: pbToken });
+    check('23.2a 产品B注册验证码发送', r.status === 200);
     r = await req('POST', '/product_b/api/auth/register', {
-      phone: '13600136000', password: 'password123',
+      phone: '13600136000', password: 'password123', code: r.body.dev_code,
     });
     check('23.2 产品B用户注册成功', r.status === 200 && !!r.body.token);
     const productBToken = r.body.token;

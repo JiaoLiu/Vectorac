@@ -22,6 +22,15 @@ const state = {
   forgotPhone: null,
   forgotDevCode: null,
   productName: PRODUCT,
+  // 短信验证码通用状态
+  smsSentPhone: null,
+  smsSentPurpose: null,
+  smsDevCode: null,
+  // 登录页 tab：'password' | 'code'
+  loginMode: 'password',
+  // 滑块人机校验
+  slider: null,            // { captchaId, bg, slider, bgW, bgH, sliderW, sliderH, startX, dragging, offsetX, trail }
+  captchaToken: null,      // 校验通过后服务端颁发的一次性 token
   // 模态弹窗
   modal: null,             // { type, ... }  type: 'renew'|'voucher'|'unbind'
   renewYears: 1,           // 用户选的年限
@@ -157,6 +166,9 @@ function clearForm(ids) {
 // 错误码 → 中文
 const ERR_CN = {
   missing_params: '请填写完整信息',
+  missing_code: '请输入短信验证码',
+  invalid_purpose: '验证码用途不合法',
+  wrong_password: '旧密码不正确',
   invalid_phone: '手机号格式不正确',
   invalid_email: '邮箱格式不正确',
   password_too_short: '密码至少 8 位',
@@ -239,16 +251,26 @@ function continueAfterAuth() {
 
 window.addEventListener('hashchange', route);
 
-async function doRegister(phone, password, email) {
+async function doRegister(phone, password, email, code) {
   try {
-    const payload = { phone, password };
+    const payload = { phone, password, code };
     if (email) payload.email = email;
     const data = await api('/auth/register', { method: 'POST', body: JSON.stringify(payload) });
     state.token = data.token;
     localStorage.setItem('user_token', data.token);
     state.user = data.user;
+    state.smsSentPhone = null;
+    state.smsDevCode = null;
     continueAfterAuth();
   } catch (e) { setAlert('error', e.message); }
+}
+
+// 注册页：发送验证码
+async function doRegisterSendCode() {
+  const phone = $('#phone').value.trim();
+  if (!phone) { setAlert('error', '请输入手机号'); return; }
+  state.captchaToken = null;
+  await loadSlider(phone, 'register');
 }
 
 async function doLogin(phone, password) {
@@ -261,25 +283,177 @@ async function doLogin(phone, password) {
   } catch (e) { setAlert('error', e.message); }
 }
 
-// 忘记密码：发送验证码
-async function doSendCode() {
+// 验证码登录：发送验证码
+async function doLoginSendCode() {
   const phone = $('#phone').value.trim();
   if (!phone) { setAlert('error', '请输入手机号'); return; }
+  state.captchaToken = null;
+  await loadSlider(phone, 'login');
+}
+
+// 验证码登录：提交
+async function doLoginByCode() {
+  const phone = $('#phone').value.trim();
+  const code = $('#code').value.trim();
+  if (!phone || !code) { setAlert('error', '请填写完整'); return; }
   try {
-    const r = await api('/auth/sms-code', {
-      method: 'POST', body: JSON.stringify({ phone, purpose: 'reset_password' }),
+    const data = await api('/auth/login-by-code', {
+      method: 'POST',
+      body: JSON.stringify({ phone, code }),
     });
-    state.forgotPhone = phone;
-    state.forgotDevCode = r.dev_code;   // dev 模式才有，生产为 undefined
-    setAlert('info', `验证码已发送（5 分钟内有效）${
-      r.dev_code ? '，开发模式验证码：' + r.dev_code : ''
-    }`);
+    state.token = data.token;
+    localStorage.setItem('user_token', data.token);
+    state.user = data.user;
+    state.smsSentPhone = null;
+    state.smsDevCode = null;
+    continueAfterAuth();
   } catch (e) { setAlert('error', e.message); }
 }
 
+// 忘记密码：发送验证码
+// 每次都要求滑块人机校验（token 一次性，不可复用）
+async function doSendCode() {
+  const phone = $('#phone').value.trim();
+  if (!phone) { setAlert('error', '请输入手机号'); return; }
+  state.captchaToken = null;
+  await loadSlider(phone, 'reset_password');
+}
+
+// 通用：加载滑块挑战（以 modal 弹窗形式展示），purpose 决定短信用途
+async function loadSlider(phone, purpose) {
+  try {
+    const c = await api('/captcha/slider');
+    state._prevModal = state.modal;  // 保存当前弹窗（如修改密码），验证后恢复
+    state.modal = {
+      type: 'captcha',
+      captchaId: c.captcha_id,
+      bg: c.bg_image,
+      slider: c.slider_image,
+      bgW: c.bg_width, bgH: c.bg_height,
+      sliderW: c.slider_width, sliderH: c.slider_height,
+      targetY: c.target_y,        // 拼图块的垂直定位（x 才需保密）
+      offsetX: 0, dragging: false, startClientX: 0, trail: [],
+      phone, purpose, busy: false, error: null, verified: false,
+    };
+    render();
+  } catch (e) { setAlert('error', e.message); }
+}
+
+// 滑块拖拽：按下
+function sliderDown(e) {
+  const s = state.modal;
+  if (!s || s.type !== 'captcha' || s.verified) return;
+  e.preventDefault();
+  s.dragging = true;
+  s.startClientX = (e.touches ? e.touches[0].clientX : e.clientX);
+  s.trail = [{ x: 0, t: Date.now() }];
+  document.addEventListener('mousemove', sliderMove);
+  document.addEventListener('mouseup', sliderUp);
+  document.addEventListener('touchmove', sliderMove, { passive: false });
+  document.addEventListener('touchend', sliderUp);
+}
+
+function sliderMove(e) {
+  const s = state.modal;
+  if (!s || s.type !== 'captcha' || !s.dragging) return;
+  if (e.cancelable) e.preventDefault();
+  const clientX = (e.touches ? e.touches[0].clientX : e.clientX);
+  let dx = clientX - s.startClientX;
+  if (dx < 0) dx = 0;
+  if (dx > s.bgW - s.sliderW) dx = s.bgW - s.sliderW;
+  s.offsetX = dx;
+  s.trail.push({ x: dx, t: Date.now() });
+  const track = document.getElementById('slider-track');
+  const piece = document.getElementById('slider-piece');
+  if (track) track.style.left = dx + 'px';
+  if (piece) piece.style.left = dx + 'px';
+}
+
+async function sliderUp() {
+  const s = state.modal;
+  if (!s || s.type !== 'captcha' || !s.dragging) return;
+  s.dragging = false;
+  document.removeEventListener('mousemove', sliderMove);
+  document.removeEventListener('mouseup', sliderUp);
+  document.removeEventListener('touchmove', sliderMove);
+  document.removeEventListener('touchend', sliderUp);
+  if (s.trail.length < 3) return;  // 没怎么动
+  s.busy = true; render();
+  try {
+    const r = await api('/captcha/verify', {
+      method: 'POST',
+      body: JSON.stringify({
+        captcha_id: s.captchaId,
+        slider_x: s.offsetX,
+        trail: s.trail,
+      }),
+    });
+    state.captchaToken = r.captcha_token;
+    const phone = s.phone;
+    const purpose = s.purpose;
+    const token = r.captcha_token;
+    // 恢复之前的弹窗（如修改密码），没有则关闭
+    state.modal = state._prevModal || null;
+    state._prevModal = null;
+    render();
+    // 自动发短信
+    await sendSmsCode(phone, token, purpose);
+  } catch (e) {
+    const m = state.modal;
+    if (!m || m.type !== 'captcha') return;
+    m.busy = false;
+    m.error = e.message;
+    // 失败不关弹窗，只重置滑块位置，允许用同一张图重试
+    m.offsetX = 0;
+    m.trail = [];
+    resetSliderDom();
+    render();
+    // 2 秒后清掉错误提示，避免一直显示
+    setTimeout(() => { if (state.modal && state.modal.type === 'captcha' && !state.modal.verified) { state.modal.error = null; } }, 2000);
+  }
+}
+
+// 把滑块 DOM 位置重置回起点（不重新渲染整个页面）
+function resetSliderDom() {
+  const track = document.getElementById('slider-track');
+  const piece = document.getElementById('slider-piece');
+  if (track) track.style.left = '0px';
+  if (piece) piece.style.left = '0px';
+}
+
+// 真正调用发短信接口
+async function sendSmsCode(phone, token, purpose = 'reset_password') {
+  try {
+    const r = await api('/auth/sms-code', {
+      method: 'POST',
+      body: JSON.stringify({ phone, purpose, captcha_token: token }),
+    });
+    // 记录已发送验证码的手机号和用途，供后续验证
+    state.smsSentPhone = phone;
+    state.smsSentPurpose = purpose;
+    state.smsDevCode = r.dev_code || null;
+    // 短信已发，滑块使命完成，清掉避免下次复用同 token
+    state.captchaToken = null;
+    setAlert('info', `验证码已发送（5 分钟内有效）${
+      r.dev_code ? '，开发模式验证码：' + r.dev_code : ''
+    }`);
+    render();
+  } catch (e) {
+    // 任何失败都清掉 token（一次性，不可复用）
+    state.captchaToken = null;
+    if (e.code === 'captcha_required') {
+      setAlert('error', '校验已过期，请重新滑动验证');
+    } else {
+      setAlert('error', e.message);
+    }
+    render();
+  }
+}
+
 // 忘记密码：设置新密码
+
 async function doResetPassword() {
-  const phone = state.forgotPhone || $('#phone').value.trim();
+  const phone = state.smsSentPhone || $('#phone').value.trim();
   const code = $('#code').value.trim();
   const newPwd = $('#new-password').value;
   if (!phone || !code || !newPwd) { setAlert('error', '请填写完整'); return; }
@@ -289,8 +463,8 @@ async function doResetPassword() {
       method: 'POST',
       body: JSON.stringify({ phone, code, new_password: newPwd }),
     });
-    state.forgotPhone = null;
-    state.forgotDevCode = null;
+    state.smsSentPhone = null;
+    state.smsDevCode = null;
     setAlert('success', '密码已重置，请用新密码登录');
     setTimeout(() => location.hash = '/login', 1500);
   } catch (e) { setAlert('error', e.message); }
@@ -330,9 +504,50 @@ function openUnbindModal(bindingId, sn, nickname) {
   render();
 }
 
+// 修改密码弹窗：支持旧密码验证或短信验证码验证
+function openChangePwdModal() {
+  state.modal = { type: 'change_password', mode: 'password', oldPassword: '', newPassword: '', code: '', busy: false };
+  render();
+}
+
+// 修改密码弹窗：发送短信验证码
+async function doChangePwdSendCode() {
+  const phone = state.user?.phone;
+  if (!phone) { setAlert('error', '无法获取手机号'); return; }
+  state.captchaToken = null;
+  await loadSlider(phone, 'change_password');
+}
+
 function closeModal() {
   state.modal = null;
   render();
+}
+
+// 修改密码：提交
+async function submitChangePassword() {
+  const m = state.modal;
+  if (!m || m.type !== 'change_password' || m.busy) return;
+  const newPwd = m.newPassword;
+  if (!newPwd || newPwd.length < 8) { setAlert('error', '新密码至少 8 位'); return; }
+  m.busy = true; render();
+  try {
+    if (m.mode === 'password') {
+      if (!m.oldPassword) { setAlert('error', '请输入旧密码'); m.busy = false; render(); return; }
+      await api('/auth/change-password', {
+        method: 'POST',
+        body: JSON.stringify({ old_password: m.oldPassword, new_password: newPwd }),
+      });
+    } else {
+      if (!m.code) { setAlert('error', '请输入验证码'); m.busy = false; render(); return; }
+      await api('/auth/change-password-by-code', {
+        method: 'POST',
+        body: JSON.stringify({ code: m.code, new_password: newPwd }),
+      });
+    }
+    setAlert('success', '密码修改成功');
+    state.modal = null;
+    render();
+  } catch (e) { setAlert('error', e.message); m.busy = false; render(); }
 }
 
 async function submitRenew() {
@@ -456,19 +671,36 @@ function render() {
   if (state.alert) html += `<div class="alert ${state.alert.type}">${state.alert.msg}</div>`;
 
   if (state.view === '/login') {
+    const isCodeLogin = state.loginMode === 'code';
     html += `
       <div class="container">
         ${topbar}
         <div class="card">
           <h2>登录</h2>
-          <form onsubmit="event.preventDefault(); doLogin($('#phone').value, $('#password').value)">
+          <div class="tab-row">
+            <button class="tab-btn ${!isCodeLogin ? 'active' : ''}" onclick="state.loginMode='password';render()">密码登录</button>
+            <button class="tab-btn ${isCodeLogin ? 'active' : ''}" onclick="state.loginMode='code';render()">验证码登录</button>
+          </div>
+          ${!isCodeLogin ? `
+            <form onsubmit="event.preventDefault(); doLogin($('#phone').value, $('#password').value)">
+              <label>手机号</label>
+              ${inputHTML('phone', 'tel', '11 位手机号', { required: true, pattern: '1[3-9][0-9]{9}', maxlength: 11 })}
+              <label>密码</label>
+              ${inputHTML('password', 'password', '至少 8 位', { required: true, maxlength: 64 })}
+              <button class="primary" type="submit" style="width:100%;margin-top:4px">登录</button>
+            </form>
+            <p class="hint">还没账号？<a href="#/register">立即注册</a> · <a href="#/forgot">忘记密码</a></p>
+          ` : `
             <label>手机号</label>
-            ${inputHTML('phone', 'tel', '11 位手机号', { required: true, pattern: '1[3-9][0-9]{9}', maxlength: 11 })}
-            <label>密码</label>
-            ${inputHTML('password', 'password', '至少 8 位', { required: true, maxlength: 64 })}
-            <button class="primary" type="submit" style="width:100%;margin-top:4px">登录</button>
-          </form>
-          <p class="hint">还没账号？<a href="#/register">立即注册</a> · <a href="#/forgot">忘记密码</a></p>
+            <div style="display:flex;gap:8px;align-items:flex-start">
+              <div style="flex:1">${inputHTML('phone', 'tel', '11 位手机号', { required: true, pattern: '1[3-9][0-9]{9}', maxlength: 11 })}</div>
+              <button type="button" style="margin-top:0" onclick="doLoginSendCode()">发送验证码</button>
+            </div>
+            <label>验证码</label>
+            ${inputHTML('code', 'text', '6 位验证码', { maxlength: 6 })}
+            <button class="primary" onclick="doLoginByCode()" style="width:100%;margin-top:4px">登录</button>
+            <p class="hint">还没账号？<a href="#/register">立即注册</a> · <a href="#/forgot">忘记密码</a></p>
+          `}
         </div>
       </div>`;
   } else if (state.view === '/forgot') {
@@ -498,9 +730,14 @@ function render() {
         ${topbar}
         <div class="card">
           <h2>注册</h2>
-          <form onsubmit="event.preventDefault(); doRegister($('#phone').value, $('#password').value, $('#email').value)">
+          <form onsubmit="event.preventDefault(); doRegister($('#phone').value, $('#password').value, $('#email').value, $('#code').value)">
             <label>手机号</label>
             ${inputHTML('phone', 'tel', '11 位手机号', { required: true, pattern: '1[3-9][0-9]{9}', maxlength: 11 })}
+            <label>验证码</label>
+            <div style="display:flex;gap:8px;align-items:flex-start">
+              <div style="flex:1">${inputHTML('code', 'text', '6 位验证码', { maxlength: 6 })}</div>
+              <button type="button" style="margin-top:0" onclick="doRegisterSendCode()">发送验证码</button>
+            </div>
             <label>密码（至少 8 位）</label>
             ${inputHTML('password', 'password', '至少 8 位', { required: true, maxlength: 64, oninput: "onPwdInput('password')" })}
             <div id="password-strength" class="pwd-strength" style="display:none"></div>
@@ -525,6 +762,7 @@ function render() {
             ${u.email_verified ? '<span class="badge verified">邮箱已验证</span>' : '<span class="badge unverified">邮箱未验证</span>'}
           </p>
           <p class="hint">套餐 / 服务期按设备计算，每台设备独立续费。</p>
+          <button onclick="openChangePwdModal()" style="margin-top:12px">修改密码</button>
         </div>
         <div class="card">
           <h2>我的设备</h2>
@@ -613,7 +851,22 @@ function render() {
       </div>`;
   }
 
+  // render 前抓取当前输入框值，render 后回填，避免滑块交互清空用户已输入的手机号等
+  const saved = {};
+  document.querySelectorAll('#app input').forEach(inp => {
+    if (inp.id) saved[inp.id] = { value: inp.value, type: inp.type };
+  });
+
   $('#app').innerHTML = html + renderModal();
+
+  // 回填
+  for (const id in saved) {
+    const el = document.getElementById(id);
+    if (el && el.type === saved[id].type) {
+      el.value = saved[id].value;
+      updateClear(el);
+    }
+  }
 }
 
 // 自定义 Modal（覆盖在页面顶部；点空白不关闭，必须点取消/确认）
@@ -679,12 +932,69 @@ function renderModal() {
       <button onclick="closeModal()">取消</button>
       <button class="danger" onclick="confirmUnbind()" ${m.busy ? 'disabled' : ''}>${m.busy ? '删除中...' : '确认删除'}</button>
     `;
+  } else if (m.type === 'captcha') {
+    const statusText = m.busy ? '校验中…' : (m.error ? m.error : '请按住滑块拖动到镂空缺口处');
+    body = `
+      <h3>安全验证</h3>
+      <p style="color:var(--text-muted);font-size:13px;margin:0 0 14px">为防止短信被滥用，请完成下方滑块校验后再发送验证码。</p>
+      <div class="captcha-box">
+        <div class="captcha-canvas" style="width:${m.bgW}px;height:${m.bgH}px">
+          <img src="${m.bg}" style="width:${m.bgW}px;height:${m.bgH}px;display:block;border-radius:6px" draggable="false" />
+          <img id="slider-piece" src="${m.slider}" style="position:absolute;top:${m.targetY}px;left:0;width:${m.sliderW}px;height:${m.sliderH}px;pointer-events:none" draggable="false" />
+        </div>
+        <div class="captcha-track" style="width:${m.bgW}px" onmousedown="sliderDown(event)" ontouchstart="sliderDown(event)">
+          <div class="captcha-track-text">${statusText}</div>
+          <div id="slider-track" class="captcha-handle" style="left:0;width:${m.sliderH}px;height:${m.sliderH}px">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 6 15 12 9 18"/></svg>
+          </div>
+        </div>
+      </div>
+    `;
+    actions = `
+      <button onclick="closeCaptchaModal()">取消</button>
+    `;
+  } else if (m.type === 'change_password') {
+    const isPwdMode = m.mode === 'password';
+    body = `
+      <h3>修改密码</h3>
+      <div class="tab-row" style="margin-bottom:14px">
+        <button class="tab-btn ${isPwdMode ? 'active' : ''}" onclick="state.modal.mode='password';render()">旧密码验证</button>
+        <button class="tab-btn ${!isPwdMode ? 'active' : ''}" onclick="state.modal.mode='code';render()">短信验证码</button>
+      </div>
+      ${isPwdMode ? `
+        <label>旧密码</label>
+        <div class="input-wrap has-eye">
+          <input id="change-old-pwd" type="password" placeholder="当前密码" maxlength="64"
+            oninput="state.modal.oldPassword=this.value" />
+          <button type="button" class="input-icon eye" onclick="togglePwd('change-old-pwd')" onmousedown="event.preventDefault()">${ICON_EYE_OFF}</button>
+        </div>
+      ` : `
+        <label>短信验证码</label>
+        <div style="display:flex;gap:8px;align-items:flex-start">
+          <div style="flex:1">${inputHTML('change-code', 'text', '6 位验证码', { maxlength: 6, oninput: "state.modal.code=this.value" })}</div>
+          <button type="button" style="margin-top:0" onclick="doChangePwdSendCode()">发送验证码</button>
+        </div>
+      `}
+      <label>新密码（至少 8 位）</label>
+      <div class="input-wrap has-eye">
+        <input id="change-new-pwd" type="password" placeholder="新密码" maxlength="64"
+          oninput="state.modal.newPassword=this.value;onPwdInput('change-new-pwd')" />
+        <button type="button" class="input-icon eye" onclick="togglePwd('change-new-pwd')" onmousedown="event.preventDefault()">${ICON_EYE_OFF}</button>
+      </div>
+      <div id="change-new-pwd-strength" class="pwd-strength" style="display:none"></div>
+    `;
+    actions = `
+      <button onclick="closeModal()">取消</button>
+      <button class="primary" onclick="submitChangePassword()" ${m.busy ? 'disabled' : ''}>${m.busy ? '修改中...' : '确认修改'}</button>
+    `;
   }
   // 图标型弹窗（删除设备）：按钮居中；表单型（续费/备注）：按钮靠右
   const actionsCls = m.type === 'unbind' ? 'modal-actions center' : 'modal-actions';
+  // captcha 弹窗点击遮罩不关闭（避免误关丢失滑块）
+  const overlayClick = m.type === 'captcha' ? stop : stop;
   return `
-    <div class="modal" onclick="${stop}">
-      <div class="modal-content" style="max-width:420px">
+    <div class="modal" onclick="${overlayClick}">
+      <div class="modal-content" style="max-width:${m.type === 'captcha' ? '360px' : '420px'}">
         ${body}
         <div class="${actionsCls}" style="margin-top:18px">
           ${actions}
@@ -692,6 +1002,13 @@ function renderModal() {
       </div>
     </div>
   `;
+}
+
+// 关闭滑块弹窗（取消验证）
+function closeCaptchaModal() {
+  state.modal = null;
+  state.captchaToken = null;
+  render();
 }
 
 // 年限 chip 切换：仅更新 chip 状态 + 金额，不重渲染整个 modal（避免闪烁）
