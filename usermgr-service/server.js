@@ -73,39 +73,69 @@ const SMS_CONFIG = {
 // 4 个必填字段都有值才视为已启用；任一缺失走 dev 模式（不发送，回传 dev_code 供联调）
 const SMS_ENABLED = !!(SMS_CONFIG.accessKeyId && SMS_CONFIG.accessKeySecret && SMS_CONFIG.signName && SMS_CONFIG.templateCode);
 
-// 阿里云短信客户端（懒加载，仅在 SMS_ENABLED 时创建）
-let _smsClient = null;
-function getSmsClient() {
-  if (_smsClient) return _smsClient;
-  const Dysmsapi = require('@alicloud/dysmsapi20170525');
-  const OpenApi = require('@alicloud/openapi-client');
-  const Util = require('@alicloud/tea-util');
-  const config = new OpenApi.Config({
-    accessKeyId: SMS_CONFIG.accessKeyId,
-    accessKeySecret: SMS_CONFIG.accessKeySecret,
-    endpoint: SMS_CONFIG.endpoint,
-  });
-  _smsClient = new Dysmsapi.default(config);
-  _smsClient._runtime = new Util.RuntimeOptions({});
-  return _smsClient;
+// 阿里云短信 — 原生 HTTP 调用（RPC 签名 V1.0），不依赖 SDK
+ const https = require('https');
+
+function pctEncode(str) {
+  return encodeURIComponent(String(str))
+    .replace(/!/g, '%2B')
+    .replace(/\*/g, '%2A')
+    .replace(/'/g, '%27')
+    .replace(/\(/g, '%28')
+    .replace(/\)/g, '%29');
 }
 
 async function sendSms(phone, code) {
   if (SMS_ENABLED) {
-    const client = getSmsClient();
-    const Dysmsapi = require('@alicloud/dysmsapi20170525');
-    const req = new Dysmsapi.SendSmsRequest({
-      phoneNumbers: phone,
-      signName: SMS_CONFIG.signName,
-      templateCode: SMS_CONFIG.templateCode,
-      templateParam: JSON.stringify({ code, time: '5' }),
+    const params = {
+      PhoneNumbers:  phone,
+      SignName:      SMS_CONFIG.signName,
+      TemplateCode:  SMS_CONFIG.templateCode,
+      TemplateParam: JSON.stringify({ code, time: '5' }),
+      Action:        'SendSms',
+      Version:       '2017-05-25',
+      Format:        'JSON',
+      RegionId:      'cn-hangzhou',
+      AccessKeyId:   SMS_CONFIG.accessKeyId,
+      SignatureMethod:   'HMAC-SHA1',
+      SignatureVersion:  '1.0',
+      SignatureNonce:    crypto.randomUUID(),
+      Timestamp:         new Date().toISOString().replace(/\.\d{3}Z$/, 'Z'),
+    };
+    // 计算签名
+    const sortedKeys = Object.keys(params).sort();
+    const canonicalQuery = sortedKeys.map(k => `${pctEncode(k)}=${pctEncode(params[k])}`).join('&');
+    const stringToSign = 'GET&' + pctEncode('/') + '&' + pctEncode(canonicalQuery);
+    const signature = crypto.createHmac('sha1', SMS_CONFIG.accessKeySecret + '&').update(stringToSign).digest('base64');
+    params.Signature = signature;
+
+    const finalQuery = Object.entries(params).map(([k, v]) => `${pctEncode(k)}=${pctEncode(v)}`).join('&');
+    const url = `https://${SMS_CONFIG.endpoint}/?${finalQuery}`;
+
+    await new Promise((resolve, reject) => {
+      https.get(url, (res) => {
+        let data = '';
+        res.on('data', (chunk) => { data += chunk; });
+        res.on('end', () => {
+          try {
+            const body = JSON.parse(data);
+            if (body.Code !== 'OK') {
+              console.error(`[sms] 发送失败: ${body.Code} ${body.Message}`);
+              reject(new Error(`短信发送失败: ${body.Message || body.Code}`));
+              return;
+            }
+            console.log(`[sms] 已发送至 ${phone} (bizId=${body.BizId})`);
+            resolve();
+          } catch (e) {
+            console.error(`[sms] 响应解析失败: ${data}`);
+            reject(new Error('短信服务响应异常'));
+          }
+        });
+      }).on('error', (e) => {
+        console.error(`[sms] 网络错误: ${e.message}`);
+        reject(new Error('短信服务网络错误'));
+      });
     });
-    const resp = await client.sendSmsWithOptions(req, client._runtime);
-    if (resp.body.code !== 'OK') {
-      console.error(`[sms] 发送失败: ${resp.body.code} ${resp.body.message}`);
-      throw new Error(`短信发送失败: ${resp.body.message}`);
-    }
-    console.log(`[sms] 已发送至 ${phone} (bizId=${resp.body.bizId})`);
   } else {
     console.log(`[sms:dev] ${phone} -> ${code}  (配置 SMS_ACCESS_KEY_ID 等环境变量后启用真实发送)`);
   }
