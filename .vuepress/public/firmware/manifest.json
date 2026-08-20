@@ -1,5 +1,31 @@
 [
   {
+    "id": "xiaov-0.0.3-alpha-full",
+    "name": "Vectorac 小V 完整镜像（出厂/恢复）",
+    "version": "0.0.3-alpha",
+    "file": "/firmware/xiaov/recovery/xiaov-0.0.3-alpha-full.bin",
+    "address": "0x0",
+    "flashMode": "dio",
+    "flashFreq": "80m",
+    "flashSize": "16MB",
+    "baudrate": 921600,
+    "date": "2026-08-20",
+    "note": "ESP32-S3 完整镜像：bootloader + 分区表 + app + LittleFS + 中文 MultiNet 模型。切换到豆包 RTC 实时语音方案。刷 0x0，用于出厂烧录或恢复出厂。"
+  },
+  {
+    "id": "xiaov-0.0.3-alpha-app",
+    "name": "Vectorac 小V App 升级包",
+    "version": "0.0.3-alpha",
+    "file": "/firmware/xiaov/ota/xiaov-0.0.3-alpha-app.bin",
+    "address": "0x10000",
+    "flashMode": "dio",
+    "flashFreq": "80m",
+    "flashSize": "16MB",
+    "baudrate": 921600,
+    "date": "2026-08-20",
+    "note": "仅 app 段，刷 0x10000，用于局部升级（不擦 bootloader/分区表）。体积小，刷得快。"
+  },
+  {
     "id": "xiaov-0.0.2-alpha-full",
     "name": "Vectorac 小V 完整镜像（出厂/恢复）",
     "version": "0.0.2-alpha",
