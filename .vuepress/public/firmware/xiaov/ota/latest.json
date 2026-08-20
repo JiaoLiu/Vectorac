@@ -1,19 +1,19 @@
 {
-  "version": "0.0.2-alpha",
-  "date": "2026-08-07",
-  "release_notes": "音色选择 + 设备动作优先规则；O 版与 SC 2.0 双字段适配；身份约束 + 95alive 电台下线。",
+  "version": "0.0.3-alpha",
+  "date": "2026-08-20",
+  "release_notes": "切换到豆包 RTC 实时语音方案（ESP-IDF 5.5 + volc-conv-ai）；修复音乐播放无声（int32 溢出）与 watchdog 超时；新增设备控制 Function Call。",
   "parts": [
     {
       "type": "littlefs",
-      "url": "https://vectorac.com/firmware/xiaov/ota/xiaov-0.0.2-alpha-littlefs.bin",
+      "url": "https://vectorac.com/firmware/xiaov/ota/xiaov-0.0.3-alpha-littlefs.bin",
       "size": 2686976,
-      "checksum": "sha256:52dd6b21fd8fb43095393e75c764cb98fa92cd3675473eabc5e80855a27e3945"
+      "checksum": "sha256:3d79791f83066f725ebffa90be22a33ee698746cee37bcc57a1414f8c38db6c9"
     },
     {
       "type": "app",
-      "url": "https://vectorac.com/firmware/xiaov/ota/xiaov-0.0.2-alpha-app.bin",
-      "size": 2512512,
-      "checksum": "sha256:e6e017bcbc69999b5b966d34a73a1cbbdc611f170b9951884f570d7a6556282a"
+      "url": "https://vectorac.com/firmware/xiaov/ota/xiaov-0.0.3-alpha-app.bin",
+      "size": 3082880,
+      "checksum": "sha256:7701d56bf123acc12529762ad5a2fc36fea6c2537535baae6ea3b7fe32bd8470"
     }
   ]
 }

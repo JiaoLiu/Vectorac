@@ -1,12 +1,12 @@
 {
-  "version": "0.0.2-alpha",
-  "url": "https://vectorac.com/firmware/xiaov/recovery/xiaov-0.0.2-alpha-full.bin",
+  "version": "0.0.3-alpha",
+  "url": "https://vectorac.com/firmware/xiaov/recovery/xiaov-0.0.3-alpha-full.bin",
   "address": "0x0",
-  "size": 8102059,
-  "checksum": "sha256:9a63519f822244730525f10ba66c47561f5e6e78cdcbf4f844b9221432441004",
+  "size": 9150635,
+  "checksum": "sha256:40ce8af46305e5b431345b84a814aa07a012c5e51bef3d151d4912c0d6b077d0",
   "flashMode": "dio",
   "flashFreq": "80m",
   "flashSize": "16MB",
-  "date": "2026-08-07",
-  "release_notes": "0.0.2-alpha：音色选择 + 设备动作优先规则；O 版与 SC 2.0 双字段适配；身份约束 + 95alive 电台下线。"
+  "date": "2026-08-20",
+  "release_notes": "0.0.3-alpha：切换到豆包 RTC 实时语音方案（ESP-IDF 5.5 + volc-conv-ai）；修复音乐播放无声（int32 溢出）与 watchdog 超时；新增设备控制 Function Call。"
 }
