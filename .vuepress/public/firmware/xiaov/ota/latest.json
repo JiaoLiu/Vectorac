@@ -1,19 +1,13 @@
 {
-  "version": "0.0.3-alpha",
-  "date": "2026-08-20",
-  "release_notes": "切换到豆包 RTC 实时语音方案（ESP-IDF 5.5 + volc-conv-ai）；修复音乐播放无声（int32 溢出）与 watchdog 超时；新增设备控制 Function Call。",
+  "version": "0.0.4-alpha",
+  "date": "2026-08-21",
+  "release_notes": "RTC 会话稳定性重构：用分级看门狗替换笼统超时（欢迎语 30s / TTS 断流 15s / 播放卡死 15s / ASR 后 30s 无进展），弱网长回复不再被截断；失败后不再自动重建会话，先播离线错误提示并等待再次唤醒；新增 SDK 销毁看门狗防止 fini 卡死；透传音频发送返回值按 RTCLite 契约判失败。",
   "parts": [
     {
-      "type": "littlefs",
-      "url": "https://vectorac.com/firmware/xiaov/ota/xiaov-0.0.3-alpha-littlefs.bin",
-      "size": 2686976,
-      "checksum": "sha256:3d79791f83066f725ebffa90be22a33ee698746cee37bcc57a1414f8c38db6c9"
-    },
-    {
       "type": "app",
-      "url": "https://vectorac.com/firmware/xiaov/ota/xiaov-0.0.3-alpha-app.bin",
-      "size": 3082880,
-      "checksum": "sha256:7701d56bf123acc12529762ad5a2fc36fea6c2537535baae6ea3b7fe32bd8470"
+      "url": "https://vectorac.com/firmware/xiaov/ota/xiaov-0.0.4-alpha-app.bin",
+      "size": 3083776,
+      "checksum": "sha256:6b9e04fd4a664f8415a92302d3a5e9464d4235ad0a298f2fabede6a4f0bfaa6e"
     }
   ]
 }

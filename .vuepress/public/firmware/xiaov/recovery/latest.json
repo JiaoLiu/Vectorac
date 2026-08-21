@@ -1,12 +1,12 @@
 {
-  "version": "0.0.3-alpha",
-  "url": "https://vectorac.com/firmware/xiaov/recovery/xiaov-0.0.3-alpha-full.bin",
+  "version": "0.0.4-alpha",
+  "url": "https://vectorac.com/firmware/xiaov/recovery/xiaov-0.0.4-alpha-full.bin",
   "address": "0x0",
   "size": 9150635,
-  "checksum": "sha256:40ce8af46305e5b431345b84a814aa07a012c5e51bef3d151d4912c0d6b077d0",
+  "checksum": "sha256:81046994d0dd37f81ac4a94eea4a29a3e7387878ec319e5d836d3eeb8360d89b",
   "flashMode": "dio",
   "flashFreq": "80m",
   "flashSize": "16MB",
-  "date": "2026-08-20",
-  "release_notes": "0.0.3-alpha：切换到豆包 RTC 实时语音方案（ESP-IDF 5.5 + volc-conv-ai）；修复音乐播放无声（int32 溢出）与 watchdog 超时；新增设备控制 Function Call。"
+  "date": "2026-08-21",
+  "release_notes": "0.0.4-alpha：RTC 会话稳定性重构——分级看门狗（欢迎语/TTS 断流/播放卡死/ASR 无进展），失败后不自动重建、播离线报错并等待再唤醒，SDK 销毁看门狗防卡死，透传音频发送返回值。"
 }
