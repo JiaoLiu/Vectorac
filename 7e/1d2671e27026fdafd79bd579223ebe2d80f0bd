@@ -1,0 +1,31 @@
+usermgr-service/README.md
+  s_f58fab71a54077::t_fcf1cf461a4249 94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.2",
+  "base_commit_sha": "7e1d2671e27026fdafd79bd579223ebe2d80f0bd",
+  "prompts": {},
+  "sessions": {
+    "s_f58fab71a54077": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a97c6b8b6e5888c03083198",
+        "model": "DeepSeek-V4-Pro-Official__dev"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "custom_attributes": {
+        "tool_use_id": "6a97c876b6e5888c03083248",
+        "session_id": "6a97c6b8b6e5888c03083198",
+        "operation_id": "6a97c876b6e5888c03083248",
+        "external_session_id": "6a97c6b8b6e5888c03083198",
+        "client_type": "ide",
+        "tool_name": "Edit",
+        "runtime_client": "trae-tob-git-ai",
+        "edit_kind": "file_edit",
+        "source_scene": "agent",
+        "display_model_name": "DeepSeek-V4-Pro 正式版"
+      }
+    }
+  }
+}
