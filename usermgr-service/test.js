@@ -38,7 +38,7 @@ for (const ext of ['-wal', '-shm']) {
   if (fs.existsSync(f)) fs.unlinkSync(f);
 }
 
-const { app, buildSignString, rateBuckets } = require('./server');
+const { app, buildSignString, deriveLocalHostname, rateBuckets } = require('./server');
 const DB = require('./db');
 const volcano = require('./volcano');
 const captcha = require('./captcha');
@@ -142,6 +142,10 @@ let server;
 async function main() {
   server = app.listen(PORT, async () => {
     console.log('=== Device Center v3 测试 ===\n');
+
+    check('局域网主机名由冒号格式 HardwareID 严格派生', deriveLocalHostname('AC:A7:04:28:C9:10') === 'xiaov-aca70428c910.local');
+    check('局域网主机名接受无分隔 HardwareID', deriveLocalHostname('ACA70428C910') === 'xiaov-aca70428c910.local');
+    check('局域网主机名拒绝非法 HardwareID', deriveLocalHostname('AC:A7:04:28:C9:10<script>') === null);
 
     // ===== 1. 健康检查 =====
     let r = await req('GET', '/healthz');
@@ -577,7 +581,19 @@ async function main() {
     // ===== 13. 用户解绑后再查 status =====
     r = await req('GET', '/xiaov/api/devices', null, { Authorization: `Bearer ${userToken}` });
     check('用户设备列表非空', Array.isArray(r.body) && r.body.length > 0);
+    check('设备列表返回严格派生的局域网主机名', r.body[0].local_hostname === 'xiaov-aca70428c910.local');
     const bindingId = r.body[0].binding_id;
+
+    const boundCredential = DB.getCredentialByHardwareId(xiaovId, hwid);
+    DB.db.prepare('UPDATE device_credentials SET hardware_id = ? WHERE id = ?').run('invalid-hardware-id', boundCredential.id);
+    const invalidHostList = await req('GET', '/xiaov/api/devices', null, { Authorization: `Bearer ${userToken}` });
+    check('设备列表对非法 HardwareID 返回 local_hostname=null', invalidHostList.body[0].local_hostname === null);
+    DB.db.prepare('UPDATE device_credentials SET hardware_id = ? WHERE id = ?').run(hwid, boundCredential.id);
+
+    const accountAppSource = fs.readFileSync(path.join(__dirname, 'public', 'account', 'app.js'), 'utf8');
+    check('官网入口前端再次严格校验局域网主机名', accountAppSource.includes("const LOCAL_HOSTNAME_RE = /^xiaov-[0-9a-f]{12}\\.local$/;"));
+    check('官网入口只做用户点击后的新标签页跳转', accountAppSource.includes("window.open(`http://${hostname}/`, '_blank', 'noopener,noreferrer')"));
+    check('官网入口包含同 Wi-Fi 与访客网络隔离帮助', accountAppSource.includes('手机与小V处于同一 Wi-Fi') && accountAppSource.includes('访客网络没有开启设备隔离'));
 
     r = await req('DELETE', `/xiaov/api/devices/${bindingId}`, null, { Authorization: `Bearer ${userToken}` });
     check('用户解绑成功', r.body.ok === true);

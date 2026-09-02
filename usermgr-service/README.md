@@ -91,7 +91,7 @@ rm -f usermgr-service-linux-x64-*.zip
 | `KEY_ENCRYPTION_SECRET` | **是** | 设备 FactoryKey / 火山 Secret AES 加密密钥（**改了所有现存设备密钥失效**） |
 | `ADMIN_IP_WHITELIST` | 否 | 管理后台 IP 白名单，逗号分隔。留空只靠密码 |
 | `VOLCANO_ENABLED` | 否 | 是否启用火山集成，默认 false；产品密钥在管理平台的产品配置中填写 |
-| `SMS_API_KEY` | 否 | 短信供应商配置占位；当前真实短信发送尚未实现，留空为开发模式 |
+| `SMS_ACCESS_KEY_ID` / `SMS_ACCESS_KEY_SECRET` / `SMS_SIGN_NAME` / `SMS_TEMPLATE_CODE` | 否 | 阿里云短信密钥与签名/模板，4 项都填齐才启用真实发送（否则 dev 模式打印验证码）；`SMS_ENDPOINT` 默认 `dysmsapi.aliyuncs.com` |
 
 `install.sh` 做的事：
 - 把文件复制到 `/home/www/vectorac/usermgr-service/`（`INSTALL_DIR` env 可改）

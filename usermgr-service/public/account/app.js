@@ -610,6 +610,26 @@ async function doUnbind(bindingId) {
 async function doRenew(bindingId, sn) { openRenewModal(bindingId, sn); }
 async function doSubmitVoucher(orderId, orderNo) { openVoucherModal(orderId, orderNo); }
 
+const LOCAL_HOSTNAME_RE = /^xiaov-[0-9a-f]{12}\.local$/;
+
+function isValidLocalHostname(hostname) {
+  return typeof hostname === 'string' && LOCAL_HOSTNAME_RE.test(hostname);
+}
+
+// 官网只提供明确用户点击后的顶层跳转，不探测、不代理局域网设备，也不传递任何 token。
+function openLocalControl(bindingId) {
+  const id = Number(bindingId);
+  const device = Number.isSafeInteger(id)
+    ? (state.user?.devices || []).find(d => Number(d.binding_id) === id)
+    : null;
+  const hostname = device?.local_hostname;
+  if (!isValidLocalHostname(hostname)) {
+    setAlert('error', '该设备的局域网地址不可用，请稍后重试或联系客服');
+    return;
+  }
+  window.open(`http://${hostname}/`, '_blank', 'noopener,noreferrer');
+}
+
 async function loadOrders() {
   try {
     state.orders = await api('/orders');
@@ -774,8 +794,16 @@ function render() {
                 <div class="mac">SN: ${d.sn}${d.hardware_id ? ' · ' + d.hardware_id : ''}</div>
                 <div class="time">套餐：${d.plan === 'annual' ? '年卡' : (d.plan || '—')} · 服务到期：${fmtDate(d.service_expires_at)}</div>
                 <div class="time">绑定：${d.bound_at || '—'}${d.last_seen_at ? ' · 最近：' + d.last_seen_at : ''}</div>
+                <div class="local-control-help">
+                  <span>局域网控制需让手机与小V连接同一 Wi-Fi。</span>
+                  <details>
+                    <summary>打不开？</summary>
+                    <span>请确认小V已开机并连接网络，手机与小V处于同一 Wi-Fi，且访客网络没有开启设备隔离。</span>
+                  </details>
+                </div>
               </div>
               <div class="actions">
+                <button class="local-control" onclick="openLocalControl(${Number(d.binding_id)})" ${isValidLocalHostname(d.local_hostname) ? '' : 'disabled title="局域网地址不可用"'}>局域网控制</button>
                 <button class="primary" onclick="doRenew(${d.binding_id}, '${d.sn}')">续费</button>
                 <button class="danger" onclick="doUnbind(${d.binding_id})">解绑</button>
               </div>

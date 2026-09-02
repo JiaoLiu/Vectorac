@@ -34,6 +34,19 @@ const PROVISION_TOKEN = process.env.PROVISION_TOKEN;
 const VOLCANO_ENABLED = process.env.VOLCANO_ENABLED === 'true';
 const ALLOWED_DRIFT_MS = 5 * 60 * 1000;  // ±5 分钟时间窗
 
+// 局域网控制使用与设备固件约定的稳定 mDNS 名称。
+// 只接受 12 位十六进制 HardwareID，或 6 组由冒号/短横线分隔的字节；
+// 不能用“删除所有非十六进制字符”的宽松方式，避免脏数据被静默转换成可访问地址。
+function deriveLocalHostname(hardwareId) {
+  if (typeof hardwareId !== 'string') return null;
+  const raw = hardwareId.trim();
+  if (!/^(?:[0-9a-fA-F]{12}|[0-9a-fA-F]{2}(?:[:-][0-9a-fA-F]{2}){5})$/.test(raw)) {
+    return null;
+  }
+  const compact = raw.replace(/[:-]/g, '').toLowerCase();
+  return `xiaov-${compact}.local`;
+}
+
 // ==================== Rate Limiter（内存滑动窗口） ====================
 // 防 SMS 轰炸 + 密码暴力。单实例够用；多实例需换 Redis。
 const rateBuckets = new Map();  // key -> { count, resetAt }
@@ -756,6 +769,7 @@ app.get('/:product/api/devices', userAuth, (req, res) => {
       credential_id: b.credential_id,
       sn: b.sn,
       hardware_id: b.hardware_id,
+      local_hostname: deriveLocalHostname(b.hardware_id),
       nickname: b.nickname,
       bound_at: b.bound_at,
       last_seen_at: b.last_seen_at,
@@ -1162,4 +1176,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { app, verifySignature, buildSignString, rateBuckets };
+module.exports = { app, verifySignature, buildSignString, deriveLocalHostname, rateBuckets };
