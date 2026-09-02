@@ -1,0 +1,131 @@
+usermgr-service/README.md
+  f58fab71a540773a 94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.8",
+  "base_commit_sha": "7e1d2671e27026fdafd79bd579223ebe2d80f0bd",
+  "prompts": {
+    "005cae9c1dbc73d5": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a7d220af85496fd0502022c",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 16,
+      "overriden_lines": 0
+    },
+    "056992989d58fd24": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a38e6391d55a586f6a882f6",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1573,
+      "overriden_lines": 0
+    },
+    "4a68a259acc17f46": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a7152c27fd21251a8b13b6c",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 414,
+      "overriden_lines": 0
+    },
+    "c56a32e809737a22": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a82d2b6f85496fd05021002",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 971,
+      "overriden_lines": 0
+    },
+    "f58fab71a540773a": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a97c6b8b6e5888c03083198",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 1,
+      "total_deletions": 1,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    }
+  },
+  "commit_stats": {
+    "git_diff_added_lines": 67,
+    "git_diff_deleted_lines": 3,
+    "ai_additions": 1,
+    "ai_accepted": 1,
+    "BYMC": 64,
+    "mixed_additions": 0,
+    "BYAC": 1,
+    "BYRC": 0,
+    "per_file": {
+      "usermgr-service/README.md": {
+        "BYMC": [],
+        "BYAC": [
+          "94"
+        ],
+        "BYRC": []
+      },
+      "usermgr-service/public/account/app.css": {
+        "BYMC": [
+          "260-265"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "usermgr-service/public/account/app.js": {
+        "BYMC": [
+          "613-632",
+          "797-803",
+          "806"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "usermgr-service/server.js": {
+        "BYMC": [
+          "37-49",
+          "772",
+          "1179"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "usermgr-service/test.js": {
+        "BYMC": [
+          "41",
+          "146-148",
+          "584",
+          "587-596"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      }
+    }
+  },
+  "commit_timestamp": 1788332185,
+  "requirement_id": ""
+}
