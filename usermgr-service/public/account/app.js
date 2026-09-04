@@ -185,6 +185,7 @@ const ERR_CN = {
   device_already_bound: '设备已被其他账号绑定，如需换绑请先在原账号解绑',
   order_not_pending: '订单状态不允许此操作',
   order_already_paid: '订单已支付',
+  order_not_deletable: '已付款订单无法删除',
   voucher_required: '请填写备注',
   voucher_too_long: '备注内容过长',
   invalid_years: '续费年限不正确',
@@ -635,6 +636,24 @@ function openLocalControl(bindingId) {
   window.open(`http://${hostname}/`, '_blank', 'noopener,noreferrer');
 }
 
+// 删除订单
+async function doDeleteOrder(orderId, orderNo) {
+  state.modal = { type: 'deleteOrder', orderId, orderNo, busy: false };
+  render();
+}
+
+async function confirmDeleteOrder() {
+  const m = state.modal;
+  if (!m || m.type !== 'deleteOrder' || m.busy) return;
+  m.busy = true; render();
+  try {
+    await api('/orders/' + m.orderId, { method: 'DELETE' });
+    setAlert('success', '订单已删除');
+    state.modal = null;
+    if (state.view === '/orders') loadOrders(); else loadMe();
+  } catch (e) { setAlert('error', e.message); m.busy = false; render(); }
+}
+
 async function loadOrders() {
   try {
     state.orders = await api('/orders');
@@ -845,7 +864,7 @@ function render() {
                     <td>${o.voucher_text ? `<small>${o.voucher_text.slice(0, 30)}${o.voucher_text.length > 30 ? '...' : ''}</small><br><small style="color:#888">${fmtDate(o.voucher_submitted_at)}</small>` : '<span style="color:#888">未提交</span>'}</td>
                     <td>${renewBadge(o.provider_renew_status)}</td>
                     <td>${fmtDate(o.created_at)}</td>
-                    <td>${o.status === 'pending' && !o.voucher_text ? `<button class="primary" onclick="doSubmitVoucher(${o.id}, '${o.order_no}')">填写备注</button>` : '—'}</td>
+                    <td>${o.status === 'pending' && !o.voucher_text ? `<button class="primary" onclick="doSubmitVoucher(${o.id}, '${o.order_no}')">填写备注</button>` : ''} ${o.status === 'pending' ? `<button class="danger" onclick="doDeleteOrder(${o.id}, '${o.order_no}')">删除</button>` : ''}</td>
                   </tr>
                 `).join('')}
               </tbody>
@@ -862,6 +881,7 @@ function render() {
                   <div class="row"><span class="k">创建</span><span class="v">${fmtDate(o.created_at)}</span></div>
                   ${o.voucher_text ? `<div class="row"><span class="k">备注</span><span class="v" style="font-size:12px">${o.voucher_text.slice(0, 50)}${o.voucher_text.length > 50 ? '...' : ''}</span></div>` : ''}
                   ${o.status === 'pending' && !o.voucher_text ? `<div class="actions"><button class="primary" onclick="doSubmitVoucher(${o.id}, '${o.order_no}')">填写备注</button></div>` : ''}
+                  ${o.status === 'pending' ? `<div class="actions"><button class="danger" onclick="doDeleteOrder(${o.id}, '${o.order_no}')">删除订单</button></div>` : ''}
                 </div>
               `).join('')}
             </div>
@@ -964,6 +984,20 @@ function renderModal() {
     actions = `
       <button onclick="closeModal()">取消</button>
       <button class="danger" onclick="confirmUnbind()" ${m.busy ? 'disabled' : ''}>${m.busy ? '删除中...' : '确认删除'}</button>
+    `;
+  } else if (m.type === 'deleteOrder') {
+    body = `
+      <div style="text-align:center;padding:8px 0 16px">
+        <div style="width:56px;height:56px;border-radius:50%;background:rgba(229,62,62,.12);margin:0 auto 14px;display:flex;align-items:center;justify-content:center">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#e53e3e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+        </div>
+        <h3 style="margin-bottom:6px">确认删除订单？</h3>
+        <p style="color:var(--text-muted);font-size:13px">订单 <code>${m.orderNo}</code> 删除后不可恢复。</p>
+      </div>
+    `;
+    actions = `
+      <button onclick="closeModal()">取消</button>
+      <button class="danger" onclick="confirmDeleteOrder()" ${m.busy ? 'disabled' : ''}>${m.busy ? '删除中...' : '确认删除'}</button>
     `;
   } else if (m.type === 'captcha') {
     const statusText = m.busy ? '校验中…' : (m.error ? m.error : '请按住滑块拖动到镂空缺口处');

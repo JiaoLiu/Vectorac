@@ -264,27 +264,29 @@ app.delete('/admin/api/products/:id', adminAuth, (req, res) => {
 // ==================== 管理员：出厂录入 ====================
 // 改动①：只收 product + hardware_id，SN 和 FactoryKey 由服务器生成
 app.post('/admin/api/provision', provisionAuth, (req, res) => {
-  const { product, hardware_id } = req.body;
+  const { product, hardware_id, sn } = req.body;
   if (!product || !hardware_id) return res.status(400).json({ error: 'missing_params' });
 
   const productId = DB.getProductIdByCode(product);
   if (!productId) return res.status(404).json({ error: 'product_not_found' });
 
   try {
-    const result = DB.provisionDevice(productId, hardware_id);
+    const result = DB.provisionDevice(productId, hardware_id, sn);
     if (result.already_provisioned) {
       return res.json({ ok: true, already_provisioned: true, sn: result.sn });
     }
     res.json({ ok: true, sn: result.sn, factory_key: result.factoryKey, challenge: result.challenge });
   } catch (e) {
     if (e.message === 'device_retired') return res.status(403).json({ error: 'device_retired' });
+    if (e.message === 'device_not_found') return res.status(404).json({ error: 'device_not_found' });
+    if (e.message === 'sn_hardware_mismatch') return res.status(400).json({ error: 'sn_hardware_mismatch' });
     res.status(500).json({ error: 'provision_failed', reason: e.message });
   }
 });
 
 // 阶段 2：验证 eFuse HMAC challenge
 app.post('/admin/api/provision/verify', provisionAuth, (req, res) => {
-  const { product, hardware_id, challenge, response } = req.body;
+  const { product, hardware_id, challenge, response, sn } = req.body;
   if (!product || !hardware_id || !challenge || !response) {
     return res.status(400).json({ error: 'missing_params' });
   }
@@ -292,11 +294,12 @@ app.post('/admin/api/provision/verify', provisionAuth, (req, res) => {
   if (!productId) return res.status(404).json({ error: 'product_not_found' });
 
   try {
-    const result = DB.verifyProvision(productId, hardware_id, challenge, response);
+    const result = DB.verifyProvision(productId, hardware_id, challenge, response, sn);
     res.json({ ok: true, sn: result.sn, status: result.status });
   } catch (e) {
     const code = e.message;
     if (code === 'device_not_found') return res.status(404).json({ error: code });
+    if (code === 'sn_hardware_mismatch') return res.status(400).json({ error: code });
     if (code === 'already_provisioned') return res.status(409).json({ error: code });
     if (code === 'not_in_provisioning_state') return res.status(409).json({ error: code });
     if (code === 'challenge_expired' || code === 'challenge_mismatch') return res.status(410).json({ error: code });
@@ -307,16 +310,17 @@ app.post('/admin/api/provision/verify', provisionAuth, (req, res) => {
 
 // 标记烧录失败
 app.post('/admin/api/provision/fail', provisionAuth, (req, res) => {
-  const { product, hardware_id, reason } = req.body;
+  const { product, hardware_id, reason, sn } = req.body;
   if (!product || !hardware_id) return res.status(400).json({ error: 'missing_params' });
   const productId = DB.getProductIdByCode(product);
   if (!productId) return res.status(404).json({ error: 'product_not_found' });
 
   try {
-    const result = DB.failProvision(productId, hardware_id, reason || 'unknown');
+    const result = DB.failProvision(productId, hardware_id, reason || 'unknown', sn);
     res.json({ ok: true, sn: result.sn, status: result.status });
   } catch (e) {
     if (e.message === 'device_not_found') return res.status(404).json({ error: e.message });
+    if (e.message === 'sn_hardware_mismatch') return res.status(400).json({ error: 'sn_hardware_mismatch' });
     res.status(500).json({ error: 'fail_failed', reason: e.message });
   }
 });
@@ -462,6 +466,17 @@ app.post('/admin/api/orders/:id/complete-renew', adminAuth, (req, res) => {
     completed_at: order.provider_renew_completed_at,
     operator_id: order.provider_renew_operator_id,
   });
+});
+
+// 管理员删除订单（任意状态均可，但 paid 订单已延长服务期，需确认）
+app.delete('/admin/api/orders/:id', adminAuth, (req, res) => {
+  try {
+    DB.adminDeleteOrder(Number(req.params.id));
+    res.json({ ok: true });
+  } catch (e) {
+    if (e.message === 'order_not_found') return res.status(404).json({ error: 'not_found' });
+    res.status(500).json({ error: 'delete_failed' });
+  }
 });
 
 // ==================== 用户：注册/登录/找回密码 ====================
@@ -836,6 +851,19 @@ app.post('/:product/api/orders/:id/voucher', userAuth, (req, res) => {
   });
 });
 
+// 用户删除订单（仅 pending 状态可删）
+app.delete('/:product/api/orders/:id', userAuth, (req, res) => {
+  const order = DB.getOrderById(Number(req.params.id));
+  if (!order || order.user_id !== req.user.uid) return res.status(404).json({ error: 'not_found' });
+  try {
+    DB.deleteOrder(order.id);
+    res.json({ ok: true });
+  } catch (e) {
+    if (e.message === 'order_not_deletable') return res.status(400).json({ error: 'order_not_deletable', message: '已付款订单无法删除' });
+    res.status(500).json({ error: 'delete_failed' });
+  }
+});
+
 // 我的订单列表
 app.get('/:product/api/orders', userAuth, (req, res) => {
   res.json(DB.listOrdersByUser(req.user.uid).map(o => ({
@@ -887,12 +915,15 @@ app.post('/:product/api/device/activate', async (req, res) => {
   const productId = DB.getProductIdByCode(req.params.product);
   if (!productId) return res.status(404).json({ error: 'product_not_found' });
 
-  const { hardware_id, timestamp, nonce, signature } = req.body;
+  const { hardware_id, timestamp, nonce, signature, sn } = req.body;
   if (!hardware_id || !timestamp || !nonce || !signature) {
     return res.status(400).json({ error: 'missing_params' });
   }
 
-  const cred = DB.getCredentialByHardwareId(productId, hardware_id);
+  // 同一 MAC 可能有多个 SN，通过 sn 参数选择；未传 sn 时取第一个（向后兼容）
+  const cred = sn
+    ? DB.getCredentialByHardwareIdAndSn(productId, hardware_id, sn)
+    : DB.getCredentialByHardwareId(productId, hardware_id);
   if (!cred) return res.status(404).json({ error: 'device_not_provisioned' });
   if (['provisioning', 'provisioning_failed', 'retired'].includes(cred.status)) {
     return res.status(403).json({ error: 'device_not_provisioned', status: cred.status });
@@ -963,10 +994,8 @@ app.post('/:product/api/device/activate', async (req, res) => {
   }
 });
 
-// ==================== 设备：状态查询（新增⑦ + v4 ⑩） ====================
-// 设备在开启火山会话前必须先问平台：我是否已绑定 + 服务期是否有效
-// 解绑后平台返回 bound=false，服务期过期返回 ai_allowed=false
-app.post('/:product/api/device/status', (req, res) => {
+// ==================== 设备：列出同一 MAC 的所有 SN（多证书切换） ====================
+app.post('/:product/api/device/sns', (req, res) => {
   const productId = DB.getProductIdByCode(req.params.product);
   if (!productId) return res.status(404).json({ error: 'product_not_found' });
 
@@ -975,7 +1004,42 @@ app.post('/:product/api/device/status', (req, res) => {
     return res.status(400).json({ error: 'missing_params' });
   }
 
-  const cred = DB.getCredentialByHardwareId(productId, hardware_id);
+  const creds = DB.getCredentialsByHardwareId(productId, hardware_id);
+  if (creds.length === 0) return res.status(404).json({ error: 'device_not_provisioned' });
+
+  // 用第一个凭证的 FactoryKey 验证（同一 MAC 的所有 SN 共享同一个 FactoryKey）
+  const factoryKey = DB.getDecryptedFactoryKey(creds[0]);
+  const v = verifySignature('sns', factoryKey, hardware_id, timestamp, nonce, signature);
+  if (!v.ok) return res.status(401).json({ error: 'auth_failed', reason: v.reason });
+
+  res.json({
+    ok: true,
+    hardware_id,
+    sns: creds.map(c => ({
+      sn: c.sn,
+      status: c.status,
+      volcano_device_name: c.volcano_device_name,
+      device_secret_ready: !!c.volcano_device_secret,
+      volcano_activated_at: c.volcano_activated_at,
+    })),
+  });
+});
+
+// ==================== 设备：状态查询（新增⑦ + v4 ⑩） ====================
+// 设备在开启火山会话前必须先问平台：我是否已绑定 + 服务期是否有效
+// 解绑后平台返回 bound=false，服务期过期返回 ai_allowed=false
+app.post('/:product/api/device/status', (req, res) => {
+  const productId = DB.getProductIdByCode(req.params.product);
+  if (!productId) return res.status(404).json({ error: 'product_not_found' });
+
+  const { hardware_id, timestamp, nonce, signature, sn } = req.body;
+  if (!hardware_id || !timestamp || !nonce || !signature) {
+    return res.status(400).json({ error: 'missing_params' });
+  }
+
+  const cred = sn
+    ? DB.getCredentialByHardwareIdAndSn(productId, hardware_id, sn)
+    : DB.getCredentialByHardwareId(productId, hardware_id);
   if (!cred) return res.status(404).json({ error: 'device_not_provisioned' });
 
   const factoryKey = DB.getDecryptedFactoryKey(cred);
@@ -1025,12 +1089,14 @@ app.post('/:product/api/device/bind/qrcode', (req, res) => {
   const productId = DB.getProductIdByCode(req.params.product);
   if (!productId) return res.status(404).json({ error: 'product_not_found' });
 
-  const { hardware_id, timestamp, nonce, signature } = req.body;
+  const { hardware_id, timestamp, nonce, signature, sn } = req.body;
   if (!hardware_id || !timestamp || !nonce || !signature) {
     return res.status(400).json({ error: 'missing_params' });
   }
 
-  const cred = DB.getCredentialByHardwareId(productId, hardware_id);
+  const cred = sn
+    ? DB.getCredentialByHardwareIdAndSn(productId, hardware_id, sn)
+    : DB.getCredentialByHardwareId(productId, hardware_id);
   if (!cred) return res.status(404).json({ error: 'device_not_provisioned' });
 
   const factoryKey = DB.getDecryptedFactoryKey(cred);
@@ -1063,12 +1129,14 @@ app.post('/:product/api/device/bind/poll', (req, res) => {
   const productId = DB.getProductIdByCode(req.params.product);
   if (!productId) return res.status(404).json({ error: 'product_not_found' });
 
-  const { hardware_id, temp_token, timestamp, nonce, signature } = req.body;
+  const { hardware_id, temp_token, timestamp, nonce, signature, sn } = req.body;
   if (!hardware_id || !temp_token || !timestamp || !nonce || !signature) {
     return res.status(400).json({ error: 'missing_params' });
   }
 
-  const cred = DB.getCredentialByHardwareId(productId, hardware_id);
+  const cred = sn
+    ? DB.getCredentialByHardwareIdAndSn(productId, hardware_id, sn)
+    : DB.getCredentialByHardwareId(productId, hardware_id);
   if (!cred) return res.status(404).json({ error: 'device_not_provisioned' });
 
   const factoryKey = DB.getDecryptedFactoryKey(cred);

@@ -50,7 +50,6 @@ CREATE TABLE IF NOT EXISTS device_credentials (
   notes TEXT,
   created_at TEXT DEFAULT (datetime('now')),
   UNIQUE(product_id, sn),
-  UNIQUE(product_id, hardware_id),
   FOREIGN KEY (product_id) REFERENCES products(id)
 );
 
@@ -227,6 +226,51 @@ CREATE INDEX IF NOT EXISTS idx_bind_tokens_temp ON device_bind_tokens(temp_token
   }
 }
 
+// 迁移：移除 device_credentials 的 UNIQUE(product_id, hardware_id) 约束
+// 同一个 MAC 可以对应多个 SN（1对多证书），需要去掉此唯一约束
+// SQLite 不支持直接 DROP UNIQUE constraint，需要重建表
+{
+  const cols = db.prepare("PRAGMA table_info(device_credentials)").all();
+  if (cols.length > 0) {
+    // 检查是否有 UNIQUE(product_id, hardware_id) 约束
+    const idxs = db.prepare("PRAGMA index_list('device_credentials')").all();
+    const hasHwidUnique = idxs.some(idx => {
+      if (idx.origin !== 'u') return false;
+      const idxCols = db.prepare(`PRAGMA index_info('${idx.name.replace(/'/g, "''")}')`).all();
+      const names = idxCols.map(c => c.name);
+      return names.length === 2 && names.includes('product_id') && names.includes('hardware_id');
+    });
+
+    if (hasHwidUnique) {
+      const colDefs = cols.map(c => {
+        let def = `"${c.name}" ${c.type}`;
+        if (c.pk) def += ' PRIMARY KEY';
+        if (c.notnull && !c.pk) def += ' NOT NULL';
+        if (c.dflt_value) {
+          // datetime('now') 等表达式需要括号包裹
+          const dv = c.dflt_value;
+          if (dv.includes('(')) def += ` DEFAULT (${dv})`;
+          else def += ` DEFAULT ${dv}`;
+        }
+        return def;
+      });
+      db.exec(`
+        PRAGMA foreign_keys = OFF;
+        CREATE TABLE device_credentials_new (
+          ${colDefs.join(',\n')},
+          UNIQUE(product_id, sn),
+          FOREIGN KEY (product_id) REFERENCES products(id)
+        );
+        INSERT INTO device_credentials_new (${cols.map(c => `"${c.name}"`).join(', ')})
+        SELECT ${cols.map(c => `"${c.name}"`).join(', ')} FROM device_credentials;
+        DROP TABLE device_credentials;
+        ALTER TABLE device_credentials_new RENAME TO device_credentials;
+        PRAGMA foreign_keys = ON;
+      `);
+    }
+  }
+}
+
 // 服务期默认长度（年）
 const SERVICE_DEFAULT_YEARS = 1;
 // 默认年卡金额（分）—— 真实价格由产品/管理员配置，此处仅为占位
@@ -344,21 +388,23 @@ function deleteProduct(productId) {
  * FactoryKey = 32 字节随机 hex
  * challenge = 32 字节随机 hex，10 分钟过期
  *
- * 重复录入规则：
- *  - status = provisioning：返回原 SN + 原 FactoryKey + 新 challenge（不重新生成 FactoryKey）
- *  - status = provisioned：返回 { already_provisioned: true, sn }，不返回 FactoryKey
+ * 重复录入规则（同一 hardware_id 可对应多个 SN）：
+ *  - 同一 hardware_id 已有 provisioning 状态的记录：返回该记录的 SN + FactoryKey + 新 challenge
+ *  - 同一 hardware_id 已有 provisioned 记录但需要新增 SN：生成新 SN，复用同一 FactoryKey（eFuse 密钥相同）
  *  - status = provisioning_failed：重新生成 challenge，保留原 FactoryKey，status 改回 provisioning
  *  - status = retired：拒绝
+ *  - 传入 sn 参数时：查找该指定 SN 的记录进行操作
  */
-function provisionDevice(productId, hardwareId) {
+function provisionDevice(productId, hardwareId, sn) {
   const product = getProductRow(productId);
   if (!product) throw new Error('产品不存在');
 
-  const existing = getCredentialByHardwareId(productId, hardwareId);
-  if (existing) {
-    if (existing.status === 'retired') {
-      throw new Error('device_retired');
-    }
+  // 如果指定了 SN，则针对该 SN 的记录操作
+  if (sn) {
+    const existing = getCredentialBySn(productId, sn);
+    if (!existing) throw new Error('device_not_found');
+    if (existing.hardware_id !== hardwareId) throw new Error('sn_hardware_mismatch');
+    if (existing.status === 'retired') throw new Error('device_retired');
     if (existing.status === 'provisioned') {
       return { already_provisioned: true, sn: existing.sn };
     }
@@ -374,21 +420,61 @@ function provisionDevice(productId, hardwareId) {
     return { sn: existing.sn, factoryKey, challenge };
   }
 
-  // 新设备
+  // 未指定 SN：查找同一 hardware_id 的记录
+  const existingCreds = getCredentialsByHardwareId(productId, hardwareId);
+
+  // 如果有 provisioning 状态的记录，复用它
+  const provisioningCred = existingCreds.find(c => c.status === 'provisioning');
+  if (provisioningCred) {
+    const factoryKey = decrypt(provisioningCred.factory_key);
+    const challenge = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+    db.prepare(`
+      UPDATE device_credentials
+      SET provision_challenge = ?, challenge_expires_at = ?, failure_reason = NULL
+      WHERE id = ?
+    `).run(challenge, expiresAt, provisioningCred.id);
+    return { sn: provisioningCred.sn, factoryKey, challenge };
+  }
+
+  // 有 provisioning_failed 的记录，重新生成 challenge
+  const failedCred = existingCreds.find(c => c.status === 'provisioning_failed');
+  if (failedCred) {
+    const factoryKey = decrypt(failedCred.factory_key);
+    const challenge = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+    db.prepare(`
+      UPDATE device_credentials
+      SET provision_challenge = ?, challenge_expires_at = ?, status = 'provisioning', failure_reason = NULL
+      WHERE id = ?
+    `).run(challenge, expiresAt, failedCred.id);
+    return { sn: failedCred.sn, factoryKey, challenge };
+  }
+
+  // 有 retired 的记录，拒绝
+  if (existingCreds.some(c => c.status === 'retired') && existingCreds.every(c => c.status === 'retired')) {
+    throw new Error('device_retired');
+  }
+
+  // 新增 SN（同一 MAC 的第 N 个 SN）
+  // 复用已有 FactoryKey（eFuse 密钥相同），或生成新的
+  const sharedFactoryKey = existingCreds.length > 0
+    ? decrypt(existingCreds[0].factory_key)
+    : crypto.randomBytes(32).toString('hex');
+
   const tx = db.transaction(() => {
     db.prepare("UPDATE products SET sn_seq = sn_seq + 1 WHERE id = ?").run(productId);
     const updated = getProductRow(productId);
-    const sn = `${updated.sn_prefix}${String(updated.sn_seq).padStart(6, '0')}`;
-    const factoryKey = crypto.randomBytes(32).toString('hex');
+    const newSn = `${updated.sn_prefix}${String(updated.sn_seq).padStart(6, '0')}`;
     const challenge = crypto.randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
     const hwidClean = hardwareId.replace(/[^0-9A-Fa-f]/g, '').toLowerCase();
-    const volcanoDeviceName = `${product.code}-${hwidClean}`;
+    const volcanoDeviceName = `${product.code}-${hwidClean}-${newSn}`;
     db.prepare(`
       INSERT INTO device_credentials (product_id, sn, hardware_id, factory_key, volcano_device_name, status, provision_challenge, challenge_expires_at)
       VALUES (?, ?, ?, ?, ?, 'provisioning', ?, ?)
-    `).run(productId, sn, hardwareId, encrypt(factoryKey), volcanoDeviceName, challenge, expiresAt);
-    return { sn, factoryKey, challenge };
+    `).run(productId, newSn, hardwareId, encrypt(sharedFactoryKey), volcanoDeviceName, challenge, expiresAt);
+    return { sn: newSn, factoryKey: sharedFactoryKey, challenge };
   });
   return tx();
 }
@@ -399,9 +485,12 @@ function provisionDevice(productId, hardwareId) {
  * 验证成功 → status = provisioned，清除 challenge
  * 验证失败 → 抛错（不改 status，允许重试）
  */
-function verifyProvision(productId, hardwareId, challenge, responseHex) {
-  const cred = getCredentialByHardwareId(productId, hardwareId);
+function verifyProvision(productId, hardwareId, challenge, responseHex, sn) {
+  const cred = sn
+    ? getCredentialBySn(productId, sn)
+    : getCredentialByHardwareId(productId, hardwareId);
   if (!cred) throw new Error('device_not_found');
+  if (sn && cred.hardware_id !== hardwareId) throw new Error('sn_hardware_mismatch');
   if (cred.status === 'provisioned') throw new Error('already_provisioned');
   if (cred.status !== 'provisioning') throw new Error('not_in_provisioning_state');
 
@@ -438,9 +527,12 @@ function verifyProvision(productId, hardwareId, challenge, responseHex) {
 /**
  * 标记烧录失败（仅记录，不改 provisioning 状态——网络断线不算失败）
  */
-function failProvision(productId, hardwareId, reason) {
-  const cred = getCredentialByHardwareId(productId, hardwareId);
+function failProvision(productId, hardwareId, reason, sn) {
+  const cred = sn
+    ? getCredentialBySn(productId, sn)
+    : getCredentialByHardwareId(productId, hardwareId);
   if (!cred) throw new Error('device_not_found');
+  if (sn && cred.hardware_id !== hardwareId) throw new Error('sn_hardware_mismatch');
   db.prepare(`
     UPDATE device_credentials SET status = 'provisioning_failed', failure_reason = ? WHERE id = ?
   `).run(reason, cred.id);
@@ -463,7 +555,15 @@ function deleteCredential(id) {
 }
 
 function getCredentialByHardwareId(productId, hardwareId) {
-  return db.prepare("SELECT * FROM device_credentials WHERE product_id = ? AND hardware_id = ?").get(productId, hardwareId);
+  return db.prepare("SELECT * FROM device_credentials WHERE product_id = ? AND hardware_id = ? ORDER BY id ASC LIMIT 1").get(productId, hardwareId);
+}
+
+function getCredentialsByHardwareId(productId, hardwareId) {
+  return db.prepare("SELECT * FROM device_credentials WHERE product_id = ? AND hardware_id = ? ORDER BY id ASC").all(productId, hardwareId);
+}
+
+function getCredentialByHardwareIdAndSn(productId, hardwareId, sn) {
+  return db.prepare("SELECT * FROM device_credentials WHERE product_id = ? AND hardware_id = ? AND sn = ?").get(productId, hardwareId, sn);
 }
 
 function getCredentialBySn(productId, sn) {
@@ -905,6 +1005,23 @@ function setOrderRenewStatus(orderId, status, { error = null } = {}) {
   `).run(status, error, orderId);
 }
 
+// 删除订单：仅允许删除 pending 状态的订单（已付款订单已产生服务期延长，不能直接删）
+function deleteOrder(id) {
+  const order = getOrderById(id);
+  if (!order) throw new Error('order_not_found');
+  if (order.status !== 'pending') throw new Error('order_not_deletable');
+  db.prepare("DELETE FROM orders WHERE id = ?").run(id);
+  return { ok: true };
+}
+
+// 管理员删除订单：允许删除任意状态，但 paid 订单需管理员确认
+function adminDeleteOrder(id) {
+  const order = getOrderById(id);
+  if (!order) throw new Error('order_not_found');
+  db.prepare("DELETE FROM orders WHERE id = ?").run(id);
+  return { ok: true };
+}
+
 function listOrdersByUser(userId) {
   return db.prepare(`
     SELECT o.*, c.sn, c.volcano_device_name
@@ -974,6 +1091,8 @@ module.exports = {
   deleteCredential,
   deleteUser,
   getCredentialByHardwareId,
+  getCredentialsByHardwareId,
+  getCredentialByHardwareIdAndSn,
   getCredentialBySn,
   getCredentialById,
   getDecryptedFactoryKey,
@@ -1026,6 +1145,8 @@ module.exports = {
   claimOrderForRenew,
   retryOrderRenew,
   completeOrderRenew,
+  deleteOrder,
+  adminDeleteOrder,
   listOrdersByUser,
   listAllOrders,
   listOrdersPendingRenew,

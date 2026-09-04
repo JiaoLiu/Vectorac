@@ -153,6 +153,20 @@ async function submitRetryRenew() {
   } catch (e) { setAlert('error', e.message); m.busy = false; render(); }
 }
 
+// 删除订单
+function deleteOrder(id, orderNo) {
+  askConfirm({
+    title: '删除订单',
+    message: `确认删除订单「${orderNo}」？${''}`,
+    confirmText: '确认删除',
+    onConfirm: async () => {
+      await api('/orders/' + id, { method: 'DELETE' });
+      setAlert('success', '订单已删除');
+      loadOrders();
+    },
+  });
+}
+
 function closeOrderModal() {
   state.orderModal = null;
   render();
@@ -578,11 +592,12 @@ function render() {
                 <td>${fmtDate(o.created_at)}</td>
                 <td>${
                   o.status === 'pending'
-                    ? `<button class="primary" onclick="markOrderPaid(${o.id})">确认收款</button>`
+                    ? `<button class="primary" onclick="markOrderPaid(${o.id})">确认收款</button> <button class="danger" onclick="deleteOrder(${o.id}, '${o.order_no}')">删除</button>`
                     : (o.status === 'paid' && ['pending', 'processing', 'failed'].includes(o.provider_renew_status)
                         ? `<button class="primary" onclick="completeRenew(${o.id})">完成续期</button>` +
                           (o.provider_renew_status === 'failed' ? ` <button onclick="retryRenew(${o.id})">重试</button>` : '')
-                        : '—')
+                        : '—') +
+                  ` <button class="danger" onclick="deleteOrder(${o.id}, '${o.order_no}')">删除</button>`
                 }</td>
               </tr>`;
             }).join('') || '<tr><td colspan="11" style="color:#888">暂无</td></tr>'}
