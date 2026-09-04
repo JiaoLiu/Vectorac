@@ -239,6 +239,11 @@ function route() {
     location.hash = '/login';
     return;
   }
+  // 已登录用户访问登录/注册/忘记密码页，直接进入「我的」
+  if ((path === '/login' || path === '/register' || path === '/forgot') && state.token) {
+    location.hash = '/me';
+    return;
+  }
   render();
   if (path === '/me') loadMe();
   if (path === '/orders') loadOrders();

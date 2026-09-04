@@ -19,3 +19,221 @@
     color #fff
   &:active
     transform translateY(0)
+
+// 小V机器人导航图标（reco iconfont 无机器人，用内联 SVG + mask 自定义，em + currentColor 与其他图标无缝对齐）
+$robot-icon = url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2.5a1.5 1.5 0 0 1 1.5 1.5c0 .59-.34 1.09-.83 1.34A6.01 6.01 0 0 1 18 11v1h1.5A2.5 2.5 0 0 1 22 14.5v5a2.5 2.5 0 0 1-2.5 2.5h-15A2.5 2.5 0 0 1 2 19.5v-5A2.5 2.5 0 0 1 4.5 12H6v-1a6.01 6.01 0 0 1 5.33-5.66A1.5 1.5 0 0 1 12 2.5zM8 14.5a1.75 1.75 0 1 0 0 3.5 1.75 1.75 0 0 0 0-3.5zm8 0a1.75 1.75 0 1 0 0 3.5 1.75 1.75 0 0 0 0-3.5z'/%3E%3C/svg%3E")
+
+.iconfont.reco-robot
+  display: inline-block
+  width: 1.08em
+  height: 1.08em
+  vertical-align: -0.14em
+  background-color: currentColor
+  -webkit-mask-image: $robot-icon
+  -webkit-mask-repeat: no-repeat
+  -webkit-mask-position: center
+  -webkit-mask-size: contain
+  mask-image: $robot-icon
+  mask-repeat: no-repeat
+  mask-position: center
+  mask-size: contain
+
+  &::before
+    content: none
+
+// 游戏手柄图标（reco iconfont 无游戏类图标，用内联 SVG + mask 自定义）
+$game-icon = url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M7.5 6h9c3.31 0 6 2.69 6 6v3.5a3.5 3.5 0 0 1-5.66 2.76L14 16H10l-2.84 2.26A3.5 3.5 0 0 1 1.5 15.5V12c0-3.31 2.69-6 6-6zm.5 2.75A.75.75 0 0 0 7.25 9.5v1.75H5.5a.75.75 0 0 0 0 1.5h1.75v1.75a.75.75 0 0 0 1.5 0v-1.75h1.75a.75.75 0 0 0 0-1.5H8.75V9.5A.75.75 0 0 0 8 8.75zm7.75.5a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm2.75 2.75a1 1 0 1 0 0 2 1 1 0 0 0 0-2z'/%3E%3C/svg%3E")
+
+// 固件烧录图标（芯片 + 下载箭头，reco iconfont 无对应图标）
+$firmware-icon = url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M9 2v3H7.5A2.5 2.5 0 0 0 5 7.5V9H2v2h3v2H2v2h3v2.5A2.5 2.5 0 0 0 7.5 22H9v-2H7.5a.5.5 0 0 1-.5-.5v-12a.5.5 0 0 1 .5-.5H9v2h2V5h2v2h2V5h1.5a.5.5 0 0 1 .5.5V9h3V7.5A2.5 2.5 0 0 0 19.5 5H18V2h-2v3h-3V2h-2v3h-2V2H9zm8 12v3.59l-1.7-1.7-1.42 1.42L18 21.41l4.12-4.12-1.42-1.42L19 17.59V14h-2z'/%3E%3C/svg%3E")
+
+.iconfont.reco-game,
+.iconfont.reco-firmware
+  display: inline-block
+  width: 1.08em
+  height: 1.08em
+  vertical-align: -0.14em
+  background-color: currentColor
+  -webkit-mask-repeat: no-repeat
+  -webkit-mask-position: center
+  -webkit-mask-size: contain
+  mask-repeat: no-repeat
+  mask-position: center
+  mask-size: contain
+
+  &::before
+    content: none
+
+.iconfont.reco-game
+  -webkit-mask-image: $game-icon
+  mask-image: $game-icon
+
+.iconfont.reco-firmware
+  -webkit-mask-image: $firmware-icon
+  mask-image: $firmware-icon
+
+// ===== 小V 介绍页（xiaov.md 专用，只作用在 .xiaov-page 内）=====
+.xiaov-page
+  .xiaov-hero
+    display flex
+    align-items center
+    gap 2.5rem
+    margin 1.5rem 0 2.5rem
+    @media (max-width: 767px)
+      flex-direction column
+      gap 1.5rem
+
+  .xiaov-hero-text
+    flex 1 1 0
+    min-width 0
+
+  .xiaov-eyebrow
+    display inline-block
+    padding 0.2rem 0.6rem
+    border-radius 999px
+    background rgba(62, 175, 124, .12)
+    color $accentColor
+    font-size 0.85rem
+    font-weight 600
+    letter-spacing 0.02em
+    margin-bottom 0.5rem
+
+  .xiaov-title
+    margin 0.2rem 0 0.5rem
+    font-size 2.6rem
+    line-height 1.1
+    font-weight 700
+    color var(--text-color)
+
+  .xiaov-tagline
+    margin 0 0 0.8rem
+    font-size 1.15rem
+    font-weight 600
+    color var(--text-color)
+
+  .xiaov-desc
+    margin 0 0 1.1rem
+    font-size 0.98rem
+    line-height 1.7
+    color var(--text-color-sub)
+    max-width 38em
+
+  .xiaov-hero-image
+    flex 0 0 42%
+    max-width 420px
+    img
+      width 100%
+      height auto
+      border-radius 16px
+      box-shadow 0 12px 40px rgba(18, 32, 45, .18)
+      display block
+    @media (max-width: 767px)
+      flex 0 0 auto
+      max-width 100%
+
+  .xiaov-capabilities
+    display grid
+    grid-template-columns repeat(3, 1fr)
+    gap 1.25rem
+    margin 1.25rem 0 2rem
+    @media (max-width: 959px)
+      grid-template-columns repeat(2, 1fr)
+    @media (max-width: 599px)
+      grid-template-columns 1fr
+
+  .xiaov-capability-card
+    padding 1.1rem 1.2rem 1.2rem
+    border-radius 14px
+    border 1px solid var(--border-color)
+    background var(--background-color)
+    box-shadow 0 2px 10px rgba(18, 32, 45, .05)
+    transition transform .18s ease, box-shadow .18s ease
+    &:hover
+      transform translateY(-3px)
+      box-shadow 0 10px 24px rgba(18, 32, 45, .09)
+    h3
+      margin 0.55rem 0 0.4rem
+      font-size 1.02rem
+      font-weight 600
+      color var(--text-color)
+    p
+      margin 0
+      font-size 0.9rem
+      line-height 1.65
+      color var(--text-color-sub)
+
+  .xiaov-capability-icon
+    font-size 1.4rem
+    line-height 1
+    width 2.2rem
+    height 2.2rem
+    display inline-flex
+    align-items center
+    justify-content center
+    border-radius 10px
+    background rgba(62, 175, 124, .12)
+
+  .xiaov-appearance
+    display flex
+    align-items center
+    gap 2rem
+    margin 1.25rem 0 1rem
+    @media (max-width: 767px)
+      flex-direction column
+      gap 1.25rem
+      align-items flex-start
+    .xiaov-appearance-image
+      flex 0 0 300px
+      max-width 300px
+      img
+        width 100%
+        height auto
+        border-radius 14px
+        box-shadow 0 10px 30px rgba(18, 32, 45, .12)
+        display block
+      @media (max-width: 767px)
+        flex 0 0 auto
+        max-width 100%
+    .xiaov-appearance-text
+      flex 1 1 0
+      min-width 0
+      p
+        margin 0 0 0.6rem
+        font-size 0.95rem
+        line-height 1.7
+        color var(--text-color-sub)
+        &:last-child
+          margin-bottom 0
+
+  .xiaov-evolution
+    display grid
+    grid-template-columns repeat(4, 1fr)
+    gap 1.25rem
+    margin 1.25rem 0 1rem
+    @media (max-width: 959px)
+      grid-template-columns repeat(2, 1fr)
+    @media (max-width: 599px)
+      grid-template-columns 1fr
+
+  .xiaov-evolution-item
+    .xiaov-evolution-image
+      width 100%
+      aspect-ratio 1 / 1
+      overflow hidden
+      border-radius 12px
+      background #f2f4f6
+      img
+        width 100%
+        height 100%
+        object-fit cover
+        display block
+    .xiaov-evolution-tag
+      margin-top 0.55rem
+      font-size 0.95rem
+      font-weight 700
+      color $accentColor
+    .xiaov-evolution-desc
+      margin-top 0.15rem
+      font-size 0.86rem
+      line-height 1.5
+      color var(--text-color-sub)

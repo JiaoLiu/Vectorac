@@ -78,6 +78,11 @@ module.exports = {
         icon: 'reco-category',
         items: [
           {
+            text: '小V机器人',
+            link: '/blogs/other/xiaov.md',
+            icon: 'reco-robot'
+          },
+          {
             text: '短链跳转',
             link: '/blogs/other/shorturl.md',
             icon: 'reco-api'
@@ -85,12 +90,12 @@ module.exports = {
           {
             text: '固件烧录',
             link: '/blogs/other/flasher.md',
-            icon: 'reco-coding'
+            icon: 'reco-firmware'
           },
           {
             text: '小游戏',
             link: '/blogs/other/games.md',
-            icon: 'reco-api'
+            icon: 'reco-game'
           },
           {
             text: '人脸匹配',
