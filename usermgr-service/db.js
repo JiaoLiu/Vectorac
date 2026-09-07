@@ -9,7 +9,8 @@ const fs = require('fs');
 const crypto = require('crypto');
 const Database = require('better-sqlite3');
 
-const DATA_DIR = path.join(__dirname, 'data');
+// 数据目录可用 USERMGR_DATA_DIR 覆盖（仅供测试在临时目录建库，生产默认 ./data）
+const DATA_DIR = process.env.USERMGR_DATA_DIR || path.join(__dirname, 'data');
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 const DB_FILE = path.join(DATA_DIR, 'usermgr.db');
 
@@ -172,6 +173,20 @@ CREATE INDEX IF NOT EXISTS idx_credentials_product ON device_credentials(product
 CREATE INDEX IF NOT EXISTS idx_credentials_hwid ON device_credentials(hardware_id);
 CREATE INDEX IF NOT EXISTS idx_bindings_user ON user_device_bindings(user_id);
 CREATE INDEX IF NOT EXISTS idx_bind_tokens_temp ON device_bind_tokens(temp_token);
+
+-- 烧录请求幂等映射（request_id → 目标记录）。一次操作一条映射，永久保留：
+-- 恢复/轮换不会覆盖旧映射，原请求延迟重放仍指向同一条记录。
+-- device_credentials.provision_request_id 是历史遗留列（只记最后一个），已不作为查询依据。
+CREATE TABLE IF NOT EXISTS provision_requests (
+  request_id TEXT PRIMARY KEY,
+  product_id INTEGER NOT NULL,
+  hardware_id TEXT NOT NULL,
+  sn TEXT NOT NULL,
+  mode TEXT,                          -- 'new_sn' / 'sn' / 'plain'（从旧列回填时为 NULL，跳过模式校验）
+  created_at TEXT DEFAULT (datetime('now')),
+  FOREIGN KEY (product_id) REFERENCES products(id)
+);
+CREATE INDEX IF NOT EXISTS idx_provreq_sn ON provision_requests(product_id, sn);
 `);
 
 // ---- 迁移：旧库补 phone 列（email 改为可选后，老库仍可能没有 phone 字段） ----
@@ -231,6 +246,20 @@ CREATE INDEX IF NOT EXISTS idx_bind_tokens_temp ON device_bind_tokens(temp_token
     if (!cols.some(c => c.name === 'provision_resumed')) {
       db.exec("ALTER TABLE device_credentials ADD COLUMN provision_resumed INTEGER DEFAULT 0");
     }
+  }
+}
+
+// 迁移：把历史遗留列 provision_request_id 里的映射回填到 provision_requests 表
+// （mode 未知存 NULL，重放时跳过模式校验；后续代码只写映射表，不再写凭证列）
+{
+  const cols = db.prepare("PRAGMA table_info(device_credentials)").all();
+  if (cols.length > 0 && cols.some(c => c.name === 'provision_request_id')) {
+    db.exec(`
+      INSERT OR IGNORE INTO provision_requests (request_id, product_id, hardware_id, sn, mode)
+      SELECT provision_request_id, product_id, hardware_id, sn, NULL
+      FROM device_credentials
+      WHERE provision_request_id IS NOT NULL AND provision_request_id != ''
+    `);
   }
 }
 
@@ -474,14 +503,32 @@ function issueChallenge(credId) {
 }
 
 // 返回记录的当前烧录会话；challenge 仍有效时不轮换（同 request_id 重试的安全语义：
-// 响应乱序/延迟重试都不会使工具已持有的会话失效），已过期才签发新会话
+// 响应乱序/延迟重试都不会使工具已持有的会话失效），已过期才签发新会话。
+// 仅适用于 status='provisioning' 的记录；provisioning_failed 由调用方显式返回失败状态
 function currentSession(cred) {
+  if (cred.status !== 'provisioning') {
+    throw new Error(`currentSession 不适用于状态 ${cred.status}`);
+  }
   const factoryKey = decrypt(cred.factory_key);
   if (cred.provision_challenge && cred.challenge_expires_at
       && new Date(cred.challenge_expires_at).getTime() > Date.now()) {
     return { sn: cred.sn, factoryKey, challenge: cred.provision_challenge };
   }
   return { sn: cred.sn, factoryKey, challenge: issueChallenge(cred.id) };
+}
+
+// ---- 烧录请求幂等映射（独立于凭证记录，恢复/轮换不会覆盖旧映射） ----
+function getProvisionRequest(requestId) {
+  return db.prepare("SELECT * FROM provision_requests WHERE request_id = ?").get(requestId);
+}
+
+function recordProvisionRequest(requestId, productId, hardwareId, snValue, mode) {
+  if (!requestId) return;
+  // 已存在同 ID 映射时保留原映射（查找阶段已做参数冲突校验，这里防并发竞态）
+  db.prepare(`
+    INSERT OR IGNORE INTO provision_requests (request_id, product_id, hardware_id, sn, mode)
+    VALUES (?, ?, ?, ?, ?)
+  `).run(requestId, productId, hardwareId, snValue, mode);
 }
 
 /**
@@ -491,10 +538,13 @@ function currentSession(cred) {
  * challenge = 32 字节随机 hex，10 分钟过期
  *
  * 调用方式（保持与旧版兼容，新增 SN 必须显式请求并携带幂等键）：
- *  - requestId（可选，new_sn 必传）：请求幂等键。同一 requestId 的重复请求定位到同一条
- *    记录并返回其当前会话（challenge 不轮换），响应乱序/延迟重试安全；记录已完成烧录时
- *    返回 already_provisioned，不会重复创建 SN。轮换 challenge 只属于显式恢复会话
- *    （不带 requestId 的 sn/普通调用），普通请求重试不等于恢复
+ *  - requestId（可选，new_sn 必传）：请求幂等键。映射独立存于 provision_requests 表
+ *    （一次操作一条，永久保留），恢复烧录不会覆盖旧映射——原请求延迟重放仍指向同一条
+ *    记录。同一 requestId 携带不同参数（目标 SN / 模式 / 设备）时返回 request_id_conflict。
+ *    重放返回记录当前状态：provisioning → 当前会话（challenge 不轮换，乱序安全）；
+ *    provisioning_failed → session_failed（需显式恢复，不带该 requestId 重新调用）；
+ *    已完成 → already_provisioned，不会重复创建 SN。
+ *    challenge 轮换只属于显式恢复会话（不带 requestId 的 sn/普通调用）
  *  - newSn=true（多证书场景）：同一 MAC 新增一个 SN，复用 FactoryKey，每个 SN 在火山侧
  *    是独立设备（volcano_device_name 带 SN 后缀），License 各自独立。重试幂等由 requestId
  *    保证；新 requestId 才创建下一份 SN（进行中的旧记录需先删除再新增）
@@ -510,19 +560,34 @@ function provisionDevice(productId, hardwareId, opts = {}) {
 
   const records = getCredentialsByHardwareId(productId, hardwareId);
 
-  // 请求幂等：同一 requestId 定位到同一条记录，返回当前会话且不轮换 challenge
+  // 请求幂等：按映射表定位记录（恢复/轮换不覆盖映射，原请求重放仍指向同一记录）
   if (requestId) {
-    const matched = records.find(r => r.provision_request_id === requestId);
-    if (matched) {
+    const mode = newSn ? 'new_sn' : (sn ? 'sn' : 'plain');
+    const mapped = getProvisionRequest(requestId);
+    if (mapped) {
+      // 同一 ID 携带不同操作参数 → 冲突（目标设备 / 目标 SN / 模式任一不同即拒绝）
+      if (mapped.product_id !== productId || mapped.hardware_id !== hardwareId
+          || (mapped.mode && mapped.mode !== mode)
+          || (sn && sn !== mapped.sn)) {
+        throw new Error('request_id_conflict');
+      }
+      const matched = getCredentialBySn(productId, mapped.sn);
+      // 映射指向的记录已被删除：拒绝重放，工具需换新 request_id 重新发起
+      if (!matched) throw new Error('device_not_found');
       if (matched.status === 'retired') throw new Error('device_retired');
       if (PROVISION_DONE_STATES.includes(matched.status)) {
         return { already_provisioned: true, sn: matched.sn };
+      }
+      // 会话已失败：明确返回失败状态，不返回看似可继续验证的会话；
+      // 恢复需显式调用（不带本 requestId），恢复后同 ID 重放才会回到正常会话分支
+      if (matched.status === 'provisioning_failed') {
+        return { session_failed: true, sn: matched.sn, status: 'provisioning_failed', failure_reason: matched.failure_reason };
       }
       return currentSession(matched);
     }
   }
 
-  // 显式新增 SN（多证书）：幂等由 requestId 保证（重试命中上面的匹配分支），新 requestId 才创建
+  // 显式新增 SN（多证书）：幂等由 requestId 保证（重试命中上面的映射分支），新 requestId 才创建
   if (newSn) {
     // MAC 下全部证书 retired = 设备停用，拒绝新增（恢复退役证书由管理员单独操作）
     if (records.length > 0 && records.every(r => r.status === 'retired')) {
@@ -541,15 +606,16 @@ function provisionDevice(productId, hardwareId, opts = {}) {
       // 每个 SN 在火山侧必须是独立设备，名字带 SN 后缀避免同名冲突
       const volcanoDeviceName = `${product.code}-${hwidClean}-${newSnValue}`;
       db.prepare(`
-        INSERT INTO device_credentials (product_id, sn, hardware_id, factory_key, volcano_device_name, status, provision_challenge, challenge_expires_at, provision_request_id)
-        VALUES (?, ?, ?, ?, ?, 'provisioning', ?, ?, ?)
-      `).run(productId, newSnValue, hardwareId, encrypt(factoryKey), volcanoDeviceName, challenge, expiresAt, requestId || null);
+        INSERT INTO device_credentials (product_id, sn, hardware_id, factory_key, volcano_device_name, status, provision_challenge, challenge_expires_at)
+        VALUES (?, ?, ?, ?, ?, 'provisioning', ?, ?)
+      `).run(productId, newSnValue, hardwareId, encrypt(factoryKey), volcanoDeviceName, challenge, expiresAt);
+      recordProvisionRequest(requestId, productId, hardwareId, newSnValue, 'new_sn');
       return { sn: newSnValue, factoryKey, challenge };
     });
     return tx();
   }
 
-  // 指定 SN：显式恢复该 SN 的烧录会话（轮换 challenge），记录 requestId 让同 ID 重试免轮换
+  // 指定 SN：显式恢复该 SN 的烧录会话（轮换 challenge），映射独立追加，不覆盖旧映射
   if (sn) {
     const existing = locateBySn(productId, hardwareId, sn);
     if (PROVISION_DONE_STATES.includes(existing.status)) {
@@ -558,9 +624,7 @@ function provisionDevice(productId, hardwareId, opts = {}) {
     if (existing.status === 'retired') throw new Error('device_retired');
     const factoryKey = decrypt(existing.factory_key);
     const challenge = issueChallenge(existing.id);
-    if (requestId) {
-      db.prepare("UPDATE device_credentials SET provision_request_id = ? WHERE id = ?").run(requestId, existing.id);
-    }
+    recordProvisionRequest(requestId, productId, hardwareId, existing.sn, 'sn');
     return { sn: existing.sn, factoryKey, challenge };
   }
 
@@ -573,9 +637,7 @@ function provisionDevice(productId, hardwareId, opts = {}) {
     if (latest.status === 'retired') throw new Error('device_retired');
     const factoryKey = decrypt(latest.factory_key);
     const challenge = issueChallenge(latest.id);
-    if (requestId) {
-      db.prepare("UPDATE device_credentials SET provision_request_id = ? WHERE id = ?").run(requestId, latest.id);
-    }
+    recordProvisionRequest(requestId, productId, hardwareId, latest.sn, 'plain');
     return { sn: latest.sn, factoryKey, challenge };
   }
 
@@ -590,9 +652,10 @@ function provisionDevice(productId, hardwareId, opts = {}) {
     const hwidClean = hardwareId.replace(/[^0-9A-Fa-f]/g, '').toLowerCase();
     const volcanoDeviceName = `${product.code}-${hwidClean}-${firstSn}`;
     db.prepare(`
-      INSERT INTO device_credentials (product_id, sn, hardware_id, factory_key, volcano_device_name, status, provision_challenge, challenge_expires_at, provision_request_id)
-      VALUES (?, ?, ?, ?, ?, 'provisioning', ?, ?, ?)
-    `).run(productId, firstSn, hardwareId, encrypt(factoryKey), volcanoDeviceName, challenge, expiresAt, requestId || null);
+      INSERT INTO device_credentials (product_id, sn, hardware_id, factory_key, volcano_device_name, status, provision_challenge, challenge_expires_at)
+      VALUES (?, ?, ?, ?, ?, 'provisioning', ?, ?)
+    `).run(productId, firstSn, hardwareId, encrypt(factoryKey), volcanoDeviceName, challenge, expiresAt);
+    recordProvisionRequest(requestId, productId, hardwareId, firstSn, 'plain');
     return { sn: firstSn, factoryKey, challenge };
   });
   return tx();
@@ -714,8 +777,9 @@ function deleteCredential(id) {
   if (!['provisioning', 'provisioning_failed', 'retired'].includes(cred.status)) {
     throw new Error('device_not_deletable');
   }
-  // 同时删除关联的绑定关系
+  // 同时删除关联的绑定关系和烧录请求幂等映射
   db.prepare("DELETE FROM user_device_bindings WHERE credential_id = ?").run(id);
+  db.prepare("DELETE FROM provision_requests WHERE product_id = ? AND sn = ?").run(cred.product_id, cred.sn);
   db.prepare("DELETE FROM device_credentials WHERE id = ?").run(id);
   return { ok: true };
 }

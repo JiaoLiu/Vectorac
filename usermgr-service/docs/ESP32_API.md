@@ -73,7 +73,7 @@ Content-Type: application/json
 | --- | --- |
 | `sn` | 只针对该 SN 的记录操作：恢复中断的烧录（显式恢复，轮换 challenge，返回原 FactoryKey）。与 `new_sn` 互斥 |
 | `new_sn: true` | 同一 MAC 显式新增一个 SN。**只接受布尔值**（字符串 `"true"`/`"false"` 会被拒绝），**必须携带 `request_id`**。返回新 SN + **同一个 FactoryKey**（eFuse 只烧一次）+ 新 challenge。每个 SN 在火山侧是独立设备（`volcano_device_name` 带 SN 后缀），License 各自独立 |
-| `request_id` | 请求幂等键：烧录工具为**一次操作**生成的随机串（如 UUID，≤128 字符）。同一 `request_id` 的重复请求返回**同一 SN 和同一会话（challenge 不轮换）**，响应乱序、延迟重试都安全；该 SN 已完成烧录后重放返回 `already_provisioned`，不会重复创建。要创建下一份 SN 必须使用**新的** `request_id` |
+| `request_id` | 请求幂等键：烧录工具为**一次操作**生成的随机串（如 UUID，≤128 字符）。映射独立保存在服务端 `provision_requests` 表（一次操作一条，永久保留），**恢复烧录不会覆盖旧映射**——原请求延迟重放仍指向同一 SN。同一 `request_id` 携带不同参数（目标设备 / 目标 SN / 模式）返回 409 `request_id_conflict`。重放按记录当前状态返回：烧录中 → 当前会话（challenge 不轮换，响应乱序安全）；已失败 → `session_failed`（见下）；已完成 → `already_provisioned`，不会重复创建。要创建下一份 SN 必须使用**新的** `request_id` |
 
 ```json
 { "product": "xiaov", "hardware_id": "AC:A7:04:28:C9:10", "new_sn": true, "request_id": "工具生成的UUID" }
@@ -81,7 +81,8 @@ Content-Type: application/json
 
 `new_sn` 的行为规则：
 
-- **幂等**：完全由 `request_id` 保证。首次请求创建记录并保存该 ID；重试（同 ID）返回同一 SN 和当前会话，不轮换 challenge；完成后重放返回 `already_provisioned`。新 `request_id` 才会创建下一份 SN；如需废弃进行中的记录，先在管理平台删除（烧录中/失败状态可删）再新增。
+- **幂等**：完全由 `request_id` 保证。首次请求创建记录并保存映射；重试（同 ID）返回同一 SN 和当前会话，不轮换 challenge；完成后重放返回 `already_provisioned`。新 `request_id` 才会创建下一份 SN；如需废弃进行中的记录，先在管理平台删除（烧录中/失败状态可删）再新增。
+- **会话已失败时的重放**：记录处于 `provisioning_failed` 时，同 ID 重试返回 `{ ok: true, session_failed: true, sn, status: "provisioning_failed", failure_reason }`，**不返回 factory_key/challenge**。恢复方式：重新调用 provision（可换新 `request_id`）显式恢复，拿到轮换后的新 challenge 再验证。
 - **challenge 轮换只属于显式恢复**：不带 `request_id` 的 `sn`/普通调用是显式恢复会话，会轮换 challenge；同 `request_id` 的普通请求重试不轮换。
 - **retired 语义**：`retired` 停用的是单份证书；MAC 下全部证书均退役视为设备停用，返回 403 `device_retired`。部分退役不影响新增。
 - 请求同时带 `sn` 和 `new_sn` 时返回 400 `conflicting_params`；`new_sn` 缺 `request_id` 返回 400 `missing_request_id`。
@@ -363,6 +364,7 @@ ESP32 显示 `qr_url` 对应二维码并缓存 `temp_token` 用于轮询。Token
 | 400 | `ambiguous_provision_target` | 同一设备存在多份凭证记录，失败上报必须携带 challenge |
 | 400 | `challenge_required` | 会话已被恢复轮换，失败上报必须携带本次 challenge |
 | 400 | `missing_request_id` | new_sn 请求必须携带 request_id（幂等键） |
+| 409 | `request_id_conflict` | 该 request_id 已绑定其他烧录操作（目标设备/SN/模式不同） |
 | 410 | `challenge_mismatch` | 失败上报的 challenge 不属于当前烧录会话（旧会话的延迟上报） |
 | 410 | `challenge_expired` | 工厂工具重新调用 provision 获取 challenge |
 | 429 | `rate_limited` | 指数退避后重试 |

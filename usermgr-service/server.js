@@ -310,11 +310,24 @@ app.post('/admin/api/provision', provisionAuth, (req, res) => {
     if (result.already_provisioned) {
       return res.json({ ok: true, already_provisioned: true, sn: result.sn });
     }
+    if (result.session_failed) {
+      // 该 request_id 对应的烧录会话已失败：明确告知，不返回看似可继续验证的会话。
+      // 恢复方式：不带该 request_id 重新调用 provision（可换新 request_id）
+      return res.json({
+        ok: true,
+        session_failed: true,
+        sn: result.sn,
+        status: result.status,
+        failure_reason: result.failure_reason,
+        message: '该烧录会话已失败，请显式恢复后重试（重新调用 provision，勿复用已失败的 request_id）',
+      });
+    }
     res.json({ ok: true, sn: result.sn, factory_key: result.factoryKey, challenge: result.challenge });
   } catch (e) {
     if (e.message === 'device_retired') return res.status(403).json({ error: 'device_retired' });
     if (e.message === 'device_not_found') return res.status(404).json({ error: 'device_not_found' });
     if (e.message === 'sn_hardware_mismatch') return res.status(400).json({ error: 'sn_hardware_mismatch' });
+    if (e.message === 'request_id_conflict') return res.status(409).json({ error: 'request_id_conflict', message: '该 request_id 已绑定其他烧录操作（目标设备/SN/模式不同）' });
     res.status(500).json({ error: 'provision_failed', reason: e.message });
   }
 });

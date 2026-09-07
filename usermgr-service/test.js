@@ -1170,6 +1170,59 @@ async function main() {
       cl = await req('GET', '/admin/api/credentials?product=xiaov', null, { Authorization: `Bearer ${ADMIN}` });
       const extra2 = cl.body.find(c => c.hardware_id === hwid && c.status === 'provisioning');
       if (extra2) await req('DELETE', `/admin/api/credentials/${extra2.id}`, null, { Authorization: `Bearer ${ADMIN}` });
+
+      // 26.8 幂等映射独立保存：恢复烧录不覆盖旧映射，原请求延迟重放仍指向同一 SN
+      const hMap = 'AA:44:55:66:77:88';
+      const m1 = await req('POST', '/admin/api/provision', { product: 'xiaov', hardware_id: hMap, new_sn: true, request_id: 'req-map-1' }, { Authorization: `Bearer ${PROV}` });
+      const snMap = m1.body.sn, fkMap = m1.body.factory_key;
+      // 用 R2 恢复烧录（轮换 challenge）
+      const m2 = await req('POST', '/admin/api/provision', { product: 'xiaov', hardware_id: hMap, sn: snMap, request_id: 'req-map-2' }, { Authorization: `Bearer ${PROV}` });
+      check('26.8 R2 恢复返回同一 SN', m2.body.ok === true && m2.body.sn === snMap && m2.body.challenge !== m1.body.challenge);
+      // 原请求 R1 延迟重放：仍指向同一 SN，不新增凭证，返回当前会话（不轮换）
+      const credCountBefore = (await req('GET', '/admin/api/credentials?product=xiaov', null, { Authorization: `Bearer ${ADMIN}` })).body.filter(c => c.hardware_id === hMap).length;
+      const m1r = await req('POST', '/admin/api/provision', { product: 'xiaov', hardware_id: hMap, new_sn: true, request_id: 'req-map-1' }, { Authorization: `Bearer ${PROV}` });
+      check('26.8 R1 重放仍指向同一 SN（映射未被覆盖）', m1r.body.ok === true && m1r.body.sn === snMap);
+      check('26.8 R1 重放返回 R2 会话（未再轮换）', m1r.body.challenge === m2.body.challenge);
+      check('26.8 R1 重放不新增凭证', (await req('GET', '/admin/api/credentials?product=xiaov', null, { Authorization: `Bearer ${ADMIN}` })).body.filter(c => c.hardware_id === hMap).length === credCountBefore);
+      // R2 重放同样指向同一 SN
+      const m2r = await req('POST', '/admin/api/provision', { product: 'xiaov', hardware_id: hMap, sn: snMap, request_id: 'req-map-2' }, { Authorization: `Bearer ${PROV}` });
+      check('26.8 R2 重放返回同一 SN 和会话', m2r.body.ok === true && m2r.body.sn === snMap && m2r.body.challenge === m2.body.challenge);
+
+      // 26.9 同一 request_id 携带不同操作参数 → 409 拒绝
+      r = await req('POST', '/admin/api/provision', { product: 'xiaov', hardware_id: hMap, sn: snMap, request_id: 'req-map-1' }, { Authorization: `Bearer ${PROV}` });
+      check('26.9 R1 换成 sn 模式被拒', r.status === 409 && r.body.error === 'request_id_conflict');
+      r = await req('POST', '/admin/api/provision', { product: 'xiaov', hardware_id: hMap, new_sn: true, request_id: 'req-map-2' }, { Authorization: `Bearer ${PROV}` });
+      check('26.9 R2 换成 new_sn 模式被拒（不新增 SN）', r.status === 409 && r.body.error === 'request_id_conflict');
+      r = await req('POST', '/admin/api/provision', { product: 'xiaov', hardware_id: 'AA:99:88:77:66:55', new_sn: true, request_id: 'req-map-1' }, { Authorization: `Bearer ${PROV}` });
+      check('26.9 R1 换设备重放被拒', r.status === 409 && r.body.error === 'request_id_conflict');
+      r = await req('POST', '/admin/api/provision', { product: 'xiaov', hardware_id: hMap, sn: 'XV999999', request_id: 'req-map-2' }, { Authorization: `Bearer ${PROV}` });
+      check('26.9 R2 换目标 SN 被拒', r.status === 409 && r.body.error === 'request_id_conflict');
+
+      // 26.10 失败后重试原请求：返回明确失败状态（不返回看似可验证的会话）；显式恢复后才能验证
+      const m3 = await req('POST', '/admin/api/provision', { product: 'xiaov', hardware_id: hMap, new_sn: true, request_id: 'req-map-3' }, { Authorization: `Bearer ${PROV}` });
+      const snMap3 = m3.body.sn, chMap3 = m3.body.challenge;
+      check('26.10 新 request_id 创建新 SN', m3.body.ok === true && snMap3 !== snMap);
+      await req('POST', '/admin/api/provision/fail', { product: 'xiaov', hardware_id: hMap, reason: 'efuse_error', challenge: chMap3 }, { Authorization: `Bearer ${PROV}` });
+      // challenge 仍在有效期内重试 R3：必须得到明确失败状态，无 factory_key/challenge
+      r = await req('POST', '/admin/api/provision', { product: 'xiaov', hardware_id: hMap, new_sn: true, request_id: 'req-map-3' }, { Authorization: `Bearer ${PROV}` });
+      check('26.10 失败后重试返回 session_failed', r.body.ok === true && r.body.session_failed === true && r.body.sn === snMap3 && r.body.status === 'provisioning_failed');
+      check('26.10 失败后重试不返回可验证会话', !r.body.challenge && !r.body.factory_key);
+      // 该失败状态下直接 verify 会被拒
+      r = await req('POST', '/admin/api/provision/verify', { product: 'xiaov', hardware_id: hMap, challenge: chMap3, response: signVerify(fkMap, hMap, chMap3) }, { Authorization: `Bearer ${PROV}` });
+      check('26.10 失败状态直接验证被拒', r.status === 409 && r.body.error === 'not_in_provisioning_state');
+      // 显式恢复（sn 模式，新 request_id）→ 新会话可验证成功
+      const m4 = await req('POST', '/admin/api/provision', { product: 'xiaov', hardware_id: hMap, sn: snMap3, request_id: 'req-map-4' }, { Authorization: `Bearer ${PROV}` });
+      check('26.10 显式恢复返回新 challenge', m4.body.ok === true && m4.body.sn === snMap3 && m4.body.challenge !== chMap3);
+      r = await req('POST', '/admin/api/provision/verify', { product: 'xiaov', hardware_id: hMap, challenge: m4.body.challenge, response: signVerify(fkMap, hMap, m4.body.challenge) }, { Authorization: `Bearer ${PROV}` });
+      check('26.10 显式恢复后验证成功', r.status === 200 && r.body.sn === snMap3);
+      // 旧失败会话的延迟上报不影响已完成状态（challenge 已清除）
+      r = await req('POST', '/admin/api/provision/fail', { product: 'xiaov', hardware_id: hMap, reason: 'late_fail', challenge: chMap3 }, { Authorization: `Bearer ${PROV}` });
+      check('26.10 旧会话延迟失败上报被拒', r.status === 410 && r.body.error === 'challenge_mismatch');
+      // 清理 hMap 下进行中/失败记录
+      cl = await req('GET', '/admin/api/credentials?product=xiaov', null, { Authorization: `Bearer ${ADMIN}` });
+      for (const c of cl.body.filter(x => x.hardware_id === hMap && x.status !== 'provisioned')) {
+        await req('DELETE', `/admin/api/credentials/${c.id}`, null, { Authorization: `Bearer ${ADMIN}` });
+      }
     }
 
     // ===== 27. 失败上报会话绑定（延迟/重复上报不误伤） =====
