@@ -67,6 +67,19 @@ Content-Type: application/json
 
 此时服务端不会再次返回 FactoryKey。
 
+可选参数（多证书场景）：
+
+| 参数 | 说明 |
+| --- | --- |
+| `sn` | 只针对该 SN 的记录操作：恢复中断的烧录（重发 challenge，返回原 FactoryKey） |
+| `new_sn: true` | 同一 MAC 显式新增一个 SN。返回新 SN + **同一个 FactoryKey**（eFuse 只烧一次）+ 新 challenge。每个 SN 在火山侧是独立设备（`volcano_device_name` 带 SN 后缀），License 各自独立 |
+
+```json
+{ "product": "xiaov", "hardware_id": "AC:A7:04:28:C9:10", "new_sn": true }
+```
+
+不传可选参数时行为与旧版完全一致：烧录中/烧录失败 → 恢复该次烧录并返回原 SN；已出厂 → `already_provisioned`；全新 MAC → 首次烧录。`verify` 与 `fail` 接口在不传 `sn` 时自动定位最近一次烧录的记录，不会误伤同 MAC 的其他 SN。
+
 ### 3.2 验证设备确实持有 FactoryKey
 
 设备计算：
@@ -109,11 +122,14 @@ Header 同样使用 `Authorization: Bearer <PROVISION_TOKEN>`。
 
 ## 4. ESP32 运行时签名
 
-除 provision verify 外，设备接口统一签名原文：
+除 provision verify 外，设备接口签名原文分两个版本：
 
 ```text
-v1|{action}|{hardware_id}|{timestamp}|{nonce}
+v1（旧固件，不带 sn 的请求）:  v1|{action}|{hardware_id}|{timestamp}|{nonce}
+v2（多 SN 固件，带 sn 的请求）: v2|{action}|{hardware_id}|{sn}|{timestamp}|{nonce}
 ```
+
+规则：**请求携带 `sn` 字段时必须使用 v2 签名**（sn 参与签名，防止目标 SN 被篡改）；不带 `sn` 的请求仍按 v1 校验，旧固件无需任何改动。
 
 计算方式：
 
@@ -127,16 +143,21 @@ signature = Base64(HMAC_SHA256(factory_key_bytes, UTF8(message)))
 | --- | --- |
 | `/device/activate` | `activate` |
 | `/device/status` | `status` |
+| `/device/sns` | `sns` |
 | `/device/bind/qrcode` | `qrcode` |
 | `/device/bind/poll` | `poll` |
 
-签名只覆盖上述五个字段，不覆盖 JSON 的其他字段。`hardware_id` 的大小写、冒号格式必须与 provision 时完全一致。
+签名只覆盖 message 中列出的字段，不覆盖 JSON 的其他字段。`hardware_id` 的大小写、冒号格式必须与 provision 时完全一致。
 
 ESP-IDF/mbedTLS 伪代码：
 
 ```c
+// 不带 sn（v1）
 snprintf(message, sizeof(message), "v1|%s|%s|%lld|%s",
          action, hardware_id, timestamp_ms, nonce);
+// 带 sn（v2）
+snprintf(message, sizeof(message), "v2|%s|%s|%s|%lld|%s",
+         action, hardware_id, sn, timestamp_ms, nonce);
 mbedtls_md_hmac(info_sha256, factory_key, 32,
                 (const unsigned char *)message, strlen(message), digest);
 base64_encode(digest, 32, signature);
@@ -150,6 +171,8 @@ base64_encode(digest, 32, signature);
 
 `POST {base}/device/activate`，action=`activate`
 
+不带 `sn`（旧固件，v1 签名，默认激活该 MAC 的第一个 SN）：
+
 ```json
 {
   "hardware_id": "AC:A7:04:28:C9:10",
@@ -159,20 +182,34 @@ base64_encode(digest, 32, signature);
 }
 ```
 
+带 `sn`（多 SN 固件，v2 签名，激活/切换到指定 SN 的证书）：
+
+```json
+{
+  "hardware_id": "AC:A7:04:28:C9:10",
+  "sn": "XV000002",
+  "timestamp": 1786490000000,
+  "nonce": "32-character-random-hex",
+  "signature": "base64-hmac(v2)"
+}
+```
+
 成功：
 
 ```json
 {
   "ok": true,
   "recovered": false,
-  "sn": "XV000001",
-  "volcano_device_name": "xiaov-aca70428c910",
+  "sn": "XV000002",
+  "volcano_device_name": "xiaov-aca70428c910-XV000002",
   "device_secret": "provider-device-secret",
   "rtc_app_id": "provider-rtc-app-id"
 }
 ```
 
 设备应保存 `sn`、`volcano_device_name`、`device_secret`、`rtc_app_id`。擦除 Flash 后可凭 eFuse FactoryKey 重新调用；`recovered=true` 时返回原有凭证。老设备缺少 `rtc_app_id` 时应再次调用 activate，平台会自动补齐。
+
+同一 MAC 的多个 SN 共享 eFuse 中的 FactoryKey，但各自拥有独立的火山 `device_secret` 和 License。设备切换 License 的方式：换一个 `sn` 调用 activate（v2 签名），用返回的 `device_secret` 开启火山会话。
 
 ### 5.2 查询绑定和服务状态
 
@@ -253,6 +290,34 @@ ESP32 显示 `qr_url` 对应二维码并缓存 `temp_token` 用于轮询。Token
 
 建议每 2–3 秒轮询一次，每次必须生成新的 timestamp、nonce 和 signature；到 `expires_at` 后停止并重新生成二维码。
 
+### 5.5 列出同一 MAC 的所有 SN（多证书）
+
+`POST {base}/device/sns`，action=`sns`（v1 签名，无 `sn` 字段）
+
+```json
+{
+  "hardware_id": "AC:A7:04:28:C9:10",
+  "timestamp": 1786490000000,
+  "nonce": "32-character-random-hex",
+  "signature": "base64-hmac"
+}
+```
+
+成功：
+
+```json
+{
+  "ok": true,
+  "hardware_id": "AC:A7:04:28:C9:10",
+  "sns": [
+    { "sn": "XV000001", "status": "volcano_registered", "volcano_device_name": "xiaov-aca70428c910-XV000001", "device_secret_ready": true, "volcano_activated_at": "2026-09-01 00:00:00" },
+    { "sn": "XV000002", "status": "provisioned", "volcano_device_name": "xiaov-aca70428c910-XV000002", "device_secret_ready": false, "volcano_activated_at": null }
+  ]
+}
+```
+
+多证书固件启动时先调用该接口获取可用 SN 列表，再带选定的 `sn`（v2 签名）调用 `activate` 完成切换。
+
 ## 6. 推荐 ESP32 状态机
 
 1. 首次开机从 eFuse 读取 FactoryKey，并取得 SNTP 时间。
@@ -262,6 +327,8 @@ ESP32 显示 `qr_url` 对应二维码并缓存 `temp_token` 用于轮询。Token
 5. 若 `bound=true` 且 `ai_allowed=true`，允许启动 AI 会话。
 6. 若服务不可用，按 `service_status`、`provider_renew_status` 展示对应提示。
 7. 每次启动 AI 会话前和长连接定期重查 `status`。
+
+多证书（License 切换）固件在第 2 步前先调用 `device/sns`：选定要使用的 `sn` 后，用 v2 签名调用 `activate`（携带该 `sn`），获取对应的 `device_secret`。切换 License 即切换 `sn` 重新 activate；服务器端已支持，实际切换效果依赖固件实现与真机验证。
 
 ## 7. 通用错误处理
 

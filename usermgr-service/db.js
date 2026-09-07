@@ -228,45 +228,99 @@ CREATE INDEX IF NOT EXISTS idx_bind_tokens_temp ON device_bind_tokens(temp_token
 
 // 迁移：移除 device_credentials 的 UNIQUE(product_id, hardware_id) 约束
 // 同一个 MAC 可以对应多个 SN（1对多证书），需要去掉此唯一约束
-// SQLite 不支持直接 DROP UNIQUE constraint，需要重建表
+// SQLite 不支持直接 DROP UNIQUE constraint，需要重建表。
+// 重建全程在单个事务内执行（DDL 在 SQLite 中可回滚），中途崩溃/失败自动回滚到旧表。
 {
-  const cols = db.prepare("PRAGMA table_info(device_credentials)").all();
-  if (cols.length > 0) {
-    // 检查是否有 UNIQUE(product_id, hardware_id) 约束
-    const idxs = db.prepare("PRAGMA index_list('device_credentials')").all();
-    const hasHwidUnique = idxs.some(idx => {
+  const hasHwidUniqueOn = (table) => {
+    const idxs = db.prepare(`PRAGMA index_list('${table.replace(/'/g, "''")}')`).all();
+    return idxs.some(idx => {
       if (idx.origin !== 'u') return false;
       const idxCols = db.prepare(`PRAGMA index_info('${idx.name.replace(/'/g, "''")}')`).all();
       const names = idxCols.map(c => c.name);
       return names.length === 2 && names.includes('product_id') && names.includes('hardware_id');
     });
+  };
 
-    if (hasHwidUnique) {
-      const colDefs = cols.map(c => {
-        let def = `"${c.name}" ${c.type}`;
-        if (c.pk) def += ' PRIMARY KEY';
-        if (c.notnull && !c.pk) def += ' NOT NULL';
-        if (c.dflt_value) {
-          // datetime('now') 等表达式需要括号包裹
-          const dv = c.dflt_value;
-          if (dv.includes('(')) def += ` DEFAULT (${dv})`;
-          else def += ` DEFAULT ${dv}`;
+  const rebuildCredentialsTable = () => {
+    const cols = db.prepare("PRAGMA table_info(device_credentials)").all();
+    const colDefs = cols.map(c => {
+      let def = `"${c.name}" ${c.type}`;
+      if (c.pk) def += ' PRIMARY KEY';
+      if (c.notnull && !c.pk) def += ' NOT NULL';
+      if (c.dflt_value) {
+        // datetime('now') 等表达式需要括号包裹
+        const dv = c.dflt_value;
+        if (dv.includes('(')) def += ` DEFAULT (${dv})`;
+        else def += ` DEFAULT ${dv}`;
+      }
+      return def;
+    });
+    const colList = cols.map(c => `"${c.name}"`).join(', ');
+    // PRAGMA foreign_keys 在事务内是 no-op，必须在事务外切换
+    db.pragma('foreign_keys = OFF');
+    try {
+      db.transaction(() => {
+        const countBefore = db.prepare("SELECT COUNT(*) AS n FROM device_credentials").get().n;
+        db.exec(`
+          CREATE TABLE device_credentials_new (
+            ${colDefs.join(',\n')},
+            UNIQUE(product_id, sn),
+            FOREIGN KEY (product_id) REFERENCES products(id)
+          );
+          INSERT INTO device_credentials_new (${colList})
+          SELECT ${colList} FROM device_credentials;
+          DROP TABLE device_credentials;
+          ALTER TABLE device_credentials_new RENAME TO device_credentials;
+        `);
+        const countAfter = db.prepare("SELECT COUNT(*) AS n FROM device_credentials").get().n;
+        if (countAfter !== countBefore) {
+          throw new Error(`device_credentials 迁移行数不一致: ${countBefore} -> ${countAfter}`);
         }
-        return def;
-      });
-      db.exec(`
-        PRAGMA foreign_keys = OFF;
-        CREATE TABLE device_credentials_new (
-          ${colDefs.join(',\n')},
-          UNIQUE(product_id, sn),
-          FOREIGN KEY (product_id) REFERENCES products(id)
-        );
-        INSERT INTO device_credentials_new (${cols.map(c => `"${c.name}"`).join(', ')})
-        SELECT ${cols.map(c => `"${c.name}"`).join(', ')} FROM device_credentials;
-        DROP TABLE device_credentials;
-        ALTER TABLE device_credentials_new RENAME TO device_credentials;
-        PRAGMA foreign_keys = ON;
-      `);
+      })();
+    } finally {
+      db.pragma('foreign_keys = ON');
+    }
+  };
+
+  const tableExists = (name) =>
+    !!db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name = ?").get(name);
+
+  if (tableExists('device_credentials')) {
+    // 1) 清理/恢复上次中断的迁移残留（仅旧版无事务保护的实现可能产生）
+    if (tableExists('device_credentials_new')) {
+      if (hasHwidUniqueOn('device_credentials')) {
+        // 主表仍是旧结构：残留的临时表只是未完成的复制，丢弃后重新迁移
+        db.exec('DROP TABLE device_credentials_new');
+      } else {
+        const mainCount = db.prepare("SELECT COUNT(*) AS n FROM device_credentials").get().n;
+        const tempCount = db.prepare("SELECT COUNT(*) AS n FROM device_credentials_new").get().n;
+        if (mainCount === 0 && tempCount > 0) {
+          // 主表被开头的 CREATE TABLE IF NOT EXISTS 重建为空表，原数据都在临时表中：
+          // 用临时表换回主表（旧版迁移在 DROP 之后、RENAME 之前被中断的场景）
+          db.pragma('foreign_keys = OFF');
+          try {
+            db.transaction(() => {
+              db.exec('DROP TABLE device_credentials');
+              db.exec('ALTER TABLE device_credentials_new RENAME TO device_credentials');
+            })();
+          } finally {
+            db.pragma('foreign_keys = ON');
+          }
+        } else {
+          db.exec('DROP TABLE device_credentials_new');
+        }
+      }
+    }
+
+    // 2) 执行迁移（单事务，失败整体回滚，下次启动重试）
+    if (hasHwidUniqueOn('device_credentials')) {
+      rebuildCredentialsTable();
+    }
+
+    // 3) 迁移后校验引用完整性（其他表引用 credential_id 的行都必须指向存在的凭证）
+    const fkViolations = db.pragma('foreign_key_check');
+    if (fkViolations && fkViolations.length > 0) {
+      throw new Error('device_credentials 迁移后外键校验失败: ' + JSON.stringify(fkViolations));
     }
   }
 }
@@ -382,101 +436,127 @@ function deleteProduct(productId) {
 }
 
 // ==================== Device Credentials ====================
+// 视为"已完成出厂"的凭证状态：重复 provision 返回 already_provisioned，不再发 FactoryKey
+const PROVISION_DONE_STATES = ['provisioned', 'volcano_registered'];
+
+// 生成 10 分钟有效的新 challenge（幂等更新某条记录的烧录会话）
+function issueChallenge(credId) {
+  const challenge = crypto.randomBytes(32).toString('hex');
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+  db.prepare(`
+    UPDATE device_credentials
+    SET provision_challenge = ?, challenge_expires_at = ?, status = 'provisioning', failure_reason = NULL
+    WHERE id = ?
+  `).run(challenge, expiresAt, credId);
+  return challenge;
+}
+
 /**
  * 出厂录入阶段 1：服务器生成 SN + FactoryKey + challenge，status = provisioning
  * SN = sn_prefix + 6位零填充序号
- * FactoryKey = 32 字节随机 hex
+ * FactoryKey = 32 字节随机 hex（同一 MAC 的所有 SN 共享同一个 FactoryKey，因为 eFuse 只烧一次）
  * challenge = 32 字节随机 hex，10 分钟过期
  *
- * 重复录入规则（同一 hardware_id 可对应多个 SN）：
- *  - 同一 hardware_id 已有 provisioning 状态的记录：返回该记录的 SN + FactoryKey + 新 challenge
- *  - 同一 hardware_id 已有 provisioned 记录但需要新增 SN：生成新 SN，复用同一 FactoryKey（eFuse 密钥相同）
- *  - status = provisioning_failed：重新生成 challenge，保留原 FactoryKey，status 改回 provisioning
- *  - status = retired：拒绝
- *  - 传入 sn 参数时：查找该指定 SN 的记录进行操作
+ * 调用方式（保持与旧版兼容，新增 SN 必须显式请求）：
+ *  - 不传 sn / newSn（烧录工具默认行为，与旧版完全一致）：
+ *      按最近一条记录处理：provisioning/provisioning_failed → 恢复烧录（原 SN + 原 FactoryKey + 新 challenge）；
+ *      provisioned/volcano_registered → already_provisioned；retired → 拒绝；无记录 → 首次烧录
+ *  - 传 sn：只针对该 SN 的记录操作（恢复烧录 / already_provisioned）
+ *  - 传 newSn=true（多证书场景）：同一 MAC 显式新增一个 SN，复用 FactoryKey，
+ *    每个 SN 在火山侧是独立设备（volcano_device_name 带 SN 后缀），License 各自独立
  */
-function provisionDevice(productId, hardwareId, sn) {
+function provisionDevice(productId, hardwareId, sn, newSn) {
   const product = getProductRow(productId);
   if (!product) throw new Error('产品不存在');
 
-  // 如果指定了 SN，则针对该 SN 的记录操作
+  const records = getCredentialsByHardwareId(productId, hardwareId);
+
+  // 显式新增 SN（多证书）：总是生成新 SN，复用同一 MAC 已有的 FactoryKey
+  if (newSn) {
+    const factoryKey = records.length > 0
+      ? decrypt(records[0].factory_key)
+      : crypto.randomBytes(32).toString('hex');
+    const tx = db.transaction(() => {
+      db.prepare("UPDATE products SET sn_seq = sn_seq + 1 WHERE id = ?").run(productId);
+      const updated = getProductRow(productId);
+      const newSnValue = `${updated.sn_prefix}${String(updated.sn_seq).padStart(6, '0')}`;
+      const challenge = crypto.randomBytes(32).toString('hex');
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+      const hwidClean = hardwareId.replace(/[^0-9A-Fa-f]/g, '').toLowerCase();
+      // 每个 SN 在火山侧必须是独立设备，名字带 SN 后缀避免同名冲突
+      const volcanoDeviceName = `${product.code}-${hwidClean}-${newSnValue}`;
+      db.prepare(`
+        INSERT INTO device_credentials (product_id, sn, hardware_id, factory_key, volcano_device_name, status, provision_challenge, challenge_expires_at)
+        VALUES (?, ?, ?, ?, ?, 'provisioning', ?, ?)
+      `).run(productId, newSnValue, hardwareId, encrypt(factoryKey), volcanoDeviceName, challenge, expiresAt);
+      return { sn: newSnValue, factoryKey, challenge };
+    });
+    return tx();
+  }
+
+  // 指定 SN：只针对该 SN 的记录操作
   if (sn) {
-    const existing = getCredentialBySn(productId, sn);
+    const existing = records.find(r => r.sn === sn);
     if (!existing) throw new Error('device_not_found');
-    if (existing.hardware_id !== hardwareId) throw new Error('sn_hardware_mismatch');
-    if (existing.status === 'retired') throw new Error('device_retired');
-    if (existing.status === 'provisioned') {
+    if (PROVISION_DONE_STATES.includes(existing.status)) {
       return { already_provisioned: true, sn: existing.sn };
     }
-    // provisioning 或 provisioning_failed：返回原 FactoryKey + 新 challenge
+    if (existing.status === 'retired') throw new Error('device_retired');
+    // provisioning / provisioning_failed：返回原 FactoryKey + 新 challenge
     const factoryKey = decrypt(existing.factory_key);
-    const challenge = crypto.randomBytes(32).toString('hex');
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
-    db.prepare(`
-      UPDATE device_credentials
-      SET provision_challenge = ?, challenge_expires_at = ?, status = 'provisioning', failure_reason = NULL
-      WHERE id = ?
-    `).run(challenge, expiresAt, existing.id);
+    const challenge = issueChallenge(existing.id);
     return { sn: existing.sn, factoryKey, challenge };
   }
 
-  // 未指定 SN：查找同一 hardware_id 的记录
-  const existingCreds = getCredentialsByHardwareId(productId, hardwareId);
-
-  // 如果有 provisioning 状态的记录，复用它
-  const provisioningCred = existingCreds.find(c => c.status === 'provisioning');
-  if (provisioningCred) {
-    const factoryKey = decrypt(provisioningCred.factory_key);
-    const challenge = crypto.randomBytes(32).toString('hex');
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
-    db.prepare(`
-      UPDATE device_credentials
-      SET provision_challenge = ?, challenge_expires_at = ?, failure_reason = NULL
-      WHERE id = ?
-    `).run(challenge, expiresAt, provisioningCred.id);
-    return { sn: provisioningCred.sn, factoryKey, challenge };
+  // 未指定 SN：保持旧版重复录入语义，按最近一条记录处理
+  const latest = records.length > 0 ? records[records.length - 1] : null;
+  if (latest) {
+    if (PROVISION_DONE_STATES.includes(latest.status)) {
+      return { already_provisioned: true, sn: latest.sn };
+    }
+    if (latest.status === 'retired') throw new Error('device_retired');
+    // provisioning / provisioning_failed：恢复最近一次烧录（原 SN + 原 FactoryKey + 新 challenge）
+    const factoryKey = decrypt(latest.factory_key);
+    const challenge = issueChallenge(latest.id);
+    return { sn: latest.sn, factoryKey, challenge };
   }
 
-  // 有 provisioning_failed 的记录，重新生成 challenge
-  const failedCred = existingCreds.find(c => c.status === 'provisioning_failed');
-  if (failedCred) {
-    const factoryKey = decrypt(failedCred.factory_key);
-    const challenge = crypto.randomBytes(32).toString('hex');
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
-    db.prepare(`
-      UPDATE device_credentials
-      SET provision_challenge = ?, challenge_expires_at = ?, status = 'provisioning', failure_reason = NULL
-      WHERE id = ?
-    `).run(challenge, expiresAt, failedCred.id);
-    return { sn: failedCred.sn, factoryKey, challenge };
-  }
-
-  // 有 retired 的记录，拒绝
-  if (existingCreds.some(c => c.status === 'retired') && existingCreds.every(c => c.status === 'retired')) {
-    throw new Error('device_retired');
-  }
-
-  // 新增 SN（同一 MAC 的第 N 个 SN）
-  // 复用已有 FactoryKey（eFuse 密钥相同），或生成新的
-  const sharedFactoryKey = existingCreds.length > 0
-    ? decrypt(existingCreds[0].factory_key)
-    : crypto.randomBytes(32).toString('hex');
-
+  // 首次烧录：生成 SN + FactoryKey
   const tx = db.transaction(() => {
     db.prepare("UPDATE products SET sn_seq = sn_seq + 1 WHERE id = ?").run(productId);
     const updated = getProductRow(productId);
-    const newSn = `${updated.sn_prefix}${String(updated.sn_seq).padStart(6, '0')}`;
+    const firstSn = `${updated.sn_prefix}${String(updated.sn_seq).padStart(6, '0')}`;
+    const factoryKey = crypto.randomBytes(32).toString('hex');
     const challenge = crypto.randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
     const hwidClean = hardwareId.replace(/[^0-9A-Fa-f]/g, '').toLowerCase();
-    const volcanoDeviceName = `${product.code}-${hwidClean}-${newSn}`;
+    const volcanoDeviceName = `${product.code}-${hwidClean}-${firstSn}`;
     db.prepare(`
       INSERT INTO device_credentials (product_id, sn, hardware_id, factory_key, volcano_device_name, status, provision_challenge, challenge_expires_at)
       VALUES (?, ?, ?, ?, ?, 'provisioning', ?, ?)
-    `).run(productId, newSn, hardwareId, encrypt(sharedFactoryKey), volcanoDeviceName, challenge, expiresAt);
-    return { sn: newSn, factoryKey: sharedFactoryKey, challenge };
+    `).run(productId, firstSn, hardwareId, encrypt(factoryKey), volcanoDeviceName, challenge, expiresAt);
+    return { sn: firstSn, factoryKey, challenge };
   });
   return tx();
+}
+
+/**
+ * 定位某次烧录会话对应的凭证记录：
+ *  - 传 sn：精确匹配该 SN
+ *  - 不传 sn：取最近一条"烧录中/烧录失败"的记录（本次烧录目标）；
+ *    没有进行中的烧录时取最近一条记录（用于返回 already_provisioned 等旧版语义）
+ */
+function locateProvisionRecord(productId, hardwareId, sn) {
+  const records = getCredentialsByHardwareId(productId, hardwareId);
+  if (sn) {
+    const cred = records.find(r => r.sn === sn) || null;
+    if (!cred) throw new Error('device_not_found');
+    if (cred.hardware_id !== hardwareId) throw new Error('sn_hardware_mismatch');
+    return cred;
+  }
+  if (records.length === 0) throw new Error('device_not_found');
+  const inProgress = records.filter(r => r.status === 'provisioning' || r.status === 'provisioning_failed');
+  return inProgress.length > 0 ? inProgress[inProgress.length - 1] : records[records.length - 1];
 }
 
 /**
@@ -486,12 +566,8 @@ function provisionDevice(productId, hardwareId, sn) {
  * 验证失败 → 抛错（不改 status，允许重试）
  */
 function verifyProvision(productId, hardwareId, challenge, responseHex, sn) {
-  const cred = sn
-    ? getCredentialBySn(productId, sn)
-    : getCredentialByHardwareId(productId, hardwareId);
-  if (!cred) throw new Error('device_not_found');
-  if (sn && cred.hardware_id !== hardwareId) throw new Error('sn_hardware_mismatch');
-  if (cred.status === 'provisioned') throw new Error('already_provisioned');
+  const cred = locateProvisionRecord(productId, hardwareId, sn);
+  if (PROVISION_DONE_STATES.includes(cred.status)) throw new Error('already_provisioned');
   if (cred.status !== 'provisioning') throw new Error('not_in_provisioning_state');
 
   // challenge 必须匹配且未过期
@@ -526,13 +602,13 @@ function verifyProvision(productId, hardwareId, challenge, responseHex, sn) {
 
 /**
  * 标记烧录失败（仅记录，不改 provisioning 状态——网络断线不算失败）
+ * 只允许作用于烧录中/烧录失败的记录：同 MAC 多 SN 时不能把已出厂的旧凭证标成失败
  */
 function failProvision(productId, hardwareId, reason, sn) {
-  const cred = sn
-    ? getCredentialBySn(productId, sn)
-    : getCredentialByHardwareId(productId, hardwareId);
-  if (!cred) throw new Error('device_not_found');
-  if (sn && cred.hardware_id !== hardwareId) throw new Error('sn_hardware_mismatch');
+  const cred = locateProvisionRecord(productId, hardwareId, sn);
+  if (!['provisioning', 'provisioning_failed'].includes(cred.status)) {
+    throw new Error('not_in_provisioning_state');
+  }
   db.prepare(`
     UPDATE device_credentials SET status = 'provisioning_failed', failure_reason = ? WHERE id = ?
   `).run(reason, cred.id);
@@ -1014,10 +1090,17 @@ function deleteOrder(id) {
   return { ok: true };
 }
 
-// 管理员删除订单：允许删除任意状态，但 paid 订单需管理员确认
+// 管理员删除订单：
+//  - pending / cancelled 可删（未产生任何效果）
+//  - 已付款且续期未完成（pending/processing/failed）禁止物理删除：
+//    删除后后台扫描不到该订单，续期完成入口、失败重试和 License 审计记录全部丢失
+//  - 已付款且续期已完成（completed/none）可删，但属于审计记录，建议保留
 function adminDeleteOrder(id) {
   const order = getOrderById(id);
   if (!order) throw new Error('order_not_found');
+  if (order.status === 'paid' && ['pending', 'processing', 'failed'].includes(order.provider_renew_status)) {
+    throw new Error('order_renew_incomplete');
+  }
   db.prepare("DELETE FROM orders WHERE id = ?").run(id);
   return { ok: true };
 }

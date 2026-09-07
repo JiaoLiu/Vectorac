@@ -998,6 +998,100 @@ async function main() {
       check('删除已激活设备被拒', r.status === 409);
     }
 
+    // ===== 24. 订单删除保护：pending 可删，已付款且续期未完成不可删 =====
+    console.log('\n--- 24. 订单删除保护 ---');
+    {
+      const d = (await req('GET', '/xiaov/api/devices', null, { Authorization: `Bearer ${userToken}` })).body[0];
+
+      // 24.1 用户删除 pending（未付款）订单
+      const ro = await req('POST', `/xiaov/api/devices/${d.binding_id}/renew`, { years: 1 }, { Authorization: `Bearer ${userToken}` });
+      let dr = await req('DELETE', `/xiaov/api/orders/${ro.body.order_id}`, null, { Authorization: `Bearer ${userToken}` });
+      check('24.1 用户删除 pending 订单成功', dr.body.ok === true);
+
+      // 24.2 用户删除已付款订单被拒
+      const ro2 = await req('POST', `/xiaov/api/devices/${d.binding_id}/renew`, { years: 1 }, { Authorization: `Bearer ${userToken}` });
+      await req('POST', `/xiaov/api/orders/${ro2.body.order_id}/voucher`, { voucher: '删除保护测试' }, { Authorization: `Bearer ${userToken}` });
+      await req('PATCH', `/admin/api/orders/${ro2.body.order_id}/mark-paid`, {}, { Authorization: `Bearer ${ADMIN}` });
+      dr = await req('DELETE', `/xiaov/api/orders/${ro2.body.order_id}`, null, { Authorization: `Bearer ${userToken}` });
+      check('24.2 用户删除已付款订单被拒', dr.status === 400 && dr.body.error === 'order_not_deletable');
+
+      // 24.3 管理员删除续期未完成（paid + pending/processing/failed）订单被拒
+      dr = await req('DELETE', `/admin/api/orders/${ro2.body.order_id}`, null, { Authorization: `Bearer ${ADMIN}` });
+      check('24.3 管理员删除续期未完成订单被拒', dr.status === 409 && dr.body.error === 'order_renew_incomplete');
+
+      // 24.4 完成续期后管理员可删（审计记录由弹窗提示）
+      await req('POST', `/admin/api/orders/${ro2.body.order_id}/complete-renew`, { license_id: 'DEL-LIC-1' }, { Authorization: `Bearer ${ADMIN}` });
+      dr = await req('DELETE', `/admin/api/orders/${ro2.body.order_id}`, null, { Authorization: `Bearer ${ADMIN}` });
+      check('24.4 续期完成后管理员可删订单', dr.body.ok === true);
+    }
+
+    // ===== 25. 多 SN（1 MAC 多证书）：显式 new_sn + verify/fail 定位 + v2 签名 =====
+    console.log('\n--- 25. 多 SN 证书 ---');
+    {
+      // 25.1 已出厂设备重复调用 /provision（不带参数）保持旧语义
+      let pr = await req('POST', '/admin/api/provision', { product: 'xiaov', hardware_id: hwid }, { Authorization: `Bearer ${PROV}` });
+      check('25.1 重复 provision 返回 already_provisioned（旧语义）', pr.body.already_provisioned === true && pr.body.sn === sn && !pr.body.factory_key);
+
+      // 25.2 new_sn=true 显式新增 SN：返回新 SN + 同一个 FactoryKey
+      pr = await req('POST', '/admin/api/provision', { product: 'xiaov', hardware_id: hwid, new_sn: true }, { Authorization: `Bearer ${PROV}` });
+      check('25.2 new_sn 生成新 SN', pr.body.ok === true && !!pr.body.sn && pr.body.sn !== sn);
+      check('25.2 新 SN 复用同一 FactoryKey（eFuse 相同）', pr.body.factory_key === factoryKey);
+      const sn2 = pr.body.sn;
+      const challenge2 = pr.body.challenge;
+      check('25.2 返回新 challenge', !!challenge2);
+
+      // 25.3 verify 不传 sn 时定位本次烧录的新 SN，不会误判到已出厂的旧 SN
+      const vr = await req('POST', '/admin/api/provision/verify', {
+        product: 'xiaov', hardware_id: hwid, challenge: challenge2,
+        response: signVerify(factoryKey, hwid, challenge2),
+      }, { Authorization: `Bearer ${PROV}` });
+      check('25.3 verify 定位本次烧录的 SN', vr.status === 200 && vr.body.ok && vr.body.sn === sn2 && vr.body.status === 'provisioned');
+
+      // 25.4 fail 不传 sn 时只作用于本次烧录，不会把已出厂凭证标成失败
+      pr = await req('POST', '/admin/api/provision', { product: 'xiaov', hardware_id: hwid, new_sn: true }, { Authorization: `Bearer ${PROV}` });
+      const sn3 = pr.body.sn;
+      const fr = await req('POST', '/admin/api/provision/fail', { product: 'xiaov', hardware_id: hwid, reason: 'test_fail' }, { Authorization: `Bearer ${PROV}` });
+      check('25.4 fail 定位本次烧录的 SN', fr.body.ok === true && fr.body.sn === sn3);
+      const cl = await req('GET', '/admin/api/credentials?product=xiaov', null, { Authorization: `Bearer ${ADMIN}` });
+      const oldCred1 = cl.body.find(c => c.sn === sn);
+      const oldCred2 = cl.body.find(c => c.sn === sn2);
+      check('25.4 已出厂凭证未被误标失败', oldCred1.status !== 'provisioning_failed' && oldCred2.status !== 'provisioning_failed');
+      check('25.4 新 SN 标记为 provisioning_failed', cl.body.find(c => c.sn === sn3).status === 'provisioning_failed');
+
+      // 25.5 带 sn 的请求必须使用 v2 签名（sn 参与签名）
+      ts = Date.now(); nonce = crypto.randomBytes(8).toString('hex');
+      const v1Sig = sign(factoryKey, 'activate', hwid, ts, nonce); // v1 签名
+      r = await req('POST', '/xiaov/api/device/activate', { hardware_id: hwid, sn: sn2, timestamp: ts, nonce, signature: v1Sig });
+      check('25.5 v1 签名 + sn 被拒（必须 v2）', r.status === 401);
+      ts = Date.now(); nonce = crypto.randomBytes(8).toString('hex');
+      const v2Sig = crypto.createHmac('sha256', Buffer.from(factoryKey, 'hex'))
+        .update(buildSignString('activate', hwid, ts, nonce, sn2)).digest('base64');
+      r = await req('POST', '/xiaov/api/device/activate', { hardware_id: hwid, sn: sn2, timestamp: ts, nonce, signature: v2Sig });
+      check('25.5 v2 签名激活指定 SN 成功', r.body.ok === true && r.body.sn === sn2);
+      check('25.5 新 SN 有独立 device_secret', !!r.body.device_secret);
+      check('25.5 新 SN 火山设备名带 SN 后缀', r.body.volcano_device_name === 'xiaov-aca70428c910-' + sn2);
+
+      // 25.6 不带 sn 的旧固件请求仍走 v1（向后兼容）
+      ts = Date.now(); nonce = crypto.randomBytes(8).toString('hex');
+      const compatSig = sign(factoryKey, 'activate', hwid, ts, nonce);
+      r = await req('POST', '/xiaov/api/device/activate', { hardware_id: hwid, timestamp: ts, nonce, signature: compatSig });
+      check('25.6 旧固件 v1 请求仍可用（默认第一个 SN）', r.body.ok === true && r.body.sn === sn);
+
+      // 25.7 device/sns 列出同一 MAC 的所有 SN
+      ts = Date.now(); nonce = crypto.randomBytes(8).toString('hex');
+      const snsSig = sign(factoryKey, 'sns', hwid, ts, nonce);
+      r = await req('POST', '/xiaov/api/device/sns', { hardware_id: hwid, timestamp: ts, nonce, signature: snsSig });
+      check('25.7 sns 列出全部 SN', r.body.ok === true && r.body.sns.length === 3);
+      check('25.7 sns 含各 SN 状态', r.body.sns.some(s => s.sn === sn) && r.body.sns.some(s => s.sn === sn2) && r.body.sns.some(s => s.sn === sn3));
+
+      // 25.8 status 带 sn + v2 签名查询指定证书
+      ts = Date.now(); nonce = crypto.randomBytes(8).toString('hex');
+      const stSig = crypto.createHmac('sha256', Buffer.from(factoryKey, 'hex'))
+        .update(buildSignString('status', hwid, ts, nonce, sn2)).digest('base64');
+      r = await req('POST', '/xiaov/api/device/status', { hardware_id: hwid, sn: sn2, timestamp: ts, nonce, signature: stSig });
+      check('25.8 status 指定 SN 返回该 SN 状态', r.body.ok === true && r.body.sn === sn2);
+    }
+
     console.log(`\n=== 结果：${pass} 通过 / ${fail} 失败 ===`);
     server.close();
     process.exit(fail > 0 ? 1 : 0);

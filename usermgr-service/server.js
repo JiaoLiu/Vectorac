@@ -186,12 +186,18 @@ function userAuth(req, res, next) {
 }
 
 // ==================== 签名工具 ====================
-// 签名内容：v1|{action}|hardware_id|timestamp|nonce
-function buildSignString(action, hardwareId, timestamp, nonce) {
-  return `v1|${action}|${hardwareId}|${timestamp}|${nonce}`;
+// 签名版本：
+//   v1（旧固件）：v1|{action}|hardware_id|timestamp|nonce —— 不含 sn
+//   v2（多 SN 固件）：v2|{action}|hardware_id|sn|timestamp|nonce —— sn 参与签名
+// 规则：请求带 sn 字段时必须使用 v2 签名（防止 sn 被篡改后签名仍成立）；
+//       不带 sn 的请求仍按 v1 校验，旧固件完全兼容。
+function buildSignString(action, hardwareId, timestamp, nonce, sn) {
+  return sn
+    ? `v2|${action}|${hardwareId}|${sn}|${timestamp}|${nonce}`
+    : `v1|${action}|${hardwareId}|${timestamp}|${nonce}`;
 }
 
-function verifySignature(action, factoryKey, hardwareId, timestamp, nonce, signatureB64) {
+function verifySignature(action, factoryKey, hardwareId, timestamp, nonce, signatureB64, sn) {
   const ts = Number(timestamp);
   if (!ts || isNaN(ts)) return { ok: false, reason: 'bad_timestamp' };
   const now = Date.now();
@@ -200,7 +206,7 @@ function verifySignature(action, factoryKey, hardwareId, timestamp, nonce, signa
   if (!nonce || nonce.length < 8) return { ok: false, reason: 'bad_nonce' };
   if (DB.isNonceUsed(nonce)) return { ok: false, reason: 'nonce_reused' };
 
-  const expected = buildSignString(action, hardwareId, ts, nonce);
+  const expected = buildSignString(action, hardwareId, ts, nonce, sn);
   // FactoryKey is persisted as 64 hex characters, while ESP32 HMAC_UP uses
   // the represented 32 raw bytes as its key.
   const expectedSig = crypto.createHmac('sha256', Buffer.from(factoryKey, 'hex')).update(expected).digest();
@@ -263,15 +269,19 @@ app.delete('/admin/api/products/:id', adminAuth, (req, res) => {
 
 // ==================== 管理员：出厂录入 ====================
 // 改动①：只收 product + hardware_id，SN 和 FactoryKey 由服务器生成
+// 可选参数：
+//   sn       —— 只针对该 SN 的记录操作（恢复烧录）
+//   new_sn   —— 同一 MAC 显式新增一个 SN（多证书场景），复用 FactoryKey
+// 不传可选参数时行为与旧版完全一致：重复录入返回原 SN 或 already_provisioned
 app.post('/admin/api/provision', provisionAuth, (req, res) => {
-  const { product, hardware_id, sn } = req.body;
+  const { product, hardware_id, sn, new_sn } = req.body;
   if (!product || !hardware_id) return res.status(400).json({ error: 'missing_params' });
 
   const productId = DB.getProductIdByCode(product);
   if (!productId) return res.status(404).json({ error: 'product_not_found' });
 
   try {
-    const result = DB.provisionDevice(productId, hardware_id, sn);
+    const result = DB.provisionDevice(productId, hardware_id, sn, !!new_sn);
     if (result.already_provisioned) {
       return res.json({ ok: true, already_provisioned: true, sn: result.sn });
     }
@@ -321,6 +331,7 @@ app.post('/admin/api/provision/fail', provisionAuth, (req, res) => {
   } catch (e) {
     if (e.message === 'device_not_found') return res.status(404).json({ error: e.message });
     if (e.message === 'sn_hardware_mismatch') return res.status(400).json({ error: 'sn_hardware_mismatch' });
+    if (e.message === 'not_in_provisioning_state') return res.status(409).json({ error: e.message });
     res.status(500).json({ error: 'fail_failed', reason: e.message });
   }
 });
@@ -468,13 +479,14 @@ app.post('/admin/api/orders/:id/complete-renew', adminAuth, (req, res) => {
   });
 });
 
-// 管理员删除订单（任意状态均可，但 paid 订单已延长服务期，需确认）
+// 管理员删除订单（未付款可删；已付款且续期未完成的服务端拒绝删除）
 app.delete('/admin/api/orders/:id', adminAuth, (req, res) => {
   try {
     DB.adminDeleteOrder(Number(req.params.id));
     res.json({ ok: true });
   } catch (e) {
     if (e.message === 'order_not_found') return res.status(404).json({ error: 'not_found' });
+    if (e.message === 'order_renew_incomplete') return res.status(409).json({ error: 'order_renew_incomplete', message: '已付款且续期未完成的订单不能删除，请先完成续期或处理失败' });
     res.status(500).json({ error: 'delete_failed' });
   }
 });
@@ -930,7 +942,8 @@ app.post('/:product/api/device/activate', async (req, res) => {
   }
 
   const factoryKey = DB.getDecryptedFactoryKey(cred);
-  const v = verifySignature('activate', factoryKey, hardware_id, timestamp, nonce, signature);
+  // 带 sn 的请求必须用 v2 签名（sn 参与签名，防止目标 SN 被篡改）
+  const v = verifySignature('activate', factoryKey, hardware_id, timestamp, nonce, signature, sn);
   if (!v.ok) return res.status(401).json({ error: 'auth_failed', reason: v.reason });
 
   // 两项都齐全才可恢复；老设备只有 DeviceSecret 时重新 DynamicRegister
@@ -1043,7 +1056,7 @@ app.post('/:product/api/device/status', (req, res) => {
   if (!cred) return res.status(404).json({ error: 'device_not_provisioned' });
 
   const factoryKey = DB.getDecryptedFactoryKey(cred);
-  const v = verifySignature('status', factoryKey, hardware_id, timestamp, nonce, signature);
+  const v = verifySignature('status', factoryKey, hardware_id, timestamp, nonce, signature, sn);
   if (!v.ok) return res.status(401).json({ error: 'auth_failed', reason: v.reason });
 
   const binding = DB.getBindingByCredential(cred.id);
@@ -1100,7 +1113,7 @@ app.post('/:product/api/device/bind/qrcode', (req, res) => {
   if (!cred) return res.status(404).json({ error: 'device_not_provisioned' });
 
   const factoryKey = DB.getDecryptedFactoryKey(cred);
-  const v = verifySignature('qrcode', factoryKey, hardware_id, timestamp, nonce, signature);
+  const v = verifySignature('qrcode', factoryKey, hardware_id, timestamp, nonce, signature, sn);
   if (!v.ok) return res.status(401).json({ error: 'auth_failed', reason: v.reason });
 
   // 已绑定则不再生成二维码
@@ -1140,7 +1153,7 @@ app.post('/:product/api/device/bind/poll', (req, res) => {
   if (!cred) return res.status(404).json({ error: 'device_not_provisioned' });
 
   const factoryKey = DB.getDecryptedFactoryKey(cred);
-  const v = verifySignature('poll', factoryKey, hardware_id, timestamp, nonce, signature);
+  const v = verifySignature('poll', factoryKey, hardware_id, timestamp, nonce, signature, sn);
   if (!v.ok) return res.status(401).json({ error: 'auth_failed', reason: v.reason });
 
   // poll 用 getBindTokenAnyStatus：confirmed 状态也要能查到

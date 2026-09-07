@@ -39,7 +39,7 @@ async function api(path, opts = {}) {
   if (state.token) headers.Authorization = 'Bearer ' + state.token;
   const res = await fetch(API + path, { ...opts, headers });
   const body = await res.json().catch(() => ({ ok: false, error: { message: '网络错误' } }));
-  if (!res.ok) throw new Error(body.error?.message || body.error || `HTTP ${res.status}`);
+  if (!res.ok) throw new Error(body.message || body.error?.message || body.error || `HTTP ${res.status}`);
   return body.data || body;
 }
 
@@ -154,10 +154,13 @@ async function submitRetryRenew() {
 }
 
 // 删除订单
-function deleteOrder(id, orderNo) {
+// paid 且续期未完成（pending/processing/failed）的订单服务端拒绝删除，前端也不显示删除按钮
+function deleteOrder(id, orderNo, paid) {
   askConfirm({
     title: '删除订单',
-    message: `确认删除订单「${orderNo}」？${''}`,
+    message: paid
+      ? `订单「${orderNo}」已付款。删除后将丢失本次收款与续费的审计记录（License ID、操作人、完成时间），且不可恢复。确认删除？`
+      : `确认删除订单「${orderNo}」？删除后不可恢复。`,
     confirmText: '确认删除',
     onConfirm: async () => {
       await api('/orders/' + id, { method: 'DELETE' });
@@ -593,11 +596,14 @@ function render() {
                 <td>${
                   o.status === 'pending'
                     ? `<button class="primary" onclick="markOrderPaid(${o.id})">确认收款</button> <button class="danger" onclick="deleteOrder(${o.id}, '${o.order_no}')">删除</button>`
-                    : (o.status === 'paid' && ['pending', 'processing', 'failed'].includes(o.provider_renew_status)
+                    : ((o.status === 'paid' && ['pending', 'processing', 'failed'].includes(o.provider_renew_status))
                         ? `<button class="primary" onclick="completeRenew(${o.id})">完成续期</button>` +
                           (o.provider_renew_status === 'failed' ? ` <button onclick="retryRenew(${o.id})">重试</button>` : '')
                         : '—') +
-                  ` <button class="danger" onclick="deleteOrder(${o.id}, '${o.order_no}')">删除</button>`
+                      // 已付款且续期未完成的订单不可删（服务端强制），其余已付款订单删除前有审计提示
+                      ((o.status === 'paid' && ['pending', 'processing', 'failed'].includes(o.provider_renew_status))
+                        ? ''
+                        : ` <button class="danger" onclick="deleteOrder(${o.id}, '${o.order_no}', ${o.status === 'paid'})">删除</button>`)
                 }</td>
               </tr>`;
             }).join('') || '<tr><td colspan="11" style="color:#888">暂无</td></tr>'}
