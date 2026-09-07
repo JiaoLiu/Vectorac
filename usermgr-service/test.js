@@ -1302,6 +1302,76 @@ async function main() {
       DB.db.prepare('DELETE FROM provision_requests WHERE request_id = ?').run('req-missing-old');
     }
 
+    // 26.15 删除凭证失败时事务回滚：绑定和存档一起回滚
+    {
+      const hRollback = 'BB:11:22:33:44:01';
+      const t1 = await req('POST', '/admin/api/provision', { product: 'xiaov', hardware_id: hRollback, new_sn: true, request_id: 'req-rb-1' }, { Authorization: `Bearer ${PROV}` });
+      check('26.15 创建凭证成功', t1.body.ok === true && !!t1.body.factory_key);
+      const fk1 = t1.body.factory_key;
+      // 获取凭证 ID
+      let cl = await req('GET', '/admin/api/credentials?product=xiaov', null, { Authorization: `Bearer ${ADMIN}` });
+      const cred = cl.body.find(c => c.hardware_id === hRollback);
+      // 插入一条绑定（需要用户 ID，用注册用户）
+      const userId = DB.db.prepare('SELECT id FROM users WHERE phone = ?').get('13800138000');
+      const uid = userId ? userId.id : 1;
+      DB.db.prepare(`INSERT OR IGNORE INTO user_device_bindings (user_id, credential_id, product_id, nickname) VALUES (?, ?, ?, 'test')`).run(uid, cred.id, DB.getProductIdByCode('xiaov'));
+      // 插入 device_services 行（FK 阻止凭证删除）
+      DB.db.prepare(`INSERT OR IGNORE INTO device_services (credential_id, user_id, product_id, start_at, expires_at) VALUES (?, ?, ?, '2024-01-01', '2025-01-01')`).run(cred.id, uid, DB.getProductIdByCode('xiaov'));
+      // 记录存档前的状态（应该已有存档——创建时 archiveFactoryKey 已调用）
+      const archBefore = DB.db.prepare('SELECT factory_key FROM factory_key_archive WHERE product_id = ? AND hardware_id = ?').get(DB.getProductIdByCode('xiaov'), hRollback);
+      // 尝试删除凭证：应因 device_services FK 约束失败
+      let deleteFailed = false;
+      try {
+        DB.deleteCredential(cred.id);
+      } catch (e) {
+        deleteFailed = true;
+      }
+      check('26.15 删除凭证因 FK 约束失败', deleteFailed === true);
+      // 验证绑定仍存在（事务回滚）
+      const bindAfter = DB.db.prepare('SELECT * FROM user_device_bindings WHERE credential_id = ?').get(cred.id);
+      check('26.15 绑定事务回滚后仍存在', !!bindAfter);
+      // 验证凭证仍存在
+      const credAfter = DB.db.prepare('SELECT * FROM device_credentials WHERE id = ?').get(cred.id);
+      check('26.15 凭证事务回滚后仍存在', !!credAfter);
+      // 验证存档未变（事务回滚）
+      const archAfter = DB.db.prepare('SELECT factory_key FROM factory_key_archive WHERE product_id = ? AND hardware_id = ?').get(DB.getProductIdByCode('xiaov'), hRollback);
+      check('26.15 存档事务回滚后未变', !!archAfter && archAfter.factory_key.toString() === archBefore.factory_key.toString());
+      // 清理：先删 device_services，再删绑定，再删凭证
+      DB.db.prepare('DELETE FROM device_services WHERE credential_id = ?').run(cred.id);
+      DB.db.prepare('DELETE FROM user_device_bindings WHERE credential_id = ?').run(cred.id);
+      DB.deleteCredential(cred.id);
+    }
+
+    // 26.16 删除产品被拒绝时幂等映射和密钥存档仍保留
+    {
+      // 创建一个临时产品
+      const tmpProduct = DB.createProduct({ code: 'tmpdel', name: '临时删除测试', sn_prefix: 'TD', sn_seq: 0 });
+      const pid = tmpProduct.id;
+      const hProd = 'BB:22:33:44:55:02';
+      // 在该产品下创建凭证（使 cred > 0，阻止产品删除）
+      const t1 = await req('POST', '/admin/api/provision', { product: 'tmpdel', hardware_id: hProd, new_sn: true, request_id: 'req-prod-del-1' }, { Authorization: `Bearer ${PROV}` });
+      check('26.16 临时产品下创建凭证成功', t1.body.ok === true);
+      // 验证映射和存档存在
+      const mapBefore = DB.db.prepare('SELECT COUNT(*) as n FROM provision_requests WHERE product_id = ?').get(pid);
+      const archBefore = DB.db.prepare('SELECT COUNT(*) as n FROM factory_key_archive WHERE product_id = ?').get(pid);
+      check('26.16 映射已存在', mapBefore.n >= 1);
+      check('26.16 存档已存在', archBefore.n >= 1);
+      // 尝试删除产品：应被拒绝（cred > 0）
+      const result = DB.deleteProduct(pid);
+      check('26.16 删除产品被拒绝', result === false);
+      // 验证映射和存档仍保留
+      const mapAfter = DB.db.prepare('SELECT COUNT(*) as n FROM provision_requests WHERE product_id = ?').get(pid);
+      const archAfter = DB.db.prepare('SELECT COUNT(*) as n FROM factory_key_archive WHERE product_id = ?').get(pid);
+      check('26.16 拒绝删除后映射仍保留', mapAfter.n === mapBefore.n);
+      check('26.16 拒绝删除后存档仍保留', archAfter.n === archBefore.n);
+      // 清理：删除凭证后再删产品
+      let cl = await req('GET', '/admin/api/credentials?product=tmpdel', null, { Authorization: `Bearer ${ADMIN}` });
+      for (const c of cl.body) {
+        await req('DELETE', `/admin/api/credentials/${c.id}`, null, { Authorization: `Bearer ${ADMIN}` });
+      }
+      DB.deleteProduct(pid);
+    }
+
     // ===== 27. 失败上报会话绑定（延迟/重复上报不误伤） =====
     console.log('\n--- 27. 失败上报会话绑定 ---');
     {

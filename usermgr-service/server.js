@@ -329,7 +329,7 @@ app.post('/admin/api/provision', provisionAuth, (req, res) => {
     if (e.message === 'request_target_deleted') return res.status(404).json({ error: 'request_target_deleted', message: '该 request_id 对应的凭证已被删除，请使用新的 request_id 重新发起' });
     if (e.message === 'sn_hardware_mismatch') return res.status(400).json({ error: 'sn_hardware_mismatch' });
     if (e.message === 'request_id_conflict') return res.status(409).json({ error: 'request_id_conflict', message: '该 request_id 已绑定其他烧录操作（目标设备/SN/模式不同）' });
-    if (e.message === 'factory_key_archive_missing') return res.status(409).json({ error: 'factory_key_archive_missing', message: '该设备有烧录历史但 FactoryKey 存档缺失，无法安全恢复密钥。请联系管理员从 eFuse 或备份恢复' });
+    if (e.message === 'factory_key_archive_missing') return res.status(409).json({ error: 'factory_key_archive_missing', message: '该设备有烧录历史但 FactoryKey 存档缺失，无法安全恢复密钥。请联系管理员检查密钥备份' });
     res.status(500).json({ error: 'provision_failed', reason: e.message });
   }
 });

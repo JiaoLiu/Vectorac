@@ -531,10 +531,12 @@ function deleteProduct(productId) {
   if (ref.cred > 0 || ref.ord > 0) return false;
   // 烧录请求幂等映射 + FactoryKey 存档随产品一并清理：产品删除后 request_id 无从路由
   // （产品代码即路由），且两表对 products 有外键约束，不清理会阻塞产品删除
-  db.prepare("DELETE FROM provision_requests WHERE product_id = ?").run(productId);
-  db.prepare("DELETE FROM factory_key_archive WHERE product_id = ?").run(productId);
-  const r = db.prepare('DELETE FROM products WHERE id = ?').run(productId);
-  return r.changes > 0;
+  return db.transaction(() => {
+    db.prepare("DELETE FROM provision_requests WHERE product_id = ?").run(productId);
+    db.prepare("DELETE FROM factory_key_archive WHERE product_id = ?").run(productId);
+    const r = db.prepare('DELETE FROM products WHERE id = ?').run(productId);
+    return r.changes > 0;
+  })();
 }
 
 // ==================== Device Credentials ====================
@@ -925,9 +927,11 @@ function deleteCredential(id) {
   // SN 序列单调递增，已删除的 SN 永不复用，保留映射不会误指向新凭证
   // 删除前确保 FactoryKey 已存档：凭证全删后仍可从存档恢复共享密钥（eFuse 兼容）
   const factoryKeyPlain = decrypt(cred.factory_key);
-  db.prepare("DELETE FROM user_device_bindings WHERE credential_id = ?").run(id);
-  db.prepare("DELETE FROM device_credentials WHERE id = ?").run(id);
-  archiveFactoryKey(cred.product_id, cred.hardware_id, factoryKeyPlain);
+  db.transaction(() => {
+    archiveFactoryKey(cred.product_id, cred.hardware_id, factoryKeyPlain);
+    db.prepare("DELETE FROM user_device_bindings WHERE credential_id = ?").run(id);
+    db.prepare("DELETE FROM device_credentials WHERE id = ?").run(id);
+  })();
   return { ok: true };
 }
 
