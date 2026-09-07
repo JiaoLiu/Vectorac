@@ -1372,6 +1372,47 @@ async function main() {
       DB.deleteProduct(pid);
     }
 
+    // 26.17 删除产品事务中外键失败时存档和映射回滚
+    // 产品有用户引用但无凭证/订单 → deleteProduct 检查通过 → 事务中删产品时 FK 失败 → 回滚
+    {
+      const tmpProduct = DB.createProduct({ code: 'tmpfk', name: 'FK失败测试', sn_prefix: 'TF', sn_seq: 0 });
+      const pid = tmpProduct.id;
+      const hFk = 'BB:33:44:55:66:03';
+      // 创建凭证 → 删除凭证（留下映射和存档），使 cred=0
+      const t1 = await req('POST', '/admin/api/provision', { product: 'tmpfk', hardware_id: hFk, new_sn: true, request_id: 'req-fk-1' }, { Authorization: `Bearer ${PROV}` });
+      check('26.17 创建凭证成功', t1.body.ok === true);
+      let cl = await req('GET', '/admin/api/credentials?product=tmpfk', null, { Authorization: `Bearer ${ADMIN}` });
+      for (const c of cl.body) {
+        await req('DELETE', `/admin/api/credentials/${c.id}`, null, { Authorization: `Bearer ${ADMIN}` });
+      }
+      // 此时 cred=0, ord=0，但 provision_requests 和 factory_key_archive 有数据
+      const mapBefore = DB.db.prepare('SELECT COUNT(*) as n FROM provision_requests WHERE product_id = ?').get(pid);
+      const archBefore = DB.db.prepare('SELECT COUNT(*) as n FROM factory_key_archive WHERE product_id = ?').get(pid);
+      check('26.17 删凭证后映射仍存在', mapBefore.n >= 1);
+      check('26.17 删凭证后存档仍存在', archBefore.n >= 1);
+      // 创建用户（users 表有 FK → products，阻止删除）
+      DB.createUser(pid, '13900000001', 'hash_test_placeholder');
+      check('26.17 用户已创建', !!DB.db.prepare('SELECT id FROM users WHERE product_id = ? AND phone = ?').get(pid, '13900000001'));
+      // deleteProduct 检查 cred=0, ord=0 → 进入事务 → 删映射/存档 → 删产品时 FK 失败 → 回滚
+      let deleteFailed = false;
+      try {
+        DB.deleteProduct(pid);
+      } catch (e) {
+        deleteFailed = true;
+      }
+      check('26.17 删除产品因用户 FK 失败', deleteFailed === true);
+      // 验证映射和存档仍保留（事务回滚）
+      const mapAfter = DB.db.prepare('SELECT COUNT(*) as n FROM provision_requests WHERE product_id = ?').get(pid);
+      const archAfter = DB.db.prepare('SELECT COUNT(*) as n FROM factory_key_archive WHERE product_id = ?').get(pid);
+      check('26.17 FK 失败后映射仍保留', mapAfter.n === mapBefore.n);
+      check('26.17 FK 失败后存档仍保留', archAfter.n === archBefore.n);
+      // 清理：删用户 → 删产品
+      DB.db.prepare('DELETE FROM users WHERE product_id = ?').run(pid);
+      DB.db.prepare('DELETE FROM provision_requests WHERE product_id = ?').run(pid);
+      DB.db.prepare('DELETE FROM factory_key_archive WHERE product_id = ?').run(pid);
+      DB.deleteProduct(pid);
+    }
+
     // ===== 27. 失败上报会话绑定（延迟/重复上报不误伤） =====
     console.log('\n--- 27. 失败上报会话绑定 ---');
     {
