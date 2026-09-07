@@ -1,0 +1,176 @@
+usermgr-service/db.js
+  a1cd53983a2dd32f 194-205,399-425,532-533,535,611-649,713,719-727,742,758,772,778-787,799-802,926-927,930
+usermgr-service/server.js
+  a1cd53983a2dd32f 332
+usermgr-service/test.js
+  a1cd53983a2dd32f 1255-1304
+usermgr-service/docs/ESP32_API.md
+  a1cd53983a2dd32f 84-85,369
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.8",
+  "base_commit_sha": "43c51df25e59a1918f2162a8263d40195a6b13e8",
+  "prompts": {
+    "005cae9c1dbc73d5": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a7d220af85496fd0502022c",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 16,
+      "overriden_lines": 0
+    },
+    "056992989d58fd24": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a38e6391d55a586f6a882f6",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1568,
+      "overriden_lines": 0
+    },
+    "2f1af447cbbb2318": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a9a6a0f994bdfd3aac25077",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 268,
+      "overriden_lines": 0
+    },
+    "4a68a259acc17f46": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a7152c27fd21251a8b13b6c",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 414,
+      "overriden_lines": 0
+    },
+    "a1cd53983a2dd32f": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a9a80e2994bdfd3aac25415",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 285,
+      "total_deletions": 15,
+      "accepted_lines": 602,
+      "overriden_lines": 0
+    },
+    "c56a32e809737a22": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a82d2b6f85496fd05021002",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 584,
+      "overriden_lines": 0
+    },
+    "f58fab71a540773a": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a97c6b8b6e5888c03083198",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    },
+    "ff6feec799719add": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06bd4-83e2-7680-a983-22c87f9788d0",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    }
+  },
+  "commit_stats": {
+    "git_diff_added_lines": 165,
+    "git_diff_deleted_lines": 10,
+    "ai_additions": 165,
+    "ai_accepted": 165,
+    "BYMC": 0,
+    "mixed_additions": 0,
+    "BYAC": 165,
+    "BYRC": 0,
+    "per_file": {
+      "usermgr-service/db.js": {
+        "BYMC": [],
+        "BYAC": [
+          "194-205",
+          "399-425",
+          "532-533",
+          "535",
+          "611-649",
+          "713",
+          "719-727",
+          "742",
+          "758",
+          "772",
+          "778-787",
+          "799-802",
+          "926-927",
+          "930"
+        ],
+        "BYRC": []
+      },
+      "usermgr-service/docs/ESP32_API.md": {
+        "BYMC": [],
+        "BYAC": [
+          "84-85",
+          "369"
+        ],
+        "BYRC": []
+      },
+      "usermgr-service/server.js": {
+        "BYMC": [],
+        "BYAC": [
+          "332"
+        ],
+        "BYRC": []
+      },
+      "usermgr-service/test.js": {
+        "BYMC": [],
+        "BYAC": [
+          "1255-1304"
+        ],
+        "BYRC": []
+      }
+    }
+  },
+  "commit_timestamp": 1788773265,
+  "requirement_id": ""
+}
