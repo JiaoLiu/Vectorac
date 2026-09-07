@@ -47,6 +47,8 @@ CREATE TABLE IF NOT EXISTS device_credentials (
   provision_challenge TEXT,           -- 两阶段烧录验证 challenge（hex）
   challenge_expires_at TEXT,          -- challenge 过期时间
   failure_reason TEXT,                -- 烧录失败原因
+  provision_request_id TEXT,          -- 烧录请求幂等键（同一操作的重复请求返回同一会话）
+  provision_resumed INTEGER DEFAULT 0, -- 当前会话是否由恢复/轮换产生（非首次烧录会话）
   notes TEXT,
   created_at TEXT DEFAULT (datetime('now')),
   UNIQUE(product_id, sn),
@@ -222,6 +224,12 @@ CREATE INDEX IF NOT EXISTS idx_bind_tokens_temp ON device_bind_tokens(temp_token
     }
     if (!cols.some(c => c.name === 'failure_reason')) {
       db.exec("ALTER TABLE device_credentials ADD COLUMN failure_reason TEXT");
+    }
+    if (!cols.some(c => c.name === 'provision_request_id')) {
+      db.exec("ALTER TABLE device_credentials ADD COLUMN provision_request_id TEXT");
+    }
+    if (!cols.some(c => c.name === 'provision_resumed')) {
+      db.exec("ALTER TABLE device_credentials ADD COLUMN provision_resumed INTEGER DEFAULT 0");
     }
   }
 }
@@ -452,16 +460,28 @@ function locateBySn(productId, hardwareId, sn) {
   return cred;
 }
 
-// 生成 10 分钟有效的新 challenge（幂等更新某条记录的烧录会话）
+// 生成 10 分钟有效的新 challenge（显式恢复烧录会话；provision_resumed=1 标记会话已轮换）
 function issueChallenge(credId) {
   const challenge = crypto.randomBytes(32).toString('hex');
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
   db.prepare(`
     UPDATE device_credentials
-    SET provision_challenge = ?, challenge_expires_at = ?, status = 'provisioning', failure_reason = NULL
+    SET provision_challenge = ?, challenge_expires_at = ?, status = 'provisioning', failure_reason = NULL,
+        provision_resumed = 1
     WHERE id = ?
   `).run(challenge, expiresAt, credId);
   return challenge;
+}
+
+// 返回记录的当前烧录会话；challenge 仍有效时不轮换（同 request_id 重试的安全语义：
+// 响应乱序/延迟重试都不会使工具已持有的会话失效），已过期才签发新会话
+function currentSession(cred) {
+  const factoryKey = decrypt(cred.factory_key);
+  if (cred.provision_challenge && cred.challenge_expires_at
+      && new Date(cred.challenge_expires_at).getTime() > Date.now()) {
+    return { sn: cred.sn, factoryKey, challenge: cred.provision_challenge };
+  }
+  return { sn: cred.sn, factoryKey, challenge: issueChallenge(cred.id) };
 }
 
 /**
@@ -470,37 +490,43 @@ function issueChallenge(credId) {
  * FactoryKey = 32 字节随机 hex（同一 MAC 的所有 SN 共享同一个 FactoryKey，因为 eFuse 只烧一次）
  * challenge = 32 字节随机 hex，10 分钟过期
  *
- * 调用方式（保持与旧版兼容，新增 SN 必须显式请求）：
- *  - 不传 sn / newSn（烧录工具默认行为，与旧版完全一致）：
- *      按最近一条记录处理：provisioning/provisioning_failed → 恢复烧录（原 SN + 原 FactoryKey + 新 challenge）；
- *      provisioned/volcano_registered → already_provisioned；retired → 拒绝；无记录 → 首次烧录
- *  - 传 sn：只针对该 SN 的记录操作（恢复烧录 / already_provisioned）
- *  - 传 newSn=true（多证书场景）：同一 MAC 显式新增一个 SN，复用 FactoryKey，
- *    每个 SN 在火山侧是独立设备（volcano_device_name 带 SN 后缀），License 各自独立。
- *    幂等防重：同 MAC 已有烧录中/烧录失败的记录时恢复该记录（重试拿到同一个 SN），不重复新增；
- *    retired 语义：retired 停用的是单份证书，MAC 下全部证书均 retired 视为设备停用，拒绝新增
+ * 调用方式（保持与旧版兼容，新增 SN 必须显式请求并携带幂等键）：
+ *  - requestId（可选，new_sn 必传）：请求幂等键。同一 requestId 的重复请求定位到同一条
+ *    记录并返回其当前会话（challenge 不轮换），响应乱序/延迟重试安全；记录已完成烧录时
+ *    返回 already_provisioned，不会重复创建 SN。轮换 challenge 只属于显式恢复会话
+ *    （不带 requestId 的 sn/普通调用），普通请求重试不等于恢复
+ *  - newSn=true（多证书场景）：同一 MAC 新增一个 SN，复用 FactoryKey，每个 SN 在火山侧
+ *    是独立设备（volcano_device_name 带 SN 后缀），License 各自独立。重试幂等由 requestId
+ *    保证；新 requestId 才创建下一份 SN（进行中的旧记录需先删除再新增）
+ *  - sn：只针对该 SN 的记录操作（显式恢复会话，轮换 challenge / already_provisioned）
+ *  - 都不传（旧版语义）：按最近一条记录处理；provisioning/provisioning_failed → 恢复烧录；
+ *    provisioned/volcano_registered → already_provisioned；retired → 拒绝；无记录 → 首次烧录
+ *  - retired 语义：retired 停用单份证书；MAC 下全部证书均 retired 视为设备停用，拒绝新增
  */
-function provisionDevice(productId, hardwareId, sn, newSn) {
+function provisionDevice(productId, hardwareId, opts = {}) {
+  const { sn, newSn, requestId } = opts;
   const product = getProductRow(productId);
   if (!product) throw new Error('产品不存在');
 
   const records = getCredentialsByHardwareId(productId, hardwareId);
 
-  // 显式新增 SN（多证书）
+  // 请求幂等：同一 requestId 定位到同一条记录，返回当前会话且不轮换 challenge
+  if (requestId) {
+    const matched = records.find(r => r.provision_request_id === requestId);
+    if (matched) {
+      if (matched.status === 'retired') throw new Error('device_retired');
+      if (PROVISION_DONE_STATES.includes(matched.status)) {
+        return { already_provisioned: true, sn: matched.sn };
+      }
+      return currentSession(matched);
+    }
+  }
+
+  // 显式新增 SN（多证书）：幂等由 requestId 保证（重试命中上面的匹配分支），新 requestId 才创建
   if (newSn) {
     // MAC 下全部证书 retired = 设备停用，拒绝新增（恢复退役证书由管理员单独操作）
     if (records.length > 0 && records.every(r => r.status === 'retired')) {
       throw new Error('device_retired');
-    }
-    // 幂等防重：同 MAC 已有烧录中/烧录失败的记录时，恢复该记录而不是再新增一条。
-    // new_sn 请求响应丢失后重试会拿到同一个 SN，不会产生重复凭证；
-    // 确要废弃进行中的记录，先删除（provisioning / provisioning_failed 状态可删）再新增。
-    const inProgress = findInProgressRecords(records);
-    if (inProgress.length > 0) {
-      const target = inProgress[inProgress.length - 1];
-      const resumeKey = decrypt(target.factory_key);
-      const challenge = issueChallenge(target.id);
-      return { sn: target.sn, factoryKey: resumeKey, challenge };
     }
     const factoryKey = records.length > 0
       ? decrypt(records[0].factory_key)
@@ -515,37 +541,41 @@ function provisionDevice(productId, hardwareId, sn, newSn) {
       // 每个 SN 在火山侧必须是独立设备，名字带 SN 后缀避免同名冲突
       const volcanoDeviceName = `${product.code}-${hwidClean}-${newSnValue}`;
       db.prepare(`
-        INSERT INTO device_credentials (product_id, sn, hardware_id, factory_key, volcano_device_name, status, provision_challenge, challenge_expires_at)
-        VALUES (?, ?, ?, ?, ?, 'provisioning', ?, ?)
-      `).run(productId, newSnValue, hardwareId, encrypt(factoryKey), volcanoDeviceName, challenge, expiresAt);
+        INSERT INTO device_credentials (product_id, sn, hardware_id, factory_key, volcano_device_name, status, provision_challenge, challenge_expires_at, provision_request_id)
+        VALUES (?, ?, ?, ?, ?, 'provisioning', ?, ?, ?)
+      `).run(productId, newSnValue, hardwareId, encrypt(factoryKey), volcanoDeviceName, challenge, expiresAt, requestId || null);
       return { sn: newSnValue, factoryKey, challenge };
     });
     return tx();
   }
 
-  // 指定 SN：只针对该 SN 的记录操作
+  // 指定 SN：显式恢复该 SN 的烧录会话（轮换 challenge），记录 requestId 让同 ID 重试免轮换
   if (sn) {
     const existing = locateBySn(productId, hardwareId, sn);
     if (PROVISION_DONE_STATES.includes(existing.status)) {
       return { already_provisioned: true, sn: existing.sn };
     }
     if (existing.status === 'retired') throw new Error('device_retired');
-    // provisioning / provisioning_failed：返回原 FactoryKey + 新 challenge
     const factoryKey = decrypt(existing.factory_key);
     const challenge = issueChallenge(existing.id);
+    if (requestId) {
+      db.prepare("UPDATE device_credentials SET provision_request_id = ? WHERE id = ?").run(requestId, existing.id);
+    }
     return { sn: existing.sn, factoryKey, challenge };
   }
 
-  // 未指定 SN：保持旧版重复录入语义，按最近一条记录处理
+  // 未指定 SN：保持旧版重复录入语义，按最近一条记录处理（显式恢复，轮换 challenge）
   const latest = records.length > 0 ? records[records.length - 1] : null;
   if (latest) {
     if (PROVISION_DONE_STATES.includes(latest.status)) {
       return { already_provisioned: true, sn: latest.sn };
     }
     if (latest.status === 'retired') throw new Error('device_retired');
-    // provisioning / provisioning_failed：恢复最近一次烧录（原 SN + 原 FactoryKey + 新 challenge）
     const factoryKey = decrypt(latest.factory_key);
     const challenge = issueChallenge(latest.id);
+    if (requestId) {
+      db.prepare("UPDATE device_credentials SET provision_request_id = ? WHERE id = ?").run(requestId, latest.id);
+    }
     return { sn: latest.sn, factoryKey, challenge };
   }
 
@@ -560,9 +590,9 @@ function provisionDevice(productId, hardwareId, sn, newSn) {
     const hwidClean = hardwareId.replace(/[^0-9A-Fa-f]/g, '').toLowerCase();
     const volcanoDeviceName = `${product.code}-${hwidClean}-${firstSn}`;
     db.prepare(`
-      INSERT INTO device_credentials (product_id, sn, hardware_id, factory_key, volcano_device_name, status, provision_challenge, challenge_expires_at)
-      VALUES (?, ?, ?, ?, ?, 'provisioning', ?, ?)
-    `).run(productId, firstSn, hardwareId, encrypt(factoryKey), volcanoDeviceName, challenge, expiresAt);
+      INSERT INTO device_credentials (product_id, sn, hardware_id, factory_key, volcano_device_name, status, provision_challenge, challenge_expires_at, provision_request_id)
+      VALUES (?, ?, ?, ?, ?, 'provisioning', ?, ?, ?)
+    `).run(productId, firstSn, hardwareId, encrypt(factoryKey), volcanoDeviceName, challenge, expiresAt, requestId || null);
     return { sn: firstSn, factoryKey, challenge };
   });
   return tx();
@@ -631,21 +661,40 @@ function verifyProvision(productId, hardwareId, challenge, responseHex, sn) {
 
 /**
  * 标记烧录失败（仅记录，不改 provisioning 状态——网络断线不算失败）
- * 只允许作用于烧录中/烧录失败的记录：同 MAC 多 SN 时不能把已出厂的旧凭证标成失败。
- * 不带 sn 时仅当恰好一条进行中的记录才执行（单 SN 旧流程兼容）；
- * 多条进行中时上报目标有歧义，拒绝并要求带 sn 重报。
+ * 会话绑定（防止延迟/重复的失败上报误伤其他烧录会话）：
+ *  - 带 challenge：按本次烧录会话精确定位，同时核对会话与状态。旧会话（已轮换/
+ *    已完成，challenge 已更换或清除）的上报不再匹配，被拒绝
+ *  - 带 sn（无 challenge）：按 SN 定位，但必须能安全归因——记录已处于失败态
+ *    （重复上报无害）或处于从未轮换的首次烧录会话；轮换过的会话无法区分上报
+ *    属于哪一轮，必须带 challenge
+ *  - 都不带（旧工具兼容）：仅当该 MAC 只有一条记录且满足上述归因条件；
+ *    多记录（多 SN 场景）一律拒绝，不能凭"唯一进行中"猜目标
  */
-function failProvision(productId, hardwareId, reason, sn) {
+function failProvision(productId, hardwareId, reason, opts = {}) {
+  const { sn, challenge } = opts;
   let cred;
-  if (sn) {
-    cred = locateBySn(productId, hardwareId, sn);
+  if (challenge) {
+    const records = getCredentialsByHardwareId(productId, hardwareId);
+    cred = records.find(r => r.provision_challenge === challenge) || null;
+    if (!cred) throw new Error('challenge_mismatch');       // 旧会话/已完成会话的延迟上报
+    if (sn && cred.sn !== sn) throw new Error('challenge_mismatch');
   } else {
     const records = getCredentialsByHardwareId(productId, hardwareId);
     if (records.length === 0) throw new Error('device_not_found');
-    const inProgress = findInProgressRecords(records);
-    if (inProgress.length === 0) throw new Error('not_in_provisioning_state');
-    if (inProgress.length > 1) throw new Error('ambiguous_provision_target');
-    cred = inProgress[0];
+    if (sn) {
+      cred = records.find(r => r.sn === sn) || null;
+      if (!cred) throw new Error('device_not_found');
+    } else {
+      if (records.length > 1) throw new Error('ambiguous_provision_target');
+      const inProgress = findInProgressRecords(records);
+      if (inProgress.length === 0) throw new Error('not_in_provisioning_state');
+      cred = inProgress[0];
+    }
+    // 无 challenge 的归因校验：失败态可重复上报；首次烧录会话（未轮换）可直接归因；
+    // 轮换过的进行中会话无法区分上报属于哪一轮，拒绝
+    if (cred.status === 'provisioning' && cred.provision_resumed) {
+      throw new Error('challenge_required');
+    }
   }
   if (!PROVISION_IN_PROGRESS_STATES.includes(cred.status)) {
     throw new Error('not_in_provisioning_state');

@@ -270,11 +270,13 @@ app.delete('/admin/api/products/:id', adminAuth, (req, res) => {
 // ==================== 管理员：出厂录入 ====================
 // 改动①：只收 product + hardware_id，SN 和 FactoryKey 由服务器生成
 // 可选参数：
-//   sn       —— 只针对该 SN 的记录操作（恢复烧录），与 new_sn 互斥
-//   new_sn   —— 同一 MAC 显式新增一个 SN（多证书场景），只接受严格布尔值
+//   sn          —— 只针对该 SN 的记录操作（恢复烧录），与 new_sn 互斥
+//   new_sn      —— 同一 MAC 显式新增一个 SN（多证书场景），只接受严格布尔值，必须携带 request_id
+//   request_id  —— 请求幂等键（一次烧录操作一个 ID）。同一 ID 重试返回同一 SN 和
+//                  同一会话（challenge 不轮换）；记录完成后重放返回 already_provisioned
 // 不传可选参数时行为与旧版完全一致：重复录入返回原 SN 或 already_provisioned
 app.post('/admin/api/provision', provisionAuth, (req, res) => {
-  const { product, hardware_id, sn, new_sn } = req.body;
+  const { product, hardware_id, sn, new_sn, request_id } = req.body;
   if (!product || !hardware_id) return res.status(400).json({ error: 'missing_params' });
   // new_sn 只接受布尔值："false"/"0"/"true" 等字符串一律拒绝，避免真值字符串误触发新增
   if (new_sn !== undefined && typeof new_sn !== 'boolean') {
@@ -284,12 +286,27 @@ app.post('/admin/api/provision', provisionAuth, (req, res) => {
   if (new_sn === true && sn) {
     return res.status(400).json({ error: 'conflicting_params', message: 'sn 与 new_sn 不能同时指定' });
   }
+  // request_id：烧录请求幂等键，非空字符串 ≤128 字符
+  let requestId = null;
+  if (request_id !== undefined && request_id !== null && request_id !== '') {
+    if (typeof request_id !== 'string' || request_id.length > 128) {
+      return res.status(400).json({ error: 'invalid_request_id', message: 'request_id 必须是 ≤128 字符的字符串' });
+    }
+    requestId = request_id.trim();
+    if (!requestId) {
+      return res.status(400).json({ error: 'invalid_request_id', message: 'request_id 不能为空白' });
+    }
+  }
+  // new_sn 必须携带 request_id：重试拿同一 SN，不产生重复凭证
+  if (new_sn === true && !requestId) {
+    return res.status(400).json({ error: 'missing_request_id', message: 'new_sn 必须携带 request_id（烧录工具为本次操作生成的幂等键，重试复用同一 ID）' });
+  }
 
   const productId = DB.getProductIdByCode(product);
   if (!productId) return res.status(404).json({ error: 'product_not_found' });
 
   try {
-    const result = DB.provisionDevice(productId, hardware_id, sn, new_sn === true);
+    const result = DB.provisionDevice(productId, hardware_id, { sn, newSn: new_sn === true, requestId });
     if (result.already_provisioned) {
       return res.json({ ok: true, already_provisioned: true, sn: result.sn });
     }
@@ -326,21 +343,23 @@ app.post('/admin/api/provision/verify', provisionAuth, (req, res) => {
   }
 });
 
-// 标记烧录失败
+// 标记烧录失败（推荐携带本次 provision 返回的 challenge 做会话绑定，防止延迟上报误伤其他会话）
 app.post('/admin/api/provision/fail', provisionAuth, (req, res) => {
-  const { product, hardware_id, reason, sn } = req.body;
+  const { product, hardware_id, reason, sn, challenge } = req.body;
   if (!product || !hardware_id) return res.status(400).json({ error: 'missing_params' });
   const productId = DB.getProductIdByCode(product);
   if (!productId) return res.status(404).json({ error: 'product_not_found' });
 
   try {
-    const result = DB.failProvision(productId, hardware_id, reason || 'unknown', sn);
+    const result = DB.failProvision(productId, hardware_id, reason || 'unknown', { sn, challenge });
     res.json({ ok: true, sn: result.sn, status: result.status });
   } catch (e) {
     if (e.message === 'device_not_found') return res.status(404).json({ error: e.message });
     if (e.message === 'sn_hardware_mismatch') return res.status(400).json({ error: 'sn_hardware_mismatch' });
     if (e.message === 'not_in_provisioning_state') return res.status(409).json({ error: e.message });
-    if (e.message === 'ambiguous_provision_target') return res.status(400).json({ error: 'ambiguous_provision_target', message: '该设备存在多个烧录会话，失败上报必须指定 sn' });
+    if (e.message === 'ambiguous_provision_target') return res.status(400).json({ error: 'ambiguous_provision_target', message: '该设备存在多份凭证记录，失败上报必须携带本次烧录返回的 challenge' });
+    if (e.message === 'challenge_required') return res.status(400).json({ error: 'challenge_required', message: '会话已被恢复轮换，失败上报必须携带本次烧录返回的 challenge' });
+    if (e.message === 'challenge_mismatch') return res.status(410).json({ error: 'challenge_mismatch', message: 'challenge 不属于当前烧录会话（旧会话的延迟上报）' });
     res.status(500).json({ error: 'fail_failed', reason: e.message });
   }
 });
