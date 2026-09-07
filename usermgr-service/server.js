@@ -326,6 +326,7 @@ app.post('/admin/api/provision', provisionAuth, (req, res) => {
   } catch (e) {
     if (e.message === 'device_retired') return res.status(403).json({ error: 'device_retired' });
     if (e.message === 'device_not_found') return res.status(404).json({ error: 'device_not_found' });
+    if (e.message === 'request_target_deleted') return res.status(404).json({ error: 'request_target_deleted', message: '该 request_id 对应的凭证已被删除，请使用新的 request_id 重新发起' });
     if (e.message === 'sn_hardware_mismatch') return res.status(400).json({ error: 'sn_hardware_mismatch' });
     if (e.message === 'request_id_conflict') return res.status(409).json({ error: 'request_id_conflict', message: '该 request_id 已绑定其他烧录操作（目标设备/SN/模式不同）' });
     res.status(500).json({ error: 'provision_failed', reason: e.message });

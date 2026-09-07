@@ -175,7 +175,10 @@ CREATE INDEX IF NOT EXISTS idx_bindings_user ON user_device_bindings(user_id);
 CREATE INDEX IF NOT EXISTS idx_bind_tokens_temp ON device_bind_tokens(temp_token);
 
 -- 烧录请求幂等映射（request_id → 目标记录）。一次操作一条映射，永久保留：
--- 恢复/轮换不会覆盖旧映射，原请求延迟重放仍指向同一条记录。
+-- 恢复/轮换不会覆盖旧映射，原请求延迟重放仍指向同一条记录；
+-- 目标凭证被删除后映射保留为墓碑（重放被拒，不重新创建）。
+-- factory_key 同时加密存档：MAC 的全部凭证记录被删除后，凭墓碑恢复共享
+-- FactoryKey（eFuse 只烧一次，换新密钥会让已烧 eFuse 的设备永远无法验证）。
 -- device_credentials.provision_request_id 是历史遗留列（只记最后一个），已不作为查询依据。
 CREATE TABLE IF NOT EXISTS provision_requests (
   request_id TEXT PRIMARY KEY,
@@ -183,6 +186,7 @@ CREATE TABLE IF NOT EXISTS provision_requests (
   hardware_id TEXT NOT NULL,
   sn TEXT NOT NULL,
   mode TEXT,                          -- 'new_sn' / 'sn' / 'plain'（从旧列回填时为 NULL，跳过模式校验）
+  factory_key BLOB,                   -- 共享 FactoryKey（AES 加密存档，墓碑恢复用）
   created_at TEXT DEFAULT (datetime('now')),
   FOREIGN KEY (product_id) REFERENCES products(id)
 );
@@ -227,46 +231,17 @@ CREATE INDEX IF NOT EXISTS idx_provreq_sn ON provision_requests(product_id, sn);
   `);
 }
 
-// 迁移：device_credentials 加 provision_challenge / challenge_expires_at / failure_reason
-{
-  const cols = db.prepare("PRAGMA table_info(device_credentials)").all();
-  if (cols.length > 0) {
-    if (!cols.some(c => c.name === 'provision_challenge')) {
-      db.exec("ALTER TABLE device_credentials ADD COLUMN provision_challenge TEXT");
-    }
-    if (!cols.some(c => c.name === 'challenge_expires_at')) {
-      db.exec("ALTER TABLE device_credentials ADD COLUMN challenge_expires_at TEXT");
-    }
-    if (!cols.some(c => c.name === 'failure_reason')) {
-      db.exec("ALTER TABLE device_credentials ADD COLUMN failure_reason TEXT");
-    }
-    if (!cols.some(c => c.name === 'provision_request_id')) {
-      db.exec("ALTER TABLE device_credentials ADD COLUMN provision_request_id TEXT");
-    }
-    if (!cols.some(c => c.name === 'provision_resumed')) {
-      db.exec("ALTER TABLE device_credentials ADD COLUMN provision_resumed INTEGER DEFAULT 0");
-    }
-  }
-}
-
-// 迁移：把历史遗留列 provision_request_id 里的映射回填到 provision_requests 表
-// （mode 未知存 NULL，重放时跳过模式校验；后续代码只写映射表，不再写凭证列）
-{
-  const cols = db.prepare("PRAGMA table_info(device_credentials)").all();
-  if (cols.length > 0 && cols.some(c => c.name === 'provision_request_id')) {
-    db.exec(`
-      INSERT OR IGNORE INTO provision_requests (request_id, product_id, hardware_id, sn, mode)
-      SELECT provision_request_id, product_id, hardware_id, sn, NULL
-      FROM device_credentials
-      WHERE provision_request_id IS NOT NULL AND provision_request_id != ''
-    `);
-  }
-}
-
-// 迁移：移除 device_credentials 的 UNIQUE(product_id, hardware_id) 约束
+// 迁移（顺序敏感，必须先于下方的补列/回填执行）：
+// 移除 device_credentials 的 UNIQUE(product_id, hardware_id) 约束
 // 同一个 MAC 可以对应多个 SN（1对多证书），需要去掉此唯一约束
 // SQLite 不支持直接 DROP UNIQUE constraint，需要重建表。
 // 重建全程在单个事务内执行（DDL 在 SQLite 中可回滚），中途崩溃/失败自动回滚到旧表。
+//
+// 顺序说明：若旧版迁移在 DROP 旧表后、RENAME 前被中断，遗留的临时表可能不含
+// provision_request_id / provision_resumed 等新列（旧版迁移没有这些列）。
+// 必须先用临时表换回主表，再统一补列和回填幂等映射；否则换回的主表会永远
+// 缺失新列——补列在前面的旧顺序下只补到了启动时重建的空主表，恢复烧录时
+// 写 provision_resumed 会因缺列直接失败。
 {
   const hasHwidUniqueOn = (table) => {
     const idxs = db.prepare(`PRAGMA index_list('${table.replace(/'/g, "''")}')`).all();
@@ -333,7 +308,8 @@ CREATE INDEX IF NOT EXISTS idx_provreq_sn ON provision_requests(product_id, sn);
         const tempCount = db.prepare("SELECT COUNT(*) AS n FROM device_credentials_new").get().n;
         if (mainCount === 0 && tempCount > 0) {
           // 主表被开头的 CREATE TABLE IF NOT EXISTS 重建为空表，原数据都在临时表中：
-          // 用临时表换回主表（旧版迁移在 DROP 之后、RENAME 之前被中断的场景）
+          // 用临时表换回主表（旧版迁移在 DROP 之后、RENAME 之前被中断的场景）。
+          // 换回的表可能缺新列，由后续补列迁移统一补齐
           db.pragma('foreign_keys = OFF');
           try {
             db.transaction(() => {
@@ -359,6 +335,52 @@ CREATE INDEX IF NOT EXISTS idx_provreq_sn ON provision_requests(product_id, sn);
     if (fkViolations && fkViolations.length > 0) {
       throw new Error('device_credentials 迁移后外键校验失败: ' + JSON.stringify(fkViolations));
     }
+  }
+}
+
+// 迁移：device_credentials 加 provision_challenge / challenge_expires_at / failure_reason
+// （在中断恢复/表重建之后执行：保证最终表结构完整，含恢复换入的旧结构临时表）
+{
+  const cols = db.prepare("PRAGMA table_info(device_credentials)").all();
+  if (cols.length > 0) {
+    if (!cols.some(c => c.name === 'provision_challenge')) {
+      db.exec("ALTER TABLE device_credentials ADD COLUMN provision_challenge TEXT");
+    }
+    if (!cols.some(c => c.name === 'challenge_expires_at')) {
+      db.exec("ALTER TABLE device_credentials ADD COLUMN challenge_expires_at TEXT");
+    }
+    if (!cols.some(c => c.name === 'failure_reason')) {
+      db.exec("ALTER TABLE device_credentials ADD COLUMN failure_reason TEXT");
+    }
+    if (!cols.some(c => c.name === 'provision_request_id')) {
+      db.exec("ALTER TABLE device_credentials ADD COLUMN provision_request_id TEXT");
+    }
+    if (!cols.some(c => c.name === 'provision_resumed')) {
+      db.exec("ALTER TABLE device_credentials ADD COLUMN provision_resumed INTEGER DEFAULT 0");
+    }
+  }
+}
+
+// 迁移：把历史遗留列 provision_request_id 里的映射回填到 provision_requests 表
+// （mode 未知存 NULL，重放时跳过模式校验；后续代码只写映射表，不再写凭证列）
+{
+  const cols = db.prepare("PRAGMA table_info(device_credentials)").all();
+  if (cols.length > 0 && cols.some(c => c.name === 'provision_request_id')) {
+    db.exec(`
+      INSERT OR IGNORE INTO provision_requests (request_id, product_id, hardware_id, sn, mode)
+      SELECT provision_request_id, product_id, hardware_id, sn, NULL
+      FROM device_credentials
+      WHERE provision_request_id IS NOT NULL AND provision_request_id != ''
+    `);
+  }
+}
+
+// 迁移：provision_requests 补 factory_key 列（afff213 之前建的映射表没有此列；
+// 旧映射无密钥存档，墓碑恢复密钥时跳过 NULL，退化为生成新密钥）
+{
+  const cols = db.prepare("PRAGMA table_info(provision_requests)").all();
+  if (cols.length > 0 && !cols.some(c => c.name === 'factory_key')) {
+    db.exec("ALTER TABLE provision_requests ADD COLUMN factory_key BLOB");
   }
 }
 
@@ -468,6 +490,9 @@ function deleteProduct(productId) {
       (SELECT COUNT(*) FROM orders WHERE product_id = ?) AS ord
   `).get(productId, productId);
   if (ref.cred > 0 || ref.ord > 0) return false;
+  // 烧录请求幂等映射随产品一并清理：产品删除后 request_id 无从路由（产品代码即路由），
+  // 且映射表对 products 有外键约束，不清理会阻塞产品删除
+  db.prepare("DELETE FROM provision_requests WHERE product_id = ?").run(productId);
   const r = db.prepare('DELETE FROM products WHERE id = ?').run(productId);
   return r.changes > 0;
 }
@@ -522,13 +547,25 @@ function getProvisionRequest(requestId) {
   return db.prepare("SELECT * FROM provision_requests WHERE request_id = ?").get(requestId);
 }
 
-function recordProvisionRequest(requestId, productId, hardwareId, snValue, mode) {
+function recordProvisionRequest(requestId, productId, hardwareId, snValue, mode, factoryKeyPlain) {
   if (!requestId) return;
-  // 已存在同 ID 映射时保留原映射（查找阶段已做参数冲突校验，这里防并发竞态）
+  // 已存在同 ID 映射时保留原映射（查找阶段已做参数冲突校验，这里防并发竞态）；
+  // factory_key 随映射存档：MAC 全部凭证被删后凭最新墓碑恢复共享密钥
   db.prepare(`
-    INSERT OR IGNORE INTO provision_requests (request_id, product_id, hardware_id, sn, mode)
-    VALUES (?, ?, ?, ?, ?)
-  `).run(requestId, productId, hardwareId, snValue, mode);
+    INSERT OR IGNORE INTO provision_requests (request_id, product_id, hardware_id, sn, mode, factory_key)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(requestId, productId, hardwareId, snValue, mode, factoryKeyPlain ? encrypt(factoryKeyPlain) : null);
+}
+
+// 从该 MAC 的映射墓碑恢复共享 FactoryKey（凭证记录全删后仍能取回 eFuse 密钥）；
+// 无任何存档（全新 MAC 或 afff213 之前的旧映射）返回 null
+function recoverFactoryKeyFromTombstones(productId, hardwareId) {
+  const row = db.prepare(`
+    SELECT factory_key FROM provision_requests
+    WHERE product_id = ? AND hardware_id = ? AND factory_key IS NOT NULL
+    ORDER BY rowid DESC LIMIT 1
+  `).get(productId, hardwareId);
+  return row ? decrypt(row.factory_key) : null;
 }
 
 /**
@@ -572,8 +609,9 @@ function provisionDevice(productId, hardwareId, opts = {}) {
         throw new Error('request_id_conflict');
       }
       const matched = getCredentialBySn(productId, mapped.sn);
-      // 映射指向的记录已被删除：拒绝重放，工具需换新 request_id 重新发起
-      if (!matched) throw new Error('device_not_found');
+      // 幂等映射永久保留（墓碑）：目标凭证已被删除时拒绝重放，不重新创建；
+      // 工具需换新 request_id 重新发起（SN 序列不复用，新 ID 会得到新 SN）
+      if (!matched) throw new Error('request_target_deleted');
       if (matched.status === 'retired') throw new Error('device_retired');
       if (PROVISION_DONE_STATES.includes(matched.status)) {
         return { already_provisioned: true, sn: matched.sn };
@@ -593,9 +631,15 @@ function provisionDevice(productId, hardwareId, opts = {}) {
     if (records.length > 0 && records.every(r => r.status === 'retired')) {
       throw new Error('device_retired');
     }
-    const factoryKey = records.length > 0
-      ? decrypt(records[0].factory_key)
-      : crypto.randomBytes(32).toString('hex');
+    // 共享 FactoryKey：优先取现存凭证；全部记录已删除时从映射墓碑恢复
+    // （eFuse 只烧一次——生成新密钥会让已烧 eFuse 的设备永远无法通过验证）
+    let factoryKey = null;
+    if (records.length > 0) {
+      factoryKey = decrypt(records[0].factory_key);
+    } else {
+      factoryKey = recoverFactoryKeyFromTombstones(productId, hardwareId)
+        || crypto.randomBytes(32).toString('hex');
+    }
     const tx = db.transaction(() => {
       db.prepare("UPDATE products SET sn_seq = sn_seq + 1 WHERE id = ?").run(productId);
       const updated = getProductRow(productId);
@@ -609,7 +653,7 @@ function provisionDevice(productId, hardwareId, opts = {}) {
         INSERT INTO device_credentials (product_id, sn, hardware_id, factory_key, volcano_device_name, status, provision_challenge, challenge_expires_at)
         VALUES (?, ?, ?, ?, ?, 'provisioning', ?, ?)
       `).run(productId, newSnValue, hardwareId, encrypt(factoryKey), volcanoDeviceName, challenge, expiresAt);
-      recordProvisionRequest(requestId, productId, hardwareId, newSnValue, 'new_sn');
+      recordProvisionRequest(requestId, productId, hardwareId, newSnValue, 'new_sn', factoryKey);
       return { sn: newSnValue, factoryKey, challenge };
     });
     return tx();
@@ -624,7 +668,7 @@ function provisionDevice(productId, hardwareId, opts = {}) {
     if (existing.status === 'retired') throw new Error('device_retired');
     const factoryKey = decrypt(existing.factory_key);
     const challenge = issueChallenge(existing.id);
-    recordProvisionRequest(requestId, productId, hardwareId, existing.sn, 'sn');
+    recordProvisionRequest(requestId, productId, hardwareId, existing.sn, 'sn', factoryKey);
     return { sn: existing.sn, factoryKey, challenge };
   }
 
@@ -637,7 +681,7 @@ function provisionDevice(productId, hardwareId, opts = {}) {
     if (latest.status === 'retired') throw new Error('device_retired');
     const factoryKey = decrypt(latest.factory_key);
     const challenge = issueChallenge(latest.id);
-    recordProvisionRequest(requestId, productId, hardwareId, latest.sn, 'plain');
+    recordProvisionRequest(requestId, productId, hardwareId, latest.sn, 'plain', factoryKey);
     return { sn: latest.sn, factoryKey, challenge };
   }
 
@@ -655,7 +699,7 @@ function provisionDevice(productId, hardwareId, opts = {}) {
       INSERT INTO device_credentials (product_id, sn, hardware_id, factory_key, volcano_device_name, status, provision_challenge, challenge_expires_at)
       VALUES (?, ?, ?, ?, ?, 'provisioning', ?, ?)
     `).run(productId, firstSn, hardwareId, encrypt(factoryKey), volcanoDeviceName, challenge, expiresAt);
-    recordProvisionRequest(requestId, productId, hardwareId, firstSn, 'plain');
+    recordProvisionRequest(requestId, productId, hardwareId, firstSn, 'plain', factoryKey);
     return { sn: firstSn, factoryKey, challenge };
   });
   return tx();
@@ -777,9 +821,10 @@ function deleteCredential(id) {
   if (!['provisioning', 'provisioning_failed', 'retired'].includes(cred.status)) {
     throw new Error('device_not_deletable');
   }
-  // 同时删除关联的绑定关系和烧录请求幂等映射
+  // 同时删除关联的绑定关系；烧录请求幂等映射永久保留（墓碑）：
+  // 目标凭证删除后，旧 request_id 重放被拒绝（request_target_deleted）而非重新创建。
+  // SN 序列单调递增，已删除的 SN 永不复用，保留映射不会误指向新凭证
   db.prepare("DELETE FROM user_device_bindings WHERE credential_id = ?").run(id);
-  db.prepare("DELETE FROM provision_requests WHERE product_id = ? AND sn = ?").run(cred.product_id, cred.sn);
   db.prepare("DELETE FROM device_credentials WHERE id = ?").run(id);
   return { ok: true };
 }

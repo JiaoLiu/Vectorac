@@ -12,6 +12,7 @@ const http = require('http');
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 
 // 环境变量必须先设置再 require server
 const PORT = 3042;
@@ -30,13 +31,9 @@ process.env.SMS_ACCESS_KEY_SECRET = '';
 process.env.SMS_SIGN_NAME = '';
 process.env.SMS_TEMPLATE_CODE = '';
 
-// 清空数据库文件（必须在 require server/db 之前，否则会连到旧文件）
-const dbFile = path.join(__dirname, 'data', 'usermgr.db');
-if (fs.existsSync(dbFile)) fs.unlinkSync(dbFile);
-for (const ext of ['-wal', '-shm']) {
-  const f = dbFile + ext;
-  if (fs.existsSync(f)) fs.unlinkSync(f);
-}
+// 每次使用独立临时目录，覆盖外部配置，避免测试删除或写入现有数据库。
+// 保留测试数据库供失败后排查；必须在 require server/db 之前设置。
+process.env.USERMGR_DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'usermgr-test-'));
 
 const { app, buildSignString, deriveLocalHostname, rateBuckets } = require('./server');
 const DB = require('./db');
@@ -1223,6 +1220,36 @@ async function main() {
       for (const c of cl.body.filter(x => x.hardware_id === hMap && x.status !== 'provisioned')) {
         await req('DELETE', `/admin/api/credentials/${c.id}`, null, { Authorization: `Bearer ${ADMIN}` });
       }
+
+      // 26.11 凭证删除后映射保留（墓碑）：旧 ID 重放拒绝且不新建，新 ID 才能重新创建
+      const hTomb = 'AA:66:77:88:99:00';
+      const t1 = await req('POST', '/admin/api/provision', { product: 'xiaov', hardware_id: hTomb, new_sn: true, request_id: 'req-tomb-1' }, { Authorization: `Bearer ${PROV}` });
+      const snTomb = t1.body.sn;
+      check('26.11 墓碑测试准备：创建凭证', t1.body.ok === true && !!snTomb);
+      const countTomb = async () => (await req('GET', '/admin/api/credentials?product=xiaov', null, { Authorization: `Bearer ${ADMIN}` })).body.filter(c => c.hardware_id === hTomb).length;
+      const n0 = await countTomb();
+      // 删除该凭证（provisioning 状态可删）；幂等映射保留为墓碑
+      cl = await req('GET', '/admin/api/credentials?product=xiaov', null, { Authorization: `Bearer ${ADMIN}` });
+      const tombCred = cl.body.find(c => c.sn === snTomb);
+      r = await req('DELETE', `/admin/api/credentials/${tombCred.id}`, null, { Authorization: `Bearer ${ADMIN}` });
+      check('26.11 删除凭证成功', r.body.ok === true);
+      check('26.11 删除后该 MAC 无凭证', await countTomb() === 0);
+      // 旧 request_id 重放：被拒（request_target_deleted），凭证数量不增加
+      r = await req('POST', '/admin/api/provision', { product: 'xiaov', hardware_id: hTomb, new_sn: true, request_id: 'req-tomb-1' }, { Authorization: `Bearer ${PROV}` });
+      check('26.11 删除后旧 ID 重放被拒', r.status === 404 && r.body.error === 'request_target_deleted');
+      check('26.11 旧 ID 重放不新建凭证', await countTomb() === 0);
+      // 同 ID 换成 sn 模式重放：参数冲突在目标查找前拦截 → 409（同样拒绝）
+      r = await req('POST', '/admin/api/provision', { product: 'xiaov', hardware_id: hTomb, sn: snTomb, request_id: 'req-tomb-1' }, { Authorization: `Bearer ${PROV}` });
+      check('26.11 旧 ID 换 sn 模式重放被拒（参数冲突）', r.status === 409 && r.body.error === 'request_id_conflict');
+      // 换新 request_id 才允许重新创建；FactoryKey 从墓碑恢复（eFuse 只烧一次）
+      const t2 = await req('POST', '/admin/api/provision', { product: 'xiaov', hardware_id: hTomb, new_sn: true, request_id: 'req-tomb-2' }, { Authorization: `Bearer ${PROV}` });
+      check('26.11 新 ID 重新创建成功', t2.body.ok === true && !!t2.body.sn && t2.body.sn !== snTomb);
+      check('26.11 新 ID 创建后凭证数为 1', await countTomb() === 1);
+      check('26.11 新凭证从墓碑恢复同一 FactoryKey（eFuse 兼容）', t2.body.factory_key === t1.body.factory_key);
+      // 清理
+      cl = await req('GET', '/admin/api/credentials?product=xiaov', null, { Authorization: `Bearer ${ADMIN}` });
+      const tombCred2 = cl.body.find(c => c.hardware_id === hTomb);
+      if (tombCred2) await req('DELETE', `/admin/api/credentials/${tombCred2.id}`, null, { Authorization: `Bearer ${ADMIN}` });
     }
 
     // ===== 27. 失败上报会话绑定（延迟/重复上报不误伤） =====
