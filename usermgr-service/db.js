@@ -438,6 +438,19 @@ function deleteProduct(productId) {
 // ==================== Device Credentials ====================
 // 视为"已完成出厂"的凭证状态：重复 provision 返回 already_provisioned，不再发 FactoryKey
 const PROVISION_DONE_STATES = ['provisioned', 'volcano_registered'];
+// 视为"烧录进行中"的凭证状态：challenge 会话仍可恢复或上报失败
+const PROVISION_IN_PROGRESS_STATES = ['provisioning', 'provisioning_failed'];
+
+const findInProgressRecords = (records) =>
+  records.filter(r => PROVISION_IN_PROGRESS_STATES.includes(r.status));
+
+// 按产品 + SN 精确定位凭证；SN 存在但属于其他 MAC 时报 sn_hardware_mismatch
+function locateBySn(productId, hardwareId, sn) {
+  const cred = getCredentialBySn(productId, sn);
+  if (!cred) throw new Error('device_not_found');
+  if (cred.hardware_id !== hardwareId) throw new Error('sn_hardware_mismatch');
+  return cred;
+}
 
 // 生成 10 分钟有效的新 challenge（幂等更新某条记录的烧录会话）
 function issueChallenge(credId) {
@@ -463,7 +476,9 @@ function issueChallenge(credId) {
  *      provisioned/volcano_registered → already_provisioned；retired → 拒绝；无记录 → 首次烧录
  *  - 传 sn：只针对该 SN 的记录操作（恢复烧录 / already_provisioned）
  *  - 传 newSn=true（多证书场景）：同一 MAC 显式新增一个 SN，复用 FactoryKey，
- *    每个 SN 在火山侧是独立设备（volcano_device_name 带 SN 后缀），License 各自独立
+ *    每个 SN 在火山侧是独立设备（volcano_device_name 带 SN 后缀），License 各自独立。
+ *    幂等防重：同 MAC 已有烧录中/烧录失败的记录时恢复该记录（重试拿到同一个 SN），不重复新增；
+ *    retired 语义：retired 停用的是单份证书，MAC 下全部证书均 retired 视为设备停用，拒绝新增
  */
 function provisionDevice(productId, hardwareId, sn, newSn) {
   const product = getProductRow(productId);
@@ -471,8 +486,22 @@ function provisionDevice(productId, hardwareId, sn, newSn) {
 
   const records = getCredentialsByHardwareId(productId, hardwareId);
 
-  // 显式新增 SN（多证书）：总是生成新 SN，复用同一 MAC 已有的 FactoryKey
+  // 显式新增 SN（多证书）
   if (newSn) {
+    // MAC 下全部证书 retired = 设备停用，拒绝新增（恢复退役证书由管理员单独操作）
+    if (records.length > 0 && records.every(r => r.status === 'retired')) {
+      throw new Error('device_retired');
+    }
+    // 幂等防重：同 MAC 已有烧录中/烧录失败的记录时，恢复该记录而不是再新增一条。
+    // new_sn 请求响应丢失后重试会拿到同一个 SN，不会产生重复凭证；
+    // 确要废弃进行中的记录，先删除（provisioning / provisioning_failed 状态可删）再新增。
+    const inProgress = findInProgressRecords(records);
+    if (inProgress.length > 0) {
+      const target = inProgress[inProgress.length - 1];
+      const resumeKey = decrypt(target.factory_key);
+      const challenge = issueChallenge(target.id);
+      return { sn: target.sn, factoryKey: resumeKey, challenge };
+    }
     const factoryKey = records.length > 0
       ? decrypt(records[0].factory_key)
       : crypto.randomBytes(32).toString('hex');
@@ -496,8 +525,7 @@ function provisionDevice(productId, hardwareId, sn, newSn) {
 
   // 指定 SN：只针对该 SN 的记录操作
   if (sn) {
-    const existing = records.find(r => r.sn === sn);
-    if (!existing) throw new Error('device_not_found');
+    const existing = locateBySn(productId, hardwareId, sn);
     if (PROVISION_DONE_STATES.includes(existing.status)) {
       return { already_provisioned: true, sn: existing.sn };
     }
@@ -541,32 +569,33 @@ function provisionDevice(productId, hardwareId, sn, newSn) {
 }
 
 /**
- * 定位某次烧录会话对应的凭证记录：
- *  - 传 sn：精确匹配该 SN
- *  - 不传 sn：取最近一条"烧录中/烧录失败"的记录（本次烧录目标）；
- *    没有进行中的烧录时取最近一条记录（用于返回 already_provisioned 等旧版语义）
- */
-function locateProvisionRecord(productId, hardwareId, sn) {
-  const records = getCredentialsByHardwareId(productId, hardwareId);
-  if (sn) {
-    const cred = records.find(r => r.sn === sn) || null;
-    if (!cred) throw new Error('device_not_found');
-    if (cred.hardware_id !== hardwareId) throw new Error('sn_hardware_mismatch');
-    return cred;
-  }
-  if (records.length === 0) throw new Error('device_not_found');
-  const inProgress = records.filter(r => r.status === 'provisioning' || r.status === 'provisioning_failed');
-  return inProgress.length > 0 ? inProgress[inProgress.length - 1] : records[records.length - 1];
-}
-
-/**
  * 出厂录入阶段 2：验证 eFuse HMAC challenge
  * 签名格式：v1|provision_verify|hardwareId|challenge
  * 验证成功 → status = provisioned，清除 challenge
  * 验证失败 → 抛错（不改 status，允许重试）
+ *
+ * 会话定位：challenge 是每条烧录记录独有的会话标识。
+ *  - 传 sn：按 SN 精确定位
+ *  - 不传 sn：按 challenge 精确定位（多个烧录会话并发时，延迟到达的验证
+ *    不会误拿其他 SN 的记录比较 challenge）
  */
 function verifyProvision(productId, hardwareId, challenge, responseHex, sn) {
-  const cred = locateProvisionRecord(productId, hardwareId, sn);
+  let cred;
+  if (sn) {
+    cred = locateBySn(productId, hardwareId, sn);
+  } else {
+    const records = getCredentialsByHardwareId(productId, hardwareId);
+    if (records.length === 0) throw new Error('device_not_found');
+    cred = records.find(r => r.provision_challenge === challenge) || null;
+    if (!cred) {
+      // challenge 不属于任何记录：无进行中会话且最近一条已完成 → 该会话早已验证过
+      if (findInProgressRecords(records).length === 0) {
+        const latest = records[records.length - 1];
+        if (PROVISION_DONE_STATES.includes(latest.status)) throw new Error('already_provisioned');
+      }
+      throw new Error('challenge_mismatch');
+    }
+  }
   if (PROVISION_DONE_STATES.includes(cred.status)) throw new Error('already_provisioned');
   if (cred.status !== 'provisioning') throw new Error('not_in_provisioning_state');
 
@@ -602,11 +631,23 @@ function verifyProvision(productId, hardwareId, challenge, responseHex, sn) {
 
 /**
  * 标记烧录失败（仅记录，不改 provisioning 状态——网络断线不算失败）
- * 只允许作用于烧录中/烧录失败的记录：同 MAC 多 SN 时不能把已出厂的旧凭证标成失败
+ * 只允许作用于烧录中/烧录失败的记录：同 MAC 多 SN 时不能把已出厂的旧凭证标成失败。
+ * 不带 sn 时仅当恰好一条进行中的记录才执行（单 SN 旧流程兼容）；
+ * 多条进行中时上报目标有歧义，拒绝并要求带 sn 重报。
  */
 function failProvision(productId, hardwareId, reason, sn) {
-  const cred = locateProvisionRecord(productId, hardwareId, sn);
-  if (!['provisioning', 'provisioning_failed'].includes(cred.status)) {
+  let cred;
+  if (sn) {
+    cred = locateBySn(productId, hardwareId, sn);
+  } else {
+    const records = getCredentialsByHardwareId(productId, hardwareId);
+    if (records.length === 0) throw new Error('device_not_found');
+    const inProgress = findInProgressRecords(records);
+    if (inProgress.length === 0) throw new Error('not_in_provisioning_state');
+    if (inProgress.length > 1) throw new Error('ambiguous_provision_target');
+    cred = inProgress[0];
+  }
+  if (!PROVISION_IN_PROGRESS_STATES.includes(cred.status)) {
     throw new Error('not_in_provisioning_state');
   }
   db.prepare(`

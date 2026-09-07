@@ -270,18 +270,26 @@ app.delete('/admin/api/products/:id', adminAuth, (req, res) => {
 // ==================== 管理员：出厂录入 ====================
 // 改动①：只收 product + hardware_id，SN 和 FactoryKey 由服务器生成
 // 可选参数：
-//   sn       —— 只针对该 SN 的记录操作（恢复烧录）
-//   new_sn   —— 同一 MAC 显式新增一个 SN（多证书场景），复用 FactoryKey
+//   sn       —— 只针对该 SN 的记录操作（恢复烧录），与 new_sn 互斥
+//   new_sn   —— 同一 MAC 显式新增一个 SN（多证书场景），只接受严格布尔值
 // 不传可选参数时行为与旧版完全一致：重复录入返回原 SN 或 already_provisioned
 app.post('/admin/api/provision', provisionAuth, (req, res) => {
   const { product, hardware_id, sn, new_sn } = req.body;
   if (!product || !hardware_id) return res.status(400).json({ error: 'missing_params' });
+  // new_sn 只接受布尔值："false"/"0"/"true" 等字符串一律拒绝，避免真值字符串误触发新增
+  if (new_sn !== undefined && typeof new_sn !== 'boolean') {
+    return res.status(400).json({ error: 'invalid_new_sn', message: 'new_sn 只接受布尔值' });
+  }
+  // sn 与 new_sn 互斥：同时指定时操作目标不明确
+  if (new_sn === true && sn) {
+    return res.status(400).json({ error: 'conflicting_params', message: 'sn 与 new_sn 不能同时指定' });
+  }
 
   const productId = DB.getProductIdByCode(product);
   if (!productId) return res.status(404).json({ error: 'product_not_found' });
 
   try {
-    const result = DB.provisionDevice(productId, hardware_id, sn, !!new_sn);
+    const result = DB.provisionDevice(productId, hardware_id, sn, new_sn === true);
     if (result.already_provisioned) {
       return res.json({ ok: true, already_provisioned: true, sn: result.sn });
     }
@@ -332,6 +340,7 @@ app.post('/admin/api/provision/fail', provisionAuth, (req, res) => {
     if (e.message === 'device_not_found') return res.status(404).json({ error: e.message });
     if (e.message === 'sn_hardware_mismatch') return res.status(400).json({ error: 'sn_hardware_mismatch' });
     if (e.message === 'not_in_provisioning_state') return res.status(409).json({ error: e.message });
+    if (e.message === 'ambiguous_provision_target') return res.status(400).json({ error: 'ambiguous_provision_target', message: '该设备存在多个烧录会话，失败上报必须指定 sn' });
     res.status(500).json({ error: 'fail_failed', reason: e.message });
   }
 });

@@ -71,14 +71,20 @@ Content-Type: application/json
 
 | 参数 | 说明 |
 | --- | --- |
-| `sn` | 只针对该 SN 的记录操作：恢复中断的烧录（重发 challenge，返回原 FactoryKey） |
-| `new_sn: true` | 同一 MAC 显式新增一个 SN。返回新 SN + **同一个 FactoryKey**（eFuse 只烧一次）+ 新 challenge。每个 SN 在火山侧是独立设备（`volcano_device_name` 带 SN 后缀），License 各自独立 |
+| `sn` | 只针对该 SN 的记录操作：恢复中断的烧录（重发 challenge，返回原 FactoryKey）。与 `new_sn` 互斥 |
+| `new_sn: true` | 同一 MAC 显式新增一个 SN。**只接受布尔值**（字符串 `"true"`/`"false"` 会被拒绝）。返回新 SN + **同一个 FactoryKey**（eFuse 只烧一次）+ 新 challenge。每个 SN 在火山侧是独立设备（`volcano_device_name` 带 SN 后缀），License 各自独立 |
 
 ```json
 { "product": "xiaov", "hardware_id": "AC:A7:04:28:C9:10", "new_sn": true }
 ```
 
-不传可选参数时行为与旧版完全一致：烧录中/烧录失败 → 恢复该次烧录并返回原 SN；已出厂 → `already_provisioned`；全新 MAC → 首次烧录。`verify` 与 `fail` 接口在不传 `sn` 时自动定位最近一次烧录的记录，不会误伤同 MAC 的其他 SN。
+`new_sn` 的行为规则：
+
+- **幂等**：同 MAC 已有烧录中/烧录失败的记录时，恢复该记录并返回**同一个 SN**（响应丢失后重试不会产生重复凭证）。确要废弃进行中的记录，先在管理平台删除（烧录中/失败状态可删）再新增。
+- **retired 语义**：`retired` 停用的是单份证书；MAC 下全部证书均退役视为设备停用，返回 403 `device_retired`。部分退役不影响新增。
+- 请求同时带 `sn` 和 `new_sn` 时返回 400 `conflicting_params`。
+
+不传可选参数时行为与旧版完全一致：烧录中/烧录失败 → 恢复该次烧录并返回原 SN；已出厂 → `already_provisioned`；全新 MAC → 首次烧录。
 
 ### 3.2 验证设备确实持有 FactoryKey
 
@@ -104,6 +110,8 @@ response = lowercase_hex(HMAC_SHA256(factory_key_bytes, UTF8(message)))
 
 Header 同样使用 `Authorization: Bearer <PROVISION_TOKEN>`。
 
+会话定位：challenge 是每次烧录会话独有的标识。不传 `sn` 时服务端**按 challenge 精确定位**本次会话——即使同 MAC 有多个烧录会话并发，延迟到达的验证也不会拿错记录。也可显式传 `sn` 定位。
+
 成功：
 
 ```json
@@ -116,9 +124,12 @@ Header 同样使用 `Authorization: Bearer <PROVISION_TOKEN>`。
 {
   "product": "xiaov",
   "hardware_id": "AC:A7:04:28:C9:10",
-  "reason": "efuse_write_failed"
+  "reason": "efuse_write_failed",
+  "sn": "可选：指定上报目标"
 }
 ```
+
+不带 `sn` 时仅当该 MAC 恰好一条烧录中/烧录失败的记录才生效（单 SN 旧流程兼容）；存在多个进行中的会话时目标有歧义，返回 400 `ambiguous_provision_target`，必须带 `sn` 重报。
 
 ## 4. ESP32 运行时签名
 
@@ -341,6 +352,7 @@ ESP32 显示 `qr_url` 对应二维码并缓存 `temp_token` 用于轮询。Token
 | 404 | `product_not_found` | 固件产品代码未在平台配置 |
 | 404 | `device_not_provisioned` | HardwareID 或产品代码不匹配 |
 | 409 | `device_already_bound` | 提示先由原用户解绑 |
+| 400 | `ambiguous_provision_target` | 同一设备存在多个烧录会话，失败上报必须指定 `sn` |
 | 410 | `challenge_expired` | 工厂工具重新调用 provision 获取 challenge |
 | 429 | `rate_limited` | 指数退避后重试 |
 | 5xx | 服务端/供应商错误 | 指数退避，保留设备本地状态，不擦除密钥 |
