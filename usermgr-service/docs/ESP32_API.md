@@ -81,7 +81,8 @@ Content-Type: application/json
 
 `new_sn` 的行为规则：
 
-- **幂等**：完全由 `request_id` 保证。首次请求创建记录并保存映射；重试（同 ID）返回同一 SN 和当前会话，不轮换 challenge；完成后重放返回 `already_provisioned`。新 `request_id` 才会创建下一份 SN；如需废弃进行中的记录，先在管理平台删除（烧录中/失败状态可删）再新增。删除凭证后映射保留为墓碑：旧 ID 重放返回 404 `request_target_deleted`；换新 ID 重新创建时 **FactoryKey 从映射存档恢复**（同一 MAC 始终同一个密钥，已烧 eFuse 的设备仍可验证）。
+- **幂等**：完全由 `request_id` 保证。首次请求创建记录并保存映射；重试（同 ID）返回同一 SN 和当前会话，不轮换 challenge；完成后重放返回 `already_provisioned`。新 `request_id` 才会创建下一份 SN；如需废弃进行中的记录，先在管理平台删除（烧录中/失败状态可删）再新增。删除凭证后映射保留为墓碑：旧 ID 重放返回 404 `request_target_deleted`；换新 ID 重新创建时 **FactoryKey 从存档恢复**（同一 MAC 始终同一个密钥，已烧 eFuse 的设备仍可验证）。
+- **FactoryKey 存档**：所有录入路径（含不带 `request_id` 的旧版录入）统一将密钥存档到 `factory_key_archive` 表（按 MAC 维度）。凭证全删后重新录入，无论走哪条路径，都从存档恢复原密钥。有烧录历史但存档缺失时返回 409 `factory_key_archive_missing`（不生成新密钥，避免 eFuse 不一致）。
 - **会话已失败时的重放**：记录处于 `provisioning_failed` 时，同 ID 重试返回 `{ ok: true, session_failed: true, sn, status: "provisioning_failed", failure_reason }`，**不返回 factory_key/challenge**。恢复方式：重新调用 provision（可换新 `request_id`）显式恢复，拿到轮换后的新 challenge 再验证。
 - **challenge 轮换只属于显式恢复**：不带 `request_id` 的 `sn`/普通调用是显式恢复会话，会轮换 challenge；同 `request_id` 的普通请求重试不轮换。
 - **retired 语义**：`retired` 停用的是单份证书；MAC 下全部证书均退役视为设备停用，返回 403 `device_retired`。部分退役不影响新增。
@@ -365,6 +366,7 @@ ESP32 显示 `qr_url` 对应二维码并缓存 `temp_token` 用于轮询。Token
 | 400 | `challenge_required` | 会话已被恢复轮换，失败上报必须携带本次 challenge |
 | 400 | `missing_request_id` | new_sn 请求必须携带 request_id（幂等键） |
 | 409 | `request_id_conflict` | 该 request_id 已绑定其他烧录操作（目标设备/SN/模式不同） |
+| 409 | `factory_key_archive_missing` | 设备有烧录历史但 FactoryKey 存档缺失，无法安全恢复密钥 |
 | 410 | `challenge_mismatch` | 失败上报的 challenge 不属于当前烧录会话（旧会话的延迟上报） |
 | 410 | `challenge_expired` | 工厂工具重新调用 provision 获取 challenge |
 | 429 | `rate_limited` | 指数退避后重试 |

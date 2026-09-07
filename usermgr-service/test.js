@@ -1252,6 +1252,56 @@ async function main() {
       if (tombCred2) await req('DELETE', `/admin/api/credentials/${tombCred2.id}`, null, { Authorization: `Bearer ${ADMIN}` });
     }
 
+    // 26.12 删除全部凭证后，普通录入（不带 new_sn）仍返回原 FactoryKey
+    {
+      const hPlain = 'AA:77:88:99:AA:BB';
+      const t1 = await req('POST', '/admin/api/provision', { product: 'xiaov', hardware_id: hPlain, new_sn: true, request_id: 'req-plain-1' }, { Authorization: `Bearer ${PROV}` });
+      check('26.12 创建凭证成功', t1.body.ok === true && !!t1.body.factory_key);
+      const fk1 = t1.body.factory_key;
+      // 删除凭证
+      let cl = await req('GET', '/admin/api/credentials?product=xiaov', null, { Authorization: `Bearer ${ADMIN}` });
+      let cred = cl.body.find(c => c.hardware_id === hPlain);
+      if (cred) await req('DELETE', `/admin/api/credentials/${cred.id}`, null, { Authorization: `Bearer ${ADMIN}` });
+      // 普通录入（不带 new_sn / request_id）：应从存档恢复原 FactoryKey
+      const t2 = await req('POST', '/admin/api/provision', { product: 'xiaov', hardware_id: hPlain }, { Authorization: `Bearer ${PROV}` });
+      check('26.12 普通录入返回原 FactoryKey', t2.body.ok === true && t2.body.factory_key === fk1);
+      // 清理
+      cl = await req('GET', '/admin/api/credentials?product=xiaov', null, { Authorization: `Bearer ${ADMIN}` });
+      cred = cl.body.find(c => c.hardware_id === hPlain);
+      if (cred) await req('DELETE', `/admin/api/credentials/${cred.id}`, null, { Authorization: `Bearer ${ADMIN}` });
+    }
+
+    // 26.13 无 request_id 录入 → 删除 → 重新录入，密钥不变
+    {
+      const hNoReq = 'AA:88:99:AA:BB:CC';
+      const t1 = await req('POST', '/admin/api/provision', { product: 'xiaov', hardware_id: hNoReq }, { Authorization: `Bearer ${PROV}` });
+      check('26.13 无 request_id 创建成功', t1.body.ok === true && !!t1.body.factory_key);
+      const fk1 = t1.body.factory_key;
+      // 删除凭证
+      let cl = await req('GET', '/admin/api/credentials?product=xiaov', null, { Authorization: `Bearer ${ADMIN}` });
+      let cred = cl.body.find(c => c.hardware_id === hNoReq);
+      if (cred) await req('DELETE', `/admin/api/credentials/${cred.id}`, null, { Authorization: `Bearer ${ADMIN}` });
+      // 重新录入：密钥应从存档恢复
+      const t2 = await req('POST', '/admin/api/provision', { product: 'xiaov', hardware_id: hNoReq, new_sn: true, request_id: 'req-noreq-2' }, { Authorization: `Bearer ${PROV}` });
+      check('26.13 删除后重新录入密钥不变', t2.body.ok === true && t2.body.factory_key === fk1);
+      // 清理
+      cl = await req('GET', '/admin/api/credentials?product=xiaov', null, { Authorization: `Bearer ${ADMIN}` });
+      cred = cl.body.find(c => c.hardware_id === hNoReq);
+      if (cred) await req('DELETE', `/admin/api/credentials/${cred.id}`, null, { Authorization: `Bearer ${ADMIN}` });
+    }
+
+    // 26.14 有历史记录但密钥存档缺失时，明确拒绝（不生成新密钥）
+    {
+      const hMissing = 'AA:99:AA:BB:CC:DD';
+      // 直接往 provision_requests 插一条无 factory_key 的映射（模拟旧版迁移后无存档）
+      DB.db.prepare(`INSERT OR IGNORE INTO provision_requests (request_id, product_id, hardware_id, sn, mode) VALUES (?, ?, ?, ?, ?)`).run('req-missing-old', DB.getProductIdByCode('xiaov'), hMissing, 'XV999999', null);
+      // 凭证不存在，存档也不存在，但 provision_requests 有历史 → 应拒绝
+      const t1 = await req('POST', '/admin/api/provision', { product: 'xiaov', hardware_id: hMissing, new_sn: true, request_id: 'req-missing-new' }, { Authorization: `Bearer ${PROV}` });
+      check('26.14 有历史无存档时拒绝创建', t1.status === 409 && t1.body.error === 'factory_key_archive_missing');
+      // 清理
+      DB.db.prepare('DELETE FROM provision_requests WHERE request_id = ?').run('req-missing-old');
+    }
+
     // ===== 27. 失败上报会话绑定（延迟/重复上报不误伤） =====
     console.log('\n--- 27. 失败上报会话绑定 ---');
     {
