@@ -141,8 +141,8 @@ export default class SlimeStudio {
       const p = canvas.parentElement;
       if (this.root.classList.contains("slime-fs")) {
         this.renderer.setSize(
-          Math.max(200, p.clientWidth - 16),
-          Math.max(240, p.clientHeight - 16),
+          Math.max(200, p.clientWidth),
+          Math.max(240, p.clientHeight),
           false
         );
       } else {
@@ -415,10 +415,16 @@ export default class SlimeStudio {
     if (!maxBtn) return;
     const toggleFsClass = on => {
       this.root.classList.toggle("slime-fs", on);
+      if (!on) this.root.classList.remove("fs-gear");
       maxBtn.textContent = on ? "✕" : "⛶";
       maxBtn.title = on ? "退出全屏" : "全屏游玩";
       this.resize();
     };
+    const gearBtn = this.root.querySelector("[data-gear]");
+    if (gearBtn)
+      this.on(gearBtn, "click", () =>
+        this.root.classList.toggle("fs-gear")
+      );
     this.on(maxBtn, "click", () => {
       if (document.fullscreenElement || document.webkitFullscreenElement) {
         (document.exitFullscreen || document.webkitExitFullscreen).call(

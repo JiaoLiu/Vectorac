@@ -33,7 +33,7 @@
 <button data-mold="melody">美乐蒂 · 简化轮廓</button>
 </div>
 </div>
-<div class="control-row">
+<div class="control-row control-colors">
   <div class="color-selector">
     <div class="selector-label">选择颜色:</div>
     <div class="color-buttons">
@@ -60,7 +60,7 @@
     </div>
   </div>
 </div>
-<div class="control-row">
+<div class="control-row control-tools">
   <div class="tool-selector">
     <div class="selector-label">工具:</div>
     <div class="tool-buttons">
@@ -79,6 +79,7 @@
 </div>
 </div>
 <div class="studio-options studio-settings">
+<button class="slime-gear" data-gear title="展开手感、压模、颜色等更多选项。">⚙ 选项</button>
 <button class="tool-btn" data-tool="glitter" title="点一下撒闪粉，按住连续撒；换按压工具把它揉进去。">✦ 撒闪粉</button>
 <button class="tool-btn" data-tool="foil" title="撒下金属薄片，落在表面后可以随泥团一起揉动。">◆ 撒金属屑</button>
 <label><input type="checkbox" data-sculpt /> 保留捏痕</label>
@@ -297,7 +298,7 @@
   transform: scale(1.06);
 }
 
-/* 全屏 / 假全屏布局：工具栏收顶部，画布铺满剩余空间 */
+/* 全屏 / 假全屏布局：只留紧凑工具条，3D 画布铺满主体 */
 #slimeGame.slime-fs {
   position: fixed;
   inset: 0;
@@ -310,14 +311,79 @@
   overflow-y: auto;
 }
 
-#slimeGame.slime-fs .game-header {
+#slimeGame.slime-fs .game-header,
+#slimeGame.slime-fs .studio-row,
+#slimeGame.slime-fs .control-colors,
+#slimeGame.slime-fs .studio-status,
+#slimeGame.slime-fs .instructions {
   display: none;
 }
 
+/* 点「⚙ 选项」后恢复完整选项面板 */
+#slimeGame.slime-fs.fs-gear .studio-row,
+#slimeGame.slime-fs.fs-gear .control-colors,
+#slimeGame.slime-fs.fs-gear .studio-status {
+  display: flex;
+}
+
 #slimeGame.slime-fs .slime-controls {
-  margin: 0 0 8px;
-  padding: 8px 10px;
-  border-radius: 12px;
+  margin: 0;
+  padding: 6px 8px;
+  border-radius: 0;
+  box-shadow: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+#slimeGame.slime-fs .control-row {
+  margin: 0;
+}
+
+#slimeGame.slime-fs .selector-label {
+  display: none;
+}
+
+#slimeGame.slime-fs .tool-buttons,
+#slimeGame.slime-fs .studio-options {
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+#slimeGame.slime-fs .tool-buttons::-webkit-scrollbar,
+#slimeGame.slime-fs .studio-options::-webkit-scrollbar {
+  display: none;
+}
+
+#slimeGame.slime-fs .tool-btn {
+  padding: 7px 12px;
+  font-size: 13px;
+  flex: none;
+}
+
+#slimeGame.slime-fs .studio-options button {
+  padding: 6px 11px;
+  font-size: 12px;
+  flex: none;
+}
+
+#slimeGame.slime-fs .slime-gear {
+  display: inline-flex;
+  align-items: center;
+  background: #fff;
+  color: #56445d;
+  border: 1px solid #ded3df;
+  border-radius: 14px;
+}
+
+#slimeGame.slime-fs .slime-gear.active,
+#slimeGame.slime-fs.fs-gear .slime-gear {
+  background: #765573;
+  border-color: #765573;
+  color: #fff;
 }
 
 #slimeGame.slime-fs .slime-canvas-container {
@@ -326,26 +392,27 @@
   max-width: none;
   width: auto;
   margin: 0;
-  padding: 8px;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
 }
 
 #slimeGame.slime-fs #slimeCanvas {
   position: absolute;
-  top: 8px;
-  left: 8px;
-  width: calc(100% - 16px);
-  height: calc(100% - 16px);
+  inset: 0;
+  width: 100%;
+  height: 100%;
   min-height: 0;
   max-height: none;
-}
-
-#slimeGame.slime-fs .instructions {
-  display: none;
+  border: none;
+  border-radius: 0;
+  background: transparent;
 }
 
 #slimeGame.slime-fs .slime-max {
-  top: 16px;
-  right: 16px;
+  top: 10px;
+  right: 10px;
 }
 
 .game-introduction {
