@@ -351,6 +351,8 @@ export default class SlimeStudio {
     this.root.querySelectorAll(".color-btn").forEach(b =>
       this.on(b, "click", () => {
         this.color.set(b.dataset.color).convertSRGBToLinear();
+        const colorInput = this.root.querySelector("[data-fs-color]");
+        if (colorInput) colorInput.value = b.dataset.color;
         this.root
           .querySelectorAll(".color-btn")
           .forEach(x => x.classList.toggle("active", x === b));
@@ -370,16 +372,7 @@ export default class SlimeStudio {
         this.on(b, "click", () => this.setMaterial(b.dataset.material))
       );
     this.root.querySelectorAll("[data-mold]").forEach(b =>
-      this.on(b, "click", () => {
-        this.saveUndo();
-        this.clearBubbles();
-        this.sprinkles.clear();
-        this.model.reset(b.dataset.mold);
-        this.paintMold();
-        this.sync();
-        this.active("mold", this.model.mold);
-        this.status("模具压好了！开启保留捏痕，开始雕塑。");
-      })
+      this.on(b, "click", () => this.applyMold(b.dataset.mold))
     );
     this.on(this.root.querySelector("[data-sculpt]"), "change", e => {
       this.model.sculpt = e.target.checked;
@@ -410,6 +403,16 @@ export default class SlimeStudio {
     });
     this.bindFullscreen();
   }
+  applyMold(mold) {
+    this.saveUndo();
+    this.clearBubbles();
+    this.sprinkles.clear();
+    this.model.reset(mold);
+    this.paintMold();
+    this.sync();
+    this.active("mold", this.model.mold);
+    this.status("模具压好了！开启保留捏痕，开始雕塑。");
+  }
   bindFullscreen() {
     const maxBtn = this.root.querySelector("[data-maximize]");
     if (!maxBtn) return;
@@ -425,6 +428,30 @@ export default class SlimeStudio {
       this.on(gearBtn, "click", () =>
         this.root.classList.toggle("fs-gear")
       );
+    // 全屏下拉工具栏
+    const toolSel = this.root.querySelector("[data-fs-tool]");
+    if (toolSel)
+      this.on(toolSel, "change", () => {
+        this.tool = toolSel.value;
+        this.active("tool", this.tool);
+        const btn = this.root.querySelector(`[data-tool="${this.tool}"]`);
+        if (btn) this.status(btn.title);
+      });
+    const materialSel = this.root.querySelector("[data-fs-material]");
+    if (materialSel)
+      this.on(materialSel, "change", () => this.setMaterial(materialSel.value));
+    const moldSel = this.root.querySelector("[data-fs-mold]");
+    if (moldSel)
+      this.on(moldSel, "change", () => this.applyMold(moldSel.value));
+    const colorInput = this.root.querySelector("[data-fs-color]");
+    if (colorInput)
+      this.on(colorInput, "input", () => {
+        this.color.set(colorInput.value).convertSRGBToLinear();
+        this.root
+          .querySelectorAll(".color-btn")
+          .forEach(x => x.classList.remove("active"));
+        this.status("颜色会随揉捏混入表面。");
+      });
     this.on(maxBtn, "click", () => {
       if (document.fullscreenElement || document.webkitFullscreenElement) {
         (document.exitFullscreen || document.webkitExitFullscreen).call(

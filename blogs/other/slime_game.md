@@ -79,7 +79,6 @@
 </div>
 </div>
 <div class="studio-options studio-settings">
-<button class="slime-gear" data-gear title="展开手感、压模、颜色等更多选项。">⚙ 选项</button>
 <button class="tool-btn" data-tool="glitter" title="点一下撒闪粉，按住连续撒；换按压工具把它揉进去。">✦ 撒闪粉</button>
 <button class="tool-btn" data-tool="foil" title="撒下金属薄片，落在表面后可以随泥团一起揉动。">◆ 撒金属屑</button>
 <label><input type="checkbox" data-sculpt /> 保留捏痕</label>
@@ -89,6 +88,39 @@
 <button data-view>视角复位</button>
 </div>
 <p class="studio-status" data-slime-status role="status" aria-live="polite">正在准备你的工作台…</p>
+</div>
+
+<div class="slime-fs-bar">
+<select data-fs-tool aria-label="选择工具">
+<option value="pump">按压</option>
+<option value="pinch">捏起</option>
+<option value="carve">刻线</option>
+<option value="tear">撕裂</option>
+<option value="fold">翻折</option>
+<option value="move">挪动</option>
+<option value="flatten">压平</option>
+<option value="smooth">抹平</option>
+<option value="bubble">起泡</option>
+<option value="pop">戳泡</option>
+</select>
+<select data-fs-material aria-label="选择手感">
+<option value="butter">黄油泥</option>
+<option value="crystal">水晶胶</option>
+<option value="memory">超慢回弹</option>
+<option value="liquid">流动胶</option>
+<option value="foam">起泡胶</option>
+<option value="clay">雕塑泥</option>
+</select>
+<select data-fs-mold aria-label="选择压模">
+<option value="round">◯ 原团</option>
+<option value="star">☆ 星星</option>
+<option value="heart">♡ 心形</option>
+<option value="melody">美乐蒂</option>
+</select>
+<input type="color" data-fs-color value="#FF6B9D" aria-label="选择颜色" />
+<button class="tool-btn" data-tool="glitter" title="点一下撒闪粉，按住连续撒。">✦</button>
+<button class="tool-btn" data-tool="foil" title="撒下金属薄片。">◆</button>
+<button class="slime-gear" data-gear title="展开更多选项。">⚙ 选项</button>
 </div>
 
 <div class="slime-canvas-container">
@@ -298,93 +330,99 @@
   transform: scale(1.06);
 }
 
-/* 全屏 / 假全屏布局：只留紧凑工具条，3D 画布铺满主体 */
+/* 全屏 / 假全屏布局：下拉工具栏 + 画布铺满锁定 */
 #slimeGame.slime-fs {
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
   z-index: 9999;
   max-width: none;
   margin: 0;
   border-radius: 0;
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
+  overflow: hidden;
+  overscroll-behavior: none;
 }
 
 #slimeGame.slime-fs .game-header,
-#slimeGame.slime-fs .studio-row,
-#slimeGame.slime-fs .control-colors,
-#slimeGame.slime-fs .studio-status,
+#slimeGame.slime-fs .slime-controls,
 #slimeGame.slime-fs .instructions {
   display: none;
 }
 
-/* 点「⚙ 选项」后恢复完整选项面板 */
-#slimeGame.slime-fs.fs-gear .studio-row,
-#slimeGame.slime-fs.fs-gear .control-colors,
-#slimeGame.slime-fs.fs-gear .studio-status {
+/* 点「⚙ 选项」展开完整控制面板（可滚动，不撑爆画布） */
+#slimeGame.slime-fs.fs-gear .slime-controls {
   display: flex;
-}
-
-#slimeGame.slime-fs .slime-controls {
+  max-height: 46vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   margin: 0;
-  padding: 6px 8px;
+  padding: 8px 10px;
   border-radius: 0;
   box-shadow: none;
+}
+
+/* 全屏下拉工具栏 */
+.slime-fs-bar {
+  display: none;
+}
+
+#slimeGame.slime-fs .slime-fs-bar {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 6px;
+  padding: 6px 8px;
 }
 
-#slimeGame.slime-fs .control-row {
-  margin: 0;
+#slimeGame.slime-fs .slime-fs-bar select {
+  height: 32px;
+  min-width: 0;
+  flex: 1 1 88px;
+  padding: 0 4px;
+  border: 1px solid #ded3df;
+  border-radius: 10px;
+  background: #fff;
+  color: #56445d;
+  font: inherit;
+  font-size: 13px;
 }
 
-#slimeGame.slime-fs .selector-label {
-  display: none;
+#slimeGame.slime-fs .slime-fs-bar input[type="color"] {
+  width: 36px;
+  height: 32px;
+  padding: 2px;
+  border: 1px solid #ded3df;
+  border-radius: 10px;
+  background: #fff;
+  flex: none;
+  cursor: pointer;
 }
 
-#slimeGame.slime-fs .tool-buttons,
-#slimeGame.slime-fs .studio-options {
-  flex-wrap: nowrap;
-  justify-content: flex-start;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-}
-
-#slimeGame.slime-fs .tool-buttons::-webkit-scrollbar,
-#slimeGame.slime-fs .studio-options::-webkit-scrollbar {
-  display: none;
-}
-
-#slimeGame.slime-fs .tool-btn {
-  padding: 7px 12px;
+#slimeGame.slime-fs .slime-fs-bar .tool-btn {
+  padding: 6px 11px;
   font-size: 13px;
   flex: none;
-}
-
-#slimeGame.slime-fs .studio-options button {
-  padding: 6px 11px;
-  font-size: 12px;
-  flex: none;
-}
-
-#slimeGame.slime-fs .studio-settings label {
-  flex: none;
-  white-space: nowrap;
 }
 
 #slimeGame.slime-fs .slime-gear {
   display: inline-flex;
   align-items: center;
+  padding: 6px 11px;
+  font-size: 13px;
   background: #fff;
   color: #56445d;
   border: 1px solid #ded3df;
   border-radius: 14px;
+  cursor: pointer;
+  flex: none;
 }
 
-#slimeGame.slime-fs .slime-gear.active,
 #slimeGame.slime-fs.fs-gear .slime-gear {
   background: #765573;
   border-color: #765573;
@@ -405,7 +443,8 @@
 
 #slimeGame.slime-fs #slimeCanvas {
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
   min-height: 0;
