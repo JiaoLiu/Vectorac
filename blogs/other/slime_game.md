@@ -140,7 +140,7 @@
 #slimeGame .studio-settings label { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: #56445d; }
 #slimeGame .studio-settings input[type=range] { width: 95px; }
 #slimeGame .studio-status { margin: 12px 0 0; min-height: 22px; font-size: 13px; color: #765573; }
-#slimeGame #slimeCanvas { width: 100%; height: auto; max-height: none; touch-action: none; }
+#slimeGame #slimeCanvas { width: 100%; height: auto; max-height: none; touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; -webkit-user-drag: none; }
 .game-container {
   max-width: 900px;
   margin: 20px auto;
