@@ -136,9 +136,19 @@ export default class SlimeStudio {
     this.scene.add(shadow);
     this.raycaster = new THREE.Raycaster();
     this.ndc = new THREE.Vector2();
+    this.pointers = new Map();
     this.resize = () => {
-      const w = canvas.parentElement.clientWidth;
-      this.renderer.setSize(w, Math.max(340, Math.min(560, w * 0.76)), false);
+      const p = canvas.parentElement;
+      if (this.root.classList.contains("slime-fs")) {
+        this.renderer.setSize(
+          Math.max(200, p.clientWidth - 16),
+          Math.max(240, p.clientHeight - 16),
+          false
+        );
+      } else {
+        const w = p.clientWidth;
+        this.renderer.setSize(w, Math.max(340, Math.min(560, w * 0.76)), false);
+      }
       this.camera.aspect = canvas.width / canvas.height;
       this.camera.updateProjectionMatrix();
     };
@@ -220,6 +230,11 @@ export default class SlimeStudio {
     const c = this.canvas;
     this.on(c, "contextmenu", e => e.preventDefault());
     this.on(c, "pointerdown", e => {
+      this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (this.pointers.size === 2) {
+        this.beginPinch();
+        return;
+      }
       if (this.pointer !== undefined) return;
       this.rotating = this.tool === "rotate" || e.button === 2 || e.altKey;
       const hit = this.hit(e);
@@ -233,8 +248,10 @@ export default class SlimeStudio {
             false
           ).length
         )
-      )
-        return;
+      ) {
+        // 空白处按下：直接旋转视角，无需切换工具。
+        this.rotating = true;
+      }
       e.preventDefault();
       this.pointer = e.pointerId;
       this.previous = { x: e.clientX, y: e.clientY };
@@ -259,6 +276,12 @@ export default class SlimeStudio {
       }
     });
     this.on(c, "pointermove", e => {
+      if (this.pointers.has(e.pointerId))
+        this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (this.pinch) {
+        this.movePinch();
+        return;
+      }
       if (e.pointerId !== this.pointer) return;
       if (this.rotating) {
         this.yaw -= (e.clientX - this.previous.x) * 0.009;
@@ -283,6 +306,11 @@ export default class SlimeStudio {
       this.previous = { x: e.clientX, y: e.clientY };
     });
     const release = e => {
+      this.pointers.delete(e.pointerId);
+      if (this.pinch && this.pointers.size < 2) {
+        this.pinch = null;
+        this.previous = { x: e.clientX, y: e.clientY };
+      }
       if (e.pointerId !== this.pointer) return;
       if (
         e.type === "pointerup" &&
@@ -380,6 +408,41 @@ export default class SlimeStudio {
       this.distance = 4.5;
       this.updateCamera();
     });
+    this.bindFullscreen();
+  }
+  bindFullscreen() {
+    const maxBtn = this.root.querySelector("[data-maximize]");
+    if (!maxBtn) return;
+    const toggleFsClass = on => {
+      this.root.classList.toggle("slime-fs", on);
+      maxBtn.textContent = on ? "✕" : "⛶";
+      maxBtn.title = on ? "退出全屏" : "全屏游玩";
+      this.resize();
+    };
+    this.on(maxBtn, "click", () => {
+      if (document.fullscreenElement || document.webkitFullscreenElement) {
+        (document.exitFullscreen || document.webkitExitFullscreen).call(
+          document
+        );
+      } else if (this.root.classList.contains("slime-fs")) {
+        // iOS Safari 不支持元素全屏，用 CSS 假全屏兜底。
+        toggleFsClass(false);
+      } else {
+        const request =
+          this.root.requestFullscreen || this.root.webkitRequestFullscreen;
+        if (request) {
+          const result = request.call(this.root);
+          if (result && result.catch)
+            result.catch(() => toggleFsClass(true));
+        } else toggleFsClass(true);
+      }
+    });
+    const onChange = () =>
+      toggleFsClass(
+        !!(document.fullscreenElement || document.webkitFullscreenElement)
+      );
+    this.on(document, "fullscreenchange", onChange);
+    this.on(document, "webkitfullscreenchange", onChange);
   }
   updateCamera() {
     this.camera.position.set(
@@ -389,6 +452,40 @@ export default class SlimeStudio {
     );
     this.camera.lookAt(0, 0.15, 0);
     this.camera.updateMatrixWorld();
+  }
+  beginPinch() {
+    const [a, b] = [...this.pointers.values()];
+    this.pinch = {
+      dist: Math.hypot(a.x - b.x, a.y - b.y) || 1,
+      midX: (a.x + b.x) / 2,
+      midY: (a.y + b.y) / 2,
+      yaw: this.yaw,
+      elevation: this.elevation,
+      distance: this.distance
+    };
+    // 第二根手指落下意味着用户想调整视角，中断当前的塑形笔画。
+    this.brush = null;
+    this.sprinkling = null;
+    if (this.manipulation) this.manipulation = null;
+    this.rotating = false;
+  }
+  movePinch() {
+    const [a, b] = [...this.pointers.values()];
+    const dist = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+    const midX = (a.x + b.x) / 2,
+      midY = (a.y + b.y) / 2;
+    this.distance = THREE.MathUtils.clamp(
+      this.pinch.distance * (this.pinch.dist / dist),
+      3,
+      7
+    );
+    this.yaw = this.pinch.yaw - (midX - this.pinch.midX) * 0.009;
+    this.elevation = THREE.MathUtils.clamp(
+      this.pinch.elevation + (midY - this.pinch.midY) * 0.007,
+      0.12,
+      1.55
+    );
+    this.updateCamera();
   }
   beginManipulation(hit, e) {
     const point = this.mesh.worldToLocal(hit.point.clone());

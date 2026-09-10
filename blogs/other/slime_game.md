@@ -74,7 +74,7 @@
       <button class="tool-btn" data-tool="smooth" title="抹平附近凹凸，修整你的作品。">抹平</button>
       <button class="tool-btn" data-tool="bubble" title="按住将胶膜捏起，松开生成气泡。">起泡</button>
       <button class="tool-btn" data-tool="pop" title="点击凸起的透明气泡将它戳破。">戳泡</button>
-      <button class="tool-btn" data-tool="rotate" title="拖动环绕旋转视角；鼠标右键也能随时旋转。">旋转视角</button>
+      <button class="tool-btn" data-tool="rotate" title="拖动环绕旋转视角；空白处拖动、双指或鼠标右键也可以。">旋转视角</button>
     </div>
 </div>
 </div>
@@ -93,8 +93,9 @@
 <div class="slime-canvas-container">
 <canvas id="slimeCanvas" aria-label="三维史莱姆塑形工作台，选择工具后拖动操作"></canvas>
 <div class="instructions">
-拖动揉捏 · 从外沿向内翻折 · 撕开后可挪动碎块 · 撒点缀后按压揉入 · 右键旋转
+拖动揉捏 · 空白处拖动旋转视角 · 双指缩放 · 撕开后可挪动碎块 · 右键旋转
 </div>
+<button class="slime-max" data-maximize title="全屏游玩" aria-label="全屏游玩">⛶</button>
 </div>
 </div>
 
@@ -272,6 +273,79 @@
   margin-top: 15px;
   font-size: 14px;
   color: #7f8c8d;
+}
+
+.slime-max {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 5;
+  width: 36px;
+  height: 36px;
+  border: 1px solid #ded3df;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.88);
+  color: #56445d;
+  font-size: 19px;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.slime-max:hover {
+  background: #fff;
+  transform: scale(1.06);
+}
+
+/* 全屏 / 假全屏布局：工具栏收顶部，画布铺满剩余空间 */
+#slimeGame.slime-fs {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  max-width: none;
+  margin: 0;
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+#slimeGame.slime-fs .game-header {
+  display: none;
+}
+
+#slimeGame.slime-fs .slime-controls {
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  border-radius: 12px;
+}
+
+#slimeGame.slime-fs .slime-canvas-container {
+  flex: 1;
+  min-height: 0;
+  max-width: none;
+  width: auto;
+  margin: 0;
+  padding: 8px;
+}
+
+#slimeGame.slime-fs #slimeCanvas {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: calc(100% - 16px);
+  height: calc(100% - 16px);
+  min-height: 0;
+  max-height: none;
+}
+
+#slimeGame.slime-fs .instructions {
+  display: none;
+}
+
+#slimeGame.slime-fs .slime-max {
+  top: 16px;
+  right: 16px;
 }
 
 .game-introduction {
