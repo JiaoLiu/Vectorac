@@ -91,32 +91,18 @@
 </div>
 
 <div class="slime-fs-bar">
-<select data-fs-tool aria-label="选择工具">
-<option value="pump">按压</option>
-<option value="pinch">捏起</option>
-<option value="carve">刻线</option>
-<option value="tear">撕裂</option>
-<option value="fold">翻折</option>
-<option value="move">挪动</option>
-<option value="flatten">压平</option>
-<option value="smooth">抹平</option>
-<option value="bubble">起泡</option>
-<option value="pop">戳泡</option>
-</select>
-<select data-fs-material aria-label="选择手感">
-<option value="butter">黄油泥</option>
-<option value="crystal">水晶胶</option>
-<option value="memory">超慢回弹</option>
-<option value="liquid">流动胶</option>
-<option value="foam">起泡胶</option>
-<option value="clay">雕塑泥</option>
-</select>
-<select data-fs-mold aria-label="选择压模">
-<option value="round">◯ 原团</option>
-<option value="star">☆ 星星</option>
-<option value="heart">♡ 心形</option>
-<option value="melody">美乐蒂</option>
-</select>
+<div class="fs-drop" data-fs-drop="tool">
+<button type="button" class="fs-trigger">按压<i class="fs-chevron">▾</i></button>
+<div class="fs-menu"></div>
+</div>
+<div class="fs-drop" data-fs-drop="material">
+<button type="button" class="fs-trigger">黄油泥<i class="fs-chevron">▾</i></button>
+<div class="fs-menu"></div>
+</div>
+<div class="fs-drop" data-fs-drop="mold">
+<button type="button" class="fs-trigger">◯ 原团<i class="fs-chevron">▾</i></button>
+<div class="fs-menu"></div>
+</div>
 <input type="color" data-fs-color value="#FF6B9D" aria-label="选择颜色" />
 <button class="tool-btn" data-tool="glitter" title="点一下撒闪粉，按住连续撒。">✦</button>
 <button class="tool-btn" data-tool="foil" title="撒下金属薄片。">◆</button>
@@ -381,16 +367,108 @@
 }
 
 #slimeGame.slime-fs .slime-fs-bar select {
-  height: 32px;
-  min-width: 0;
+  display: none;
+}
+
+/* 自定义下拉（参考 usermgr product-dropdown：trigger + menu + mask） */
+.fs-drop {
+  position: relative;
   flex: 1 1 88px;
-  padding: 0 4px;
+  min-width: 0;
+}
+
+#slimeGame.slime-fs .fs-trigger {
+  width: 100%;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 0 8px;
   border: 1px solid #ded3df;
   border-radius: 10px;
   background: #fff;
   color: #56445d;
   font: inherit;
   font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.fs-chevron {
+  font-style: normal;
+  font-size: 10px;
+  opacity: 0.55;
+  transition: transform 0.2s;
+  flex: none;
+}
+
+.fs-drop.open .fs-chevron {
+  transform: rotate(180deg);
+}
+
+.fs-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 60;
+  min-width: 100%;
+  width: max-content;
+  max-width: 64vw;
+  max-height: 46vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 4px;
+  background: #fff;
+  border: 1px solid #eee2ef;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(60, 40, 60, 0.22);
+}
+
+.fs-drop.open .fs-menu {
+  display: block;
+}
+
+.fs-menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 10px 14px;
+  border: none;
+  background: none;
+  border-radius: 8px;
+  color: #56445d;
+  font: inherit;
+  font-size: 15px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .fs-menu button:hover {
+    background: #f6eff6;
+  }
+}
+
+.fs-menu button.on {
+  background: rgba(118, 85, 115, 0.14);
+  color: #4a3548;
+  font-weight: 600;
+}
+
+.fs-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+  display: none;
+  background: transparent;
+  border: none;
+  padding: 0;
 }
 
 #slimeGame.slime-fs .slime-fs-bar input[type="color"] {

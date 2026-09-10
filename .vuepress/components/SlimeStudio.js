@@ -428,21 +428,102 @@ export default class SlimeStudio {
       this.on(gearBtn, "click", () =>
         this.root.classList.toggle("fs-gear")
       );
-    // 全屏下拉工具栏
-    const toolSel = this.root.querySelector("[data-fs-tool]");
-    if (toolSel)
-      this.on(toolSel, "change", () => {
-        this.tool = toolSel.value;
-        this.active("tool", this.tool);
-        const btn = this.root.querySelector(`[data-tool="${this.tool}"]`);
-        if (btn) this.status(btn.title);
+    // 全屏自定义下拉（trigger + menu + mask，同 usermgr product-dropdown 模式）
+    let mask = this.root.querySelector(".fs-mask");
+    if (!mask) {
+      mask = document.createElement("button");
+      mask.type = "button";
+      mask.className = "fs-mask";
+      mask.setAttribute("aria-label", "关闭菜单");
+      this.root.appendChild(mask);
+    }
+    const closeMenus = () => {
+      this.root
+        .querySelectorAll(".fs-drop.open")
+        .forEach(d => d.classList.remove("open"));
+      mask.style.display = "none";
+    };
+    this.on(mask, "click", closeMenus);
+    const dropdowns = [
+      {
+        key: "tool",
+        options: [
+          ["pump", "按压"],
+          ["pinch", "捏起"],
+          ["carve", "刻线"],
+          ["tear", "撕裂"],
+          ["fold", "翻折"],
+          ["move", "挪动"],
+          ["flatten", "压平"],
+          ["smooth", "抹平"],
+          ["bubble", "起泡"],
+          ["pop", "戳泡"]
+        ],
+        apply: value => {
+          this.tool = value;
+          this.active("tool", this.tool);
+          const btn = this.root.querySelector(`[data-tool="${this.tool}"]`);
+          if (btn) this.status(btn.title);
+        }
+      },
+      {
+        key: "material",
+        options: [
+          ["butter", "黄油泥"],
+          ["crystal", "水晶胶"],
+          ["memory", "超慢回弹"],
+          ["liquid", "流动胶"],
+          ["foam", "起泡胶"],
+          ["clay", "雕塑泥"]
+        ],
+        apply: value => this.setMaterial(value)
+      },
+      {
+        key: "mold",
+        options: [
+          ["round", "◯ 原团"],
+          ["star", "☆ 星星"],
+          ["heart", "♡ 心形"],
+          ["melody", "美乐蒂"]
+        ],
+        apply: value => this.applyMold(value)
+      }
+    ];
+    dropdowns.forEach(({ key, options, apply }) => {
+      const drop = this.root.querySelector(`[data-fs-drop="${key}"]`);
+      if (!drop) return;
+      drop.dataset.value = options[0][0];
+      const trigger = drop.querySelector(".fs-trigger");
+      const menu = drop.querySelector(".fs-menu");
+      options.forEach(([value, label]) => {
+        const item = document.createElement("button");
+        item.type = "button";
+        item.textContent = label;
+        if (value === drop.dataset.value) item.classList.add("on");
+        this.on(item, "click", e => {
+          e.stopPropagation();
+          closeMenus();
+          if (drop.dataset.value === value) return;
+          drop.dataset.value = value;
+          menu
+            .querySelectorAll(".on")
+            .forEach(x => x.classList.remove("on"));
+          item.classList.add("on");
+          trigger.firstChild.textContent = label;
+          apply(value);
+        });
+        menu.appendChild(item);
       });
-    const materialSel = this.root.querySelector("[data-fs-material]");
-    if (materialSel)
-      this.on(materialSel, "change", () => this.setMaterial(materialSel.value));
-    const moldSel = this.root.querySelector("[data-fs-mold]");
-    if (moldSel)
-      this.on(moldSel, "change", () => this.applyMold(moldSel.value));
+      this.on(trigger, "click", e => {
+        e.stopPropagation();
+        const wasOpen = drop.classList.contains("open");
+        closeMenus();
+        if (!wasOpen) {
+          drop.classList.add("open");
+          mask.style.display = "block";
+        }
+      });
+    });
     const colorInput = this.root.querySelector("[data-fs-color]");
     if (colorInput)
       this.on(colorInput, "input", () => {
