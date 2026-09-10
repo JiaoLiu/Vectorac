@@ -370,6 +370,11 @@
   flex: none;
 }
 
+#slimeGame.slime-fs .studio-settings label {
+  flex: none;
+  white-space: nowrap;
+}
+
 #slimeGame.slime-fs .slime-gear {
   display: inline-flex;
   align-items: center;
