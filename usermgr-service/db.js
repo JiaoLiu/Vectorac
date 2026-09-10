@@ -9,6 +9,20 @@ const fs = require('fs');
 const crypto = require('crypto');
 const Database = require('better-sqlite3');
 
+// ---- AES 加密密钥（必须在打开数据库/建表/迁移之前校验） ----
+// 持久化数据库必须使用固定密钥：缺少 KEY_ENCRYPTION_SECRET 时立即拒绝加载，
+// 绝不能用进程内随机密钥兜底——随机密钥加密的数据在重启后永远无法解密。
+// 校验必须先于任何数据库访问：缺密钥时保证数据库文件一个字节都不被改动。
+// 所有入口（server/seed/测试/演示脚本）都必须显式提供密钥（通常经 dotenv 加载 .env）。
+const ENC_KEY = process.env.KEY_ENCRYPTION_SECRET;
+if (!ENC_KEY) {
+  throw new Error(
+    '缺少 KEY_ENCRYPTION_SECRET 环境变量：加密密钥必须固定配置（通常在 .env 中，由 dotenv 加载）。' +
+    '没有固定密钥时不能用进程随机密钥兜底，否则重启后 FactoryKey/DeviceSecret 等加密数据将无法解密。'
+  );
+}
+const KEY_BYTES = Buffer.from(ENC_KEY.length === 64 ? ENC_KEY : crypto.createHash('sha256').update(ENC_KEY).digest('hex'), 'hex');
+
 // 数据目录可用 USERMGR_DATA_DIR 覆盖（仅供测试在临时目录建库，生产默认 ./data）
 const DATA_DIR = process.env.USERMGR_DATA_DIR || path.join(__dirname, 'data');
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -50,6 +64,9 @@ CREATE TABLE IF NOT EXISTS device_credentials (
   failure_reason TEXT,                -- 烧录失败原因
   provision_request_id TEXT,          -- 烧录请求幂等键（同一操作的重复请求返回同一会话）
   provision_resumed INTEGER DEFAULT 0, -- 当前会话是否由恢复/轮换产生（非首次烧录会话）
+  is_primary INTEGER DEFAULT 0,        -- 同一 MAC 多个 SN 时，最近一次激活返回给设备的凭证（"最近激活"）
+  pending_primary INTEGER DEFAULT 0,   -- 管理员选定的"下次上线 SN"：设备下次不带 SN 激活即返回该 SN 的凭证；保持粘性直到管理员改选
+  pending_version INTEGER DEFAULT 0,   -- （已废弃）旧两段式切换的版本号，仅保留列兼容旧库
   notes TEXT,
   created_at TEXT DEFAULT (datetime('now')),
   UNIQUE(product_id, sn),
@@ -72,17 +89,18 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 -- 用户-设备绑定关系（可解绑，不影响 device_credentials）
+-- 绑定属于物理设备（product_id + hardware_id），与具体 SN 无关：
+-- 后台切换"下次上线 SN"不需要搬迁绑定。
 CREATE TABLE IF NOT EXISTS user_device_bindings (
   id INTEGER PRIMARY KEY,
   user_id INTEGER NOT NULL,
-  credential_id INTEGER NOT NULL,
   product_id INTEGER NOT NULL,
+  hardware_id TEXT NOT NULL,      -- 物理设备身份（如 MAC），绑定挂在设备上
   nickname TEXT,                  -- 用户自定义昵称（原 device_name）
   bound_at TEXT DEFAULT (datetime('now')),
   last_seen_at TEXT,
-  UNIQUE(credential_id),
+  UNIQUE(product_id, hardware_id),
   FOREIGN KEY (user_id) REFERENCES users(id),
-  FOREIGN KEY (credential_id) REFERENCES device_credentials(id),
   FOREIGN KEY (product_id) REFERENCES products(id)
 );
 
@@ -117,35 +135,46 @@ CREATE TABLE IF NOT EXISTS phone_codes (
 CREATE INDEX IF NOT EXISTS idx_phone_codes_lookup ON phone_codes(phone, purpose, used);
 
 -- 设备服务期（一台设备一条；首次绑定创建，续费在 expires_at 上累加）
+-- 平台服务期属于物理设备（product_id + hardware_id），切换 SN 不搬迁、不清空。
+-- 火山侧权益（License ID / 有效期 / 处理状态）按 SN 记录在 device_sn_rights。
 CREATE TABLE IF NOT EXISTS device_services (
   id INTEGER PRIMARY KEY,
-  credential_id INTEGER NOT NULL UNIQUE,
-  user_id INTEGER NOT NULL,                  -- 当前服务持有人（最近续费人）
   product_id INTEGER NOT NULL,
+  hardware_id TEXT NOT NULL,                 -- 物理设备身份（如 MAC）
+  user_id INTEGER NOT NULL,                  -- 当前服务持有人（最近续费人）
   start_at TEXT NOT NULL,                    -- 首次服务开始时间
   expires_at TEXT NOT NULL,                  -- 服务到期时间（续费时累加）
   plan TEXT DEFAULT 'annual',
-  provider_renew_status TEXT DEFAULT 'none', -- none/pending/completed/failed（最近一次续费状态）
-  provider_renew_at TEXT,
-  provider_renew_error TEXT,
-  provider_license_id TEXT,                  -- 火山 License ID（如适用）
-  provider_expires_at TEXT,                  -- 当前已实际开通的火山 License 到期时间
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT DEFAULT (datetime('now')),
-  FOREIGN KEY (credential_id) REFERENCES device_credentials(id),
+  UNIQUE(product_id, hardware_id),
   FOREIGN KEY (user_id) REFERENCES users(id),
   FOREIGN KEY (product_id) REFERENCES products(id)
 );
 CREATE INDEX IF NOT EXISTS idx_services_expires ON device_services(expires_at);
 CREATE INDEX IF NOT EXISTS idx_services_user ON device_services(user_id);
-CREATE INDEX IF NOT EXISTS idx_services_renew ON device_services(provider_renew_status);
+
+-- 火山权益（按 SN 记录）：License 属于具体 SN 的火山设备，不随切换转移。
+-- provider_renew_status: none/pending/processing/completed/failed/unconfirmed
+--   unconfirmed = 该 SN 的火山权益未经平台确认（不得自动判定为可用）
+CREATE TABLE IF NOT EXISTS device_sn_rights (
+  id INTEGER PRIMARY KEY,
+  credential_id INTEGER NOT NULL UNIQUE,
+  provider_renew_status TEXT DEFAULT 'none',
+  provider_renew_at TEXT,
+  provider_renew_error TEXT,
+  provider_license_id TEXT,                  -- 当前使用的火山 License ID
+  provider_expires_at TEXT,                  -- 当前已实际开通的火山 License 到期时间
+  updated_at TEXT DEFAULT (datetime('now')),
+  FOREIGN KEY (credential_id) REFERENCES device_credentials(id)
+);
 
 -- 订单（续费付款）
 CREATE TABLE IF NOT EXISTS orders (
   id INTEGER PRIMARY KEY,
   order_no TEXT UNIQUE NOT NULL,
   user_id INTEGER NOT NULL,
-  credential_id INTEGER NOT NULL,
+  credential_id INTEGER NOT NULL,            -- 本次续费针对的 SN（下单时的火山设备）；任务始终绑定该 SN，切换选择不影响
   product_id INTEGER NOT NULL,
   amount INTEGER NOT NULL,                   -- 金额（分）
   plan TEXT DEFAULT 'annual',
@@ -192,6 +221,20 @@ CREATE TABLE IF NOT EXISTS provision_requests (
 );
 CREATE INDEX IF NOT EXISTS idx_provreq_sn ON provision_requests(product_id, sn);
 
+-- 订单"作废并重新分配"的幂等记录：request_id 绑定订单与本次操作参数。
+-- 重放只返回该次操作的原结果（预留了哪个 SN、作废了哪个 SN），绝不修改当前关联；
+-- request_id 同时要求全局唯一（不得复用烧录/其他订单的映射），防止把订单
+-- 关联到其他设备的 SN。延迟重放不能把订单指回已作废的旧 SN。
+CREATE TABLE IF NOT EXISTS order_realloc_requests (
+  request_id TEXT PRIMARY KEY,
+  order_id INTEGER NOT NULL,
+  reserved_credential_id INTEGER NOT NULL,   -- 本次操作预留的替代 SN
+  voided_credential_id INTEGER,              -- 本次操作作废的 SN（无则为 NULL）
+  created_at TEXT DEFAULT (datetime('now')),
+  FOREIGN KEY (order_id) REFERENCES orders(id),
+  FOREIGN KEY (reserved_credential_id) REFERENCES device_credentials(id)
+);
+
 -- FactoryKey 存档（按 MAC 维度，独立于 request_id 和凭证记录）：
 -- 所有录入路径统一存档；凭证全删后仍可恢复共享密钥（eFuse 只烧一次）；
 -- 无 request_id 的录入也会存档，确保删除后可恢复。
@@ -203,6 +246,29 @@ CREATE TABLE IF NOT EXISTS factory_key_archive (
   PRIMARY KEY (product_id, hardware_id),
   FOREIGN KEY (product_id) REFERENCES products(id)
 );
+
+-- 已完成出厂验证的物理设备（product_id + hardware_id 维度的事实标记）：
+-- 烧录验证通过或火山激活后写入，永久保留；删除 SN 记录不改变该事实。
+-- 预留新 SN 前必须存在该标记——"有密钥存档"只说明烧过密钥，不等于验证成功。
+CREATE TABLE IF NOT EXISTS factory_verified_devices (
+  product_id INTEGER NOT NULL,
+  hardware_id TEXT NOT NULL,
+  verified_at TEXT DEFAULT (datetime('now')),
+  PRIMARY KEY (product_id, hardware_id),
+  FOREIGN KEY (product_id) REFERENCES products(id)
+);
+`);
+
+// 回填：旧库/已运行系统中"有可靠验证证据"的设备（幂等，每次启动执行）。
+// 证据口径：当前状态为 provisioned / volcano_registered，或存在火山激活历史
+// （激活以 FactoryKey 签名验证为前提，volcano_activated_at 是硬证据）。
+// retired 不作为证据——退役 ≠ 验证成功：从未验证的记录退役后重启服务，
+// 仍保持未知状态，不能因重启回填被当成验证成功。
+db.exec(`
+  INSERT OR IGNORE INTO factory_verified_devices (product_id, hardware_id)
+  SELECT DISTINCT product_id, hardware_id FROM device_credentials
+  WHERE status IN ('provisioned', 'volcano_registered')
+     OR volcano_activated_at IS NOT NULL
 `);
 
 // ---- 迁移：旧库补 phone 列（email 改为可选后，老库仍可能没有 phone 字段） ----
@@ -224,23 +290,69 @@ CREATE TABLE IF NOT EXISTS factory_key_archive (
   }
 }
 
+// 迁移：账号注销模型（软删除）。
+// 删除用户 = 注销：保留订单/服务期的审计关联，绑定随注销解除，
+// 设备、FactoryKey、各 SN 及其权益全部保留。phone/email 匿名化释放原手机号。
+{
+  const cols = db.prepare("PRAGMA table_info(users)").all();
+  if (cols.length > 0 && !cols.some(c => c.name === 'deleted_at')) {
+    db.exec("ALTER TABLE users ADD COLUMN deleted_at TEXT");
+  }
+}
+
+// 迁移：确认收款自动预留的新 SN（订单 → 新 SN 关联，审计 + 展示）。
+{
+  const cols = db.prepare("PRAGMA table_info(orders)").all();
+  if (cols.length > 0 && !cols.some(c => c.name === 'reserved_credential_id')) {
+    db.exec("ALTER TABLE orders ADD COLUMN reserved_credential_id INTEGER REFERENCES device_credentials(id)");
+  }
+  // 订单续期流程版本：'new_sn' = 新流程（确认收款即自动预留新 SN，激活自带一年 License）；
+  // NULL = 旧流程订单（给原 SN 购买 License 续期）。用于区分重放语义：
+  // 已付款订单重放永远只读，不补 SN、不改续期状态。
+  if (cols.length > 0 && !cols.some(c => c.name === 'renew_mode')) {
+    db.exec("ALTER TABLE orders ADD COLUMN renew_mode TEXT");
+  }
+  // 预留 SN 替代历史（JSON 数组）：[{credential_id, sn, voided_at}]。
+  // "作废并重新分配"时写入；凭证记录本身保留（retired 终态），订单关联历史不丢。
+  if (cols.length > 0 && !cols.some(c => c.name === 'reserved_history')) {
+    db.exec("ALTER TABLE orders ADD COLUMN reserved_history TEXT");
+  }
+}
+
+// 迁移：撤掉"手工确认权益"关卡。按业务规则（实际激活后一年、火山控制），
+// 实际激活成功即视为获得一年 License，到期时间按首次激活 +1 年推算（展示用）。
+// 旧代码写入的 unconfirmed 且无到期时间的权益记录按激活事实回填；
+// 已有真实到期时间/续期记录的不动（火山有实际返回时以实际结果为准）。
+db.exec(`
+  UPDATE device_sn_rights SET
+    provider_renew_status = 'completed',
+    provider_expires_at = datetime(
+      (SELECT c.volcano_activated_at FROM device_credentials c WHERE c.id = device_sn_rights.credential_id),
+      '+1 year')
+  WHERE provider_renew_status = 'unconfirmed'
+    AND provider_expires_at IS NULL
+`);
+
 // 迁移：供应商当前 License 到期日与平台套餐到期日分开记录。
 // 老设备首个火山 License 从 DynamicRegister 成功时间起按一年回填；这不会把
 // 尚未在火山确认的续费误算成已生效。
+// （仅对仍带 credential_id 的旧结构执行；新结构由下方 v5 迁移重建）
 {
   const cols = db.prepare("PRAGMA table_info(device_services)").all();
-  if (cols.length > 0 && !cols.some(c => c.name === 'provider_expires_at')) {
-    db.exec("ALTER TABLE device_services ADD COLUMN provider_expires_at TEXT");
+  if (cols.length > 0 && cols.some(c => c.name === 'credential_id')) {
+    if (!cols.some(c => c.name === 'provider_expires_at')) {
+      db.exec("ALTER TABLE device_services ADD COLUMN provider_expires_at TEXT");
+    }
+    db.exec(`
+      UPDATE device_services
+      SET provider_expires_at = COALESCE(
+        (SELECT datetime(c.volcano_activated_at, '+1 year')
+         FROM device_credentials c WHERE c.id = device_services.credential_id),
+        expires_at
+      )
+      WHERE provider_expires_at IS NULL
+    `);
   }
-  db.exec(`
-    UPDATE device_services
-    SET provider_expires_at = COALESCE(
-      (SELECT datetime(c.volcano_activated_at, '+1 year')
-       FROM device_credentials c WHERE c.id = device_services.credential_id),
-      expires_at
-    )
-    WHERE provider_expires_at IS NULL
-  `);
 }
 
 // 迁移（顺序敏感，必须先于下方的补列/回填执行）：
@@ -370,6 +482,15 @@ CREATE TABLE IF NOT EXISTS factory_key_archive (
     if (!cols.some(c => c.name === 'provision_resumed')) {
       db.exec("ALTER TABLE device_credentials ADD COLUMN provision_resumed INTEGER DEFAULT 0");
     }
+    if (!cols.some(c => c.name === 'is_primary')) {
+      db.exec("ALTER TABLE device_credentials ADD COLUMN is_primary INTEGER DEFAULT 0");
+    }
+    if (!cols.some(c => c.name === 'pending_primary')) {
+      db.exec("ALTER TABLE device_credentials ADD COLUMN pending_primary INTEGER DEFAULT 0");
+    }
+    if (!cols.some(c => c.name === 'pending_version')) {
+      db.exec("ALTER TABLE device_credentials ADD COLUMN pending_version INTEGER DEFAULT 0");
+    }
   }
 }
 
@@ -423,15 +544,166 @@ CREATE TABLE IF NOT EXISTS factory_key_archive (
   }
 }
 
+// 迁移 v5：数据归属模型调整（绑定/服务期挂物理设备，火山权益按 SN 记录）
+//   - user_device_bindings: credential_id → hardware_id（UNIQUE(product_id, hardware_id)）
+//   - device_services:      credential_id → hardware_id，移除 provider_* 字段
+//   - device_sn_rights（新表）: 原 device_services 的火山权益字段按 SN（credential_id）拆分
+// 切换"下次上线 SN"从此只改选择，不搬绑定、不清权益。
+//
+// 同 MAC 冲突处理（旧库允许同 MAC 的不同 SN 各有绑定/服务记录，新模型每个 MAC 只有一条）：
+//   - 不同用户（含跨表不一致，如绑定为用户甲、服务期为用户乙）
+//     → 停止迁移并报告，绝不静默丢弃或替管理员决定归属；
+//   - 同一用户  → 按明确规则合并：
+//       服务期：start_at 取最早，expires_at 取最晚（不丢剩余权益），
+//               plan 取到期最晚一条的 plan，created/updated 取最早/最晚；
+//       绑定：  bound_at 取最早，last_seen_at 取最晚，nickname 取最近一条非空昵称。
+{
+  const tableCols = (name) => db.prepare(`PRAGMA table_info(${name})`).all().map(c => c.name);
+
+  // 0) 迁移前冲突检查（跨表，位于两表重建之前）：同一物理设备的绑定与服务期必须归属同一用户。
+  //    各表内部"同 MAC 不同用户"与跨表不一致（如绑定为用户甲、服务期为用户乙）
+  //    都视为归属冲突——新模型每个 MAC 只有一条绑定和一条服务期，无法自动决定
+  //    归属，必须停止迁移并报告，绝不静默丢弃或替管理员决定。
+  //    注意：只要任一表仍待迁移就执行——上次迁移可能在两表之间中断（服务期已重建、
+  //    绑定未重建），此时仍需单独核对绑定表的归属冲突。
+  {
+    const branches = [];
+    if (tableCols('device_services').includes('credential_id')) {
+      branches.push("SELECT c.product_id, c.hardware_id, s.user_id FROM device_services s JOIN device_credentials c ON s.credential_id = c.id");
+    }
+    if (tableCols('user_device_bindings').includes('credential_id')) {
+      branches.push("SELECT c.product_id, c.hardware_id, b.user_id FROM user_device_bindings b JOIN device_credentials c ON b.credential_id = c.id");
+    }
+    if (branches.length > 0) {
+      const conflicts = db.prepare(`
+        SELECT product_id, hardware_id, GROUP_CONCAT(DISTINCT user_id) AS user_ids
+        FROM (${branches.join(' UNION ')})
+        GROUP BY product_id, hardware_id
+        HAVING COUNT(DISTINCT user_id) > 1
+      `).all();
+      if (conflicts.length > 0) {
+        const detail = conflicts
+          .map(x => `产品${x.product_id}/${x.hardware_id} → 用户[${x.user_ids}]`).join('; ');
+        throw new Error(
+          '数据迁移中止（v5）：以下物理设备的绑定/服务期归属不同用户' +
+          '（含跨表不一致，如绑定为用户甲、服务期为用户乙）。' +
+          '新模型中绑定/服务期挂物理设备（每个 MAC 一条），无法自动决定归属，' +
+          '已停止迁移且未修改任何数据。请先人工合并或删除冲突记录，再重启服务。冲突明细: ' + detail
+        );
+      }
+    }
+  }
+
+  // 旧库：device_services 仍带 credential_id → 先回填权益表，再重建
+  if (tableCols('device_services').includes('credential_id')) {
+    // 1) 火山权益字段按 SN 回填到 device_sn_rights（每条旧服务记录对应一个凭证）
+    db.exec(`
+      INSERT OR IGNORE INTO device_sn_rights
+        (credential_id, provider_renew_status, provider_renew_at, provider_renew_error, provider_license_id, provider_expires_at)
+      SELECT credential_id, provider_renew_status, provider_renew_at, provider_renew_error, provider_license_id, provider_expires_at
+      FROM device_services
+    `);
+    // 2) 重建 device_services（归属 hardware_id；同用户多条按上文规则显式合并）
+    db.pragma('foreign_keys = OFF');
+    try {
+      db.transaction(() => {
+        db.exec(`
+          CREATE TABLE device_services_v5new (
+            id INTEGER PRIMARY KEY,
+            product_id INTEGER NOT NULL,
+            hardware_id TEXT NOT NULL,
+            user_id INTEGER NOT NULL,
+            start_at TEXT NOT NULL,
+            expires_at TEXT NOT NULL,
+            plan TEXT DEFAULT 'annual',
+            created_at TEXT DEFAULT (datetime('now')),
+            updated_at TEXT DEFAULT (datetime('now')),
+            UNIQUE(product_id, hardware_id),
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            FOREIGN KEY (product_id) REFERENCES products(id)
+          );
+          INSERT INTO device_services_v5new
+            (id, product_id, hardware_id, user_id, start_at, expires_at, plan, created_at, updated_at)
+          SELECT MIN(s.id), s.product_id, s.hardware_id, MIN(s.user_id),
+                 MIN(s.start_at), MAX(s.expires_at),
+                 (SELECT s2.plan FROM device_services s2 JOIN device_credentials c2 ON s2.credential_id = c2.id
+                  WHERE c2.product_id = s.product_id AND c2.hardware_id = s.hardware_id
+                  ORDER BY s2.expires_at DESC, s2.id ASC LIMIT 1),
+                 MIN(s.created_at), MAX(s.updated_at)
+          FROM (
+            SELECT s.*, c.product_id, c.hardware_id
+            FROM device_services s JOIN device_credentials c ON s.credential_id = c.id
+          ) s
+          GROUP BY s.product_id, s.hardware_id;
+          DROP TABLE device_services;
+          ALTER TABLE device_services_v5new RENAME TO device_services;
+        `);
+      })();
+    } finally {
+      db.pragma('foreign_keys = ON');
+    }
+    db.exec("CREATE INDEX IF NOT EXISTS idx_services_expires ON device_services(expires_at)");
+    db.exec("CREATE INDEX IF NOT EXISTS idx_services_user ON device_services(user_id)");
+  }
+
+  // 旧库：user_device_bindings 仍带 credential_id → 重建为 hardware_id
+  // （跨表/表内归属冲突已在上方合并检查中统一中止，此处直接按同用户规则合并）
+  if (tableCols('user_device_bindings').includes('credential_id')) {
+    db.pragma('foreign_keys = OFF');
+    try {
+      db.transaction(() => {
+        db.exec(`
+          CREATE TABLE user_device_bindings_v5new (
+            id INTEGER PRIMARY KEY,
+            user_id INTEGER NOT NULL,
+            product_id INTEGER NOT NULL,
+            hardware_id TEXT NOT NULL,
+            nickname TEXT,
+            bound_at TEXT DEFAULT (datetime('now')),
+            last_seen_at TEXT,
+            UNIQUE(product_id, hardware_id),
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            FOREIGN KEY (product_id) REFERENCES products(id)
+          );
+          INSERT INTO user_device_bindings_v5new
+            (id, user_id, product_id, hardware_id, nickname, bound_at, last_seen_at)
+          SELECT MIN(b.id), MIN(b.user_id), b.product_id, b.hardware_id,
+                 (SELECT b2.nickname FROM user_device_bindings b2 JOIN device_credentials c2 ON b2.credential_id = c2.id
+                  WHERE c2.product_id = b.product_id AND c2.hardware_id = b.hardware_id
+                  ORDER BY (b2.nickname IS NULL), b2.bound_at DESC, b2.id DESC LIMIT 1),
+                 MIN(b.bound_at), MAX(b.last_seen_at)
+          FROM (
+            SELECT b.*, c.product_id, c.hardware_id
+            FROM user_device_bindings b JOIN device_credentials c ON b.credential_id = c.id
+          ) b
+          GROUP BY b.product_id, b.hardware_id;
+          DROP TABLE user_device_bindings;
+          ALTER TABLE user_device_bindings_v5new RENAME TO user_device_bindings;
+        `);
+      })();
+    } finally {
+      db.pragma('foreign_keys = ON');
+    }
+    db.exec("CREATE INDEX IF NOT EXISTS idx_bindings_user ON user_device_bindings(user_id)");
+  }
+}
+
+// 一致性修复（必须晚于所有补列迁移：较早旧库可能刚在本文件上方补出这些列）：
+// 旧版本"作废"不清理指向指针，已作废 SN 若残留 pending_primary/is_primary 会被解析为
+// "当前/下次"凭证（用户端展示与无 SN 激活都命中作废记录）。清零后解析回落到正常顺序
+// （配合 resolveNoSnCredential / RESOLVED_CRED_JOIN 排除 retired 双保险）。幂等，每次启动执行。
+db.exec(`
+  UPDATE device_credentials SET pending_primary = 0 WHERE status = 'retired' AND pending_primary = 1;
+  UPDATE device_credentials SET is_primary = 0 WHERE status = 'retired' AND is_primary = 1;
+`);
+
 // 服务期默认长度（年）
 const SERVICE_DEFAULT_YEARS = 1;
 // 默认年卡金额（分）—— 真实价格由产品/管理员配置，此处仅为占位
 // 1 年 = 19.9 元 = 1990 分
 const DEFAULT_ANNUAL_AMOUNT = 1990;
 
-// ---- AES 加密 ----
-const ENC_KEY = process.env.KEY_ENCRYPTION_SECRET || crypto.randomBytes(32).toString('hex');
-const KEY_BYTES = Buffer.from(ENC_KEY.length === 64 ? ENC_KEY : crypto.createHash('sha256').update(ENC_KEY).digest('hex'), 'hex');
+// ---- AES 加解密（ENC_KEY/KEY_BYTES 在文件开头、打开数据库之前已校验定义） ----
 
 function encrypt(plain) {
   const iv = crypto.randomBytes(12);
@@ -529,11 +801,12 @@ function deleteProduct(productId) {
       (SELECT COUNT(*) FROM orders WHERE product_id = ?) AS ord
   `).get(productId, productId);
   if (ref.cred > 0 || ref.ord > 0) return false;
-  // 烧录请求幂等映射 + FactoryKey 存档随产品一并清理：产品删除后 request_id 无从路由
-  // （产品代码即路由），且两表对 products 有外键约束，不清理会阻塞产品删除
+  // 烧录请求幂等映射 + FactoryKey 存档 + 出厂验证事实标记随产品一并清理：
+  // 三表对 products 均有外键约束，不清理会阻塞产品删除
   return db.transaction(() => {
     db.prepare("DELETE FROM provision_requests WHERE product_id = ?").run(productId);
     db.prepare("DELETE FROM factory_key_archive WHERE product_id = ?").run(productId);
+    db.prepare("DELETE FROM factory_verified_devices WHERE product_id = ?").run(productId);
     const r = db.prepare('DELETE FROM products WHERE id = ?').run(productId);
     return r.changes > 0;
   })();
@@ -864,6 +1137,7 @@ function verifyProvision(productId, hardwareId, challenge, responseHex, sn) {
     SET status = 'provisioned', provision_challenge = NULL, challenge_expires_at = NULL
     WHERE id = ?
   `).run(cred.id);
+  markFactoryVerified(cred.product_id, cred.hardware_id);
   return { sn: cred.sn, status: 'provisioned' };
 }
 
@@ -914,29 +1188,91 @@ function failProvision(productId, hardwareId, reason, opts = {}) {
 }
 
 /**
- * 删除设备凭证（仅允许 provisioning / provisioning_failed 状态，已出厂/已激活/已绑定的不允许）
+ * 删除设备凭证：按"是否曾激活"判断（见 getSnDeletability），服务端强制校验
  */
 function deleteCredential(id) {
   const cred = getCredentialById(id);
   if (!cred) throw new Error('device_not_found');
-  if (!['provisioning', 'provisioning_failed', 'retired'].includes(cred.status)) {
-    throw new Error('device_not_deletable');
-  }
-  // 同时删除关联的绑定关系；烧录请求幂等映射永久保留（墓碑）：
-  // 目标凭证删除后，旧 request_id 重放被拒绝（request_target_deleted）而非重新创建。
-  // SN 序列单调递增，已删除的 SN 永不复用，保留映射不会误指向新凭证
+  // 删除规则按"是否曾激活"判断（与后台 getSnDeletability 同口径，服务端强制校验）：
+  //   曾激活（volcano_activated_at 非空）→ 记录永久保留（订单/权益历史挂靠），
+  //     一律不删除；换回该 SN 走"下次使用"。
+  //   未激活但被订单引用 → 不物理删除（保留订单历史），建议走"作废"（retired）。
+  if (cred.volcano_activated_at) throw new Error('device_activated_no_delete');
+  const orderCount = db.prepare("SELECT COUNT(*) AS n FROM orders WHERE credential_id = ?").get(id).n;
+  if (orderCount > 0) throw new Error('device_has_orders_void');
+  // 订单的预留 SN 不能物理删除：删除会让订单失去"作废＋重新分配"的关联历史
+  // （renew-订单号 的幂等墓碑仍在，重复确认也无法重建）。改走"作废并重新分配"。
+  const resvOrder = db.prepare("SELECT id, order_no FROM orders WHERE reserved_credential_id = ?").get(id);
+  if (resvOrder) throw new Error('order_reserved_sn');
+  // 被"作废并重新分配"幂等历史引用（替代 SN / 被作废旧 SN）也不能删除：
+  // 删除后 order_realloc_requests 的重放无法返回原结果（SN 解析为 NULL）
+  const inReallocHistory = db.prepare(
+    "SELECT 1 FROM order_realloc_requests WHERE reserved_credential_id = ? OR voided_credential_id = ?"
+  ).get(id, id);
+  if (inReallocHistory) throw new Error('device_in_realloc_history');
+
+  // 绑定/服务期属于物理设备（hardware_id），不随单份凭证删除；
+  // 烧录请求幂等映射永久保留（墓碑）：目标凭证删除后，旧 request_id 重放被拒绝
+  // （request_target_deleted）而非重新创建。SN 序列单调递增，已删除的 SN 永不复用。
   // 删除前确保 FactoryKey 已存档：凭证全删后仍可从存档恢复共享密钥（eFuse 兼容）
   const factoryKeyPlain = decrypt(cred.factory_key);
   db.transaction(() => {
     archiveFactoryKey(cred.product_id, cred.hardware_id, factoryKeyPlain);
-    db.prepare("DELETE FROM user_device_bindings WHERE credential_id = ?").run(id);
+    db.prepare("DELETE FROM device_sn_rights WHERE credential_id = ?").run(id);
+    db.prepare("DELETE FROM device_bind_tokens WHERE credential_id = ?").run(id);
     db.prepare("DELETE FROM device_credentials WHERE id = ?").run(id);
   })();
   return { ok: true };
 }
 
+// 后台 SN 删除/作废规则（服务端唯一裁决，前端照 can_delete/can_void 显示）：
+//   从未激活（volcano_activated_at 为空）：
+//     - 无订单引用 → 可物理删除（provisioned 预留后反悔 / 烧录中 / 失败 / 已作废残留）
+//     - 有订单引用 → 只能"作废"（保留订单历史），作废后可预留替代 SN
+//   曾激活 → 不删除不作废按钮（记录保留）；停用异常凭证放高级操作（退役）；
+//     换回旧 SN 用"下次使用"，不需要恢复。
+function getSnDeletability(cred) {
+  if (cred.volcano_activated_at) {
+    return {
+      ever_activated: true, can_delete: false, can_void: false,
+      delete_block_reason: '已激活的 SN 保留记录（订单/权益历史），不能删除；换回该 SN 请用"下次使用"',
+    };
+  }
+  const orderCount = db.prepare("SELECT COUNT(*) AS n FROM orders WHERE credential_id = ?").get(cred.id).n;
+  if (orderCount > 0) {
+    return {
+      ever_activated: false, can_delete: false, can_void: cred.status !== 'retired',
+      delete_block_reason: '该 SN 已关联订单，不能物理删除；建议"作废"以保留订单历史，再预留替代 SN',
+    };
+  }
+  // 被订单作为"自动预留 SN"引用 → 不能物理删除（否则订单失去关联历史且幂等墓碑
+  // 使重复确认无法重建）；用订单上的"作废并重新分配"换替代 SN
+  const resv = db.prepare("SELECT order_no FROM orders WHERE reserved_credential_id = ?").get(cred.id);
+  if (resv) {
+    return {
+      ever_activated: false, can_delete: false, can_void: cred.status !== 'retired',
+      delete_block_reason: '该 SN 是订单「' + resv.order_no + '」预留的替代 SN，不能直接删除；请在订单上使用"作废并重新分配"',
+    };
+  }
+  // 被"作废并重新分配"的幂等历史引用（作为该次分配的替代 SN 或被作废的旧 SN）：
+  // 删除会让 order_realloc_requests 失去关联（重放无法返回原结果），保留为"已作废"
+  const inHistory = db.prepare(`
+    SELECT o.order_no FROM order_realloc_requests rr JOIN orders o ON o.id = rr.order_id
+    WHERE rr.reserved_credential_id = ? OR rr.voided_credential_id = ? LIMIT 1
+  `).get(cred.id, cred.id);
+  if (inHistory) {
+    return {
+      ever_activated: false, can_delete: false, can_void: cred.status !== 'retired',
+      delete_block_reason: '该 SN 是订单「' + inHistory.order_no + '」替代分配历史的关联记录，不能删除（保留后重放才能返回原结果）；状态已为"已作废"',
+    };
+  }
+  return { ever_activated: false, can_delete: true, can_void: false, delete_block_reason: null };
+}
+
 function getCredentialByHardwareId(productId, hardwareId) {
-  return db.prepare("SELECT * FROM device_credentials WHERE product_id = ? AND hardware_id = ? ORDER BY id ASC LIMIT 1").get(productId, hardwareId);
+  // 不带 SN 的身份解析：优先取"最近一次激活返回"的凭证（is_primary），
+  // 未标记时回落到最早一条（与历史行为一致）
+  return db.prepare("SELECT * FROM device_credentials WHERE product_id = ? AND hardware_id = ? ORDER BY is_primary DESC, id ASC LIMIT 1").get(productId, hardwareId);
 }
 
 function getCredentialsByHardwareId(productId, hardwareId) {
@@ -978,23 +1314,217 @@ const saveVolcanoCredentials = db.transaction((productId, credId, deviceSecret, 
       WHEN rtc_app_id IS NULL OR rtc_app_id = '' THEN ? ELSE rtc_app_id END
     WHERE id = ?
   `).run(rtcAppId, productId);
+  // 火山 DynamicRegister 只返回 DeviceSecret / RTCAppID，不返回任何 License 信息
+  // （见 volcano.js）。按业务规则"实际激活后一年、火山控制"：实际激活成功即视为
+  // 获得一年 License，平台记录首次有效激活时间，到期按激活 +1 年推算（仅展示，
+  // 标注来源为"激活推算"；火山将来有实际返回状态/到期数据时以实际结果为准）。
+  // ON CONFLICT DO NOTHING：不覆盖已有权益（真实续期记录 / 切回旧 SN 均不重算一年）。
+  db.prepare(`
+    INSERT INTO device_sn_rights (credential_id, provider_renew_status, provider_expires_at)
+    VALUES (?, 'completed', datetime('now', '+1 year'))
+    ON CONFLICT(credential_id) DO NOTHING
+  `).run(credId);
+  // 火山注册成功同样证明该物理设备完成过出厂验证（激活以 FactoryKey 签名为前提）
+  const hw = db.prepare("SELECT hardware_id FROM device_credentials WHERE id = ?").get(credId);
+  if (hw) markFactoryVerified(productId, hw.hardware_id);
   return db.prepare("SELECT rtc_app_id FROM products WHERE id = ?").get(productId).rtc_app_id;
 });
 
+// 物理设备层"已完成出厂验证"的事实标记（product_id + hardware_id 维度，独立于任何 SN 记录）：
+// 一旦写入即永久保留，删除 SN 记录不改变；预留新 SN 时以此为准，
+// 密钥存档（factory_key_archive）只保管密钥，不等于验证成功。
+function markFactoryVerified(productId, hardwareId) {
+  db.prepare(`
+    INSERT OR IGNORE INTO factory_verified_devices (product_id, hardware_id)
+    VALUES (?, ?)
+  `).run(productId, hardwareId);
+}
+
+// 列出某产品全部凭证（含绑定用户/服务期/权益汇总，供后台列表）
 function listCredentials(productId) {
+  // 绑定与服务期属于物理设备：按 product_id + hardware_id 关联（同一 MAC 各一条）
   return db.prepare(`
     SELECT c.*,
-      (SELECT u.email IS NOT NULL FROM user_device_bindings b JOIN users u ON b.user_id = u.id WHERE b.credential_id = c.id) as bound_user_has_email,
-      (SELECT u.phone FROM user_device_bindings b JOIN users u ON b.user_id = u.id WHERE b.credential_id = c.id) as bound_user_phone,
-      (SELECT b.id FROM user_device_bindings b WHERE b.credential_id = c.id) as binding_id
+      (SELECT u.email IS NOT NULL FROM user_device_bindings b JOIN users u ON b.user_id = u.id
+        WHERE b.product_id = c.product_id AND b.hardware_id = c.hardware_id) as bound_user_has_email,
+      (SELECT u.phone FROM user_device_bindings b JOIN users u ON b.user_id = u.id
+        WHERE b.product_id = c.product_id AND b.hardware_id = c.hardware_id) as bound_user_phone,
+      (SELECT b.id FROM user_device_bindings b
+        WHERE b.product_id = c.product_id AND b.hardware_id = c.hardware_id) as binding_id,
+      (SELECT s.expires_at FROM device_services s
+        WHERE s.product_id = c.product_id AND s.hardware_id = c.hardware_id) as service_expires_at,
+      (SELECT s.plan FROM device_services s
+        WHERE s.product_id = c.product_id AND s.hardware_id = c.hardware_id) as service_plan,
+      r.provider_renew_status, r.provider_license_id, r.provider_expires_at
     FROM device_credentials c
+    LEFT JOIN device_sn_rights r ON r.credential_id = c.id
     WHERE c.product_id = ?
     ORDER BY c.id DESC
   `).all(productId);
 }
 
 function setCredentialStatus(id, status) {
+  const cred = getCredentialById(id);
+  if (!cred) throw new Error('device_not_found');
+  if (status === 'retired' && cred.status !== 'retired') {
+    // 已激活的 SN 不能作废：正在使用的设备会激活失败且无法选回；
+    // 需要替代 SN 时走"预留新 SN"（保留旧 SN），流程切换走"作废并重新分配"
+    if (cred.volcano_activated_at) throw new Error('device_activated_no_void');
+    // 清理指向指针：已作废的 SN 不能继续作为"下次上线（pending_primary）"的解析目标，
+    // 否则用户端展示和设备无 SN 激活仍会解析到这份作废凭证
+    db.prepare("UPDATE device_credentials SET pending_primary = 0, is_primary = 0 WHERE id = ?").run(id);
+  }
   db.prepare("UPDATE device_credentials SET status = ? WHERE id = ?").run(status, id);
+  // 达到验证完成状态（含从已验证状态退役/恢复）固化事实标记；
+  // 从未验证过的记录直接退役不产生标记（退役 ≠ 验证成功，重启回填同口径）
+  if (['provisioned', 'volcano_registered', 'retired'].includes(status)) {
+    if (status !== 'retired' || ['provisioned', 'volcano_registered'].includes(cred.status)) {
+      markFactoryVerified(cred.product_id, cred.hardware_id);
+    }
+  }
+}
+
+// ==================== SN 选择（物理设备多 SN） ====================
+//
+// 归属模型：
+//   - MAC、FactoryKey、后台选定的 SN        → 物理设备
+//   - 用户绑定、平台服务期                   → 物理设备（hardware_id）
+//   - SN、火山设备名、DeviceSecret、注册状态 → 每份 SN 凭证（device_credentials）
+//   - 火山 License ID、有效期、处理状态      → 对应 SN 的权益记录（device_sn_rights）
+//   - 续费订单                               → 记录下单时针对的 SN（历史，不迁移）
+//
+// 管理员指定"下次上线使用的 SN"是纯选择操作：不搬绑定、不清权益、不受订单影响。
+// 设备下次 activate（不带 SN）时返回所选 SN 的凭证：
+//   - 已激活的 SN → 直接下发已保存的 DeviceSecret（recovered）；
+//   - 待激活（provisioned）的 SN → 走首次火山注册后下发。
+// 选择保持粘性，直到管理员改选；B 的续费任务始终绑定 B，切回 A 不影响它。
+
+// 管理员指定下次上线使用的 SN：
+//   - 目标必须是"待火山激活（provisioned）"或"已激活（volcano_registered）"，
+//     烧录中/失败/已退役的不可选；
+//   - 不做订单拦截、不做用户归属校验（绑定与服务期挂物理设备，切换不影响任何记录）。
+function setPrimaryCredential(productId, hardwareId, credentialId) {
+  const target = db.prepare(
+    "SELECT * FROM device_credentials WHERE id = ? AND product_id = ? AND hardware_id = ?"
+  ).get(credentialId, productId, hardwareId);
+  if (!target) throw new Error('device_not_found');
+  if (!['provisioned', 'volcano_registered'].includes(target.status)) {
+    throw new Error('device_not_switchable');
+  }
+  db.transaction(() => {
+    db.prepare("UPDATE device_credentials SET pending_primary = 0 WHERE product_id = ? AND hardware_id = ?").run(productId, hardwareId);
+    db.prepare("UPDATE device_credentials SET pending_primary = 1 WHERE id = ?").run(credentialId);
+  })();
+  return db.prepare("SELECT * FROM device_credentials WHERE id = ?").get(credentialId);
+}
+
+// 不带 SN 的 activate 解析：后台选定的 SN 优先，否则最近激活返回的凭证（最早一条兜底）
+function resolveNoSnCredential(productId, hardwareId) {
+  // 排除已作废（retired）：没有任何可用 SN 时返回 undefined（激活/下单按
+  // "未配置可用 SN" 拒绝），绝不拿作废记录兜底
+  return db.prepare(`
+    SELECT * FROM device_credentials
+    WHERE product_id = ? AND hardware_id = ? AND status != 'retired'
+    ORDER BY pending_primary DESC, is_primary DESC, id ASC
+    LIMIT 1
+  `).get(productId, hardwareId);
+}
+
+// 业务"当前生效凭证"（设备 status 接口用）：与验签用的凭证分离。
+// 排除已作废（retired），按最近激活优先（is_primary）；刻意不按 pending_primary 优先——
+// 管理员刚指定"下次上线"的新 SN 在设备激活前，status 仍按旧 SN 判断权益。
+// 全部作废/不存在时返回 undefined（调用方按"暂无可用 SN"处理：禁止 AI、明确状态）。
+function resolveActiveCredential(productId, hardwareId) {
+  return db.prepare(`
+    SELECT * FROM device_credentials
+    WHERE product_id = ? AND hardware_id = ? AND status != 'retired'
+    ORDER BY is_primary DESC, id ASC
+    LIMIT 1
+  `).get(productId, hardwareId);
+}
+
+// 设备激活成功后调用：记录"最近一次激活返回的 SN"（is_primary）。
+// 后台选定（pending_primary）保持不变——管理员改选前，设备一直解析到选定的 SN。
+function markActivated(productId, hardwareId, credId) {
+  db.prepare(`
+    UPDATE device_credentials
+    SET is_primary = CASE WHEN id = ? THEN 1 ELSE 0 END
+    WHERE product_id = ? AND hardware_id = ?
+  `).run(credId, productId, hardwareId);
+}
+
+// 为已出厂设备预留新 SN（管理员操作，平台行为，不依赖火山、不重新烧录 eFuse）：
+//   - 复用物理设备身份与共享 FactoryKey，不创建烧录 challenge（不是出厂烧录，不重烧 eFuse）；
+//   - SN 初始状态 provisioned（待火山激活）；设备下次激活时走首次火山注册；
+//   - 全新 MAC（无任何出厂记录）不支持预留，需先走出厂烧录。
+// requestId 可选：同一次预留的重试（响应丢失后重放）返回同一个 SN，不重复生成。
+//   - 命中已有映射：校验产品/MAC 一致后返回原 SN（reused=true）；
+//     目标凭证已被删除则拒绝（墓碑语义，不重新创建）；
+//   - 首次执行：写入 provision_requests（mode='reserve'）作为幂等映射。
+function reserveSnForDevice(productId, hardwareId, requestId = null) {
+  const product = getProductRow(productId);
+  if (!product) throw new Error('产品不存在');
+  // 幂等重放检查
+  if (requestId) {
+    const existing = db.prepare("SELECT * FROM provision_requests WHERE request_id = ?").get(requestId);
+    if (existing) {
+      if (existing.mode !== 'reserve' || existing.product_id !== productId || existing.hardware_id !== hardwareId) {
+        throw new Error('request_id_conflict');
+      }
+      const cred = db.prepare("SELECT sn FROM device_credentials WHERE product_id = ? AND sn = ?").get(productId, existing.sn);
+      if (!cred) throw new Error('request_target_deleted');
+      return { sn: cred.sn, reused: true };
+    }
+  }
+  const records = getCredentialsByHardwareId(productId, hardwareId);
+  // MAC 下全部证书 retired = 设备停用，拒绝预留
+  if (records.length > 0 && records.every(r => r.status === 'retired')) {
+    throw new Error('device_retired');
+  }
+  // 必须完成过出厂验证：以物理设备层持久化的事实标记为准（factory_verified_devices）。
+  // 删除 SN 记录不影响该事实；密钥存档只说明烧过密钥（录入即存档），不等于验证成功，
+  // 所以"删掉烧录中/失败的记录再预留"绕不过该检查。
+  // 从未有过任何记录的 MAC 仍按"设备不存在"报错，保持语义不变。
+  if (!db.prepare("SELECT 1 FROM factory_verified_devices WHERE product_id = ? AND hardware_id = ?").get(productId, hardwareId)) {
+    if (records.length === 0 && !hasProvisionHistory(productId, hardwareId)) {
+      throw new Error('device_not_found');
+    }
+    throw new Error('factory_verify_incomplete');
+  }
+  // 共享 FactoryKey：优先取现存凭证；全部记录已删除时从存档恢复
+  // （eFuse 只烧一次——生成新密钥会让已烧 eFuse 的设备永远无法通过验证）
+  let factoryKey = null;
+  if (records.length > 0) {
+    factoryKey = decrypt(records[0].factory_key);
+  } else {
+    factoryKey = recoverFactoryKeyFromArchive(productId, hardwareId)
+      || recoverFactoryKeyFromTombstones(productId, hardwareId);
+    if (!factoryKey) {
+      if (hasProvisionHistory(productId, hardwareId)) {
+        throw new Error('factory_key_archive_missing');
+      }
+      throw new Error('device_not_found');
+    }
+  }
+  const tx = db.transaction(() => {
+    db.prepare("UPDATE products SET sn_seq = sn_seq + 1 WHERE id = ?").run(productId);
+    const updated = getProductRow(productId);
+    const snValue = `${updated.sn_prefix}${String(updated.sn_seq).padStart(6, '0')}`;
+    const hwidClean = hardwareId.replace(/[^0-9A-Fa-f]/g, '').toLowerCase();
+    // 每个 SN 在火山侧是独立设备，名字带 SN 后缀避免同名冲突
+    const volcanoDeviceName = `${product.code}-${hwidClean}-${snValue}`;
+    db.prepare(`
+      INSERT INTO device_credentials (product_id, sn, hardware_id, factory_key, volcano_device_name, status)
+      VALUES (?, ?, ?, ?, ?, 'provisioned')
+    `).run(productId, snValue, hardwareId, encrypt(factoryKey), volcanoDeviceName);
+    if (requestId) {
+      db.prepare("INSERT INTO provision_requests (request_id, product_id, hardware_id, sn, mode) VALUES (?, ?, ?, ?, 'reserve')")
+        .run(requestId, productId, hardwareId, snValue);
+    }
+    archiveFactoryKey(productId, hardwareId, factoryKey);
+    return snValue;
+  });
+  return { sn: tx(), reused: false };
 }
 
 // ==================== Users ====================
@@ -1071,13 +1601,26 @@ function listUsersByProduct(productId) {
   `).all(productId);
 }
 
+// 账号注销模型（软删除）：整个操作在事务内完成，失败整体回滚，不会出现
+// "绑定已删、用户还在"的部分删除状态。
+//   - 绑定随注销解除（绑定是用户与设备的关系）；设备、FactoryKey、各 SN、
+//     服务期全部保留——不为通过外键删除设备权益。
+//   - 订单历史保留（注销关联，审计追溯），服务期持有人保留为注销账号。
+//   - phone/email 匿名化：释放原手机号供重新注册；password_hash 清空使
+//     已注销账号不可再登录。deleted_at 是注销标记（登录/鉴权均拒绝）。
 function deleteUser(id) {
   const user = db.prepare("SELECT * FROM users WHERE id = ?").get(id);
   if (!user) throw new Error('user_not_found');
-  // 删除用户的绑定关系 + 订单
-  db.prepare("DELETE FROM user_device_bindings WHERE user_id = ?").run(id);
-  db.prepare("DELETE FROM orders WHERE user_id = ?").run(id);
-  db.prepare("DELETE FROM users WHERE id = ?").run(id);
+  if (user.deleted_at) throw new Error('user_already_deleted');
+  db.transaction(() => {
+    db.prepare("DELETE FROM user_device_bindings WHERE user_id = ?").run(id);
+    db.prepare(`
+      UPDATE users
+      SET deleted_at = datetime('now'), email = NULL, password_hash = '',
+          phone = ?
+      WHERE id = ?
+    `).run('deleted-' + id, id);
+  })();
   return { ok: true };
 }
 
@@ -1087,34 +1630,51 @@ function setUserVerified(id) {
 
 function setUserPlan(id, plan, expiresAt) {
   // 已废弃：套餐不再按用户。保留函数以免旧代码调用报错，但不再写 users.plan
-  // 真实写入请走 setCredentialServicePlan(credentialId, plan, expiresAt)
+  // 真实写入请走 setDeviceServicePlan(credentialId, plan, expiresAt)
   return { ok: true, deprecated: true };
 }
 
-// 设备级套餐：直接设置 device_services.plan 和 expires_at
+// 设备级套餐：直接设置 device_services.plan 和 expires_at（服务期挂物理设备）
 // 用于管理员手动调整设备服务期 / 套餐（如：补偿、补录、特殊情况授权）
-function setCredentialServicePlan(credentialId, plan, expiresAt) {
-  const svc = getServiceByCredential(credentialId);
+// 接受任意一份 SN 凭证 id，按其物理设备身份定位服务期记录
+function setDeviceServicePlan(credentialId, plan, expiresAt) {
+  const cred = getCredentialById(credentialId);
+  if (!cred) throw new Error('device_not_found');
+  const svc = getServiceByHardware(cred.product_id, cred.hardware_id);
   if (!svc) throw new Error('service_not_found');
   db.prepare(`
     UPDATE device_services
     SET plan = ?, expires_at = ?, updated_at = datetime('now')
-    WHERE credential_id = ?
-  `).run(plan, expiresAt, credentialId);
-  return getServiceByCredential(credentialId);
+    WHERE product_id = ? AND hardware_id = ?
+  `).run(plan, expiresAt, cred.product_id, cred.hardware_id);
+  return getServiceByHardware(cred.product_id, cred.hardware_id);
 }
 
 // ==================== User-Device Bindings ====================
-function createBinding(userId, credentialId, productId, nickname) {
+// 绑定属于物理设备（product_id + hardware_id），与具体 SN 无关：
+// 后台切换"下次上线 SN"不需要搬迁绑定。
+
+// 同一 MAC 展示用凭证：后台选定（pending_primary）> 最近激活（is_primary）> 最早一条；
+// 排除已作废（retired）——全部作废时 rc 为 NULL，调用方按"未配置可用 SN"展示
+// outerAlias：外层表的别名（绑定表用 b，服务期表用 s）
+const RESOLVED_CRED_JOIN = (outerAlias = 'b') => `
+  LEFT JOIN device_credentials rc ON rc.id = (
+    SELECT c.id FROM device_credentials c
+    WHERE c.product_id = ${outerAlias}.product_id AND c.hardware_id = ${outerAlias}.hardware_id
+      AND c.status != 'retired'
+    ORDER BY c.pending_primary DESC, c.is_primary DESC, c.id ASC LIMIT 1
+  )`;
+
+function createBinding(userId, productId, hardwareId, nickname) {
   db.prepare(`
-    INSERT INTO user_device_bindings (user_id, credential_id, product_id, nickname)
+    INSERT INTO user_device_bindings (user_id, product_id, hardware_id, nickname)
     VALUES (?, ?, ?, ?)
-  `).run(userId, credentialId, productId, nickname || null);
-  return db.prepare("SELECT * FROM user_device_bindings WHERE credential_id = ?").get(credentialId);
+  `).run(userId, productId, hardwareId, nickname || null);
+  return db.prepare("SELECT * FROM user_device_bindings WHERE product_id = ? AND hardware_id = ?").get(productId, hardwareId);
 }
 
-function getBindingByCredential(credentialId) {
-  return db.prepare("SELECT * FROM user_device_bindings WHERE credential_id = ?").get(credentialId);
+function getBindingByHardware(productId, hardwareId) {
+  return db.prepare("SELECT * FROM user_device_bindings WHERE product_id = ? AND hardware_id = ?").get(productId, hardwareId);
 }
 
 function getBindingById(id) {
@@ -1125,13 +1685,14 @@ function listBindingsByUser(userId) {
   return db.prepare(`
     SELECT
       b.*,
-      c.sn, c.hardware_id, c.volcano_device_name, c.status as cred_status,
-      s.plan as service_plan,
-      s.expires_at as service_expires_at,
-      s.provider_renew_status as service_renew_status
+      rc.id AS credential_id, rc.sn, rc.status AS cred_status,
+      s.plan AS service_plan,
+      s.expires_at AS service_expires_at,
+      r.provider_renew_status
     FROM user_device_bindings b
-    JOIN device_credentials c ON b.credential_id = c.id
-    LEFT JOIN device_services s ON s.credential_id = c.id
+    LEFT JOIN device_services s ON s.product_id = b.product_id AND s.hardware_id = b.hardware_id
+    ${RESOLVED_CRED_JOIN('b')}
+    LEFT JOIN device_sn_rights r ON r.credential_id = rc.id
     WHERE b.user_id = ?
     ORDER BY b.id DESC
   `).all(userId);
@@ -1140,11 +1701,11 @@ function listBindingsByUser(userId) {
 function listAllBindings(productId) {
   // 不返回 user_email，避免泄露；只返回手机号 + 是否已填邮箱
   return db.prepare(`
-    SELECT b.*, u.phone as user_phone, u.email IS NOT NULL as user_has_email,
-      c.sn, c.hardware_id, c.volcano_device_name
+    SELECT b.*, u.phone AS user_phone, u.email IS NOT NULL AS user_has_email,
+      rc.id AS credential_id, rc.sn, rc.volcano_device_name
     FROM user_device_bindings b
     JOIN users u ON b.user_id = u.id
-    JOIN device_credentials c ON b.credential_id = c.id
+    ${RESOLVED_CRED_JOIN('b')}
     WHERE b.product_id = ?
     ORDER BY b.id DESC
   `).all(productId);
@@ -1202,30 +1763,34 @@ function cleanExpiredBindTokens() {
 }
 
 // ==================== Device Services（设备服务期） ====================
-// 首次绑定时创建第一年服务期；续费在 expires_at 上累加
-function createServiceForBinding(userId, credentialId, productId, plan = 'annual', years = SERVICE_DEFAULT_YEARS) {
+// 服务期属于物理设备（product_id + hardware_id）：切换 SN 不搬迁、不清空。
+// 首次绑定时创建第一年服务期；续费在 expires_at 上累加。
+// 火山权益（License ID / 有效期 / 处理状态）按 SN 记录在 device_sn_rights，
+// 由 getSnRights / setSnRenewStatus 读写，与本表无关。
+
+function createServiceForDevice(userId, productId, hardwareId, plan = 'annual', years = SERVICE_DEFAULT_YEARS) {
   const now = new Date();
   const startAt = now.toISOString();
   const exp = new Date(now.getTime() + years * 365 * 24 * 60 * 60 * 1000);
   db.prepare(`
-    INSERT INTO device_services (credential_id, user_id, product_id, start_at, expires_at, plan, provider_expires_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT(credential_id) DO UPDATE SET
+    INSERT INTO device_services (user_id, product_id, hardware_id, start_at, expires_at, plan)
+    VALUES (?, ?, ?, ?, ?, ?)
+    ON CONFLICT(product_id, hardware_id) DO UPDATE SET
       user_id = excluded.user_id,
       plan = excluded.plan,
       updated_at = datetime('now')
-  `).run(credentialId, userId, productId, startAt, exp.toISOString(), plan, exp.toISOString());
-  return getServiceByCredential(credentialId);
+  `).run(userId, productId, hardwareId, startAt, exp.toISOString(), plan);
+  return getServiceByHardware(productId, hardwareId);
 }
 
-function getServiceByCredential(credentialId) {
-  return db.prepare("SELECT * FROM device_services WHERE credential_id = ?").get(credentialId);
+function getServiceByHardware(productId, hardwareId) {
+  return db.prepare("SELECT * FROM device_services WHERE product_id = ? AND hardware_id = ?").get(productId, hardwareId);
 }
 
-// 续费：在当前 expires_at 基础上累加 years 年
+// 续费：在当前 expires_at 基础上累加 years 年（只延长平台服务期，不碰火山权益）
 // 若已过期，则从 now 开始计算（避免续费叠加过期时间）
-function extendService(credentialId, userId, years = 1) {
-  const svc = getServiceByCredential(credentialId);
+function extendService(productId, hardwareId, userId, years = 1) {
+  const svc = getServiceByHardware(productId, hardwareId);
   if (!svc) throw new Error('service_not_found');
   const now = Date.now();
   const currentExp = new Date(svc.expires_at).getTime();
@@ -1233,33 +1798,41 @@ function extendService(credentialId, userId, years = 1) {
   const newExp = new Date(base + years * 365 * 24 * 60 * 60 * 1000).toISOString();
   db.prepare(`
     UPDATE device_services
-    SET expires_at = ?, user_id = ?, provider_renew_status = 'pending',
-        provider_renew_at = datetime('now'), provider_renew_error = NULL,
-        updated_at = datetime('now')
-    WHERE credential_id = ?
-  `).run(newExp, userId, credentialId);
-  return getServiceByCredential(credentialId);
+    SET expires_at = ?, user_id = ?, updated_at = datetime('now')
+    WHERE product_id = ? AND hardware_id = ?
+  `).run(newExp, userId, productId, hardwareId);
+  return getServiceByHardware(productId, hardwareId);
 }
 
-function setServiceRenewStatus(credentialId, status, { error = null, licenseId = null, providerExpiresAt = null } = {}) {
+// ==================== SN 火山权益（device_sn_rights） ====================
+// License 属于具体 SN 的火山设备，不随切换转移。
+
+function getSnRights(credentialId) {
+  return db.prepare("SELECT * FROM device_sn_rights WHERE credential_id = ?").get(credentialId);
+}
+
+// upsert：目标 SN 尚无权益记录时先创建（如订单针对尚未激活过的 SN）
+function setSnRenewStatus(credentialId, status, { error = null, licenseId = null, providerExpiresAt = null } = {}) {
   db.prepare(`
-    UPDATE device_services
-    SET provider_renew_status = ?,
-        provider_renew_error = ?,
-        provider_license_id = COALESCE(?, provider_license_id),
-        provider_expires_at = COALESCE(?, provider_expires_at),
-        updated_at = datetime('now')
-    WHERE credential_id = ?
-  `).run(status, error, licenseId, providerExpiresAt, credentialId);
+    INSERT INTO device_sn_rights (credential_id, provider_renew_status, provider_renew_error, provider_license_id, provider_expires_at)
+    VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(credential_id) DO UPDATE SET
+      provider_renew_status = excluded.provider_renew_status,
+      provider_renew_error = excluded.provider_renew_error,
+      provider_license_id = COALESCE(?, provider_license_id),
+      provider_expires_at = COALESCE(?, provider_expires_at),
+      updated_at = datetime('now')
+  `).run(credentialId, status, error, licenseId, providerExpiresAt, licenseId, providerExpiresAt);
 }
 
 function listServicesByProduct(productId) {
   return db.prepare(`
-    SELECT s.*, c.sn, c.hardware_id, c.volcano_device_name,
-      u.phone as user_phone, u.email IS NOT NULL as user_has_email
+    SELECT s.*, rc.sn, rc.volcano_device_name,
+      u.phone AS user_phone, u.email IS NOT NULL AS user_has_email,
+      u.deleted_at IS NOT NULL AS user_deleted
     FROM device_services s
-    JOIN device_credentials c ON s.credential_id = c.id
     LEFT JOIN users u ON s.user_id = u.id
+    ${RESOLVED_CRED_JOIN('s')}
     WHERE s.product_id = ?
     ORDER BY s.expires_at DESC
   `).all(productId);
@@ -1267,24 +1840,24 @@ function listServicesByProduct(productId) {
 
 function listServicesByUser(userId) {
   return db.prepare(`
-    SELECT s.*, c.sn, c.hardware_id, c.volcano_device_name, c.status as cred_status
+    SELECT s.*, rc.sn, rc.volcano_device_name, rc.status AS cred_status
     FROM device_services s
-    JOIN device_credentials c ON s.credential_id = c.id
+    ${RESOLVED_CRED_JOIN('s')}
     WHERE s.user_id = ?
     ORDER BY s.expires_at DESC
   `).all(userId);
 }
 
-// 列出需要后台处理续期的设备（pending 状态）
-function listServicesPendingRenew() {
+// 列出需要后台处理续期的 SN（pending 状态）
+function listSnRightsPendingRenew() {
   return db.prepare(`
-    SELECT s.*, c.volcano_device_name, p.code as product_code,
+    SELECT r.*, c.sn, c.volcano_device_name, p.code AS product_code,
            p.instance_id, p.product_key, p.product_secret
-    FROM device_services s
-    JOIN device_credentials c ON s.credential_id = c.id
-    JOIN products p ON s.product_id = p.id
-    WHERE s.provider_renew_status = 'pending'
-  `).all().map(s => ({ ...s, product_secret: s.product_secret ? decrypt(s.product_secret) : null }));
+    FROM device_sn_rights r
+    JOIN device_credentials c ON r.credential_id = c.id
+    JOIN products p ON c.product_id = p.id
+    WHERE r.provider_renew_status = 'pending'
+  `).all().map(r => ({ ...r, product_secret: r.product_secret ? decrypt(r.product_secret) : null }));
 }
 
 // ==================== Orders（订单） ====================
@@ -1315,6 +1888,114 @@ function markOrderPaid(id) {
   return { changes: info.changes, order: getOrderById(id) };
 }
 
+// 确认收款（原子事务）：标记已付款 → 延长 MAC 平台服务期 → 自动预留新 SN → 订单关联新 SN。
+//   - 整体一个事务，任一步失败全部回滚（不会出现已收款但没延长/没预留的中间态）。
+//   - 订单 ID 作为幂等依据：request_id = 'renew-' + order_no，重复确认返回同一个
+//     预留 SN，不重复延长服务期、不重复生成 SN。
+//   - 自动生成不代表切走当前 SN：新 SN 仅"待激活"，仍由管理员手动选"下次使用"；
+//     新 SN 激活失败时旧 SN/旧 License/绑定/服务期原样保留，可随时选回。
+//   - 旧"给原 SN 购买 License 续期"任务（尚未开始，pending/failed）标记 superseded：
+//     新 SN 激活自带一年 License，两套续期流程不得对同一订单重复执行（后台轮询只认
+//     pending，会跳过 superseded）。
+//   - 已付款订单的重放是纯只读幂等：不补 SN、不改续期状态。补预留/重新分配是独立的
+//     管理操作（见 reallocateOrderReservedSn），不归收款接口承担。订单以 renew_mode
+//     标记流程版本（'new_sn' = 新流程；NULL = 旧流程），已完成续期的旧订单重放不追加权益。
+const confirmOrderPaid = db.transaction((orderId) => {
+  const order = getOrderById(orderId);
+  if (!order) throw new Error('order_not_found');
+  const orderCred = getCredentialById(order.credential_id);
+  if (!orderCred) throw new Error('order_credential_missing');
+
+  if (order.status === 'paid') {
+    // 只读重放：无论 renew_mode 与续期状态如何，都不再产生任何写入
+    const prev = order.reserved_credential_id ? getCredentialById(order.reserved_credential_id) : null;
+    return { order, reserved_sn: prev ? prev.sn : null, reused: true };
+  }
+  if (order.status !== 'pending') throw new Error('order_not_pending');
+  // 旧流程的续期任务正在火山处理中：不能靠改状态"假装取消"后改走新 SN 流程，
+  // 等任务终态（completed/failed）后再由管理员决定重试或改用新 SN
+  if (order.provider_renew_status === 'processing') throw new Error('renew_task_processing');
+
+  markOrderPaid(orderId);
+  extendService(orderCred.product_id, orderCred.hardware_id, order.user_id, order.years);
+  const reserved = reserveSnForDevice(orderCred.product_id, orderCred.hardware_id, 'renew-' + order.order_no);
+  const reservedCred = db.prepare("SELECT id FROM device_credentials WHERE product_id = ? AND sn = ?")
+    .get(orderCred.product_id, reserved.sn);
+  db.prepare("UPDATE orders SET reserved_credential_id = ?, renew_mode = 'new_sn' WHERE id = ?")
+    .run(reservedCred.id, orderId);
+  setOrderRenewStatus(orderId, 'superseded');
+  return { order: getOrderById(orderId), reserved_sn: reserved.sn, reused: reserved.reused };
+});
+
+// 订单预留 SN 的"作废并重新分配"（独立管理操作，不属于收款确认；仅限新流程订单）。
+//   - 当前预留 SN 置为 retired（作废终态，凭证记录保留），旧关联写入 reserved_history；
+//   - 用独立幂等键（request_id，由管理端每次操作生成，如 UUID）预留替代 SN 并更新订单关联；
+//   - 幂等记录绑定订单（order_realloc_requests）：重放只返回该次操作的原结果，
+//     绝不修改当前关联（延迟重放不能把订单指回已作废的旧 SN）；
+//   - request_id 全局唯一：复用烧录/其他订单/其他设备的映射一律拒绝；
+//   - 已激活的 SN 绝不能作废（正在使用的设备会激活失败且无法选回），明确拒绝；
+//   - 旧流程订单不支持：转新流程有独立规则，不得绕过续期任务状态检查。
+const reallocateOrderReservedSn = db.transaction((orderId, requestId) => {
+  const order = getOrderById(orderId);
+  if (!order) throw new Error('order_not_found');
+  if (order.status !== 'paid') throw new Error('order_not_paid');
+  if (order.renew_mode !== 'new_sn') throw new Error('order_not_new_sn_flow');
+  if (order.provider_renew_status === 'processing') throw new Error('renew_task_processing');
+  if (typeof requestId !== 'string' || !requestId.trim()) throw new Error('missing_request_id');
+  if (requestId.trim().length > 128) throw new Error('invalid_request_id');
+  const rid = requestId.trim();
+
+  const orderCred = getCredentialById(order.credential_id);
+  if (!orderCred) throw new Error('order_credential_missing');
+
+  // 幂等重放：request_id 必须属于本订单。只返回该次操作的原结果，不做任何写入。
+  const prior = db.prepare("SELECT * FROM order_realloc_requests WHERE request_id = ?").get(rid);
+  if (prior) {
+    if (prior.order_id !== orderId) throw new Error('request_id_mismatch');
+    const getSn = (cid) => { const row = db.prepare("SELECT sn FROM device_credentials WHERE id = ?").get(cid); return row ? row.sn : null; };
+    return {
+      order,
+      reserved_sn: getSn(prior.reserved_credential_id),
+      reused: true,
+      voided_sn: prior.voided_credential_id ? getSn(prior.voided_credential_id) : null,
+    };
+  }
+  // request_id 全局唯一：烧录/预留/其他订单已占用的映射一律拒绝，
+  // 防止 reserveSnForDevice 按既有映射返回其他设备的 SN 并被关联到本订单
+  if (db.prepare("SELECT 1 FROM provision_requests WHERE request_id = ?").get(rid)) {
+    throw new Error('request_id_conflict');
+  }
+
+  // 作废当前预留（若存在）：已激活的 SN 明确拒绝（不绕过"已激活不得作废"规则；
+  // 需要新增备选时走独立预留，保留旧 SN）。已被通用"作废"置 retired 的补记历史。
+  // 统一走 setCredentialStatus：作废同时清理该 SN 上的 pending_primary/is_primary
+  // 选择标记（否则"选中 B → 重新分配为 C"后仍会解析到已作废的 B），同一事务内完成。
+  let voided = null;
+  if (order.reserved_credential_id) {
+    const cur = getCredentialById(order.reserved_credential_id);
+    if (cur) {
+      if (cur.volcano_activated_at) throw new Error('reserved_sn_activated');
+      if (cur.status !== 'retired') {
+        setCredentialStatus(cur.id, 'retired');
+      }
+      voided = { credential_id: cur.id, sn: cur.sn, voided_at: new Date().toISOString() };
+      const history = JSON.parse(order.reserved_history || '[]');
+      history.push(voided);
+      db.prepare("UPDATE orders SET reserved_history = ? WHERE id = ?").run(JSON.stringify(history), orderId);
+    }
+    db.prepare("UPDATE orders SET reserved_credential_id = NULL WHERE id = ?").run(orderId);
+  }
+
+  const r = reserveSnForDevice(orderCred.product_id, orderCred.hardware_id, rid);
+  const reservedCred = db.prepare("SELECT id FROM device_credentials WHERE product_id = ? AND sn = ?")
+    .get(orderCred.product_id, r.sn);
+  db.prepare("UPDATE orders SET reserved_credential_id = ?, renew_mode = 'new_sn' WHERE id = ?")
+    .run(reservedCred.id, orderId);
+  db.prepare("INSERT INTO order_realloc_requests (request_id, order_id, reserved_credential_id, voided_credential_id) VALUES (?, ?, ?, ?)")
+    .run(rid, orderId, reservedCred.id, voided ? voided.credential_id : null);
+  return { order: getOrderById(orderId), reserved_sn: r.sn, reused: r.reused, voided_sn: voided ? voided.sn : null };
+});
+
 // 原子抢占续期任务：pending → processing，changes=1 才抢占成功
 // 防止多个 worker 同时处理同一订单导致重复购买 License
 function claimOrderForRenew(orderId) {
@@ -1338,7 +2019,7 @@ function retryOrderRenew(orderId) {
 // 用于火山无公开 API 时，管理员在控制台手动购买 License + 绑定设备后回平台确认
 // 写入：orders.provider_license_id（本次续费的 License，历史记录）
 //       orders.provider_renew_completed_at / operator_id（审计追溯）
-//       device_services.provider_license_id（当前正在使用的 License）
+//       device_sn_rights（该 SN 当前正在使用的 License / 有效期 / 状态）
 function completeOrderRenew(orderId, licenseId, operatorId) {
   const order0 = getOrderById(orderId);
   if (!order0 || order0.status !== 'paid') return false;   // 必须已付款
@@ -1352,15 +2033,15 @@ function completeOrderRenew(orderId, licenseId, operatorId) {
     WHERE id = ? AND provider_renew_status IN ('pending', 'processing', 'failed') AND status = 'paid'
   `).run(operatorId || 'admin', licenseId || null, orderId);
   if (info.changes !== 1) return false;
-  // device_services.provider_license_id 记录"当前正在使用的 License"
-  const service = getServiceByCredential(order0.credential_id);
-  const currentProviderExpiry = service && new Date(service.provider_expires_at).getTime();
+  // device_sn_rights.provider_expires_at 记录"该 SN 当前正在使用的 License"有效期
+  const rights = getSnRights(order0.credential_id);
+  const currentProviderExpiry = rights && rights.provider_expires_at && new Date(rights.provider_expires_at).getTime();
   const providerBase = Number.isFinite(currentProviderExpiry) && currentProviderExpiry > Date.now()
     ? currentProviderExpiry : Date.now();
   const providerExpiresAt = new Date(
     providerBase + order0.years * 365 * 24 * 60 * 60 * 1000
   ).toISOString();
-  setServiceRenewStatus(order0.credential_id, 'completed', {
+  setSnRenewStatus(order0.credential_id, 'completed', {
     licenseId: licenseId || null,
     providerExpiresAt,
   });
@@ -1399,13 +2080,16 @@ function deleteOrder(id) {
 //  - pending / cancelled 可删（未产生任何效果）
 //  - 已付款且续期未完成（pending/processing/failed）禁止物理删除：
 //    删除后后台扫描不到该订单，续期完成入口、失败重试和 License 审计记录全部丢失
-//  - 已付款且续期已完成（completed/none）可删，但属于审计记录，建议保留
+//  - 有"作废并重新分配"幂等历史（order_realloc_requests 引用）禁止物理删除：
+//    删除后重放无法返回原结果、替代历史丢失；此类订单一律保留为审计记录
 function adminDeleteOrder(id) {
   const order = getOrderById(id);
   if (!order) throw new Error('order_not_found');
   if (order.status === 'paid' && ['pending', 'processing', 'failed'].includes(order.provider_renew_status)) {
     throw new Error('order_renew_incomplete');
   }
+  const reallocHistory = db.prepare("SELECT 1 FROM order_realloc_requests WHERE order_id = ?").get(id);
+  if (reallocHistory) throw new Error('order_has_realloc_history');
   db.prepare("DELETE FROM orders WHERE id = ?").run(id);
   return { ok: true };
 }
@@ -1422,10 +2106,13 @@ function listOrdersByUser(userId) {
 
 function listAllOrders(productId) {
   return db.prepare(`
-    SELECT o.*, u.phone as user_phone, c.sn, c.volcano_device_name
+    SELECT o.*, u.phone as user_phone, u.deleted_at IS NOT NULL AS user_deleted,
+           c.sn, c.volcano_device_name, r.sn AS reserved_sn,
+           EXISTS(SELECT 1 FROM order_realloc_requests rr WHERE rr.order_id = o.id) AS has_realloc_history
     FROM orders o
     JOIN users u ON o.user_id = u.id
     JOIN device_credentials c ON o.credential_id = c.id
+    LEFT JOIN device_credentials r ON o.reserved_credential_id = r.id
     WHERE o.product_id = ?
     ORDER BY o.id DESC
   `).all(productId);
@@ -1477,6 +2164,12 @@ module.exports = {
   verifyProvision,
   failProvision,
   deleteCredential,
+  getSnDeletability,
+  setPrimaryCredential,
+  resolveNoSnCredential,
+  resolveActiveCredential,
+  markActivated,
+  reserveSnForDevice,
   deleteUser,
   getCredentialByHardwareId,
   getCredentialsByHardwareId,
@@ -1500,10 +2193,10 @@ module.exports = {
   listUsersByProduct,
   setUserVerified,
   setUserPlan,
-  setCredentialServicePlan,
+  setDeviceServicePlan,
   // bindings
   createBinding,
-  getBindingByCredential,
+  getBindingByHardware,
   getBindingById,
   listBindingsByUser,
   listAllBindings,
@@ -1515,19 +2208,23 @@ module.exports = {
   getBindTokenAnyStatus,
   confirmBindToken,
   cleanExpiredBindTokens,
-  // device services
-  createServiceForBinding,
-  getServiceByCredential,
+  // device services（物理设备维度）
+  createServiceForDevice,
+  getServiceByHardware,
   extendService,
-  setServiceRenewStatus,
   listServicesByProduct,
   listServicesByUser,
-  listServicesPendingRenew,
+  // SN 火山权益（device_sn_rights）
+  getSnRights,
+  setSnRenewStatus,
+  listSnRightsPendingRenew,
   // orders
   createOrder,
   getOrderById,
   getOrderByNo,
   markOrderPaid,
+  confirmOrderPaid,
+  reallocateOrderReservedSn,
   attachVoucher,
   setOrderRenewStatus,
   claimOrderForRenew,

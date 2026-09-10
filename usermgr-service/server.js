@@ -176,6 +176,9 @@ function userAuth(req, res, next) {
   if (!auth || !auth.startsWith('Bearer ')) return res.status(401).json({ error: 'no_token' });
   try {
     req.user = jwt.verify(auth.slice(7), JWT_SECRET);
+    // 已注销账号即使 token 未过期也立即失效
+    const u = DB.getUserById(req.user.uid);
+    if (!u || u.deleted_at) return res.status(401).json({ error: 'invalid_token' });
     const productId = DB.getProductIdByCode(req.params.product);
     if (!productId) return res.status(404).json({ error: 'product_not_found' });
     if (req.user.pid !== productId) return res.status(403).json({ error: 'product_mismatch' });
@@ -383,56 +386,129 @@ app.post('/admin/api/provision/fail', provisionAuth, (req, res) => {
 app.get('/admin/api/credentials', adminAuth, (req, res) => {
   const productId = DB.getProductIdByCode(req.query.product);
   if (!productId) return res.status(404).json({ error: 'product_not_found' });
-  const rows = DB.listCredentials(productId).map(c => ({
-    id: c.id,
-    sn: c.sn,
-    hardware_id: c.hardware_id,
-    volcano_device_name: c.volcano_device_name,
-    status: c.status,
-    failure_reason: c.failure_reason,
-    volcano_activated: !!c.volcano_device_secret,
-    bound_user_phone: c.bound_user_phone,
-    bound_user_has_email: !!c.bound_user_has_email,
-    binding_id: c.binding_id,
-    created_at: c.created_at,
-  }));
+  const rows = DB.listCredentials(productId).map(c => {
+    const del = DB.getSnDeletability(c);
+    return {
+      id: c.id,
+      sn: c.sn,
+      hardware_id: c.hardware_id,
+      volcano_device_name: c.volcano_device_name,
+      status: c.status,
+      failure_reason: c.failure_reason,
+      volcano_activated: !!c.volcano_device_secret,
+      volcano_activated_at: c.volcano_activated_at,
+      // is_primary = 最近一次激活返回的 SN；primary_pending = 后台选定的"下次上线 SN"
+      is_primary: !!c.is_primary,
+      primary_pending: !!c.pending_primary,
+      bound_user_phone: c.bound_user_phone,
+      bound_user_has_email: !!c.bound_user_has_email,
+      binding_id: c.binding_id,
+      service_plan: c.service_plan,
+      service_expires_at: c.service_expires_at,
+      provider_renew_status: c.provider_renew_status,
+      provider_license_id: c.provider_license_id,
+      provider_expires_at: c.provider_expires_at,
+      // 删除/作废规则（服务端唯一裁决，前端照此显示）：
+      ever_activated: del.ever_activated,
+      can_delete: del.can_delete,
+      can_void: del.can_void,
+      delete_block_reason: del.delete_block_reason,
+      created_at: c.created_at,
+    };
+  });
   res.json(rows);
 });
 
-// 删除设备凭证（仅允许 provisioning / provisioning_failed 状态）
+// 删除设备凭证：按"是否曾激活"判断（见 getSnDeletability），服务端强制校验
 app.delete('/admin/api/credentials/:id', adminAuth, (req, res) => {
   try {
     DB.deleteCredential(Number(req.params.id));
     res.json({ ok: true });
   } catch (e) {
+    console.error('[admin:delete-credential] 删除失败:', e.message);
     const code = e.message;
-    if (code === 'device_not_found') return res.status(404).json({ error: code });
-    if (code === 'device_not_deletable') return res.status(409).json({ error: code });
-    res.status(500).json({ error: 'delete_failed', reason: code });
+    if (code === 'device_not_found') return res.status(404).json({ error: code, message: 'SN 记录不存在' });
+    if (code === 'device_activated_no_delete') return res.status(409).json({ error: code, message: '已激活的 SN 保留记录（订单/权益历史），不能删除；换回该 SN 请用"下次使用"' });
+    if (code === 'device_has_orders_void') return res.status(409).json({ error: code, message: '该 SN 已关联订单，不能物理删除；请使用"作废"保留订单历史，再预留替代 SN' });
+    if (code === 'order_reserved_sn') return res.status(409).json({ error: code, message: '该 SN 是订单预留的替代 SN，不能直接删除；请在订单列表对该订单使用"作废并重新分配"' });
+    if (code === 'device_in_realloc_history') return res.status(409).json({ error: code, message: '该 SN 是订单"作废并重新分配"历史的关联记录，不能删除；状态保留为"已作废"（重放幂等需要它返回原结果）' });
+    res.status(500).json({ error: 'delete_failed', reason: code, message: '删除失败：' + code });
   }
 });
 
+// 指定"下次上线使用的 SN"（管理员选择，设备无感知）：
+//   - 目标可以是"待火山激活（provisioned）"或"已激活（volcano_registered）"的 SN；
+//   - 纯选择操作：不搬绑定、不清权益、不受订单影响；
+//   - 设备下次不带 SN 激活时返回所选 SN 的凭证（新 SN 走首次注册，旧 SN 返回已存密钥）。
+// 选择保持粘性直到管理员改选；不再需要"立即转正"——首次激活是设备上线后的操作。
+app.patch('/admin/api/credentials/:id/primary', adminAuth, (req, res) => {
+  try {
+    const cred = DB.getCredentialById(Number(req.params.id));
+    if (!cred) return res.status(404).json({ error: 'device_not_found' });
+    DB.setPrimaryCredential(cred.product_id, cred.hardware_id, cred.id);
+    res.json({ ok: true, sn: cred.sn, selected: true });
+  } catch (e) {
+    const code = e.message;
+    if (code === 'device_not_found') return res.status(404).json({ error: code });
+    if (code === 'device_not_switchable') return res.status(409).json({ error: code, message: '仅"待火山激活"或"已激活"的 SN 可指定为下次上线使用' });
+    res.status(500).json({ error: 'set_primary_failed', reason: code });
+  }
+});
+
+// 为已有设备预留新 SN（管理员操作，平台行为，不依赖火山）：
+//   - 复用物理设备身份与共享 FactoryKey，不创建烧录 challenge（不重新烧 eFuse）；
+//   - SN 初始状态 provisioned（待火山激活），设备下次激活时走首次火山注册；
+//   - 全新 MAC（无任何出厂记录）不支持预留，需先走出厂烧录；
+//   - 必须完成过出厂验证；request_id 幂等：同一次预留重试返回同一个 SN。
+app.post('/admin/api/devices/reserve-sn', adminAuth, (req, res) => {
+  const productId = DB.getProductIdByCode((req.body || {}).product);
+  const hardwareId = (req.body || {}).hardware_id;
+  const requestId = (req.body || {}).request_id ? String(req.body.request_id).trim() : null;
+  if (!productId || !hardwareId) return res.status(400).json({ error: 'missing_params' });
+  try {
+    const result = DB.reserveSnForDevice(productId, String(hardwareId).trim(), requestId);
+    res.json({ ok: true, sn: result.sn, reused: result.reused });
+  } catch (e) {
+    const code = e.message;
+    if (code === '产品不存在' || code === 'device_not_found') return res.status(404).json({ error: 'device_not_found' });
+    if (code === 'device_retired') return res.status(409).json({ error: code, message: '该设备已停用，不能预留新 SN' });
+    if (code === 'factory_verify_incomplete') return res.status(409).json({ error: code, message: '该设备尚未完成出厂验证（烧录未完成），不能预留新 SN' });
+    if (code === 'factory_key_archive_missing') return res.status(409).json({ error: code, message: 'FactoryKey 存档缺失，无法为已烧录设备预留新 SN' });
+    if (code === 'request_id_conflict') return res.status(409).json({ error: code, message: 'request_id 已被其他预留/烧录操作使用，请更换后重试' });
+    if (code === 'request_target_deleted') return res.status(409).json({ error: code, message: '该次预留对应的 SN 已被删除，重放被拒（请换用新的 request_id）' });
+    console.error('[admin:reserve-sn] 预留失败:', code);
+    res.status(500).json({ error: 'reserve_failed', reason: code, message: '预留失败：' + code });
+  }
+});
+
+// 火山权益按"实际激活后一年、火山控制"自动记录（saveVolcanoCredentials）：
+// 不再需要管理员手工确认关卡；火山将来有实际返回状态时以实际结果为准。
 app.get('/admin/api/users', adminAuth, (req, res) => {
   const productId = DB.getProductIdByCode(req.query.product);
   if (!productId) return res.status(404).json({ error: 'product_not_found' });
-  // 后台不返回 email，避免泄露；只返回 has_email 标记
+  // 后台不返回 email，避免泄露；只返回 has_email 标记。deleted_at = 注销标记
   const rows = DB.listUsersByProduct(productId).map(u => ({
     id: u.id, product_id: u.product_id, phone: u.phone,
     has_email: !!u.email,
     email_verified: u.email_verified,
     created_at: u.created_at,
     device_count: u.device_count,
+    deleted: !!u.deleted_at,
+    deleted_at: u.deleted_at || null,
   }));
   res.json(rows);
 });
 
+// 删除用户 = 账号注销（软删除，事务内完成）：绑定解除，设备/服务期/订单审计保留
 app.delete('/admin/api/users/:id', adminAuth, (req, res) => {
   try {
     DB.deleteUser(Number(req.params.id));
     res.json({ ok: true });
   } catch (e) {
-    if (e.message === 'user_not_found') return res.status(404).json({ error: e.message });
-    res.status(500).json({ error: 'delete_failed', reason: e.message });
+    console.error('[admin:delete-user] 注销失败:', e.message);
+    if (e.message === 'user_not_found') return res.status(404).json({ error: e.message, message: '用户不存在' });
+    if (e.message === 'user_already_deleted') return res.status(409).json({ error: e.message, message: '该账号已注销，请勿重复操作' });
+    res.status(500).json({ error: 'delete_failed', reason: e.message, message: '注销失败：' + e.message });
   }
 });
 
@@ -457,7 +533,7 @@ app.patch('/admin/api/credentials/:id/service', adminAuth, (req, res) => {
   const { plan, expires_at } = req.body || {};
   if (!plan || !expires_at) return res.status(400).json({ error: 'missing_params' });
   try {
-    const svc = DB.setCredentialServicePlan(id, plan, expires_at);
+    const svc = DB.setDeviceServicePlan(id, plan, expires_at);
     res.json({ ok: true, service: svc });
   } catch (e) {
     if (e.message === 'service_not_found') return res.status(404).json({ error: e.message });
@@ -466,8 +542,15 @@ app.patch('/admin/api/credentials/:id/service', adminAuth, (req, res) => {
 });
 
 app.patch('/admin/api/credentials/:id/status', adminAuth, (req, res) => {
-  DB.setCredentialStatus(Number(req.params.id), req.body.status);
-  res.json({ ok: true });
+  try {
+    DB.setCredentialStatus(Number(req.params.id), req.body.status);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[admin:set-credential-status] 失败:', e.message);
+    if (e.message === 'device_not_found') return res.status(404).json({ error: e.message, message: 'SN 记录不存在' });
+    if (e.message === 'device_activated_no_void') return res.status(409).json({ error: e.message, message: '已激活的 SN 不能作废：正在使用的设备会激活失败且无法选回；需要替代 SN 请用"预留新 SN"（保留旧 SN）' });
+    res.status(500).json({ error: 'status_update_failed', reason: e.message, message: '状态更新失败：' + e.message });
+  }
 });
 
 // ==================== 管理员：订单/服务期（v4 ⑬） ====================
@@ -483,20 +566,69 @@ app.get('/admin/api/services', adminAuth, (req, res) => {
   res.json(DB.listServicesByProduct(productId));
 });
 
-// 管理员手动确认收款（线下支付场景）：原子标记已付款 + 触发续期
-// 用 UPDATE changes 防止并发重复确认导致服务期被延长多次
+// 管理员手动确认收款（线下支付场景）：原子事务（整体提交/回滚）——
+// 标记已付款 + 延长 MAC 平台服务期 + 自动预留新 SN + 订单关联新 SN。
+// 订单 ID 幂等：重复确认返回同一个预留 SN，不重复延长服务期。
+// 旧"给原 SN 购买 License"续期任务标记 superseded（新 SN 激活自带一年，两套流程不重复执行）。
+// 自动预留不切走当前 SN：管理员仍手动选择"下次使用"，可随时选回。
 app.patch('/admin/api/orders/:id/mark-paid', adminAuth, (req, res) => {
-  const order = DB.getOrderById(Number(req.params.id));
-  if (!order) return res.status(404).json({ error: 'not_found' });
-  if (order.status !== 'pending') return res.status(400).json({ error: 'order_not_pending' });
+  try {
+    const result = DB.confirmOrderPaid(Number(req.params.id));
+    // 服务期可能不存在（重放的旧订单设备未绑定过）：不因展示字段崩溃
+    const oc = DB.getCredentialById(result.order.credential_id);
+    const svc = oc && DB.getServiceByHardware(oc.product_id, oc.hardware_id);
+    res.json({
+      ok: true,
+      status: 'paid',
+      provider_renew_status: result.order.provider_renew_status,
+      reserved_sn: result.reserved_sn,
+      reserved_reused: result.reused,
+      service_expires_at: svc ? svc.expires_at : null,
+    });
+  } catch (e) {
+    console.error('[admin:mark-paid] 确认收款失败:', e.message);
+    const code = e.message;
+    if (code === 'order_not_found') return res.status(404).json({ error: code, message: '订单不存在' });
+    if (code === 'order_credential_missing') return res.status(409).json({ error: code, message: '订单对应的 SN 凭证已被删除，无法确认收款（服务期延长与预留被整体回滚）' });
+    if (code === 'order_not_pending') return res.status(409).json({ error: code, message: '订单当前状态不允许确认收款（已取消或已处理）' });
+    if (code === 'renew_task_processing') return res.status(409).json({ error: code, message: '该订单的旧续期任务正在火山处理中，不能改走新 SN 流程；请等任务出结果后再操作' });
+    if (code === 'service_not_found') return res.status(409).json({ error: code, message: '该设备没有平台服务期记录，无法延长（请先核对绑定流程）' });
+    if (code === 'factory_verify_incomplete') return res.status(409).json({ error: code, message: '该设备尚未完成出厂验证，无法预留新 SN（收款未确认，请先处理设备记录）' });
+    res.status(500).json({ error: 'mark_paid_failed', reason: code, message: '确认收款失败：' + code });
+  }
+});
 
-  const { changes } = DB.markOrderPaid(order.id);
-  if (changes !== 1) return res.status(409).json({ error: 'order_already_paid' });
-
-  // 只有真正抢占到付款操作的才延长服务期 + 标记待续火山 License
-  DB.extendService(order.credential_id, order.user_id, order.years);
-  DB.setOrderRenewStatus(order.id, 'pending');
-  res.json({ ok: true, status: 'paid', provider_renew_status: 'pending' });
+// 管理员对订单预留 SN 的"作废并重新分配"（独立于收款确认）：
+// 当前预留 SN 作废（retired，记录与订单历史保留，写入 reserved_history），
+// 用独立幂等键预留替代 SN。同一 request_id 重放返回同一替代 SN，不重复作废/生成。
+// 已付款订单的"再次确认收款"永远只读幂等，不会补 SN——补配只能走这里。
+app.post('/admin/api/orders/:id/reallocate-sn', adminAuth, (req, res) => {
+  const requestId = req.body ? req.body.request_id : undefined;
+  try {
+    const result = DB.reallocateOrderReservedSn(Number(req.params.id), requestId);
+    res.json({
+      ok: true,
+      reserved_sn: result.reserved_sn,
+      reserved_reused: result.reused,
+      voided_sn: result.voided_sn,
+      reserved_history: JSON.parse(result.order.reserved_history || '[]'),
+    });
+  } catch (e) {
+    console.error('[admin:reallocate-sn] 重新分配失败:', e.message);
+    const code = e.message;
+    if (code === 'order_not_found') return res.status(404).json({ error: code, message: '订单不存在' });
+    if (code === 'order_not_paid') return res.status(409).json({ error: code, message: '只有已确认收款的订单才能重新分配预留 SN' });
+    if (code === 'order_not_new_sn_flow') return res.status(409).json({ error: code, message: '旧流程订单不支持"作废并重新分配"；改走新 SN 流程需使用独立的转换规则' });
+    if (code === 'renew_task_processing') return res.status(409).json({ error: code, message: '该订单续期任务正在处理中，不能重新分配预留 SN' });
+    if (code === 'order_credential_missing') return res.status(409).json({ error: code, message: '订单对应的 SN 凭证已被删除，无法重新分配' });
+    if (code === 'missing_request_id') return res.status(400).json({ error: code, message: '缺少 request_id（管理端为本次操作生成的幂等键，重试复用同一 ID）' });
+    if (code === 'invalid_request_id') return res.status(400).json({ error: code, message: 'request_id 必须是 ≤128 字符的字符串' });
+    if (code === 'request_id_mismatch') return res.status(409).json({ error: code, message: '该 request_id 已被其他订单的重新分配占用，请换新的 request_id' });
+    if (code === 'request_id_conflict') return res.status(409).json({ error: code, message: '该 request_id 已被其他操作（如烧录、预留）占用，请换新的 request_id' });
+    if (code === 'reserved_sn_activated') return res.status(409).json({ error: code, message: '当前预留的 SN 已激活，不能作废；如需新增备选请使用独立预留（保留旧 SN）' });
+    if (code === 'factory_verify_incomplete') return res.status(409).json({ error: code, message: '该设备尚未完成出厂验证，无法预留替代 SN（本次操作已整体回滚）' });
+    res.status(500).json({ error: 'reallocate_failed', reason: code, message: '重新分配失败：' + code });
+  }
 });
 
 // 管理员重试续期（provider 续期失败后）：failed → pending，后台 worker 重新处理
@@ -530,6 +662,7 @@ app.delete('/admin/api/orders/:id', adminAuth, (req, res) => {
   } catch (e) {
     if (e.message === 'order_not_found') return res.status(404).json({ error: 'not_found' });
     if (e.message === 'order_renew_incomplete') return res.status(409).json({ error: 'order_renew_incomplete', message: '已付款且续期未完成的订单不能删除，请先完成续期或处理失败' });
+    if (e.message === 'order_has_realloc_history') return res.status(409).json({ error: e.message, message: '该订单存在"作废并重新分配"历史（关联审计与幂等重放记录），不能删除' });
     res.status(500).json({ error: 'delete_failed' });
   }
 });
@@ -598,7 +731,7 @@ app.post('/:product/api/auth/login', async (req, res) => {
   }
 
   const user = DB.getUserByPhone(productId, phone);
-  if (!user) return res.status(401).json({ error: 'invalid_credentials' });
+  if (!user || user.deleted_at) return res.status(401).json({ error: 'invalid_credentials' });
   const ok = await bcryptCompare(password, user.password_hash);
   if (!ok) return res.status(401).json({ error: 'invalid_credentials' });
   const token = jwt.sign({ uid: user.id, pid: productId }, JWT_SECRET, { expiresIn: '30d' });
@@ -623,7 +756,7 @@ app.post('/:product/api/auth/login-by-code', async (req, res) => {
   }
 
   const user = DB.getUserByPhone(productId, phone);
-  if (!user) return res.status(401).json({ error: 'invalid_credentials' });
+  if (!user || user.deleted_at) return res.status(401).json({ error: 'invalid_credentials' });
   const token = jwt.sign({ uid: user.id, pid: productId }, JWT_SECRET, { expiresIn: '30d' });
   res.json({ token, user: { id: user.id, phone: user.phone, email: user.email } });
 });
@@ -805,14 +938,14 @@ app.get('/:product/api/me', userAuth, (req, res) => {
     const exp = b.service_expires_at ? new Date(b.service_expires_at).getTime() : null;
     const service_status = !exp ? 'none' : (exp > now ? 'active' : 'expired');
     return {
-      credential_id: b.credential_id,
+      credential_id: b.credential_id,        // 展示用解析 SN（选定 > 最近激活 > 最早）
       sn: b.sn,
       hardware_id: b.hardware_id,
       nickname: b.nickname,
       cred_status: b.cred_status,
       plan: b.service_plan,                  // 设备级套餐
       service_expires_at: b.service_expires_at,
-      service_renew_status: b.service_renew_status,
+      service_renew_status: b.provider_renew_status,
       service_status,                       // none / active / expired
     };
   });
@@ -829,10 +962,9 @@ app.get('/:product/api/me', userAuth, (req, res) => {
 // ==================== 用户：设备绑定管理 ====================
 app.get('/:product/api/devices', userAuth, (req, res) => {
   const rows = DB.listBindingsByUser(req.user.uid).map(b => {
-    const svc = DB.getServiceByCredential(b.credential_id);
     let service_status = 'none';
-    if (svc) {
-      service_status = new Date(svc.expires_at).getTime() > Date.now() ? 'active' : 'expired';
+    if (b.service_expires_at) {
+      service_status = new Date(b.service_expires_at).getTime() > Date.now() ? 'active' : 'expired';
     }
     return {
       binding_id: b.id,
@@ -845,8 +977,8 @@ app.get('/:product/api/devices', userAuth, (req, res) => {
       last_seen_at: b.last_seen_at,
       status: b.cred_status,
       service_status,
-      service_expires_at: svc ? svc.expires_at : null,
-      provider_renew_status: svc ? svc.provider_renew_status : 'none',
+      service_expires_at: b.service_expires_at,
+      provider_renew_status: b.provider_renew_status || 'none',
     };
   });
   res.json(rows);
@@ -861,6 +993,7 @@ app.delete('/:product/api/devices/:bindingId', userAuth, (req, res) => {
 
 // ==================== 用户：续费订单（v4 ⑪） ====================
 // 创建续费订单：用户为自己的设备续费 N 年
+// 订单挂物理设备（通过凭证定位 hardware_id），并记录本次续费针对的 SN
 app.post('/:product/api/devices/:bindingId/renew', userAuth, (req, res) => {
   const b = DB.getBindingById(Number(req.params.bindingId));
   if (!b || b.user_id !== req.user.uid) return res.status(404).json({ error: 'not_found' });
@@ -868,10 +1001,14 @@ app.post('/:product/api/devices/:bindingId/renew', userAuth, (req, res) => {
   const years = Number(req.body.years) || 1;
   if (years < 1 || years > 5) return res.status(400).json({ error: 'invalid_years' });
 
+  // 下单针对设备当前解析的 SN（后台选定 > 最近激活 > 最早）；切换选择后新订单自然挂新目标
+  const targetCred = DB.resolveNoSnCredential(b.product_id, b.hardware_id);
+  if (!targetCred) return res.status(404).json({ error: 'device_not_provisioned' });
+
   const order = DB.createOrder({
     userId: req.user.uid,
-    credentialId: b.credential_id,
-    productId: req.user.pid,
+    credentialId: targetCred.id,
+    productId: b.product_id,
     amount: DB.DEFAULT_ANNUAL_AMOUNT * years,
     plan: 'annual',
     years,
@@ -939,6 +1076,7 @@ app.get('/:product/api/orders', userAuth, (req, res) => {
 });
 
 // 用户扫码后确认绑定（改动⑤：字段改 nickname）
+// 绑定与服务期挂物理设备（hardware_id），与具体 SN 无关
 app.post('/:product/api/device/bind/confirm', userAuth, (req, res) => {
   const { temp_token, nickname } = req.body;
   const t = DB.getBindToken(temp_token);
@@ -947,18 +1085,20 @@ app.post('/:product/api/device/bind/confirm', userAuth, (req, res) => {
   if (!tokenCredential || tokenCredential.product_id !== req.user.pid) {
     return res.status(403).json({ error: 'product_mismatch' });
   }
+  const hardwareId = tokenCredential.hardware_id;
 
-  const existingBinding = DB.getBindingByCredential(t.credential_id);
+  const existingBinding = DB.getBindingByHardware(req.user.pid, hardwareId);
   if (existingBinding) return res.status(409).json({ error: 'device_already_bound' });
 
   DB.confirmBindToken(temp_token);
-  const binding = DB.createBinding(req.user.uid, t.credential_id, req.user.pid, nickname);
+  const binding = DB.createBinding(req.user.uid, req.user.pid, hardwareId, nickname);
   // 阶段6.5：首次绑定自动创建第一年服务期（已存在则保留原 expires_at，仅更新持有人）
-  const service = DB.createServiceForBinding(req.user.uid, t.credential_id, req.user.pid, 'annual');
+  const service = DB.createServiceForDevice(req.user.uid, req.user.pid, hardwareId, 'annual');
   res.json({
     ok: true,
     binding_id: binding.id,
-    credential_id: binding.credential_id,
+    hardware_id: hardwareId,
+    credential_id: tokenCredential.id,
     nickname: binding.nickname,
     service_expires_at: service.expires_at,
   });
@@ -975,10 +1115,11 @@ app.post('/:product/api/device/activate', async (req, res) => {
     return res.status(400).json({ error: 'missing_params' });
   }
 
-  // 同一 MAC 可能有多个 SN，通过 sn 参数选择；未传 sn 时取第一个（向后兼容）
+  // 同一 MAC 可能有多个 SN，通过 sn 参数选择；
+  // 不带 SN 时解析到"后台选定的下次上线 SN"（无选择则最近激活的凭证）
   const cred = sn
     ? DB.getCredentialByHardwareIdAndSn(productId, hardware_id, sn)
-    : DB.getCredentialByHardwareId(productId, hardware_id);
+    : DB.resolveNoSnCredential(productId, hardware_id);
   if (!cred) return res.status(404).json({ error: 'device_not_provisioned' });
   if (['provisioning', 'provisioning_failed', 'retired'].includes(cred.status)) {
     return res.status(403).json({ error: 'device_not_provisioned', status: cred.status });
@@ -995,7 +1136,9 @@ app.post('/:product/api/device/activate', async (req, res) => {
   const productConfig = DB.getProductConfig(productId);
   const existingRtcAppId = productConfig.rtc_app_id || '';
   if (existingSecret && existingRtcAppId) {
-    // 老设备/erase_flash 恢复：直接下发原 device_secret，不重复 DynamicRegister
+    // 已激活 SN 的恢复：直接下发已保存的 device_secret，不重复 DynamicRegister。
+    // 后台选定（pending_primary）保持不变——管理员改选前，设备一直解析到选定的 SN。
+    DB.markActivated(productId, hardware_id, cred.id);
     return res.json({
       ok: true,
       recovered: true,
@@ -1006,12 +1149,13 @@ app.post('/:product/api/device/activate', async (req, res) => {
     });
   }
 
-  // 首次激活：调火山 DynamicRegister
+  // 首次激活（待火山激活的 SN，含后台预留的新 SN）：调火山 DynamicRegister
   if (!VOLCANO_ENABLED) {
     // 测试模式：返回假的 device_secret
     const fakeSecret = 'TEST_' + crypto.randomBytes(16).toString('hex');
     const fakeRtcAppId = 'TEST_RTC_APP_ID';
     const savedRtcAppId = DB.saveVolcanoCredentials(productId, cred.id, fakeSecret, fakeRtcAppId);
+    DB.markActivated(productId, hardware_id, cred.id);
     return res.json({
       ok: true,
       recovered: false,
@@ -1036,6 +1180,7 @@ app.post('/:product/api/device/activate', async (req, res) => {
     const savedRtcAppId = DB.saveVolcanoCredentials(
       productId, cred.id, result.device_secret, result.rtc_app_id
     );
+    DB.markActivated(productId, hardware_id, cred.id);
     return res.json({
       ok: true,
       recovered: false,
@@ -1102,11 +1247,11 @@ app.post('/:product/api/device/status', (req, res) => {
   const v = verifySignature('status', factoryKey, hardware_id, timestamp, nonce, signature, sn);
   if (!v.ok) return res.status(401).json({ error: 'auth_failed', reason: v.reason });
 
-  const binding = DB.getBindingByCredential(cred.id);
+  const binding = DB.getBindingByHardware(productId, hardware_id);
   if (binding) DB.touchBindingSeen(binding.id);
 
-  // 服务期状态：none / active / expired
-  const service = DB.getServiceByCredential(cred.id);
+  // 服务期状态：none / active / expired（服务期挂物理设备）
+  const service = DB.getServiceByHardware(productId, hardware_id);
   let service_status = 'none';
   let service_expires_at = null;
   if (service) {
@@ -1114,29 +1259,66 @@ app.post('/:product/api/device/status', (req, res) => {
     service_status = new Date(service.expires_at).getTime() > Date.now() ? 'active' : 'expired';
   }
 
-  // 续费状态仅描述新 License 的处理进度；不能覆盖当前 License 的有效期。
-  // 旧 License 未到期时，即使新续费 pending/processing/failed，设备仍可使用。
-  const provider_expires_at = service ? service.provider_expires_at : null;
-  const provider_available = !service
-    || !provider_expires_at
-    || new Date(provider_expires_at).getTime() > Date.now();
+  // 业务判断用的"当前生效凭证"与上面验签用的凭证分离：
+  //   - 验签只用 FactoryKey（挂物理设备，作废记录也能验签）；
+  //   - 业务（SN 展示 / 权益 / AI 放行）必须排除 retired——只剩作废 SN 时
+  //     不能把它当"可用"返回，更不能因此放行 AI；
+  //   - 不带 sn 查询按"最近激活"优先（resolveActiveCredential，刻意不按
+  //     pending 优先）：管理员刚指定"下次上线"的新 SN 未激活前，仍按旧 SN 判断。
+  const eff = sn ? cred : DB.resolveActiveCredential(productId, hardware_id);
+  if (!eff || eff.status === 'retired') {
+    return res.json({
+      ok: true,
+      sn: null,
+      sn_available: false,       // 该设备当前没有可用 SN（全部作废或未配置）
+      activated: false,
+      bound: !!binding,
+      nickname: binding ? binding.nickname : null,
+      device_secret_ready: false,
+      credential_status: null,
+      service_status,            // 服务期仍按物理设备如实返回
+      service_expires_at,
+      ai_allowed: false,         // 无可用 SN 一律禁止 AI
+      provider_renew_status: 'none',
+      provider_expires_at: null,
+      provider_available: false,
+      message: '该设备暂无可用 SN，请联系管理员配置；配置并激活前禁止使用 AI',
+    });
+  }
 
-  // ai_allowed = 已绑定 + 平台服务期有效 + 当前供应商 License 有效。
-  const ai_allowed = !!binding && service_status === 'active' && provider_available;
+  // SN 已配置 ≠ 已激活可用：必须区分两层状态。
+  //   - 未激活的预留 SN（含显式携带查询）：可以返回 SN 与"待激活"提示，
+  //     但 provider_available / ai_allowed 必须为 false——不能因为
+  //     "没有权益记录"的旧数据兼容口径就默认可用，固件会据此尝试连接；
+  //   - 旧数据兼容（无权益记录视为可用）仅适用于有可信激活证据
+  //     （volcano_activated_at）的记录；
+  //   - 旧 SN 在新 pending SN 激活前继续可用：resolveActiveCredential
+  //     按最近激活优先，无 sn 查询不受新预留影响。
+  const activated = !!eff.volcano_activated_at;
+  const rights = DB.getSnRights(eff.id);
+  const provider_expires_at = rights ? rights.provider_expires_at : null;
+  const provider_available = activated
+    && (!rights || !provider_expires_at || new Date(provider_expires_at).getTime() > Date.now());
+
+  // ai_allowed = 已激活 + 已绑定 + 平台服务期有效 + 当前供应商 License 有效。
+  const ai_allowed = activated && !!binding && service_status === 'active' && provider_available;
 
   res.json({
     ok: true,
-    sn: cred.sn,
+    sn: eff.sn,
+    sn_available: true,
+    activated,                 // 该 SN 是否有可信激活证据（volcano_activated_at）
     bound: !!binding,
     nickname: binding ? binding.nickname : null,
-    device_secret_ready: !!cred.volcano_device_secret,
-    credential_status: cred.status,
+    device_secret_ready: !!eff.volcano_device_secret,
+    credential_status: eff.status,
     service_status,            // none / active / expired
     service_expires_at,        // ISO 时间
     ai_allowed,                // 综合判断：是否允许开火山会话
-    provider_renew_status: service ? service.provider_renew_status : 'none',
+    provider_renew_status: rights ? rights.provider_renew_status : 'none',
     provider_expires_at,
     provider_available,        // 火山 License 是否可用（供设备显示提示）
+    message: activated ? undefined : `SN「${eff.sn}」待激活：设备完成激活并获得 License 前禁止使用 AI`,
   });
 });
 
@@ -1159,8 +1341,8 @@ app.post('/:product/api/device/bind/qrcode', (req, res) => {
   const v = verifySignature('qrcode', factoryKey, hardware_id, timestamp, nonce, signature, sn);
   if (!v.ok) return res.status(401).json({ error: 'auth_failed', reason: v.reason });
 
-  // 已绑定则不再生成二维码
-  const existingBinding = DB.getBindingByCredential(cred.id);
+  // 已绑定则不再生成二维码（绑定挂物理设备，任一 SN 已绑定即视为已绑定）
+  const existingBinding = DB.getBindingByHardware(productId, cred.hardware_id);
   if (existingBinding) {
     return res.json({
       ok: true,
@@ -1199,14 +1381,18 @@ app.post('/:product/api/device/bind/poll', (req, res) => {
   const v = verifySignature('poll', factoryKey, hardware_id, timestamp, nonce, signature, sn);
   if (!v.ok) return res.status(401).json({ error: 'auth_failed', reason: v.reason });
 
-  // poll 用 getBindTokenAnyStatus：confirmed 状态也要能查到
+  // poll 校验：token 与请求凭证按"同产品 + 同 MAC"匹配。
+  // 绑定挂物理设备——设备换 SN（如 A 激活后切到 B）后，旧 token 仍对本 MAC 有效；
+  // 跨 MAC 使用 token 必须拒绝，不能静默返回 pending。
   const t = DB.getBindTokenAnyStatus(temp_token);
-  if (!t || t.credential_id !== cred.id) {
-    return res.json({ ok: true, status: 'pending' });
+  if (!t) return res.json({ ok: true, status: 'pending' });
+  const tokenCred = DB.getCredentialById(t.credential_id);
+  if (!tokenCred || tokenCred.product_id !== productId || tokenCred.hardware_id !== cred.hardware_id) {
+    return res.status(403).json({ error: 'token_device_mismatch', message: 'temp_token 与当前设备不匹配' });
   }
 
   if (t.status === 'confirmed') {
-    const binding = DB.getBindingByCredential(cred.id);
+    const binding = DB.getBindingByHardware(productId, cred.hardware_id);
     if (binding) {
       return res.json({
         ok: true,
@@ -1281,14 +1467,14 @@ setInterval(async () => {
         }
       );
       DB.setOrderRenewStatus(order.id, 'completed', { licenseId: result.license_id });
-      DB.setServiceRenewStatus(order.credential_id, 'completed', {
+      DB.setSnRenewStatus(order.credential_id, 'completed', {
         licenseId: result.license_id,
         providerExpiresAt: result.expires_at,
       });
       console.log(`[renew] order ${order.order_no} completed, license=${result.license_id}`);
     } catch (e) {
       DB.setOrderRenewStatus(order.id, 'failed', { error: e.message });
-      DB.setServiceRenewStatus(order.credential_id, 'failed', { error: e.message });
+      DB.setSnRenewStatus(order.credential_id, 'failed', { error: e.message });
       console.error(`[renew] order ${order.order_no} failed:`, e.message);
     }
   }

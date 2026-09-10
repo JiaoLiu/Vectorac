@@ -815,7 +815,7 @@ function render() {
             <div class="device-item">
               <div class="info">
                 <div class="name">${d.nickname || '未命名设备'} ${serviceBadge(d.service_status)} ${renewBadge(d.service_renew_status)}</div>
-                <div class="mac">SN: ${d.sn}${d.hardware_id ? ' · ' + d.hardware_id : ''}</div>
+                <div class="mac">${d.sn ? 'SN: ' + d.sn : '<span class="badge unverified">暂无可用 SN，请联系管理员配置</span>'}${d.hardware_id ? ' · ' + d.hardware_id : ''}</div>
                 <div class="time">套餐：${d.plan === 'annual' ? '年卡' : (d.plan || '—')} · 服务到期：${fmtDate(d.service_expires_at)}</div>
                 <div class="time">绑定：${d.bound_at || '—'}${d.last_seen_at ? ' · 最近：' + d.last_seen_at : ''}</div>
                 <div class="local-control-help">
@@ -828,7 +828,8 @@ function render() {
               </div>
               <div class="actions">
                 <button class="local-control" onclick="openLocalControl(${Number(d.binding_id)})" ${isValidLocalHostname(d.local_hostname) ? '' : 'disabled title="局域网地址不可用"'}>局域网控制</button>
-                <button class="primary" onclick="doRenew(${d.binding_id}, '${d.sn}')">续费</button>
+                <button class="primary" onclick="doRenew(${d.binding_id}, '${d.sn}')"
+                  ${d.sn ? '' : 'disabled title="当前不支持无 SN 续费：请联系管理员为设备配置可用 SN 并激活后，再进行续费"'}>续费</button>
                 <button class="danger" onclick="doUnbind(${d.binding_id})">解绑</button>
               </div>
             </div>

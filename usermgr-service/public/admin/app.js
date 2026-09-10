@@ -30,6 +30,7 @@ const state = {
   productDropdown: false,
   // 通用确认 modal：{ title, message, confirmText, danger, onConfirm, busy }
   confirmModal: null,
+  page: 1,                  // 列表分页：当前页（切换视图/产品时重置）
 };
 
 function setAlert(type, msg) { state.alert = { type, msg }; render(); }
@@ -46,6 +47,7 @@ async function api(path, opts = {}) {
 function route() {
   const hash = location.hash.slice(1) || '/credentials';
   state.view = hash.split('?')[0];
+  state.page = 1;
   if (!state.token && state.view !== '/login') { location.hash = '/login'; return; }
   render();
   if (state.view === '/products') loadProducts();
@@ -59,6 +61,7 @@ function route() {
 function switchProduct(code) {
   state.product = code;
   state.productDropdown = false;
+  state.page = 1;
   render();
   if (state.view === '/credentials') loadCredentials();
   if (state.view === '/users') loadUsers();
@@ -96,6 +99,25 @@ async function loadServices() {
 function fmtAmount(cents) { return '¥' + (cents / 100).toFixed(2); }
 function fmtDate(s) { return s ? s.replace('T', ' ').replace(/\.\d+Z?$/, '') : '—'; }
 
+// ==================== 列表分页（纯前端切片，每页 20 条） ====================
+const PAGE_SIZE = 20;
+function pageSlice(list) {
+  const total = (list || []).length;
+  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  if (state.page > pages) state.page = pages;   // 删除等操作后数据变少：收敛到最后一页
+  const start = (state.page - 1) * PAGE_SIZE;
+  return { rows: (list || []).slice(start, start + PAGE_SIZE), total, pages };
+}
+function pagerHtml(pg) {
+  if (pg.pages <= 1) return pg.total ? `<p style="text-align:right;color:var(--text-muted);font-size:13px;margin:10px 4px 0">共 ${pg.total} 条</p>` : '';
+  return `<div style="display:flex;align-items:center;justify-content:flex-end;gap:10px;margin:14px 4px 0">
+    <button ${state.page <= 1 ? 'disabled' : ''} onclick="goPage(${state.page - 1})">上一页</button>
+    <span style="font-size:13px;color:var(--text-muted)">第 ${state.page} / ${pg.pages} 页 · 共 ${pg.total} 条</span>
+    <button ${state.page >= pg.pages ? 'disabled' : ''} onclick="goPage(${state.page + 1})">下一页</button>
+  </div>`;
+}
+function goPage(n) { state.page = Math.max(1, n); render(); }
+
 // 管理员手动确认收款（线下支付场景）
 function markOrderPaid(id) {
   state.orderModal = { type: 'markPaid', orderId: id, busy: false };
@@ -107,11 +129,38 @@ async function submitMarkOrderPaid() {
   if (!m || m.busy) return;
   m.busy = true; render();
   try {
-    await api('/orders/' + m.orderId + '/mark-paid', { method: 'PATCH' });
-    setAlert('success', '已确认收款，服务期已延长。请在火山控制台购买 License 并绑定设备后，点"完成续期"');
+    const r = await api('/orders/' + m.orderId + '/mark-paid', { method: 'PATCH' });
+    setAlert('success', '已确认收款：平台服务期已延长' +
+      (r.service_expires_at ? '至 ' + String(r.service_expires_at).replace('T',' ').replace(/\.\d+Z?$/,'') : '') +
+      '，并为该设备自动预留新 SN「' + (r.reserved_sn || '—') + '」（待火山激活）。' +
+      '当前 SN 未切换——请在"设备凭证"页将新 SN 设为下次上线，设备上线激活后即获得新一年 License。');
     state.orderModal = null;
     loadOrders();
   } catch (e) { setAlert('error', e.message); m.busy = false; render(); }
+}
+
+// 作废并重新分配订单预留 SN（独立于"确认收款"；已付款订单重复确认不会补 SN）：
+// 当前预留 SN 作废（retired，记录保留并写入订单替代历史），用独立幂等键预留替代 SN。
+// request_id 每次操作新生成：响应丢失后重试复用同一 ID，返回同一替代 SN，不重复作废。
+function reallocateReservedSn(id, orderNo) {
+  const requestId = (window.crypto && crypto.randomUUID)
+    ? crypto.randomUUID()
+    : 'rlc-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+  askConfirm({
+    title: '作废并重新分配预留 SN',
+    message: `订单「${orderNo}」当前预留的 SN 将被作废（记录保留，写入订单替代历史），` +
+      '并为其重新预留一个替代 SN（待火山激活）。当前使用的 SN 不受影响，切换仍需在"设备凭证"页手动指定。',
+    confirmText: '作废并重新分配',
+    onConfirm: async () => {
+      const r = await api('/orders/' + id + '/reallocate-sn', {
+        method: 'POST',
+        body: JSON.stringify({ request_id: requestId }),
+      });
+      setAlert('success', (r.reserved_reused ? '该次重新分配已存在（幂等重放）：' : '已作废' + (r.voided_sn ? '「' + r.voided_sn + '」并' : '') + '重新分配：') +
+        '替代 SN「' + r.reserved_sn + '」（待火山激活）。请在"设备凭证"页将其设为下次上线。');
+      loadOrders();
+    },
+  });
 }
 
 // 管理员人工完成续期：在火山控制台手动购买 License + 绑定设备后确认
@@ -178,17 +227,29 @@ function closeOrderModal() {
 function logout() { state.token = ''; state.confirmLogout = false; localStorage.removeItem('admin_token'); location.hash = '/login'; }
 
 // 通用自定义确认弹窗（替换浏览器原生 confirm）
-function askConfirm({ title, message, confirmText = '确认', danger = true, onConfirm }) {
-  state.confirmModal = { title, message, confirmText, danger, onConfirm, busy: false };
+// input: { placeholder, value } 可选——弹窗内显示单个输入框，值经 onConfirm(value) 传回
+// inputs: [{ id, label, placeholder, value, type }] 可选——多个输入框，值经 onConfirm(values) 以 {id: value} 传回
+function askConfirm({ title, message, confirmText = '确认', danger = true, input = null, inputs = null, onConfirm }) {
+  state.confirmModal = { title, message, confirmText, danger, input, inputs, onConfirm, busy: false };
   render();
 }
 
 async function submitConfirm() {
   const m = state.confirmModal;
   if (!m || m.busy) return;
+  let inputValue;
+  if (m.inputs) {
+    inputValue = {};
+    for (const f of m.inputs) {
+      const el = document.getElementById('confirmInput_' + f.id);
+      inputValue[f.id] = el ? el.value : undefined;
+    }
+  } else {
+    inputValue = m.input ? (document.getElementById('confirmInput') || {}).value : undefined;
+  }
   m.busy = true; render();
   try {
-    await m.onConfirm();
+    await m.onConfirm(inputValue);
     state.confirmModal = null;
   } catch (e) {
     setAlert('error', e.message);
@@ -201,11 +262,14 @@ function closeConfirm() {
   render();
 }
 
-// 删除设备凭证（provisioning / provisioning_failed / retired）
+// 删除设备凭证（仅限"从未激活且无订单"的 SN，服务端强制校验，按钮按 can_delete 显示）
 function deleteCred(id) {
+  const c = state.credentials.find(x => x.id === id);
   askConfirm({
     title: '删除设备凭证',
-    message: '此操作不可撤销，关联的绑定关系也会一并删除。',
+    message: `将删除未激活的 SN「${c ? c.sn : ''}」，此操作不可撤销。` +
+      '用户绑定与平台服务期挂在物理设备（MAC）上，不受删除影响。' +
+      (c && c.ever_activated ? '注意：该 SN 已激活过，正常情况下不应出现删除入口。' : ''),
     confirmText: '确认删除',
     onConfirm: async () => {
       await api('/credentials/' + id, { method: 'DELETE' });
@@ -215,15 +279,86 @@ function deleteCred(id) {
   });
 }
 
-// 删除用户
+// 作废未激活但已关联订单的 SN（保留订单历史），作废后可预留替代 SN。
+// 作废 = 状态置为 retired（终态）；换回旧 SN 不需要恢复，用"下次使用"即可。
+function voidCred(id) {
+  const c = state.credentials.find(x => x.id === id);
+  askConfirm({
+    title: '作废 SN',
+    message: `将作废 SN「${c ? c.sn : ''}」。该 SN 已关联订单，作废保留订单历史；` +
+      '如需替代 SN，请用"预留新 SN"重新生成。作废的 SN 不能再被设备激活。',
+    confirmText: '确认作废',
+    danger: true,
+    onConfirm: async () => {
+      await api('/credentials/' + id + '/status', { method: 'PATCH', body: JSON.stringify({ status: 'retired' }) });
+      setAlert('success', '已作废（保留订单历史）。如需替代 SN，请使用"预留新 SN"');
+      loadCredentials();
+    },
+  });
+}
+
+// 指定"下次上线使用的 SN"（管理员选择，设备无感知）。
+// 目标可以是"待火山激活"或"已激活"的 SN；纯选择操作：不搬绑定、不清权益、不受订单影响。
+// 设备下次不带 SN 激活时返回所选 SN 的凭证（新 SN 走首次火山注册，旧 SN 返回已存密钥）。
+// 选择保持粘性直到管理员再次改选；无需"立即转正"——首次激活是设备上线后的操作。
+function setPrimaryCred(id) {
+  const target = state.credentials.find(x => x.id === id);
+  askConfirm({
+    title: '指定下次上线 SN',
+    message: `将「${target ? target.sn : ''}」指定为该设备下次上线使用的凭证？` +
+      '设备下次不带 SN 激活时即返回该 SN 的凭证；选择保持粘性直到再次改选。' +
+      '用户绑定、平台服务期与历史订单不因选择变化而被搬迁或清空。',
+    confirmText: '确认指定',
+    danger: false,
+    onConfirm: async () => {
+      const r = await api('/credentials/' + id + '/primary', { method: 'PATCH' });
+      setAlert('success', '已指定下次上线 SN：' + (r.sn || '') + '（设备下次上线激活时生效）');
+      loadCredentials();
+    },
+  });
+}
+
+// 为已有设备预留新 SN（平台行为，不依赖火山、不重新烧录 eFuse）：
+// 复用物理设备身份与共享 FactoryKey；新 SN 初始为"待火山激活"，
+// 预留后可在下方直接"设为下次上线"，设备上线激活时才请求火山。
+function reserveSnDialog() {
+  // 幂等：同一弹窗内重试复用同一 request_id（响应丢失后重试不会重复生成 SN）
+  const requestId = (window.crypto && crypto.randomUUID)
+    ? crypto.randomUUID()
+    : 'rsv-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+  askConfirm({
+    title: '为设备预留新 SN',
+    message: '输入已出厂设备的 HardwareID（MAC）。平台将复用其共享 FactoryKey 生成新 SN，' +
+      '不请求火山、不重新烧录；新 SN 初始为"待火山激活"。',
+    confirmText: '预留',
+    danger: false,
+    input: { placeholder: '如 AC:A7:04:28:C9:10', value: '' },
+    onConfirm: async (hwid) => {
+      const r = await api('/devices/reserve-sn', {
+        method: 'POST',
+        body: JSON.stringify({ product: state.product, hardware_id: (hwid || '').trim(), request_id: requestId }),
+      });
+      setAlert('success', (r.reused ? '该次预留已存在（幂等重放）：' : '已为新设备预留 SN：') + r.sn + '（待火山激活）');
+      loadCredentials();
+    },
+  });
+}
+
+// 火山权益按"实际激活后一年、火山控制"自动记录（激活即写入到期时间，来源=激活推算）；
+// 不再需要人工确认关卡。权益列只读展示状态/License ID/到期时间。
+
+// 删除用户 = 账号注销（软删除）：绑定解除，设备/服务期/订单审计保留，
+// 原手机号释放可重新注册；已注销账号不能再登录。
 function deleteUser(id) {
   askConfirm({
-    title: '删除用户',
-    message: '用户的设备绑定和订单数据也会一并删除，此操作不可撤销。',
-    confirmText: '确认删除',
+    title: '注销账号',
+    message: '将注销该账号：设备绑定解除，但设备、SN、剩余服务期和订单历史全部保留' +
+      '（订单按注销账号关联审计）。原手机号释放，可重新注册。注销后不可登录。',
+    confirmText: '确认注销',
+    danger: true,
     onConfirm: async () => {
       await api('/users/' + id, { method: 'DELETE' });
-      setAlert('success', '已删除');
+      setAlert('success', '账号已注销（绑定已解除，设备与服务期保留，订单历史保留）');
       loadUsers();
     },
   });
@@ -302,8 +437,9 @@ async function updateCredPlan(credId) {
   state.planSelected = null;
   state.planDropdown = false;
   render();
-  // 从 services 列表里查该设备当前套餐 / 到期日
-  const svc = (state.services || []).find(s => s.credential_id === credId);
+  // 服务期挂物理设备（MAC）：按 hardware_id 匹配
+  const cred = state.credentials.find(x => x.id === credId);
+  const svc = (state.services || []).find(s => s.hardware_id === (cred && cred.hardware_id));
   state.planSelected = (svc && svc.plan) || 'annual';
   render();
 }
@@ -370,9 +506,7 @@ function render() {
     html = `
       <div style="max-width:380px;margin:80px auto;padding:16px">
         <div style="text-align:center;margin-bottom:24px">
-          <div style="width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,#3eaf7c,#34a06c);margin:0 auto 16px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(62,175,124,.3)">
-            <span style="color:#fff;font-size:24px;font-weight:700">V</span>
-          </div>
+          <img src="logo.png" alt="Vectorac" style="width:64px;height:64px;object-fit:contain;margin:0 auto 16px;display:block;border-radius:12px">
           <h2 style="font-size:22px;color:#e6edf3;margin-bottom:4px">Vectorac 管理后台</h2>
           <p style="color:#7d8590;font-size:14px">输入管理员密码登录</p>
         </div>
@@ -461,78 +595,127 @@ function render() {
     const statusBadge = (s) => {
       const map = {
         provisioning: '<span class="badge" style="background:rgba(251,191,36,.15);color:#fbbf24">烧录中</span>',
-        provisioned: '<span class="badge active">已出厂</span>',
+        provisioned: '<span class="badge" style="background:rgba(251,191,36,.15);color:#fbbf24" title="已出厂/已预留，等待设备上线激活火山">待火山激活</span>',
         provisioning_failed: '<span class="badge disabled">烧录失败</span>',
         volcano_registered: '<span class="badge active">已激活</span>',
         retired: '<span class="badge disabled">已退役</span>',
       };
       return map[s] || `<span class="badge">${s}</span>`;
     };
+    const pgCred = pageSlice(state.credentials);
     main += `
-      <div class="row"><h1>设备凭证（${state.product}）</h1></div>
+      <div class="row">
+        <h1>设备凭证（${state.product}）</h1>
+        <button class="primary" onclick="reserveSnDialog()" title="为已出厂设备预留新 SN：复用 FactoryKey，不请求火山、不重新烧录">+ 预留新 SN</button>
+      </div>
       <div class="card">
         <table>
-          <thead><tr><th>SN</th><th>HardwareID</th><th>状态</th><th>套餐</th><th>服务到期</th><th>火山激活</th><th>绑定用户</th><th>录入时间</th><th>操作</th></tr></thead>
+          <thead><tr><th>SN</th><th>HardwareID</th><th>状态</th><th>套餐</th><th>服务到期</th><th>火山激活</th><th>火山权益</th><th>绑定用户</th><th>录入时间</th><th>操作</th></tr></thead>
           <tbody>
-            ${state.credentials.length === 0 ? '<tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:32px">暂无设备。出厂录入由烧录工具自动完成。</td></tr>' : state.credentials.map(c => {
-              const svc = (state.services || []).find(s => s.credential_id === c.id);
+            ${pgCred.total === 0 ? '<tr><td colspan="10" style="text-align:center;color:var(--text-muted);padding:32px">暂无设备。出厂录入由烧录工具自动完成。</td></tr>' : pgCred.rows.map(c => {
+              // 绑定/服务期挂物理设备（MAC）：按 hardware_id 匹配，同一 MAC 的所有 SN 显示相同服务期
+              const svc = (state.services || []).find(s => s.hardware_id === c.hardware_id);
               const planLabel = svc ? (svc.plan === 'annual' ? '年卡' : svc.plan) : '—';
               const exp = svc ? svc.expires_at : null;
               const now = Date.now();
               const expired = exp && new Date(exp).getTime() < now;
               const expLabel = exp ? exp.replace('T',' ').replace(/\.\d+Z?$/,'') : '—';
               const expColor = !exp ? 'var(--text-muted)' : (expired ? 'var(--danger)' : 'var(--primary)');
+              // 同一 MAC 有多个 SN 时显示选择入口；徽标区分"后台选定"与"最近激活"
+              const sameMac = state.credentials.filter(x => x.hardware_id && x.hardware_id === c.hardware_id);
+              const multiSn = sameMac.length > 1;
+              const selectBadge = c.primary_pending
+                ? ` <span class="badge" style="background:rgba(251,191,36,.15);color:#fbbf24" title="管理员选定的下次上线 SN：设备下次不带 SN 激活时返回该凭证">后台选定</span>`
+                : '';
+              const activeBadge = c.is_primary
+                ? ` <span class="badge active" title="最近一次激活返回给设备的凭证（设备端缓存与此一致）">最近激活</span>`
+                : '';
+              const canSelect = !c.primary_pending && (c.status === 'provisioned' || c.status === 'volcano_registered') && (multiSn || !c.is_primary);
+              const selectBtn = canSelect
+                ? ` <button onclick="setPrimaryCred(${c.id})" title="指定为下次上线使用的 SN（可随时切回任意未停用的旧 SN）">设为下次上线</button>`
+                : '';
+              // 火山权益按"实际激活后一年"自动记录（来源=激活推算，火山控制）：
+              // completed+无 License ID = 激活推算到期；completed+License ID = 真实续期录入；
+              // none = 旧数据无权益记录（兼容口径视为可用）。人工确认关卡已撤销。
+              const rightsBadge = (rs) => {
+                const map = {
+                  completed: '<span class="badge active" title="实际激活即获得一年 License（按激活时间推算到期；真实续期后为火山实际到期时间）">有效</span>',
+                  pending: '<span class="badge" style="background:rgba(251,191,36,.15);color:#fbbf24">续期处理中</span>',
+                  processing: '<span class="badge" style="background:rgba(251,191,36,.15);color:#fbbf24">续期处理中</span>',
+                  failed: '<span class="badge disabled" title="最近一次续期失败">续期失败</span>',
+                  superseded: '<span class="badge" style="background:rgba(148,163,184,.15);color:#94a3b8" title="已改由新 SN 激活获得一年 License，原 SN 无需购买续期">已替代</span>',
+                };
+                return rs ? (map[rs] || `<span class="badge">${rs}</span>`) : '<span style="color:var(--text-muted)" title="旧数据无权益记录，按兼容口径视为可用">—</span>';
+              };
+              const rightsExp = c.provider_expires_at ? String(c.provider_expires_at).replace('T',' ').replace(/\.\d+Z?$/,'') : '';
+              const rightsExpired = rightsExp && new Date(rightsExp).getTime() < Date.now();
               return `
               <tr>
-                <td><code>${c.sn}</code></td>
+                <td><code>${c.sn}</code>${selectBadge}${activeBadge}${selectBtn}</td>
                 <td>${c.hardware_id || '—'}</td>
                 <td>${statusBadge(c.status)}${c.failure_reason ? `<br><small style="color:var(--danger)">${c.failure_reason}</small>` : ''}</td>
                 <td><span class="badge ${svc ? svc.plan : ''}">${planLabel}</span></td>
                 <td style="color:${expColor};font-size:12px">${expLabel}${expired ? '<br><small>已过期</small>' : ''}</td>
                 <td>${c.volcano_activated ? '✓' : '—'}</td>
+                <td style="font-size:12px">
+                  ${rightsBadge(c.provider_renew_status)}
+                  ${c.provider_license_id ? `<br><code style="font-size:11px">${c.provider_license_id}</code>` : ''}
+                  ${rightsExp ? `<br><span style="color:${rightsExpired ? 'var(--danger)' : 'var(--text-muted)'}" title="来源：实际激活时间 +1 年（展示推算，火山控制）">${rightsExp}${rightsExpired ? '（已过期）' : ''}</span>` : ''}
+                </td>
                 <td>${c.bound_user_phone ? `<code>${c.bound_user_phone}</code>${c.bound_user_has_email ? '<br><small style="color:var(--text-muted)">邮箱已填</small>' : ''}` : '—'}</td>
                 <td>${c.created_at || '—'}</td>
                 <td>
-                  ${(c.status === 'provisioning' || c.status === 'provisioning_failed')
-                    ? `<button class="danger" onclick="deleteCred(${c.id})">删除</button>`
-                    : `<button onclick="updateCredPlan(${c.id})">改套餐</button> ` + (c.status === 'retired'
-                        ? `<button onclick="updateCredStatus(${c.id},'provisioned')">恢复</button> <button class="danger" onclick="deleteCred(${c.id})">删除</button>`
-                        : `<button class="danger" onclick="updateCredStatus(${c.id},'retired')">退役</button>`)}
+                  ${c.status !== 'provisioning' && c.status !== 'provisioning_failed' && c.status !== 'retired' ? `<button onclick="updateCredPlan(${c.id})">改套餐</button> ` : ''}
+                  ${c.can_delete ? `<button class="danger" onclick="deleteCred(${c.id})">删除</button>` : ''}
+                  ${c.can_void ? `<button class="danger" onclick="voidCred(${c.id})" title="${c.delete_block_reason || ''}">作废</button>` : ''}
+                  ${(!c.can_delete && !c.can_void && c.delete_block_reason && (c.ever_activated || c.status === 'retired'))
+                    ? `<details style="display:inline-block"><summary style="cursor:pointer;font-size:12px;color:var(--text-muted)">高级</summary>
+                        <div style="margin-top:4px">
+                          ${c.status === 'retired'
+                            ? `<button onclick="updateCredStatus(${c.id},'provisioned')">恢复为待激活</button>`
+                            : `<button class="danger" onclick="updateCredStatus(${c.id},'retired')">退役停用</button>`}
+                        </div></details>` : ''}
                 </td>
               </tr>`;
             }).join('')}
           </tbody>
         </table>
+        ${pagerHtml(pgCred)}
       </div>`;
   } else if (state.view === '/users') {
+    const pgUsers = pageSlice(state.users);
     main += `
       <div class="row"><h1>用户（${state.product}）</h1></div>
       <div class="card">
         <table>
           <thead><tr><th>ID</th><th>手机号</th><th>邮箱</th><th>已绑设备</th><th>验证</th><th>注册时间</th><th>操作</th></tr></thead>
           <tbody>
-            ${state.users.map(u => `
-              <tr>
+            ${pgUsers.rows.map(u => `
+              <tr${u.deleted ? ' style="opacity:.55"' : ''}>
                 <td>${u.id}</td>
-                <td><code>${u.phone || '—'}</code></td>
+                <td><code>${u.phone || '—'}</code>${u.deleted ? ' <span class="badge disabled" title="账号已注销：绑定已解除，设备/服务期/订单历史保留，原手机号已释放">已注销</span>' : ''}</td>
                 <td>${u.has_email ? '<span class="badge">已填</span>' : '<span style="color:var(--text-muted)">未填</span>'}</td>
                 <td>${u.device_count != null ? u.device_count + ' 台' : '—'}</td>
                 <td>${u.email_verified ? '✓' : '—'}</td>
                 <td>${u.created_at || '—'}</td>
-                <td><button class="danger" onclick="deleteUser(${u.id})">删除</button></td>
+                <td>${u.deleted
+                  ? '<span style="color:var(--text-muted);font-size:12px">已注销</span>'
+                  : `<button class="danger" onclick="deleteUser(${u.id})">注销</button>`}</td>
               </tr>
             `).join('') || '<tr><td colspan="7" style="color:#888">暂无</td></tr>'}
           </tbody>
         </table>
+        ${pagerHtml(pgUsers)}
       </div>`;
   } else if (state.view === '/bindings') {
+    const pgBind = pageSlice(state.bindings);
     main += `
       <div class="row"><h1>绑定关系（${state.product}）</h1></div>
       <div class="card">
         <table>
           <thead><tr><th>ID</th><th>用户</th><th>SN</th><th>HardwareID</th><th>火山设备名</th><th>昵称</th><th>绑定时间</th><th>最近活跃</th><th>操作</th></tr></thead>
           <tbody>
-            ${state.bindings.map(b => `
+            ${pgBind.rows.map(b => `
               <tr>
                 <td>${b.id}</td>
                 <td><code>${b.user_phone || '—'}</code></td>
@@ -547,15 +730,17 @@ function render() {
             `).join('')}
           </tbody>
         </table>
+        ${pagerHtml(pgBind)}
       </div>`;
   } else if (state.view === '/services') {
+    const pgSvc = pageSlice(state.services);
     main += `
       <div class="row"><h1>设备服务期（${state.product}）</h1></div>
       <div class="card">
         <table>
           <thead><tr><th>ID</th><th>SN</th><th>HardwareID</th><th>火山设备名</th><th>持有人</th><th>开始</th><th>到期</th><th>续期状态</th><th>License</th></tr></thead>
           <tbody>
-            ${(state.services || []).map(s => `
+            ${pgSvc.rows.map(s => `
               <tr>
                 <td>${s.id}</td>
                 <td><code>${s.sn}</code></td>
@@ -570,28 +755,31 @@ function render() {
             `).join('') || '<tr><td colspan="9" style="color:#888">暂无</td></tr>'}
           </tbody>
         </table>
+        ${pagerHtml(pgSvc)}
       </div>`;
   } else if (state.view === '/orders') {
+    const pgOrd = pageSlice(state.orders);
     main += `
       <div class="row"><h1>订单（${state.product}）</h1></div>
       <div class="card">
-        <p style="color:#888;font-size:13px;margin:8px 0 16px">人工转账流程：用户提交转账凭证后状态显示"待审核"，核对凭证无误后点"确认收款"，服务期自动延长并触发火山 License 续期。</p>
+        <p style="color:#888;font-size:13px;margin:8px 0 16px">人工转账流程：用户提交转账凭证后状态显示"待审核"，核对凭证无误后点"确认收款"——平台服务期自动延长，并为设备自动预留新 SN（不切换当前 SN，由管理员在"设备凭证"页选择下次上线）。</p>
         <table>
-          <thead><tr><th>ID</th><th>订单号</th><th>用户</th><th>SN</th><th>金额</th><th>年限</th><th>状态</th><th>转账凭证</th><th>续期</th><th>创建时间</th><th>操作</th></tr></thead>
+          <thead><tr><th>ID</th><th>订单号</th><th>用户</th><th>SN</th><th>预留 SN</th><th>金额</th><th>年限</th><th>状态</th><th>转账凭证</th><th>续期</th><th>创建时间</th><th>操作</th></tr></thead>
           <tbody>
-            ${(state.orders || []).map(o => {
+            ${pgOrd.rows.map(o => {
               const statusLabel = o.status === 'paid' ? '已付款' : (o.status === 'pending' && o.voucher_text ? '待审核' : (o.status === 'pending' ? '待付款' : o.status));
               return `
               <tr>
-                <td>${o.id}</td>
+                <td><code>${o.id}</code></td>
                 <td><code>${o.order_no}</code></td>
-                <td><code>${o.user_phone || '—'}</code></td>
+                <td><code>${o.user_phone || '—'}</code>${o.user_deleted ? ' <span class="badge disabled" title="订单历史按注销账号保留审计">已注销</span>' : ''}</td>
                 <td><code>${o.sn}</code></td>
+                <td>${o.reserved_sn ? `<code>${o.reserved_sn}</code> <span class="badge" style="background:rgba(251,191,36,.15);color:#fbbf24" title="确认收款时自动预留的新 SN，待设备激活获得新一年 License">待激活</span>` : '—'}</td>
                 <td>${fmtAmount(o.amount)}</td>
                 <td>${o.years}年</td>
                 <td><span class="badge ${o.status === 'paid' ? 'active' : (o.status === 'pending' && o.voucher_text ? '' : 'disabled')}">${statusLabel}</span></td>
                 <td>${o.voucher_text ? `<small>${o.voucher_text}</small><br><small style="color:#888">${fmtDate(o.voucher_submitted_at)}</small>` : '<span style="color:#888">—</span>'}</td>
-                <td>${o.provider_renew_status}${o.provider_renew_error ? '<br><small style="color:#c00">' + o.provider_renew_error + '</small>' : ''}</td>
+                <td>${o.provider_renew_status === 'superseded' ? '已由新SN替代' : o.provider_renew_status}${o.provider_renew_error ? '<br><small style="color:#c00">' + o.provider_renew_error + '</small>' : ''}</td>
                 <td>${fmtDate(o.created_at)}</td>
                 <td>${
                   o.status === 'pending'
@@ -599,16 +787,25 @@ function render() {
                     : ((o.status === 'paid' && ['pending', 'processing', 'failed'].includes(o.provider_renew_status))
                         ? `<button class="primary" onclick="completeRenew(${o.id})">完成续期</button>` +
                           (o.provider_renew_status === 'failed' ? ` <button onclick="retryRenew(${o.id})">重试</button>` : '')
-                        : '—') +
-                      // 已付款且续期未完成的订单不可删（服务端强制），其余已付款订单删除前有审计提示
+                        : '') +
+                      // 新流程订单（确认收款自动预留 SN）：预留 SN 有问题（错发/损坏）时
+                      // "作废并重新分配"——旧预留作废保留历史，独立幂等键预留替代 SN
+                      ((o.status === 'paid' && o.renew_mode === 'new_sn')
+                        ? ` <button onclick="reallocateReservedSn(${o.id}, '${o.order_no}')">重新分配</button>`
+                        : '') +
+                      // 已付款且续期未完成的订单不可删（服务端强制），其余已付款订单删除前有审计提示；
+                      // 有"作废并重新分配"历史的订单一律保留审计记录，不显示删除按钮
                       ((o.status === 'paid' && ['pending', 'processing', 'failed'].includes(o.provider_renew_status))
                         ? ''
-                        : ` <button class="danger" onclick="deleteOrder(${o.id}, '${o.order_no}', ${o.status === 'paid'})">删除</button>`)
+                        : (o.has_realloc_history
+                            ? '<span class="badge disabled" title="该订单存在「作废并重新分配」历史（关联审计与幂等重放记录），不能删除">有替代历史</span>'
+                            : `<button class="danger" onclick="deleteOrder(${o.id}, '${o.order_no}', ${o.status === 'paid'})">删除</button>`))
                 }</td>
               </tr>`;
-            }).join('') || '<tr><td colspan="11" style="color:#888">暂无</td></tr>'}
+            }).join('') || '<tr><td colspan="12" style="color:#888">暂无</td></tr>'}
           </tbody>
         </table>
+        ${pagerHtml(pgOrd)}
       </div>`;
   }
 
@@ -653,7 +850,7 @@ function render() {
   if (state.editCredPlan) {
     const c = state.credentials.find(x => x.id === state.editCredPlan);
     if (c) {
-      const svc = (state.services || []).find(s => s.credential_id === c.id);
+      const svc = (state.services || []).find(s => s.hardware_id === c.hardware_id);
       const plan = state.planSelected || (svc && svc.plan) || 'annual';
       const planLabel = plan === 'annual' ? '年卡（annual）' : '基础版（basic）';
       const defaultExp = svc && svc.expires_at ? svc.expires_at.slice(0, 10) : new Date(Date.now() + 365 * 86400 * 1000).toISOString().slice(0, 10);
@@ -813,6 +1010,12 @@ function renderConfirmModal() {
           </div>
           <h3 style="margin-bottom:6px">${m.title}</h3>
           <p style="color:var(--text-muted);font-size:13px">${m.message}</p>
+          ${m.input ? `<input id="confirmInput" type="text" placeholder="${m.input.placeholder || ''}" value="${m.input.value || ''}" style="width:100%;margin-top:10px;padding:9px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:var(--text);font-size:13px;outline:none" onkeydown="if(event.key==='Enter')submitConfirm()" autofocus>` : ''}
+          ${(m.inputs || []).map(f => `
+            <div style="margin-top:10px;text-align:left">
+              <label style="display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px">${f.label}</label>
+              <input id="confirmInput_${f.id}" type="${f.type || 'text'}" placeholder="${f.placeholder || ''}" value="${f.value || ''}" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:var(--text);font-size:13px;outline:none">
+            </div>`).join('')}
         </div>
         <div class="modal-actions center" style="margin-top:18px">
           <button onclick="closeConfirm()">取消</button>
