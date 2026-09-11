@@ -1,3 +1,4 @@
+import { meshVolume, preserveVolume } from "./slime-volume";
 // Closed, shared-vertex surface. Positions and plastic offsets are in object space.
 export const MATERIALS = {
   butter: {
@@ -146,6 +147,7 @@ export default class SlimeModel {
   }
 
   reset(mold = this.mold) {
+    this.settling = null;
     if (
       this.positions.length !== this.templateCount * 3 ||
       this.indices.length !== this.templateIndices.length
@@ -178,6 +180,7 @@ export default class SlimeModel {
       }
     }
     this.positions.set(this.base);
+    this.captureVolumes();
   }
 
   reconnect() {
@@ -192,6 +195,33 @@ export default class SlimeModel {
       neighbors[c].add(a).add(b);
     }
     this.neighbors = neighbors.map(n => [...n]);
+    this.captureVolumes();
+  }
+
+  captureVolumes() {
+    const labels = new Int32Array(this.positions.length / 3).fill(-1),
+      groups = [];
+    for (let v = 0; v < labels.length; v++) {
+      if (labels[v] >= 0) continue;
+      const vertices = [v],
+        label = groups.length;
+      labels[v] = label;
+      for (let j = 0; j < vertices.length; j++)
+        for (const n of this.neighbors[vertices[j]])
+          if (labels[n] < 0) {
+            labels[n] = label;
+            vertices.push(n);
+          }
+      groups.push({ vertices, indices: [], volume: 0 });
+    }
+    for (let i = 0; i < this.indices.length; i += 3)
+      groups[labels[this.indices[i]]].indices.push(
+        ...this.indices.slice(i, i + 3)
+      );
+    groups.forEach(g => {
+      g.volume = meshVolume(this.positions, g.indices);
+    });
+    this.massBodies = groups;
   }
 
   bake() {
@@ -200,6 +230,80 @@ export default class SlimeModel {
     this.rest = new Float32Array(this.positions.length);
     this.velocity = new Float32Array(this.positions.length);
     this.spread = 1;
+  }
+
+  startSettling(vertices) {
+    if (this.material === "clay") {
+      this.settling = null;
+      return;
+    }
+    this.settling = { vertices: vertices.slice(), speed: 0, age: 0 };
+  }
+
+  settle(dt) {
+    const state = this.settling;
+    if (!state) return;
+    const p = this.positions,
+      floor = -0.25;
+    let low = Infinity,
+      high = -Infinity,
+      cx = 0,
+      cy = 0;
+    state.vertices.forEach(v => {
+      low = Math.min(low, p[v * 3 + 2]);
+      high = Math.max(high, p[v * 3 + 2]);
+      cx += p[v * 3] / state.vertices.length;
+      cy += p[v * 3 + 1] / state.vertices.length;
+    });
+    const rates = {
+      clay: 0,
+      liquid: 3.5,
+      crystal: 0.9,
+      butter: 0.45,
+      memory: 0.12,
+      foam: 0.35
+    };
+    const rate = rates[this.material];
+    if (!rate) {
+      this.settling = null;
+      return;
+    }
+    state.speed += rate * 2.2 * dt;
+    const drop = Math.min(Math.max(0, low - floor), state.speed * dt);
+    const height = high - low;
+    const heights = {
+      liquid: 0.4,
+      crystal: 0.62,
+      butter: 0.72,
+      memory: 0.82,
+      foam: 0.74
+    };
+    const restingHeight = heights[this.material];
+    const factor =
+      1 -
+      (Math.max(0, height - restingHeight) / Math.max(0.01, height)) *
+        (1 - Math.exp(-dt * rate));
+    // The fold is volume-corrected before settling; a lower slab must spread
+    // sideways by the reciprocal square root to retain the same volume.
+    const spread = 1 / Math.sqrt(factor);
+    state.vertices.forEach(v => {
+      const i = v * 3,
+        target = [
+          cx + (p[i] - cx) * spread,
+          cy + (p[i + 1] - cy) * spread,
+          low + (p[i + 2] - low) * factor - drop
+        ];
+      for (let c = 0; c < 3; c++) {
+        this.base[i + c] += target[c] - p[i + c];
+        p[i + c] = target[c];
+      }
+    });
+    state.age += dt;
+    if (
+      (height <= restingHeight + 0.003 && low - floor < 0.003) ||
+      state.age > 60
+    )
+      this.settling = null;
   }
 
   carve(point, normal, radius) {
@@ -227,6 +331,7 @@ export default class SlimeModel {
   }
 
   step(dt, brush) {
+    const previous = this.positions.slice();
     const m = MATERIALS[this.material],
       p = this.positions;
     const flowing = this.material === "liquid" && !this.sculpt;
@@ -325,6 +430,49 @@ export default class SlimeModel {
         this.velocity[i] = 0;
       }
       this.rest[i] = Math.max(-limit, Math.min(limit, this.rest[i]));
+    }
+    this.settle(dt);
+    if (this.massBodies)
+      for (const body of this.massBodies) {
+        const before = this.positions.slice();
+        const valid = preserveVolume(
+          this.positions,
+          body.indices,
+          body.vertices,
+          body.volume
+        );
+        for (const v of body.vertices)
+          for (let c = 0; c < 3; c++) {
+            const i = v * 3 + c;
+            if (!valid || !Number.isFinite(this.positions[i])) {
+              this.positions[i] = previous[i];
+              this.velocity[i] = 0;
+            } else {
+              // Pressure correction must move the reference surface too, otherwise
+              // springs fight it next frame and amplify remeshing into sharp spikes.
+              this.base[i] += this.positions[i] - before[i];
+            }
+          }
+      }
+    this.constrainToTable();
+  }
+
+  constrainToTable() {
+    for (const body of this.massBodies || []) {
+      for (let c = 0; c < 2; c++) {
+        let lo = Infinity,
+          hi = -Infinity;
+        for (const v of body.vertices) {
+          lo = Math.min(lo, this.positions[v * 3 + c]);
+          hi = Math.max(hi, this.positions[v * 3 + c]);
+        }
+        const shift = lo < -3.5 ? -3.5 - lo : hi > 3.5 ? 3.5 - hi : 0;
+        if (shift)
+          for (const v of body.vertices) {
+            this.positions[v * 3 + c] += shift;
+            this.base[v * 3 + c] += shift;
+          }
+      }
     }
   }
 }

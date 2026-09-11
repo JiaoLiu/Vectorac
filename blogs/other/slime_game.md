@@ -85,6 +85,7 @@
 <label>工具大小 <input type="range" data-radius min="0.12" max="0.42" step="0.02" value="0.24" /></label>
 <button data-undo disabled>撤销塑形</button>
 <button data-reset>重新揉好</button>
+<button data-add-clay>＋ 添加新泥</button>
 <button data-view>视角复位</button>
 </div>
 <p class="studio-status" data-slime-status role="status" aria-live="polite">正在准备你的工作台…</p>
@@ -107,6 +108,7 @@
 <button class="tool-btn" data-tool="glitter" title="点一下撒闪粉，按住连续撒。">✦</button>
 <button class="tool-btn" data-tool="foil" title="撒下金属薄片。">◆</button>
 <button class="slime-gear" data-gear title="展开更多选项。">⚙ 选项</button>
+<button data-add-clay title="按当前颜色添加一块新泥。">＋ 新泥</button>
 </div>
 
 <div class="slime-canvas-container">

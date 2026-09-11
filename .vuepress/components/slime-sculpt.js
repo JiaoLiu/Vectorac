@@ -85,10 +85,9 @@ export function tearSurface(positions, indices, point, direction) {
 // band distributes rotation rather than collapsing a row of triangles.
 export function foldSurface(source, selected, center, direction, angle) {
   const result = source.slice();
-  let hingeHeight = -Infinity;
-  selected.forEach(v => {
-    hingeHeight = Math.max(hingeHeight, source[v * 3 + 2]);
-  });
+  // A fixed low hinge avoids using the last fold's highest point as the next
+  // pivot, which previously doubled the stack height on repeated gestures.
+  const hingeHeight = 0.3;
   const hingeX = center.x,
     hingeY = center.y;
   selected.forEach(v => {
@@ -104,12 +103,26 @@ export function foldSurface(source, selected, center, direction, angle) {
     const bent = along * Math.cos(a) - height * Math.sin(a);
     result[i] = hingeX + bent * direction.x - tangent * direction.y;
     result[i + 1] = hingeY + bent * direction.y + tangent * direction.x;
+    const raised = hingeHeight + along * Math.sin(a) + height * Math.cos(a);
     result[i + 2] = Math.max(
       -0.25,
-      hingeHeight + along * Math.sin(a) + height * Math.cos(a)
+      raised > 0.6
+        ? 0.6 + 0.32 * (1 - Math.exp(-(raised - 0.6) / 0.32))
+        : raised
     );
   });
   return result;
+}
+
+export function bubbleRadius(seconds, material, seed = 1) {
+  const expansion =
+    material === "foam" ? 1.2 : material === "crystal" ? 1.05 : 0.9;
+  return Math.min(
+    0.46,
+    (0.045 + 0.34 * (1 - Math.exp(-Math.max(0, seconds) / 1.8))) *
+      expansion *
+      seed
+  );
 }
 
 export function connectedVertices(neighbors, vertex) {

@@ -19,6 +19,17 @@ module.exports = {
         'Expires': '0'
       });
     }
+    // *.worker.js 由 worker-loader 打包成独立 worker（webpack 4 不支持
+    // new Worker(new URL(...)) 语法；enforce 'pre' 确保在 VuePress 默认
+    // babel rule 之前匹配，globalObject 'this' 让包体在 worker 里也能跑）
+    config.module
+      .rule('worker')
+      .enforce('pre')
+      .test(/\.worker\.js$/)
+      .use('worker-loader')
+      .loader('worker-loader')
+      .options({ esModule: true });
+    if (!isServer) config.output.globalObject('this');
   },
   head: [
     ['script', { type: 'text/javascript', src: '/js/bdPush.js' }],

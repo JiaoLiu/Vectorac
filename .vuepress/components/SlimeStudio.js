@@ -1,7 +1,22 @@
 import * as THREE from "three";
 import SlimeModel, { MATERIALS } from "./slime-model";
-import { tearSurface, foldSurface, connectedVertices } from "./slime-sculpt";
+import {
+  tearSurface,
+  foldSurface,
+  connectedVertices,
+  bubbleRadius
+} from "./slime-sculpt";
+import {
+  meshParts,
+  partsOverlap,
+  fuseSurface,
+  surfacePartCount,
+  largestPart
+} from "./slime-fusion";
 import SlimeSprinkles from "./SlimeSprinkles";
+import FoldWorker from "./slime-rebuild.worker";
+import { validSurface } from "./slime-safety";
+import { meshVolume, preserveVolume } from "./slime-volume";
 
 export default class SlimeStudio {
   constructor(canvas) {
@@ -105,7 +120,7 @@ export default class SlimeStudio {
     this.floorTexture = new THREE.CanvasTexture(matCanvas);
     this.floorTexture.encoding = THREE.sRGBEncoding;
     const mat = new THREE.Mesh(
-      new THREE.PlaneGeometry(4.5, 4.5),
+      new THREE.PlaneGeometry(7, 7),
       new THREE.MeshStandardMaterial({
         map: this.floorTexture,
         roughness: 0.95
@@ -133,6 +148,7 @@ export default class SlimeStudio {
     );
     shadow.rotation.x = -Math.PI / 2;
     shadow.position.y = -0.03;
+    this.contactShadow = shadow;
     this.scene.add(shadow);
     this.raycaster = new THREE.Raycaster();
     this.ndc = new THREE.Vector2();
@@ -174,10 +190,12 @@ export default class SlimeStudio {
           this.brush.strength =
             this.pressure * (0.55 + Math.min(1, this.held * 0.8));
         }
-        if (!this.manipulation) this.model.step(1 / 120, this.brush);
+        if (!this.manipulation && !this.fusion && !this.rebuilding)
+          this.model.step(1 / 120, this.brush);
         this.acc -= 1 / 120;
       }
       if (this.brush && this.tool !== "smooth") this.mixColor(dt);
+      if (this.fusion) this.advanceFusion(dt);
       this.sync();
       if (this.sprinkling) {
         this.sprayClock = (this.sprayClock || 0) + dt;
@@ -199,6 +217,8 @@ export default class SlimeStudio {
       );
       this.bubbles.forEach(b => {
         b.age += dt;
+        if (b === this.growingBubble)
+          b.radius = bubbleRadius(this.held, this.model.material, b.seed);
         const i = b.vertex * 3,
           p = this.model.positions;
         b.mesh.position.set(p[i], p[i + 1], p[i + 2]);
@@ -206,7 +226,7 @@ export default class SlimeStudio {
         b.mesh.position.x += normal.getX(b.vertex) * b.radius * 0.35;
         b.mesh.position.y += normal.getY(b.vertex) * b.radius * 0.35;
         b.mesh.position.z += normal.getZ(b.vertex) * b.radius * 0.35;
-        b.mesh.scale.setScalar(Math.min(1, b.age * 3));
+        b.mesh.scale.setScalar(b.radius * Math.min(1, b.age * 6));
       });
       this.renderer.render(this.scene, this.camera);
       this.raf = requestAnimationFrame(this.frame);
@@ -225,11 +245,26 @@ export default class SlimeStudio {
     this.root
       .querySelectorAll(`[data-${attr}]`)
       .forEach(b => b.classList.toggle("active", b.dataset[attr] === value));
+    const drop = this.root.querySelector(`[data-fs-drop="${attr}"]`);
+    if (drop) {
+      const item = drop.querySelector(`[data-option="${value}"]`);
+      if (item) {
+        drop.dataset.value = value;
+        drop.querySelector(".fs-trigger").firstChild.textContent =
+          item.textContent;
+        drop
+          .querySelectorAll("[data-option]")
+          .forEach(b => b.classList.toggle("on", b === item));
+      }
+    }
   }
   bind() {
     const c = this.canvas;
     this.on(c, "contextmenu", e => e.preventDefault());
     this.on(c, "pointerdown", e => {
+      if (this.fusion) this.completeFusion();
+      // Picking must not perform mesh unions. Fusion starts after release only.
+      clearTimeout(this.fusionTimer);
       this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (this.pointers.size === 2) {
         this.beginPinch();
@@ -252,6 +287,11 @@ export default class SlimeStudio {
         // 空白处按下：直接旋转视角，无需切换工具。
         this.rotating = true;
       }
+      if (!this.rotating && this.rebuilding) {
+        // The baked fold is being retessellated in a worker; clay tools wait.
+        this.status("正在整理折叠表面，请稍候…");
+        return;
+      }
       e.preventDefault();
       this.pointer = e.pointerId;
       this.previous = { x: e.clientX, y: e.clientY };
@@ -272,7 +312,16 @@ export default class SlimeStudio {
             this.model,
             this.geometry.attributes.normal
           );
-        } else this.setBrush(hit);
+        } else {
+          this.setBrush(hit);
+          if (
+            this.brush &&
+            (this.tool === "bubble" ||
+              (this.model.material === "foam" &&
+                ["pump", "pinch"].includes(this.tool)))
+          )
+            this.addBubble();
+        }
       }
     });
     this.on(c, "pointermove", e => {
@@ -312,13 +361,7 @@ export default class SlimeStudio {
         this.previous = { x: e.clientX, y: e.clientY };
       }
       if (e.pointerId !== this.pointer) return;
-      if (
-        e.type === "pointerup" &&
-        this.brush &&
-        this.held > 0.25 &&
-        (this.tool === "bubble" || this.model.material === "foam")
-      )
-        this.addBubble();
+      this.growingBubble = null;
       this.pointer = undefined;
       this.brush = null;
       this.carvePoint = null;
@@ -326,8 +369,7 @@ export default class SlimeStudio {
       this.carveReference = null;
       this.sprinkling = null;
       if (this.manipulation) {
-        this.model.bake();
-        this.manipulation = null;
+        this.finishManipulation();
       }
     };
     ["pointerup", "pointercancel", "lostpointercapture"].forEach(e =>
@@ -371,9 +413,9 @@ export default class SlimeStudio {
       .forEach(b =>
         this.on(b, "click", () => this.setMaterial(b.dataset.material))
       );
-    this.root.querySelectorAll("[data-mold]").forEach(b =>
-      this.on(b, "click", () => this.applyMold(b.dataset.mold))
-    );
+    this.root
+      .querySelectorAll("[data-mold]")
+      .forEach(b => this.on(b, "click", () => this.applyMold(b.dataset.mold)));
     this.on(this.root.querySelector("[data-sculpt]"), "change", e => {
       this.model.sculpt = e.target.checked;
       this.status(
@@ -387,6 +429,7 @@ export default class SlimeStudio {
     });
     this.on(this.root.querySelector("[data-reset]"), "click", () => {
       this.saveUndo();
+      this.cancelFoldRebuild();
       this.model.reset();
       this.clearBubbles();
       this.sprinkles.clear();
@@ -398,13 +441,22 @@ export default class SlimeStudio {
     this.on(this.root.querySelector("[data-view]"), "click", () => {
       this.yaw = 0;
       this.elevation = 0.95;
-      this.distance = 4.5;
+      this.geometry.computeBoundingSphere();
+      const sphere = this.geometry.boundingSphere;
+      this.distance = Math.max(
+        4.5,
+        (sphere.radius + sphere.center.length()) * 2.6
+      );
       this.updateCamera();
     });
+    this.root
+      .querySelectorAll("[data-add-clay]")
+      .forEach(button => this.on(button, "click", () => this.addClay()));
     this.bindFullscreen();
   }
   applyMold(mold) {
     this.saveUndo();
+    this.cancelFoldRebuild();
     this.clearBubbles();
     this.sprinkles.clear();
     this.model.reset(mold);
@@ -425,9 +477,7 @@ export default class SlimeStudio {
     };
     const gearBtn = this.root.querySelector("[data-gear]");
     if (gearBtn)
-      this.on(gearBtn, "click", () =>
-        this.root.classList.toggle("fs-gear")
-      );
+      this.on(gearBtn, "click", () => this.root.classList.toggle("fs-gear"));
     // 全屏自定义下拉（trigger + menu + mask，同 usermgr product-dropdown 模式）
     let mask = this.root.querySelector(".fs-mask");
     if (!mask) {
@@ -497,6 +547,7 @@ export default class SlimeStudio {
       const menu = drop.querySelector(".fs-menu");
       options.forEach(([value, label]) => {
         const item = document.createElement("button");
+        item.dataset.option = value;
         item.type = "button";
         item.textContent = label;
         if (value === drop.dataset.value) item.classList.add("on");
@@ -505,9 +556,7 @@ export default class SlimeStudio {
           closeMenus();
           if (drop.dataset.value === value) return;
           drop.dataset.value = value;
-          menu
-            .querySelectorAll(".on")
-            .forEach(x => x.classList.remove("on"));
+          menu.querySelectorAll(".on").forEach(x => x.classList.remove("on"));
           item.classList.add("on");
           trigger.firstChild.textContent = label;
           apply(value);
@@ -546,8 +595,7 @@ export default class SlimeStudio {
           this.root.requestFullscreen || this.root.webkitRequestFullscreen;
         if (request) {
           const result = request.call(this.root);
-          if (result && result.catch)
-            result.catch(() => toggleFsClass(true));
+          if (result && result.catch) result.catch(() => toggleFsClass(true));
         } else toggleFsClass(true);
       }
     });
@@ -580,7 +628,8 @@ export default class SlimeStudio {
     // 第二根手指落下意味着用户想调整视角，中断当前的塑形笔画。
     this.brush = null;
     this.sprinkling = null;
-    if (this.manipulation) this.manipulation = null;
+    this.growingBubble = null;
+    if (this.manipulation) this.finishManipulation();
     this.rotating = false;
   }
   movePinch() {
@@ -602,6 +651,7 @@ export default class SlimeStudio {
     this.updateCamera();
   }
   beginManipulation(hit, e) {
+    this.model.settling = null;
     const point = this.mesh.worldToLocal(hit.point.clone());
     const selected = connectedVertices(this.model.neighbors, hit.face.a);
     const center = new THREE.Vector3();
@@ -623,8 +673,233 @@ export default class SlimeStudio {
       center,
       direction,
       source: this.model.positions.slice(),
+      massBody: this.model.massBodies.find(body =>
+        body.vertices.includes(hit.face.a)
+      ),
       screenY: e.clientY
     };
+  }
+  finishManipulation() {
+    const m = this.manipulation,
+      tool = this.tool;
+    if (tool === "fold" && m.lastValid && this.startFoldRebuild(m)) {
+      // Async rebuild: the fold is already baked and held; settling starts
+      // when the worker's surface lands.
+      this.manipulation = null;
+    } else {
+      if (tool === "fold" && m.lastValid) this.rebuildFold(m);
+      this.model.bake();
+      this.manipulation = null;
+      if (tool === "fold") this.model.startSettling(m.selected);
+    }
+    if (tool !== "tear") {
+      clearTimeout(this.fusionTimer);
+      this.fusionTimer = setTimeout(() => {
+        if (!this.destroyed && this.pointer === undefined) this.tryFuse();
+      }, 30);
+    }
+  }
+  rebuildFold(m) {
+    // Retessellate only the folded body; keep all other clay exactly unchanged.
+    this.bakePaint();
+    const old = this.model.positions,
+      selected = m.selected,
+      map = new Map(selected.map((v, i) => [v, i]));
+    const input = new Float32Array(selected.length * 3),
+      color = new Float32Array(input.length);
+    selected.forEach((v, i) => {
+      input.set(old.slice(v * 3, v * 3 + 3), i * 3);
+      color.set(this.colors.slice(v * 3, v * 3 + 3), i * 3);
+    });
+    const indices = m.massBody.indices.map(v => map.get(v));
+    let rebuilt;
+    try {
+      rebuilt = fuseSurface(input, indices, color);
+    } catch (error) {
+      this.model.positions.set(m.source);
+      return;
+    }
+    // Voxel retessellation sheds thin flakes near the fold's contact seam.
+    // Commit the dominant component; only a genuinely fragmented result (no
+    // part holding most faces) rolls the whole gesture back.
+    rebuilt = largestPart(rebuilt.positions, rebuilt.indices, rebuilt.colors);
+    const vertices = Array.from(
+      { length: rebuilt.positions.length / 3 },
+      (_, i) => i
+    );
+    if (
+      rebuilt.kept < 0.85 ||
+      !preserveVolume(
+        rebuilt.positions,
+        rebuilt.indices,
+        vertices,
+        m.massBody.volume
+      ) ||
+      !validSurface(rebuilt.positions, rebuilt.indices)
+    ) {
+      this.model.positions.set(m.source);
+      return;
+    }
+    m.selected = this.commitFoldSurface(selected, rebuilt);
+  }
+  // Swap the folded body's surface for the retessellated one, remapping
+  // sprinkles and bubbles. Returns the folded body's new vertex indices.
+  commitFoldSurface(selected, rebuilt) {
+    const old = this.model.positions,
+      map = new Map(selected.map((v, i) => [v, i]));
+    const preserved = Array.from(
+        { length: old.length / 3 },
+        (_, i) => i
+      ).filter(v => !map.has(v)),
+      oldToNew = new Map(preserved.map((v, i) => [v, i]));
+    const positions = new Float32Array(
+        preserved.length * 3 + rebuilt.positions.length
+      ),
+      colors = new Float32Array(positions.length),
+      faces = [];
+    preserved.forEach((v, i) => {
+      positions.set(old.slice(v * 3, v * 3 + 3), i * 3);
+      colors.set(this.colors.slice(v * 3, v * 3 + 3), i * 3);
+    });
+    for (let i = 0; i < this.model.indices.length; i += 3)
+      if (oldToNew.has(this.model.indices[i]))
+        faces.push(
+          ...this.model.indices.slice(i, i + 3).map(v => oldToNew.get(v))
+        );
+    positions.set(rebuilt.positions, preserved.length * 3);
+    colors.set(rebuilt.colors, preserved.length * 3);
+    faces.push(...rebuilt.indices.map(v => v + preserved.length));
+    const nearest = v => {
+      if (oldToNew.has(v)) return oldToNew.get(v);
+      let best = 0,
+        distance = Infinity;
+      for (let j = 0; j < rebuilt.positions.length; j += 3) {
+        const d =
+          (old[v * 3] - rebuilt.positions[j]) ** 2 +
+          (old[v * 3 + 1] - rebuilt.positions[j + 1]) ** 2 +
+          (old[v * 3 + 2] - rebuilt.positions[j + 2]) ** 2;
+        if (d < distance) {
+          distance = d;
+          best = j / 3;
+        }
+      }
+      return best + preserved.length;
+    };
+    this.sprinkles.items.forEach(item => {
+      item.vertex = nearest(item.vertex);
+    });
+    this.bubbles.forEach(item => {
+      item.vertex = nearest(item.vertex);
+    });
+    this.installSurface({ positions, colors, indices: faces, preserved });
+    return Array.from(
+      { length: rebuilt.positions.length / 3 },
+      (_, i) => i + preserved.length
+    );
+  }
+  // Retessellate in a worker so release never freezes the page. The previewed
+  // fold is baked at once and physics pauses until the result lands.
+  startFoldRebuild(m) {
+    if (this.rebuilding || this.fusion) return false;
+    if (!this.foldWorker) {
+      let worker;
+      try {
+        worker = new FoldWorker();
+      } catch (error) {
+        // No worker support (tests/SSR): the caller uses the sync path.
+        return false;
+      }
+      worker.onmessage = e => {
+        if (this.foldWorker === worker) this.finishFoldRebuild(e.data);
+      };
+      worker.onerror = () => {
+        if (this.foldWorker !== worker) return;
+        // A broken worker must not wedge the studio: settle the baked fold.
+        const pending = this.rebuilding;
+        this.cancelFoldRebuild();
+        if (pending && !this.destroyed) {
+          this.model.startSettling(pending.selected);
+          this.status("折叠已保留，直接缓慢摊落。");
+          this.queueFusionAfterRebuild();
+        }
+      };
+      this.foldWorker = worker;
+    }
+    this.bakePaint();
+    const old = this.model.positions,
+      selected = m.selected,
+      map = new Map(selected.map((v, i) => [v, i]));
+    const input = new Float32Array(selected.length * 3),
+      color = new Float32Array(input.length);
+    selected.forEach((v, i) => {
+      input.set(old.slice(v * 3, v * 3 + 3), i * 3);
+      color.set(this.colors.slice(v * 3, v * 3 + 3), i * 3);
+    });
+    this.model.bake();
+    const jobId = (this.rebuildSequence = (this.rebuildSequence || 0) + 1);
+    const pending = (this.rebuilding = { selected, jobId });
+    try {
+      this.foldWorker.postMessage({
+        jobId,
+        positions: input,
+        indices: m.massBody.indices.map(v => map.get(v)),
+        colors: color,
+        volume: m.massBody.volume
+      });
+    } catch (error) {
+      this.cancelFoldRebuild();
+      return false;
+    }
+    this.status("正在整理折叠表面…");
+    // Safety net: if the worker never responds (load failure, internal error),
+    // release the lock after 3s so the studio stays usable.
+    clearTimeout(this.rebuildTimeout);
+    this.rebuildTimeout = setTimeout(() => {
+      if (this.rebuilding === pending) {
+        console.warn(
+          "[SlimeStudio] Worker timeout, falling back to sync settle"
+        );
+        this.cancelFoldRebuild();
+        if (!this.destroyed) {
+          this.model.startSettling(pending.selected);
+          this.status("折叠已保留，直接缓慢摊落。");
+          this.queueFusionAfterRebuild();
+        }
+      }
+    }, 3000);
+    return true;
+  }
+  finishFoldRebuild(result) {
+    const pending = this.rebuilding;
+    // Validate BEFORE clearing the new job's timeout or touching its mesh.
+    if (!pending || !result || result.jobId !== pending.jobId) return;
+    clearTimeout(this.rebuildTimeout);
+    this.rebuilding = null;
+    if (this.destroyed) return;
+    if (!result.ok) {
+      // Retessellation rejected the fold; the already-baked fold stays as is.
+      this.model.startSettling(pending.selected);
+      this.status("折叠已保留，直接缓慢摊落。");
+      this.queueFusionAfterRebuild();
+      return;
+    }
+    this.model.startSettling(this.commitFoldSurface(pending.selected, result));
+    this.queueFusionAfterRebuild();
+  }
+  cancelFoldRebuild() {
+    clearTimeout(this.rebuildTimeout);
+    this.rebuilding = null;
+    if (this.foldWorker) {
+      this.foldWorker.terminate();
+      this.foldWorker = null;
+    }
+  }
+  queueFusionAfterRebuild() {
+    clearTimeout(this.fusionTimer);
+    this.fusionTimer = setTimeout(() => {
+      if (!this.destroyed && this.pointer === undefined && !this.manipulation)
+        this.tryFuse();
+    }, 30);
   }
   dragManipulation(e) {
     const m = this.manipulation;
@@ -648,7 +923,11 @@ export default class SlimeStudio {
       this.model.positions.set(
         foldSurface(m.source, m.selected, m.center, m.direction, angle)
       );
-      this.status("从外沿向中心拖动翻折，松手保留折叠形状。");
+      // The live preview only bends vertices (O(n)). Triangle intersections,
+      // volume correction and retessellation belong to release, not pointermove.
+      // In particular, temporarily overlapping layers are expected during a fold.
+      m.lastValid = this.model.positions.slice();
+      this.status("从外沿向中心拖动翻折，松手后整理折叠表面。");
     } else if (this.tool === "move") {
       m.selected.forEach(v => {
         const i = v * 3;
@@ -729,6 +1008,7 @@ export default class SlimeStudio {
         this.status("已撕成独立碎块，继续拖动拉开；用「挪动」移动其中一块。");
       }
     }
+    this.model.constrainToTable();
     this.sync();
   }
   hit(e) {
@@ -881,10 +1161,13 @@ export default class SlimeStudio {
   setMaterial(name) {
     this.model.material = name;
     const m = MATERIALS[name];
+    // A painted dark disk looked like grey matter inside transmissive clay.
+    this.contactShadow.visible = m.transmission < 0.4;
     Object.assign(this.material, {
       roughness: m.roughness,
       transmission: m.transmission,
-      thickness: 0.65,
+      thickness: m.transmission > 0.4 ? 0.18 : 0.65,
+      side: THREE.FrontSide,
       ior: 1.38,
       clearcoat: m.transmission > 0.3 ? 1 : 0.12,
       clearcoatRoughness: 0.15,
@@ -899,9 +1182,10 @@ export default class SlimeStudio {
       return;
     }
     const nearest = this.brush.vertex;
-    const radius = 0.09 + Math.min(0.1, this.held * 0.025);
+    const seed = 0.75 + Math.random() * 0.5;
+    const radius = bubbleRadius(this.held, this.model.material, seed);
     const sphere = new THREE.Mesh(
-      new THREE.SphereGeometry(radius, 20, 12),
+      new THREE.SphereGeometry(1, 24, 16),
       new THREE.MeshPhysicalMaterial({
         color: 0xffffff,
         roughness: 0.08,
@@ -911,8 +1195,468 @@ export default class SlimeStudio {
       })
     );
     this.mesh.add(sphere);
-    this.bubbles.push({ mesh: sphere, vertex: nearest, radius, age: 0 });
-    this.status("捏出一个气泡！切换戳泡工具试试。");
+    const bubble = { mesh: sphere, vertex: nearest, radius, age: 0, seed };
+    this.bubbles.push(bubble);
+    this.growingBubble = bubble;
+    this.status("按住让气泡长大，松手定型；短按小泡，长按大泡。 ");
+  }
+  bakePaint() {
+    if (!this.faceTexture) return;
+    const image = this.faceTexture.image,
+      data = image
+        .getContext("2d")
+        .getImageData(0, 0, image.width, image.height).data;
+    const uv = this.geometry.attributes.uv.array,
+      color = new THREE.Color();
+    for (let v = 0; v < this.colors.length / 3; v++) {
+      const x = Math.max(
+          0,
+          Math.min(image.width - 1, Math.floor(uv[v * 2] * image.width))
+        ),
+        y = Math.max(
+          0,
+          Math.min(
+            image.height - 1,
+            Math.floor((1 - uv[v * 2 + 1]) * image.height)
+          )
+        ),
+        i = (y * image.width + x) * 4;
+      color
+        .setRGB(data[i] / 255, data[i + 1] / 255, data[i + 2] / 255)
+        .convertSRGBToLinear();
+      this.colors[v * 3] *= color.r;
+      this.colors[v * 3 + 1] *= color.g;
+      this.colors[v * 3 + 2] *= color.b;
+    }
+    this.faceTexture.dispose();
+    this.faceTexture = null;
+    this.material.map = null;
+    this.material.needsUpdate = true;
+  }
+  installSurface(result) {
+    const previous = {
+      base: this.model.base,
+      rest: this.model.rest,
+      velocity: this.model.velocity
+    };
+    this.model.settling = null;
+    this.model.positions = result.positions;
+    this.model.indices = result.indices;
+    this.model.bake();
+    this.model.reconnect();
+    if (result.preserved)
+      result.preserved.forEach((old, v) => {
+        for (let c = 0; c < 3; c++) {
+          this.model.base[v * 3 + c] = previous.base[old * 3 + c];
+          this.model.rest[v * 3 + c] = previous.rest[old * 3 + c];
+          this.model.velocity[v * 3 + c] = previous.velocity[old * 3 + c];
+        }
+      });
+    this.colors = result.colors;
+    this.geometry.setAttribute(
+      "color",
+      new THREE.BufferAttribute(this.colors, 3).setUsage(THREE.DynamicDrawUsage)
+    );
+    this.geometry.setAttribute(
+      "uv",
+      new THREE.BufferAttribute(
+        result.uv || new Float32Array((this.colors.length / 3) * 2),
+        2
+      )
+    );
+    this.sync();
+  }
+  addClay() {
+    if (this.rebuilding) {
+      this.status("正在整理折叠表面，请稍候…");
+      return;
+    }
+    if (this.fusion) this.completeFusion();
+    const parts = meshParts(this.model);
+    if (parts.length >= 8) {
+      this.status("桌上已有八块泥，先挪近融合，再继续添加。");
+      return;
+    }
+    const sites = [
+      [1.85, 0],
+      [-1.85, 0],
+      [0, 1.85],
+      [0, -1.85],
+      [1.85, 1.85],
+      [-1.85, 1.85],
+      [1.85, -1.85],
+      [-1.85, -1.85]
+    ];
+    const site = sites.find(([x, y]) =>
+      parts.every(
+        p =>
+          x + 0.7 < p.min[0] ||
+          x - 0.7 > p.max[0] ||
+          y + 0.7 < p.min[1] ||
+          y - 0.7 > p.max[1]
+      )
+    );
+    if (!site) {
+      this.status("周围空间不足，先把已有泥团挪近融合。");
+      return;
+    }
+    this.saveUndo();
+    const blob = new SlimeModel("round", 40, 24),
+      old = this.model.positions,
+      offset = old.length / 3;
+    const positions = new Float32Array(old.length + blob.positions.length),
+      colors = new Float32Array(positions.length);
+    positions.set(old);
+    colors.set(this.colors);
+    for (let i = 0; i < blob.positions.length; i += 3) {
+      positions[old.length + i] = blob.positions[i] * 0.6 + site[0];
+      positions[old.length + i + 1] = blob.positions[i + 1] * 0.6 + site[1];
+      positions[old.length + i + 2] =
+        (blob.positions[i + 2] + 0.25) * 0.75 - 0.25;
+      colors[old.length + i] = this.color.r;
+      colors[old.length + i + 1] = this.color.g;
+      colors[old.length + i + 2] = this.color.b;
+    }
+    // Append only: changing the topology must not bake/zero the existing clay's
+    // velocity, plastic offsets, UVs or recovery state.
+    const oldBodies = this.model.massBodies;
+    const base = new Float32Array(positions),
+      rest = new Float32Array(positions.length),
+      velocity = new Float32Array(positions.length);
+    base.set(this.model.base);
+    rest.set(this.model.rest);
+    velocity.set(this.model.velocity);
+    const uv = new Float32Array((positions.length / 3) * 2).fill(0.995);
+    uv.set(this.geometry.attributes.uv.array);
+    this.model.positions = positions;
+    this.model.base = base;
+    this.model.rest = rest;
+    this.model.velocity = velocity;
+    this.model.indices = this.model.indices.concat(
+      blob.indices.map(v => v + offset)
+    );
+    this.model.reconnect();
+    oldBodies.forEach((body, i) => {
+      this.model.massBodies[i].volume = body.volume;
+    });
+    this.colors = colors;
+    this.geometry.setAttribute(
+      "color",
+      new THREE.BufferAttribute(colors, 3).setUsage(THREE.DynamicDrawUsage)
+    );
+    this.geometry.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
+    // Reserve an unused white texel for new clay, keeping the existing painted
+    // character texture completely intact instead of converting it to vertices.
+    if (this.faceTexture) {
+      const previous = this.faceTexture.image,
+        image = document.createElement("canvas");
+      image.width = previous.width;
+      image.height = previous.height;
+      const ctx = image.getContext("2d");
+      ctx.drawImage(previous, 0, 0);
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(image.width - 6, 0, 6, 6);
+      this.faceTexture.dispose();
+      this.faceTexture = new THREE.CanvasTexture(image);
+      this.faceTexture.encoding = THREE.sRGBEncoding;
+      this.material.map = this.faceTexture;
+      this.material.needsUpdate = true;
+    }
+    this.sync();
+    this.distance = Math.max(this.distance, 6.5);
+    this.updateCamera();
+    this.tool = "move";
+    this.active("tool", "move");
+    this.status("新泥已按当前颜色加入。拖到另一块上，松手后自动融合。");
+  }
+  tryFuse(overlapOnly = false) {
+    if (this.rebuilding || this.fusion) return false;
+    const parts = meshParts(this.model),
+      old = this.model.positions;
+    let pair = null,
+      contact = null,
+      best = Infinity;
+    for (let a = 0; a < parts.length; a++)
+      for (let b = a + 1; b < parts.length; b++) {
+        if (
+          ![0, 1, 2].every(
+            c =>
+              parts[a].min[c] <= parts[b].max[c] + 0.14 &&
+              parts[b].min[c] <= parts[a].max[c] + 0.14
+          )
+        )
+          continue;
+        for (const va of parts[a].vertices)
+          for (const vb of parts[b].vertices) {
+            const d =
+              (old[va * 3] - old[vb * 3]) ** 2 +
+              (old[va * 3 + 1] - old[vb * 3 + 1]) ** 2 +
+              (old[va * 3 + 2] - old[vb * 3 + 2]) ** 2;
+            const score = d - 0.001 * (old[va * 3 + 2] + old[vb * 3 + 2]);
+            if (score < best) {
+              best = score;
+              pair = [parts[a], parts[b]];
+              contact = [va, vb];
+            }
+          }
+      }
+    if (!pair) return false;
+    const overlapping = partsOverlap(old, this.model.indices, pair[0], pair[1]);
+    if (overlapOnly && !overlapping) return false;
+    if (best > 0.14 ** 2 && !overlapping) return false;
+    this.bakePaint();
+    const selected = pair.flatMap(p => p.vertices),
+      map = new Map(selected.map((v, i) => [v, i]));
+    const source = new Float32Array(selected.length * 3),
+      sourceColors = new Float32Array(source.length),
+      sourceIndices = [];
+    selected.forEach((v, i) => {
+      source.set(old.slice(v * 3, v * 3 + 3), i * 3);
+      sourceColors.set(this.colors.slice(v * 3, v * 3 + 3), i * 3);
+    });
+    for (let i = 0; i < this.model.indices.length; i += 3)
+      if (map.has(this.model.indices[i]))
+        sourceIndices.push(
+          ...this.model.indices.slice(i, i + 3).map(v => map.get(v))
+        );
+    const targetMass = this.model.massBodies
+      .filter(b => map.has(b.vertices[0]))
+      .reduce((sum, b) => sum + b.volume, 0);
+    const a = new THREE.Vector3().fromArray(old, contact[0] * 3),
+      b = new THREE.Vector3().fromArray(old, contact[1] * 3),
+      mid = a
+        .clone()
+        .add(b)
+        .multiplyScalar(0.5);
+    const direction = b.clone().sub(a);
+    if (direction.length() < 0.001) direction.set(1, 0, 0);
+    direction.normalize();
+    const tint = new THREE.Color()
+      .fromArray(this.colors, contact[0] * 3)
+      .lerp(new THREE.Color().fromArray(this.colors, contact[1] * 3), 0.5);
+    const neck = new THREE.Mesh(
+      new THREE.SphereGeometry(1, 20, 12),
+      new THREE.MeshPhysicalMaterial({
+        color: tint,
+        roughness: this.material.roughness,
+        transmission: this.material.transmission,
+        thickness: 0.2
+      })
+    );
+    neck.position.copy(mid);
+    neck.quaternion.setFromUnitVectors(new THREE.Vector3(1, 0, 0), direction);
+    neck.scale.set(a.distanceTo(b) * 0.5 + 0.14, 0.14, 0.14);
+    neck.updateMatrix();
+    const fullScale = neck.scale.clone(),
+      extra = neck.geometry.attributes.position,
+      sourceWithNeck = new Float32Array(source.length + extra.count * 3),
+      colorsWithNeck = new Float32Array(sourceWithNeck.length);
+    sourceWithNeck.set(source);
+    colorsWithNeck.set(sourceColors);
+    for (let i = 0; i < extra.count; i++) {
+      const point = new THREE.Vector3()
+        .fromBufferAttribute(extra, i)
+        .applyMatrix4(neck.matrix);
+      sourceWithNeck.set(point.toArray(), source.length + i * 3);
+      colorsWithNeck.set(tint.toArray(), source.length + i * 3);
+    }
+    let merged;
+    try {
+      merged = fuseSurface(
+        overlapping ? source : sourceWithNeck,
+        overlapping
+          ? sourceIndices
+          : sourceIndices.concat(
+              Array.from(neck.geometry.index.array, v => v + selected.length)
+            ),
+        overlapping ? sourceColors : colorsWithNeck
+      );
+    } catch (error) {
+      neck.geometry.dispose();
+      neck.material.dispose();
+      console.error(error);
+      return false;
+    }
+    if (surfacePartCount(merged.indices, merged.positions.length / 3) !== 1) {
+      neck.geometry.dispose();
+      neck.material.dispose();
+      return false;
+    }
+    // Smooth voxel stair-steps, then restore the original sum of clay volumes.
+    const adjacent = Array.from(
+      { length: merged.positions.length / 3 },
+      () => new Set()
+    );
+    for (let i = 0; i < merged.indices.length; i += 3) {
+      const [a, b, c] = merged.indices.slice(i, i + 3);
+      adjacent[a].add(b).add(c);
+      adjacent[b].add(a).add(c);
+      adjacent[c].add(a).add(b);
+    }
+    for (const strength of Array.from({ length: 32 }, (_, i) =>
+      i % 2 ? -0.51 : 0.5
+    )) {
+      const next = merged.positions.slice();
+      adjacent.forEach((neighbors, v) => {
+        for (let c = 0; c < 3; c++) {
+          let sum = 0;
+          neighbors.forEach(n => {
+            sum += merged.positions[n * 3 + c];
+          });
+          next[v * 3 + c] +=
+            (sum / neighbors.size - merged.positions[v * 3 + c]) * strength;
+        }
+      });
+      merged.positions = next;
+    }
+    preserveVolume(
+      merged.positions,
+      merged.indices,
+      Array.from({ length: merged.positions.length / 3 }, (_, i) => i),
+      targetMass
+    );
+    const preserved = Array.from(
+        { length: old.length / 3 },
+        (_, i) => i
+      ).filter(i => !map.has(i)),
+      oldToNew = new Map(preserved.map((v, i) => [v, i]));
+    const positions = new Float32Array(
+        preserved.length * 3 + merged.positions.length
+      ),
+      colors = new Float32Array(positions.length),
+      indices = [];
+    preserved.forEach((v, i) => {
+      positions.set(old.slice(v * 3, v * 3 + 3), i * 3);
+      colors.set(this.colors.slice(v * 3, v * 3 + 3), i * 3);
+    });
+    for (let i = 0; i < this.model.indices.length; i += 3)
+      if (oldToNew.has(this.model.indices[i]))
+        indices.push(
+          ...this.model.indices.slice(i, i + 3).map(v => oldToNew.get(v))
+        );
+    positions.set(merged.positions, preserved.length * 3);
+    colors.set(merged.colors, preserved.length * 3);
+    indices.push(...merged.indices.map(v => v + preserved.length));
+    const goal = old.slice();
+    selected.forEach(v => {
+      const distances = [];
+      for (let j = 0; j < merged.positions.length; j += 3) {
+        const d =
+          (old[v * 3] - merged.positions[j]) ** 2 +
+          (old[v * 3 + 1] - merged.positions[j + 1]) ** 2 +
+          (old[v * 3 + 2] - merged.positions[j + 2]) ** 2;
+        if (distances.length < 3 || d < distances[2][0]) {
+          distances.push([d, j]);
+          distances.sort((a, b) => a[0] - b[0]);
+          if (distances.length > 3) distances.pop();
+        }
+      }
+      distances.sort((a, b) => a[0] - b[0]);
+      let weight = 0,
+        target = [0, 0, 0];
+      distances.slice(0, 3).forEach(([d, j]) => {
+        const w = 1 / (d + 0.0001);
+        weight += w;
+        for (let c = 0; c < 3; c++) target[c] += merged.positions[j + c] * w;
+      });
+      for (let c = 0; c < 3; c++)
+        goal[v * 3 + c] =
+          old[v * 3 + c] +
+          THREE.MathUtils.clamp(
+            target[c] / weight - old[v * 3 + c],
+            -0.25,
+            0.25
+          );
+    });
+    const durations = {
+      liquid: 0.65,
+      crystal: 1,
+      butter: 1.6,
+      memory: 2.7,
+      foam: 1.5,
+      clay: 2.5
+    };
+    this.fusion = {
+      source: old.slice(),
+      goal,
+      selected,
+      age: 0,
+      duration: durations[this.model.material],
+      neck,
+      fullScale,
+      result: { positions, colors, indices, preserved },
+      oldToNew
+    };
+    neck.scale.copy(fullScale).multiplyScalar(0.05);
+    this.mesh.add(neck);
+    this.status("边缘正在吸附，接触处慢慢连在一起…");
+    return true;
+  }
+  advanceFusion(dt) {
+    const f = this.fusion;
+    f.age += dt;
+    const t = Math.min(1, f.age / f.duration),
+      ease = t * t * (3 - 2 * t);
+    f.neck.scale
+      .copy(f.fullScale)
+      .multiplyScalar(0.05 + 0.95 * Math.min(1, t * 2.5));
+    f.selected.forEach(v => {
+      for (let c = 0; c < 3; c++)
+        this.model.positions[v * 3 + c] =
+          f.source[v * 3 + c] +
+          (f.goal[v * 3 + c] - f.source[v * 3 + c]) * ease;
+    });
+    for (const body of this.model.massBodies)
+      preserveVolume(
+        this.model.positions,
+        body.indices,
+        body.vertices,
+        body.volume
+      );
+    if (t >= 1) this.completeFusion();
+  }
+  completeFusion() {
+    const f = this.fusion;
+    if (!f) return;
+    this.fusion = null;
+    const old = this.model.positions;
+    const nearest = v => {
+      if (f.oldToNew.has(v)) return f.oldToNew.get(v);
+      let best = 0,
+        distance = Infinity;
+      for (
+        let j = f.result.preserved.length * 3;
+        j < f.result.positions.length;
+        j += 3
+      ) {
+        const d =
+          (old[v * 3] - f.result.positions[j]) ** 2 +
+          (old[v * 3 + 1] - f.result.positions[j + 1]) ** 2 +
+          (old[v * 3 + 2] - f.result.positions[j + 2]) ** 2;
+        if (d < distance) {
+          distance = d;
+          best = j / 3;
+        }
+      }
+      return best;
+    };
+    this.sprinkles.items.forEach(item => {
+      item.vertex = nearest(item.vertex);
+    });
+    this.bubbles.forEach(b => {
+      b.vertex = nearest(b.vertex);
+    });
+    this.mesh.remove(f.neck);
+    f.neck.geometry.dispose();
+    f.neck.material.dispose();
+    this.installSurface(f.result);
+    this.status(
+      `已融合！现在是 ${this.model.massBodies.length} 块泥，颜色和接缝可以继续揉匀。`
+    );
+    clearTimeout(this.fusionTimer);
+    this.fusionTimer = setTimeout(() => {
+      if (!this.destroyed && this.pointer === undefined) this.tryFuse();
+    }, 100);
   }
   pop(e) {
     this.hit(e);
@@ -931,6 +1675,7 @@ export default class SlimeStudio {
     this.status("啪！气泡戳破了。");
   }
   clearBubbles() {
+    this.growingBubble = null;
     this.bubbles.forEach(b => {
       this.mesh.remove(b.mesh);
       b.mesh.geometry.dispose();
@@ -939,6 +1684,8 @@ export default class SlimeStudio {
     this.bubbles = [];
   }
   saveUndo() {
+    if (this.fusion) this.completeFusion();
+    clearTimeout(this.fusionTimer);
     this.undoStack.push({
       mold: this.model.mold,
       spread: this.model.spread,
@@ -958,6 +1705,14 @@ export default class SlimeStudio {
   undo() {
     const s = this.undoStack.pop();
     if (!s) return;
+    this.cancelFoldRebuild();
+    clearTimeout(this.fusionTimer);
+    if (this.fusion) {
+      this.mesh.remove(this.fusion.neck);
+      this.fusion.neck.geometry.dispose();
+      this.fusion.neck.material.dispose();
+      this.fusion = null;
+    }
     this.model.reset(s.mold);
     this.model.positions = s.positions.slice();
     this.model.base = s.base.slice();
@@ -989,6 +1744,14 @@ export default class SlimeStudio {
   destroy() {
     if (this.destroyed) return;
     this.destroyed = true;
+    this.cancelFoldRebuild();
+    if (this.fusion) {
+      this.mesh.remove(this.fusion.neck);
+      this.fusion.neck.geometry.dispose();
+      this.fusion.neck.material.dispose();
+      this.fusion = null;
+    }
+    clearTimeout(this.fusionTimer);
     if (this.carveReference) this.carveReference.geometry.dispose();
     cancelAnimationFrame(this.raf);
     this.listeners.forEach(remove => remove());
