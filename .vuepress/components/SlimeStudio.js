@@ -14,7 +14,6 @@ import {
   largestPart
 } from "./slime-fusion";
 import SlimeSprinkles from "./SlimeSprinkles";
-import FoldWorker from "./slime-rebuild.worker";
 import { validSurface } from "./slime-safety";
 import { meshVolume, preserveVolume } from "./slime-volume";
 
@@ -804,7 +803,11 @@ export default class SlimeStudio {
     if (!this.foldWorker) {
       let worker;
       try {
-        worker = new FoldWorker();
+        // The worker is prebundled by esbuild into .vuepress/public/js/ and
+        // copied to the site root, so plain-URL construction works in both
+        // dev and production without webpack's worker-loader.
+        worker = new Worker("/js/slime-rebuild.worker.js");
+        if (!worker) throw new Error("no worker");
       } catch (error) {
         // No worker support (tests/SSR): the caller uses the sync path.
         return false;
