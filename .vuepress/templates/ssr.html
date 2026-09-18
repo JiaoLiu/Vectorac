@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+  <head>
+    <meta charset="utf-8">
+    <!-- 页面级 meta（frontmatter.meta）与站点级 head 一起渲染在 head 最前面：
+         浏览器只认文档里「第一个」viewport meta，麻将小游戏靠带 viewport-fit=cover
+         的那条排在最前，env(safe-area-inset-*) 才会在刘海机型上生效
+         （iOS 只在 HTML 解析阶段见到 viewport-fit=cover 时才注入安全区变量，
+         之后再动态插入/改写 viewport 无效）。
+         pageMeta 已包含站点级 head 里的 meta（同名去重、页面级优先），
+         所以每个页面都恰好只有一条 viewport，这里不再输出默认 viewport 兜底。 -->
+    {{{ pageMeta }}}
+    {{{ userHeadTags }}}
+    <title>{{ title }}</title>
+    <meta name="generator" content="VuePress {{ version }}">
+    {{{ renderResourceHints() }}}
+    {{{ renderStyles() }}}
+  </head>
+  <body>
+    <!--vue-ssr-outlet-->
+    {{{ renderScripts() }}}
+  </body>
+</html>

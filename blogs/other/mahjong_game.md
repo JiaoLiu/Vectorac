@@ -1,8 +1,27 @@
+---
+meta:
+  # viewport 必须由本页在 head 里排第一，viewport-fit=cover 才会生效，
+  # env(safe-area-inset-left/right) 才能在刘海机型上把牌桌避开横屏左侧刘海。
+  # 不再写 maximum-scale=1 / user-scalable=no：那是为禁缩放而设，但现在要保留
+  # 双指捏合放大（Android Chrome 认这两个属性，写了就真的不能捏合），
+  # 双击放大改由 CSS touch-action: manipulation 单独禁掉。
+  - name: viewport
+    content: width=device-width, initial-scale=1, viewport-fit=cover
+  # iOS Safari 无法隐藏自己的地址栏/工具栏，只有「添加到主屏幕」后以独立窗口
+  # 打开才是真全屏；以下三条让该页被添加时按独立应用启动（横屏也不带 Safari 外壳）。
+  - name: apple-mobile-web-app-capable
+    content: 'yes'
+  - name: mobile-web-app-capable
+    content: 'yes'
+  - name: apple-mobile-web-app-status-bar-style
+    content: black-translucent
+  - name: apple-mobile-web-app-title
+    content: 四川麻将
+---
+
 ::: warning 四川麻将 · 血战到底（人机版）
 四人血战到底：换三张、定缺、碰杠胡，三家 AI 陪打；胡了不算完，血战到最后三人胡牌或流局为止！
 :::
-
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
 
 <div id="scmjGame" class="scmj-root">
 <div class="scmj-entry" data-scmj-entry>
@@ -194,9 +213,27 @@
   background: radial-gradient(ellipse at center, #1c6b3c 0%, #14532d 55%, #0d3b20 100%);
   box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.35), 0 10px 30px rgba(0, 0, 0, 0.25);
   -webkit-tap-highlight-color: transparent;
+  /* ============ 移动端手势（Android / iPhone 一致） ============
+     1. touch-action: manipulation —— 允许单指滚动与双指捏合缩放（pinch-zoom
+        保留，用户仍可自己放大看牌），但禁掉 double-tap-zoom（双击放大）：
+        打牌要双击出牌，双击放大最容易误触把牌桌推歪。iOS Safari 从 iOS 10 起
+        忽略 viewport 的 user-scalable=no / maximum-scale（无障碍原因），
+        只能靠 touch-action 兜住，所以 Android 与 iPhone 都靠这一条生效。
+     2. 按钮与牌面另加 manipulation，保证双击出牌时点击即时响应、不触发双击放大。
+     3. -webkit-touch-callout + user-select：长按不再弹 iOS 的「拷贝 / 查询」
+        菜单、也不会把牌面文字选蓝。 */
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  overscroll-behavior: contain;
 }
 #scmjGame [hidden] { display: none !important; }
 #scmjGame button { font: inherit; cursor: pointer; }
+/* 按钮与牌面：双击不缩放（manipulation 不含 double-tap-zoom），点击即时响应 */
+#scmjGame button,
+#scmjGame .scmj-tile,
+#scmjGame .scmj-seat { touch-action: manipulation; }
 #scmjGame button:disabled { opacity: 0.45; cursor: default; }
 /* 动画总开关（设置里可关） */
 #scmjGame.scmj-no-anim *,
@@ -666,35 +703,45 @@
   overflow: hidden;
 }
 #scmjGame .scmj-wallring > div { position: absolute; display: grid; gap: 1px; }
-/* 上下墙：2 行两层，每摞按「一张牌高」的间距沿边铺满。
-   竖版牌横排时单张只有牌宽，若按牌宽紧排则上下墙摞距比左右墙小、四角还会缺一块；
-   统一按牌高做摞距（牌在格内居中），四条边摞距一致、四角正好接上。 */
+/* 上下墙（横向墙）：牌横躺，长边顺着墙走。横过来后单张正好占满「一张牌高」的
+   格宽，7 摞之间只剩 1px 缝，整条边看起来是连续的一条，和左右墙一致；
+   2 行 = 两层牌深（径向各占一张牌宽），故行高按牌宽写死。 */
 #scmjGame .scmj-wallring-top,
 #scmjGame .scmj-wallring-bottom {
   left: var(--scmj-wall-inset, 20px);
   right: var(--scmj-wall-inset, 20px);
-  grid-template-rows: repeat(2, auto);
+  grid-template-rows: repeat(2, var(--scmj-wall-tile-w, 17px));
   grid-template-columns: repeat(7, var(--scmj-wall-tile-h, 22px));
   grid-auto-flow: column;
   justify-content: center;
   justify-items: center;
+  align-items: center;
+}
+#scmjGame .scmj-wallring-top .scmj-wallback,
+#scmjGame .scmj-wallring-bottom .scmj-wallback {
+  /* 贴图整体转 90°（不是拉伸变形）：转完的视觉尺寸正好等于横躺的格子 */
+  transform: rotate(90deg);
 }
 #scmjGame .scmj-wallring-top { top: 0; }
 #scmjGame .scmj-wallring-bottom { bottom: 0; }
-/* 左右墙：2 列两层，沿长度方向均匀铺满整条边 */
+/* 左右墙（纵向墙）：牌竖放，2 列 = 两层牌深，沿 Y 排 7 行紧铺 */
 #scmjGame .scmj-wallring-left,
 #scmjGame .scmj-wallring-right {
   top: var(--scmj-wall-inset, 20px);
   bottom: var(--scmj-wall-inset, 20px);
-  grid-template-columns: repeat(2, auto);
+  grid-template-columns: repeat(2, var(--scmj-wall-tile-w, 17px));
+  grid-template-rows: repeat(7, var(--scmj-wall-tile-h, 22px));
   grid-auto-flow: row;
-  align-content: space-evenly;
+  align-content: center;
+  justify-items: center;
+  align-items: center;
 }
 #scmjGame .scmj-wallring-left { left: 0; }
 #scmjGame .scmj-wallring-right { right: 0; }
 /* 牌背：真实牌张贴图（/mahjong/tiles/back.png，158×200 竖版，带透明通道），
-   四边一律竖着显示背面花纹，尺寸按真实比例由 ui.js fitWallRing 写入。
-   上下墙 2 行为两层牌深，左右墙 2 列为两层牌深，与真实牌墙的叠砌一致。 */
+   长边一律顺着墙走——左右墙竖放（上墙/下墙的横躺由上面 rotate(90deg) 处理），
+   尺寸按真实比例由 ui.js fitWallRing 写入；上下墙 2 行为两层牌深，
+   左右墙 2 列为两层牌深，与真实牌墙的叠砌一致。 */
 #scmjGame .scmj-wallback {
   box-sizing: border-box;
   width: var(--scmj-wall-tile-w, 17px);
@@ -1577,7 +1624,13 @@ body.scmj-lock #cw-panel { display: none !important; }
 
 /* ============ 极矮横屏（≤400px，如 568×320）：再压一档固定高度 ============ */
 @media (max-height: 400px) and (orientation: landscape) {
-  #scmjGame.scmj-fullscreen { padding: 2px 8px; }
+  /* 极矮横屏只压外边距，安全区必须保留：iPhone 横屏刘海在左（或右）边，
+     直接写死 8px 会把左侧牌桌塞到刘海底下（「左边被挡住」就是这么来的）。
+     用 calc + env(x, 0px) 而不是 max()：calc 与 env 从 iOS 11.2 就有，
+     max() 要 iOS 13.4+，旧机型上整条 padding 会失效退回过小的值。 */
+  #scmjGame.scmj-fullscreen {
+    padding: calc(2px + env(safe-area-inset-top, 0px)) calc(8px + env(safe-area-inset-right, 0px)) calc(2px + env(safe-area-inset-bottom, 0px)) calc(8px + env(safe-area-inset-left, 0px));
+  }
   #scmjGame .scmj-topbar { margin-bottom: 0; }
   #scmjGame .scmj-board { grid-template-rows: auto minmax(92px, 1fr) auto; gap: 4px; }
   #scmjGame .scmj-actionbar { min-height: 28px; padding: 1px 5px; }

@@ -63,7 +63,20 @@
 - **操作方式**：点击手牌选中，再次点击或点"出牌"确认；电脑端鼠标、移动端触屏均可
 - **积分说明**：仅娱乐积分，不涉及充值兑换
 
-<router-link to="/blogs/other/mahjong_game" class="game-link">开始游戏</router-link>
+<!-- 必须用普通 a 标签整页跳转，不能用 router-link：
+     iOS 只在「HTML 解析阶段」就见到 viewport-fit=cover 时才注入 env(safe-area-inset-*)，
+     动态插入/改写 viewport 无效。router-link 是 SPA 跳转，页面 head 由 JS 之后改写，
+     安全区变量恒为 0，横屏时刘海会盖住牌桌左侧。整页跳转才能让本页 frontmatter 里
+     带 viewport-fit=cover 的 viewport 在解析时就生效。
+     另外两处细节必须保持：
+     1. href 必须带 .html（`/blogs/other/mahjong_game.html`）。项目所有 vue 路由都是
+        `<name>.html` 形式，nginx 对无扩展名路径返回的是首页兜底；写 `...mahjong_game`
+        会先加载首页再由 JS 路由重定向到 .html，真机上这次重定向常常渲染不出来，
+        要刷新后才正常，而且这一跳是客户端渲染，viewport 又变回「JS 之后才写」，刘海照旧。
+     2. 外面必须套一个块级标签（下面的 div）。裸 <a> 是行内元素，markdown 会把它包进
+        <p>，按钮继承 <p> 的行高/外边距，看起来比其它游戏（router-link 渲染出的裸 <a>）
+        的按钮高；套 div 后与其它按钮结构一致，高度就对上了。 -->
+<div><a href="/blogs/other/mahjong_game.html" class="game-link">开始游戏</a></div>
 
 ## 游戏说明
 
