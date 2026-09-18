@@ -198,6 +198,8 @@ export default class ScmjUI {
     this.lobby = null
     this.onlineRoom = null
     this.onlinePlayer = null
+    // 联机房规里的「AI 提示」开关（true/false）；null = 尚未进联机桌，用本地设置
+    this.onlineAssist = null
     this._countdownTimer = null
     this._clockSkew = 0
     // 座位的显示名/简称/头像：本地模式恒用默认人设，联机模式随快照刷新
@@ -299,6 +301,18 @@ export default class ScmjUI {
     if (this._els.rulesContent) this._els.rulesContent.innerHTML = this.buildRulesHtml()
     this.refreshEntry()
     this.showEntry()
+    // 邀请链接（?room=CODE）：跳过入口页直接进联机大厅，并自动加入该房间。
+    // 刷新页面（无邀请参数）时：本地若仍有未退出的房间凭据（multiplayer/net-client.js
+    // 的 scmj-online-cred）→ 同样直接进大厅并自动回原座位，避免玩家以为座位丢了。
+    let hasOnlineCred = false
+    try {
+      hasOnlineCred = !!localStorage.getItem('scmj-online-cred')
+    } catch (e) {
+      /* 隐私模式忽略 */
+    }
+    const invite = this.takeInviteCode()
+    if (invite) this.openOnlineLobby({ inviteCode: invite })
+    else if (hasOnlineCred) this.openOnlineLobby()
   }
 
   destroy() {
@@ -505,8 +519,16 @@ export default class ScmjUI {
     if (this._roundSettled || !v.results) return
     this._roundSettled = true
     if (this.isOnline) {
-      // 联机：以服务端 perSeat.delta 为唯一口径重算，不与 render 里的派生值重复累加
-      this.scores = [START_SCORE, START_SCORE, START_SCORE, START_SCORE]
+      // 多局联机：房间累计积分由服务端结算后随 meta.scores 下发（进桌/结算帧都带），
+      // 本地绝不重复累加，避免与服务端口径打架；破产座位同理以服务端为准。
+      const meta = v.meta || {}
+      if (Array.isArray(meta.scores) && meta.scores.length === 4) {
+        this.scores = meta.scores.map(n => Math.round(Number(n) || 0))
+      }
+      this.bankruptSeats = Array.isArray(meta.bankruptSeats)
+        ? meta.bankruptSeats.slice()
+        : this.scores.map((score, seat) => (score <= 0 ? seat : -1)).filter(seat => seat >= 0)
+      return
     }
     v.results.perSeat.forEach(p => {
       if (p.seat >= 0 && p.seat < 4) this.scores[p.seat] += p.delta
@@ -670,7 +692,7 @@ export default class ScmjUI {
     })
   }
 
-  async openOnlineLobby() {
+  async openOnlineLobby({ inviteCode } = {}) {
     if (!this.createOnlineGame) return this.toast('联机模块未加载，请刷新页面重试')
     if (!this.lobby) {
       try {
@@ -685,7 +707,28 @@ export default class ScmjUI {
     if (this._els.table) this._els.table.hidden = true
     if (this._els.settle) this._els.settle.hidden = true
     if (this._els.lobby) this._els.lobby.hidden = false
-    this.lobby.open()
+    this.lobby.open({ inviteCode })
+  }
+
+  /**
+   * 邀请链接 ?room=CODE：读取后立即从地址栏摘掉该参数。
+   * 摘掉是必要的——否则玩家退出房间 / 从大厅返回后，再次打开大厅仍会读到旧参数，
+   * 被反复自动拉回同一房间。返回有效的 6 位房号，否则返回空串。
+   */
+  takeInviteCode() {
+    try {
+      const q = new URLSearchParams(location.search)
+      const code = (q.get('room') || '').trim().toUpperCase()
+      if (!code) return ''
+      q.delete('room')
+      const qs = q.toString()
+      if (window.history && history.replaceState) {
+        history.replaceState(history.state, '', location.pathname + (qs ? '?' + qs : '') + location.hash)
+      }
+      return /^[0-9A-Z]{6}$/.test(code) ? code : ''
+    } catch (e) {
+      return ''
+    }
   }
 
   /**
@@ -698,10 +741,13 @@ export default class ScmjUI {
     this.net = net
     this.onlinePlayer = player || null
     this.onlineRoom = room || null
+    // 房规「AI 提示」：与单机 assist 同理，关闭时隐藏听牌提示与出牌建议
+    this.onlineAssist = !(room && room.rules && room.rules.assist === false)
     this.selectedIdx = null
     this.swapPickIdxs = []
     this._discLens = [0, 0, 0, 0]
-    // 联机一局定胜负：局号恒为 1，积分由服务端 delta 派生（见 render）
+    // 多局联机：局号与累计积分都以服务端为准（syncSession 取局号，applyOnlineMeta 取积分），
+    // 这里先给一个首帧兜底值，避免进桌瞬间显示空积分
     this.round = 1
     this._roundSettled = false
     this.bankruptSeats = []
@@ -731,14 +777,57 @@ export default class ScmjUI {
     this.confirm('退出房间？退出后座位会立即交给 AI 托管，无法再回到本局。', () => this.leaveOnline())
   }
 
+  /**
+   * 收起牌桌与结算浮层。
+   * 牌桌/结算是覆盖在页面上的浮层；回大厅（返回房间列表 / 房间失效）时必须收起，
+   * 否则它们会一直盖在大厅列表上面，看起来像按钮点了没反应。
+   */
+  hideTableChrome() {
+    if (this._els.table) this._els.table.hidden = true
+    if (this._els.settle) this._els.settle.hidden = true
+  }
+
+  /**
+   * 联机多局：本局结束点「准备下一局」。
+   * 先向服务端标记本座位就绪（全员就绪后由服务端自动开下一局），
+   * 再收起牌桌回到房间等待室——不必退出房间，座位与累计积分都保留。
+   */
+  onOnlineReady() {
+    if (this.net && this.net.sendAdmin) this.net.sendAdmin('TOGGLE_READY', { ready: true })
+    this.backToRoom()
+  }
+
+  /**
+   * 收起牌桌回到房间等待室（不退出房间）。
+   * 与 leaveOnline 的区别：不发 LEAVE_ROOM、不释放座位、不丢累计积分，只拆掉本地
+   * 牌局适配层；服务端推来下一局的 GAME_STATE_CHANGED 时会自动重新进桌。
+   */
+  backToRoom() {
+    this.stopCountdown()
+    if (this.game && this.game.dispose) this.game.dispose()
+    this.game = null
+    this.view = null
+    this.isOnline = false
+    this.onlineAssist = null
+    this._roundSettled = false
+    this.bankruptSeats = []
+    this.hideOpening()
+    this.exitFullscreen()
+    this.hideTableChrome()
+    if (this.lobby) this.lobby.returnToWaiting()
+    else this.showEntry()
+  }
+
   leaveOnline() {
     this.stopCountdown()
     if (this.game && this.game.dispose) this.game.dispose()
     this.game = null
     this.view = null
     this.isOnline = false
+    this.onlineAssist = null
     this.hideOpening()
     this.exitFullscreen()
+    this.hideTableChrome()
     if (this.net) this.net.leaveRoom()
     this.net = null
     this.onlinePlayer = null
@@ -755,11 +844,13 @@ export default class ScmjUI {
     this.game = null
     this.view = null
     this.isOnline = false
+    this.onlineAssist = null
     this.net = null
     this.onlinePlayer = null
     this.onlineRoom = null
     this.hideOpening()
     this.exitFullscreen()
+    this.hideTableChrome()
     if (reason) this.toast(reason)
     if (this.lobby) this.lobby.open()
     else this.showEntry()
@@ -784,10 +875,13 @@ export default class ScmjUI {
       return n.length > 4 ? n.slice(0, 4) : n
     })
     this._avatars = meta.seats.map((s, i) => (i === 0 ? '' : s.isAi ? '🤖' : '🙂'))
-    // 联机是单局制：积分 = 起始分 + 服务端本局得失（含杠分与结算），不本地累加
-    // 结算帧的积分由 settleRound 按 perSeat.delta 定位，这里不覆盖
-    if (Array.isArray(v.players) && !v.results) {
-      this.scores = [0, 1, 2, 3].map(i => START_SCORE + ((v.players[i] && v.players[i].delta) || 0))
+    // 多局联机：累计积分以服务端 meta.scores（视角座位口径，已旋转）为唯一口径，
+    // 每帧都同步，进桌即显示跨局累计分；破产座位同理以服务端为准。
+    if (Array.isArray(meta.scores) && meta.scores.length === 4) {
+      this.scores = meta.scores.map(n => Math.round(Number(n) || 0))
+    }
+    if (Array.isArray(meta.bankruptSeats) && meta.bankruptSeats.length) {
+      this.bankruptSeats = meta.bankruptSeats.slice()
     }
   }
 
@@ -1085,6 +1179,17 @@ export default class ScmjUI {
     const v = this.game.view()
     if (!v) return
     this.view = v
+    // 选区只在对应阶段有意义：换三张以外清掉换三张选牌；不是自己出牌时清掉出牌选中。
+    // 否则阶段切换（换三张由超时 / 服务端代选、出现响应窗口、换局……）会留下「抬起」
+    // 的牌——定缺阶段既不响应点击也无法取消选中，看起来就是永远放不回去。
+    if (v.phase !== 'swap') this.swapPickIdxs = []
+    const discardOpt = v.legal.find(o => o.type === 'discard')
+    if (!discardOpt) {
+      this.selectedIdx = null
+    } else if (this.selectedIdx != null) {
+      const sel = this.mergedHand()[this.selectedIdx]
+      if (!sel || discardOpt.tiles.indexOf(sel.id) < 0) this.selectedIdx = null
+    }
     // 联机：座位名/头像/积分以服务端快照为准，并记录服务端时钟偏差供倒计时使用
     if (v.meta && v.meta.serverTime) this._clockSkew = Date.now() - v.meta.serverTime
     this.applyOnlineMeta(v)
@@ -1791,8 +1896,10 @@ export default class ScmjUI {
 
   // ---------- 听牌提示 + AI 建议 ----------
   renderHints(v) {
-    // AI 辅助关闭：听牌提示与右侧出牌建议一并清空，交给玩家自己看牌
-    if (this.settings.assist === false) {
+    // AI 辅助关闭：听牌提示与右侧出牌建议一并清空，交给玩家自己看牌。
+    // 联机时以房规 assist 为准（房主建房时选），单机时用本地设置。
+    const assistOn = this.isOnline ? this.onlineAssist !== false : this.settings.assist !== false
+    if (!assistOn) {
       this._els.ting.innerHTML = ''
       this._els.suggest.textContent = ''
       return
@@ -2043,25 +2150,40 @@ export default class ScmjUI {
       detail.appendChild(secXi.el)
     }
     card.appendChild(detail)
-    // 8. 按钮：再来一局 / 返回官网
+    // 8. 按钮
+    //    · 单机：再来一局 / 返回官网（破产后禁用再来一局）
+    //    · 联机多局：准备下一局 / 退出房间——点「准备下一局」回房间等待室并标记就绪，
+    //      全员就绪后服务端自动开下一局；破产（房间终态）时没有下一局，只能退出房间
     const btns = document.createElement('div')
     btns.className = 'scmj-settle-btns'
     const again = document.createElement('button')
     again.type = 'button'
     again.className = 'scmj-btn scmj-btn-primary'
-    // 联机一局定胜负：结算后没有「再来一局」，退房回到大厅列表（座位随之释放/AI 托管）
-    again.textContent = this.isOnline ? '返回房间列表' : '再来一局'
-    if (!this.isOnline && this.bankruptSeats.length) {
-      // 破产即结束：本局打完不再开下一局
-      again.disabled = true
-      again.textContent = '已破产 · 无法再开一局'
-    }
-    again.addEventListener('click', () => (this.isOnline ? this.leaveOnline() : this.onRestart()))
     const home = document.createElement('button')
     home.type = 'button'
     home.className = 'scmj-btn'
-    home.textContent = '返回官网'
-    home.addEventListener('click', () => this.goHome())
+    if (this.isOnline) {
+      if (this.bankruptSeats.length) {
+        // 房间已进终态（有玩家破产）：不再开下一局
+        again.disabled = true
+        again.textContent = '已破产 · 本局结束'
+      } else {
+        again.textContent = '准备下一局'
+        again.addEventListener('click', () => this.onOnlineReady())
+      }
+      home.textContent = '退出房间'
+      home.addEventListener('click', () => this.onOnlineExit())
+    } else {
+      again.textContent = '再来一局'
+      if (this.bankruptSeats.length) {
+        // 破产即结束：本局打完不再开下一局
+        again.disabled = true
+        again.textContent = '已破产 · 无法再开一局'
+      }
+      again.addEventListener('click', () => this.onRestart())
+      home.textContent = '返回官网'
+      home.addEventListener('click', () => this.goHome())
+    }
     btns.appendChild(again)
     btns.appendChild(home)
     card.appendChild(btns)

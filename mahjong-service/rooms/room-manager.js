@@ -43,8 +43,12 @@ export class RoomManager {
    * 创建房间并让创建者坐进 Seat0（第一任管理员）。
    * 全程同步、无 await ⇒ 上限检查与插入原子完成。
    */
-  createRoom({ displayName, rules } = {}) {
-    if (this.rooms.size >= config.maxRooms) fail(ERR.ROOM_CAPACITY_REACHED)
+  createRoom({ displayName, rules, turnTimeoutSeconds } = {}) {
+    if (this.rooms.size >= config.maxRooms) {
+      // 满员：先回收「已结束且无在线真人」的空转房间腾名额（已结束房是终态，不能
+      // 原地重开，留着只是占位）；有人还在结算页则不动它。腾不出才拒绝建房。
+      if (!this._reapIdleFinishedRoom()) fail(ERR.ROOM_CAPACITY_REACHED)
+    }
 
     const roomId = randomUUID()
     const roomCode = this._allocRoomCode()
@@ -52,6 +56,7 @@ export class RoomManager {
       roomId,
       roomCode,
       rules: sanitizeRules(rules),
+      turnTimeoutSeconds,
       manager: this,
       sessions: this.sessions,
       hub: this.hub,
@@ -80,6 +85,23 @@ export class RoomManager {
         roomCode
       }
     }
+  }
+
+  /**
+   * 满员时回收一间「已结束且无在线真人」的房间腾名额：选最早结束的一间。
+   * 结束房是终态（不能原地重开），无人观看时纯占位；若所有结束房都还有在线
+   * 真人（正在看结算页），返回 false，交由调用方按容量上限拒绝。
+   */
+  _reapIdleFinishedRoom() {
+    let victim = null
+    for (const room of this.rooms.values()) {
+      if (room.status !== ROOM_STATUS.FINISHED) continue
+      if (connectedHumanCount(room.seats) > 0) continue
+      if (!victim || (room.finishedAt || 0) < (victim.finishedAt || 0)) victim = room
+    }
+    if (!victim) return false
+    this.destroyRoom(victim.roomId, 'CAPACITY_REAP')
+    return true
   }
 
   /** 生成未占用的房号（字母表已剔除 0/O/1/I/L） */

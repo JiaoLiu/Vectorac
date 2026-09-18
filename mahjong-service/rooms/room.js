@@ -3,6 +3,9 @@
 // ------------------------------------------------------------
 // 一个 Room = 4 个 Seat + 一条串行事件队列 + 可选的一个 GameSession。
 //
+// 多局联机：一局打完房间**不销毁**，回到 WAITING 等全员「准备」后自动开下一局；
+// 每人起始 config.startScore 分，每局 delta 跨局累加，任一家 ≤ 0 即破产 → FINISHED。
+//
 // 铁律（文档 §六十八）：
 //   · 任何会修改 Room / GameState 的操作都必须走 this.queue（串行）；
 //   · Admin 必须是 HUMAN；AI 永远不能成为管理员；
@@ -26,6 +29,7 @@ import {
   connectedHumanCount,
   createSeats,
   humanCount,
+  humanSeats,
   nextAdminSeat,
   pickJoinSeat,
   seatOfPlayer,
@@ -90,13 +94,56 @@ export function sanitizeRules(input) {
   return out
 }
 
+/**
+ * 房间思考时长（秒）清洗：建房间时可选传入，覆盖服务端默认 turnTimeoutSeconds。
+ * 未传（null / 空串）→ 用默认值；传了必须是 [min,max] 区间内的整数秒，
+ * 越界直接 INVALID_RULES（与规则一致，不做静默 clamp）。
+ */
+export function sanitizeTurnTimeoutSeconds(input) {
+  if (input == null || input === '') return config.turnTimeoutSeconds
+  const n = Math.floor(Number(input))
+  if (!Number.isFinite(n)) fail(ERR.INVALID_RULES, '思考时长必须是数字（秒）')
+  if (n < config.minRoomTurnTimeoutSeconds || n > config.maxRoomTurnTimeoutSeconds) {
+    fail(
+      ERR.INVALID_RULES,
+      '思考时长超出允许范围 [' +
+        config.minRoomTurnTimeoutSeconds +
+        ',' +
+        config.maxRoomTurnTimeoutSeconds +
+        '] 秒'
+    )
+  }
+  return n
+}
+
+/**
+ * 下局庄家（与单机 ui.js nextDealerOf 同口径）：先胡者坐庄；一炮多响
+ * （同一次出牌 / 抢杠被两家以上胡）时由点炮者坐庄；流局庄家留任。
+ * results.huOrder 是绝对座位口径（服务端未经视角旋转），可直接用。
+ */
+export function nextDealerOf(results, fallbackSeat) {
+  const huOrder = (results && results.huOrder) || []
+  if (!huOrder.length) return fallbackSeat != null ? fallbackSeat : 0
+  const first = huOrder[0]
+  if (first.how !== 'zimo' && first.from != null) {
+    const sameDiscard = huOrder.filter(
+      h => h.how !== 'zimo' && h.from === first.from && h.tag === first.tag
+    )
+    if (sameDiscard.length >= 2) return first.from
+  }
+  return first.seat
+}
+
 export class Room {
-  constructor({ roomId, roomCode, rules, manager, sessions, hub, aiService, logger }) {
+  constructor({ roomId, roomCode, rules, turnTimeoutSeconds, manager, sessions, hub, aiService, logger }) {
     this.roomId = roomId || randomUUID()
     this.roomCode = roomCode
     this.status = ROOM_STATUS.WAITING
     this.adminSeat = -1
     this.rules = rules || { ...DEFAULT_RULES }
+    // 本房间的思考时长（秒）：建房间时可选设置，摸打 / 响应窗口按它计时；
+    // 定缺 / 换三张这类并行窗口固定走 config.voidTimeoutSeconds（见 GameSession）。
+    this.turnTimeoutSeconds = sanitizeTurnTimeoutSeconds(turnTimeoutSeconds)
     this.seats = createSeats(config.seatsPerRoom)
 
     this.createdAt = Date.now()
@@ -105,6 +152,13 @@ export class Room {
     this.lastActivityAt = this.createdAt
     this.roomVersion = 0
     this.destroyReason = null
+
+    // 多局联机：局号 + 每个座位（绝对口径）累计积分 + 上局结果 + 破产座位。
+    // 积分只在每局结束时按 perSeat.delta 入账一次；破产只在局末判出。
+    this.round = 1
+    this.scores = new Array(config.seatsPerRoom).fill(config.startScore)
+    this.lastResults = null
+    this.bankruptSeats = []
 
     this.gameSession = null
     this.queue = new RoomQueue()
@@ -406,17 +460,66 @@ export class Room {
     })
   }
 
-  async updateRules(actorPlayerId, rules) {
+  async updateRules(actorPlayerId, rules, turnTimeoutSeconds) {
     this._guardAlive()
     return this.queue.push(() => {
       this._requireAdmin(actorPlayerId)
       this._requireWaiting()
       this.rules = sanitizeRules(rules)
+      // 思考时长与规则同属房主在等待室可改的房级参数；未传则保持不变
+      if (turnTimeoutSeconds !== undefined) {
+        this.turnTimeoutSeconds = sanitizeTurnTimeoutSeconds(turnTimeoutSeconds)
+      }
       this.touch()
       this.bumpVersion()
-      this.hub.broadcast(this, 'RULES_UPDATED', { rules: { ...this.rules } })
-      return { rules: { ...this.rules } }
+      this.hub.broadcast(this, 'RULES_UPDATED', {
+        rules: { ...this.rules },
+        turnTimeoutSeconds: this.turnTimeoutSeconds
+      })
+      return { rules: { ...this.rules }, turnTimeoutSeconds: this.turnTimeoutSeconds }
     })
+  }
+
+  /**
+   * 准备 / 取消准备下一局（多局联机）。
+   * 只在「局间等待」有意义：WAITING 状态下切换本座位 ready，
+   * 全员（在线真人）就绪则由服务端自动开下一局，不需要房主再点开始。
+   */
+  async setReady(playerId, ready) {
+    this._guardAlive()
+    return this.queue.push(() => {
+      if (this.status === ROOM_STATUS.DESTROYED) fail(ERR.ROOM_DESTROYED)
+      if (this.status === ROOM_STATUS.PLAYING) fail(ERR.ROOM_LOCKED)
+      if (this.status === ROOM_STATUS.FINISHED) fail(ERR.GAME_ALREADY_FINISHED)
+      const seat = seatOfPlayer(this.seats, playerId)
+      if (!seat) fail(ERR.PLAYER_ALREADY_LEFT)
+      const want = ready == null ? !seat.ready : !!ready
+      if (seat.ready !== want) {
+        seat.ready = want
+        this.touch()
+        this.bumpVersion()
+        this.hub.broadcast(this, 'READY_CHANGED', { seats: this.seatSnapshots() })
+      }
+      const started = this._maybeStartNextRound()
+      return { ready: seat.ready, started: !!started }
+    })
+  }
+
+  /**
+   * 全员就绪 → 自动开下一局。仅对「已经打过至少一局」的房间生效：
+   * 首局仍由房主点「开始游戏」（否则刚建房就会直接开局）。
+   * 断线真人视作自动就绪（AI 托管），避免一人掉线卡死下一局；
+   * 但至少要有一位在线真人，否则不开局（交由 TTL 回收）。
+   */
+  _maybeStartNextRound() {
+    if (this.status !== ROOM_STATUS.WAITING) return null
+    if (this.lastResults == null) return null
+    const humans = humanSeats(this.seats)
+    if (!humans.length) return null
+    if (!humans.some(s => s.connected)) return null
+    if (humans.some(s => s.connected && !s.ready)) return null
+    this.round += 1
+    return this._launchRound()
   }
 
   /** 开始游戏（文档 §24 / §25）：EMPTY 自动补 AI，随后完全锁房 */
@@ -428,50 +531,68 @@ export class Room {
       if (this.status === ROOM_STATUS.FINISHED) fail(ERR.GAME_ALREADY_FINISHED)
       if (this.status === ROOM_STATUS.DESTROYED) fail(ERR.ROOM_DESTROYED)
       if (humanCount(this.seats) < 1) fail(ERR.ROOM_NOT_FOUND, '房间已无真人')
+      return { gameId: this._launchRound().gameId }
+    })
+  }
 
-      for (const seat of this.seats) {
-        if (seat.occupantType !== OCCUPANT.EMPTY) continue
+  /**
+   * 本轮发牌开局（首局由房主触发，后续局由全员就绪自动触发）。
+   * 调用方必须已在房间队列内。EMPTY 自动补 AI；真人开赛即清 ready。
+   */
+  _launchRound() {
+    for (const seat of this.seats) {
+      if (seat.occupantType === OCCUPANT.EMPTY) {
         setAi(seat)
         seat.aiProfile = { level: this.aiLevel }
       }
+      // AI 恒就绪；真人本局结束需要重新点「准备下一局」
+      seat.ready = seat.occupantType === OCCUPANT.AI
+    }
 
-      this.status = ROOM_STATUS.PLAYING
-      this.startedAt = Date.now()
-      this.touch()
-      this.bumpVersion()
+    this.status = ROOM_STATUS.PLAYING
+    this.startedAt = Date.now()
+    this.finishedAt = null
+    this.touch()
+    this.bumpVersion()
 
-      // 掷骰定庄（与单机开局同源）：点数之和定庄家 / 墙头方位，
-      // 骰子同时派给前端做掷骰仪式与牌墙缺口显示。在线房间一局定胜负，
-      // 故 mode 恒为 'dealer'（首局定庄，庄家即墙头方位）。
-      const dice = [randomInt(1, 7), randomInt(1, 7)]
-      const dealer = (dice[0] + dice[1] - 2) % 4
-      const headSeat = dealer
-      const wallOffset = (headSeat * WALL_SEG + (dice[0] + dice[1])) % (WALL_SEG * 4)
+    // 掷骰（与单机开局同源）：骰子派给前端做掷骰仪式与牌墙缺口。
+    // 首局：点数之和定庄；后续局：沿用上一局结果推得的庄家（先胡者坐庄），
+    // 骰子只决定摸牌起点，与单机 onRestart 一致。
+    const dice = [randomInt(1, 7), randomInt(1, 7)]
+    const dealer =
+      this.round > 1 && this.lastResults != null
+        ? nextDealerOf(this.lastResults, this.gameSession ? this.gameSession.dealer : 0)
+        : (dice[0] + dice[1] - 2) % 4
+    const headSeat = this.round > 1 ? (dice[0] + dice[1] - 2) % 4 : dealer
+    const wallOffset = (headSeat * WALL_SEG + (dice[0] + dice[1])) % (WALL_SEG * 4)
 
-      this.gameSession = new GameSession({
-        room: this,
-        aiService: this.aiService,
-        hub: this.hub,
-        logger: this.logger,
-        seed: randomInt(0, 0x7fffffff),
-        dealer,
-        wallOffset,
-        dice,
-        headSeat
-      })
-      this.logger('game-started', {
-        roomId: this.roomId,
-        roomCode: this.roomCode,
-        gameId: this.gameSession.gameId
-      })
-      this.hub.broadcast(this, 'GAME_STARTED', {
-        gameId: this.gameSession.gameId,
-        rules: { ...this.rules },
-        seats: this.seatSnapshots()
-      })
-      this.gameSession.start()
-      return { gameId: this.gameSession.gameId }
+    this.gameSession = new GameSession({
+      room: this,
+      aiService: this.aiService,
+      hub: this.hub,
+      logger: this.logger,
+      seed: randomInt(0, 0x7fffffff),
+      dealer,
+      wallOffset,
+      dice,
+      headSeat,
+      round: this.round
     })
+    this.logger('game-started', {
+      roomId: this.roomId,
+      roomCode: this.roomCode,
+      gameId: this.gameSession.gameId,
+      round: this.round
+    })
+    this.hub.broadcast(this, 'GAME_STARTED', {
+      gameId: this.gameSession.gameId,
+      round: this.round,
+      rules: { ...this.rules },
+      turnTimeoutSeconds: this.turnTimeoutSeconds,
+      seats: this.seatSnapshots()
+    })
+    this.gameSession.start()
+    return { gameId: this.gameSession.gameId }
   }
 
   // ---------- 牌局动作（文档 §32–§34） ----------
@@ -514,20 +635,54 @@ export class Room {
 
   // ---------- 牌局结束（文档 §50） ----------
 
+  /**
+   * 一局结束（多局联机）：
+   *   · 按 perSeat.delta 把本局得失一次性累加进房间累计积分（服务端是积分权威）；
+   *   · 任一家累计积分 ≤ 0 → 破产，房间进入 FINISHED 终态（不再开下一局，TTL 回收）；
+   *   · 否则回到 WAITING 等待室，真人 ready 清零，等全员点「准备」后自动开下一局。
+   * 保留 gameSession（已结束）供结算视图与排查使用，下一局会被替换。
+   */
   onSessionFinished(session, results) {
     if (this.status === ROOM_STATUS.DESTROYED) return
-    this.status = ROOM_STATUS.FINISHED
-    this.finishedAt = Date.now()
+    this.lastResults = results
+    for (const p of results.perSeat || []) {
+      if (p && p.seat >= 0 && p.seat < this.scores.length) this.scores[p.seat] += p.delta
+    }
+    this.bankruptSeats = this.scores
+      .map((score, seat) => (score <= 0 ? seat : -1))
+      .filter(seat => seat >= 0)
     this.touch()
     this.bumpVersion()
-    this.logger('room-finished', {
-      roomId: this.roomId,
-      roomCode: this.roomCode,
-      gameId: session.gameId
-    })
+
+    if (this.bankruptSeats.length) {
+      this.status = ROOM_STATUS.FINISHED
+      this.finishedAt = Date.now()
+      this.logger('room-finished-bankrupt', {
+        roomId: this.roomId,
+        roomCode: this.roomCode,
+        gameId: session.gameId,
+        round: this.round,
+        bankruptSeats: this.bankruptSeats.slice()
+      })
+    } else {
+      // 局间等待：真人需重新点「准备下一局」，AI 恒就绪
+      this.status = ROOM_STATUS.WAITING
+      this.finishedAt = null
+      for (const seat of this.seats) seat.ready = seat.occupantType === OCCUPANT.AI
+      this.logger('round-finished', {
+        roomId: this.roomId,
+        roomCode: this.roomCode,
+        gameId: session.gameId,
+        round: this.round
+      })
+    }
+
     this.hub.broadcast(this, 'ROOM_UPDATED', {
       status: this.status,
+      round: this.round,
       results,
+      scores: this.scores.slice(),
+      bankruptSeats: this.bankruptSeats.slice(),
       seats: this.seatSnapshots()
     })
   }

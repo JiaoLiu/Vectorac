@@ -456,6 +456,11 @@ meta:
 #scmjGame .scmj-lb-seatpos { font-size: 11px; color: #9fbfa8; }
 #scmjGame .scmj-lb-crown { font-style: normal; }
 #scmjGame .scmj-lb-me { font-size: 11px; color: #14532d; background: #ffd968; border-radius: 6px; padding: 0 5px; }
+#scmjGame .scmj-lb-ready {
+  font-size: 11px; border-radius: 6px; padding: 0 6px;
+  color: #cfe3d2; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.18);
+}
+#scmjGame .scmj-lb-ready.ok { color: #14532d; background: #ffd968; border-color: #ffd968; font-weight: 700; }
 #scmjGame .scmj-lb-seatbtn,
 #scmjGame .scmj-lb-step {
   appearance: none; -webkit-appearance: none; font: inherit; cursor: pointer;
@@ -1192,7 +1197,9 @@ meta:
 }
 
 /* ============ 弹层 ============ */
-#scmjGame .scmj-modal { position: absolute; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; }
+/* z-index 95：确认/规则/设置弹层必须比结算覆盖层（60）、特效（60）、
+   浮字（70）、toast（80）更高，否则结算页里点「退出房间」的确认弹窗会被盖住点不到 */
+#scmjGame .scmj-modal { position: absolute; inset: 0; z-index: 95; display: flex; align-items: center; justify-content: center; }
 #scmjGame .scmj-modal-mask { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.55); }
 #scmjGame .scmj-modal-body {
   position: relative;

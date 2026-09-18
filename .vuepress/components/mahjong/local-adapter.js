@@ -118,10 +118,19 @@ export function createLocalGame(opts = {}) {
       return
     }
     if (state.phase === 'respond') {
-      const waiting = state.waiting || []
-      waiting.filter(seat => AI_SEATS.includes(seat)).forEach((seat, index) => {
-        schedule(seat, delay + index * 180)
-      })
+      // 三阶段响应：HU 阶段是并行收集，所有胡候选人（huWait）同时拥有决定权；
+      // GANG/PENG 阶段是按有效摸牌顺序串行仲裁的唯一 currentResponder。
+      // AI 托管所有此刻有待办事项的 AI 座位（runAi 会重新校验 legal）。
+      const seats =
+        state.respondStage === 'hu'
+          ? state.huWait.slice()
+          : state.currentResponder != null
+            ? [state.currentResponder]
+            : []
+      for (const seat of seats) {
+        if (AI_SEATS.includes(seat)) schedule(seat, delay)
+      }
+      return
     }
   }
 

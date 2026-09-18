@@ -567,6 +567,8 @@ function setupTable(s, { turn = 0, drawnTile = null, specs = {} }) {
   s.pendingKong = null
   s.waiting = []
   s.claims = {}
+  s.currentResponder = null
+  s.respondStage = null
   s.mustDiscard = false
   s.afterGangDraw = false // 场景重建：默认非杠后补牌回合
   s.phase = 'discard'
@@ -577,6 +579,8 @@ function setupTable(s, { turn = 0, drawnTile = null, specs = {} }) {
     assert.ok(i >= 0, `牌 ${tileName(t)} 不在池中（池中该牌 ${pool.filter(x => x === t).length} 张）`)
     return pool.splice(i, 1)[0]
   }
+  // 先给「所有座位」的副露和显式手牌占位，再从池补齐常规手牌数；
+  // 否则靠前座位的默认补牌会 pool.shift 抢走靠后座位显式指定的牌。
   for (let seat = 0; seat < 4; seat++) {
     const p = s.players[seat]
     const spec = specs[seat] || {}
@@ -587,7 +591,15 @@ function setupTable(s, { turn = 0, drawnTile = null, specs = {} }) {
       for (let k = 0; k < wild; k++) take(YAOJI_TILE)
       p.melds.push(m)
     }
-    for (const t of spec.tiles || []) p.hand.push(take(t))
+  }
+  for (let seat = 0; seat < 4; seat++) {
+    const spec = specs[seat] || {}
+    for (const t of spec.tiles || []) s.players[seat].hand.push(take(t))
+  }
+  if (drawnTile != null) s.drawnTile = take(drawnTile)
+  for (let seat = 0; seat < 4; seat++) {
+    const p = s.players[seat]
+    const spec = specs[seat] || {}
     // 从池补齐常规手牌数（13 张 - 每组副露占用的 3 张；杠同样按 1 组 3 张计）
     const need = 13 - 3 * p.melds.length
     while (p.hand.length < need) {
@@ -605,7 +617,6 @@ function setupTable(s, { turn = 0, drawnTile = null, specs = {} }) {
       p.void = inHand[0] || 'tong'
     }
   }
-  if (drawnTile != null) s.drawnTile = take(drawnTile)
   s.wall = pool
   conservation(s, '场景构造')
   return s
@@ -697,9 +708,17 @@ ok('碰后必须打一张：不能报胡/杠（听碰同牌场景回归）', () 
   assert.ok(r.ok)
   s = r.state
   assert.equal(s.phase, 'respond')
+  // 胡优先、逐个询问：seat1 是胡候选人，先只拿到「胡 / 过」（碰/杠要等胡阶段结束）
   const legalRsp = legalActions(s, 1)
   assert.ok(legalRsp.find(o => o.type === 'hu'), '响应窗口可点炮胡')
-  assert.ok(legalRsp.find(o => o.type === 'peng'), '响应窗口可碰')
+  assert.ok(!legalRsp.find(o => o.type === 'peng'), '胡阶段先不给碰（HU 高于碰/杠）')
+  // 放弃点炮胡（过）：仍保留碰权，进入碰/明杠阶段后才拿到「碰 / 过」
+  r = dispatch(s, { type: 'pass', seat: 1, actionId: 'mdp', stateVersion: s.version })
+  assert.ok(r.ok)
+  s = r.state
+  assert.equal(s.phase, 'respond', '过胡后仍留在响应窗口等待碰/杠')
+  const legalMeld = legalActions(s, 1)
+  assert.ok(legalMeld.find(o => o.type === 'peng'), '碰/杠阶段可碰')
   r = dispatch(s, { type: 'peng', seat: 1, actionId: 'md1', stateVersion: s.version })
   assert.ok(r.ok)
   s = r.state
@@ -976,7 +995,7 @@ ok('幺鸡补杠被抢：幺鸡留在副露里补位（2 真 + 1 赖）、不可
 // ============================================================
 console.log('=== 一炮多响 ===')
 
-ok('一炮多响：点炮者向每位胡者各付一份', () => {
+ok('一炮多响：所有胡权玩家同时表态，全部有结果后一次性结算', () => {
   let s = fastForward(12)
   // seat0 打 W9（缺门万只能打它）；seat1/seat2 都听 W9（W7W8 两面）
   const tingW9 = pair => [pair, pair, W(1), W(2), W(3), W(4), W(5), W(6), W(7), W(8), T(5), T(6), T(7)]
@@ -993,30 +1012,36 @@ ok('一炮多响：点炮者向每位胡者各付一份', () => {
   assert.ok(r.ok)
   s = r.state
   assert.equal(s.phase, 'respond')
-  assert.ok(s.waiting.includes(1) && s.waiting.includes(2))
+  assert.deepEqual(s.waiting, [1, 2], '候选按有效摸牌顺序排列')
+  assert.equal(s.respondStage, 'hu', '先进入并行 HU 阶段')
+  assert.equal(s.currentResponder, null, 'HU 阶段并行收集，没有唯一响应者')
+  assert.deepEqual(s.huWait, [1, 2], '两家同时拥有胡权、同时思考')
+  assert.equal(legalActions(s, 1).filter(o => o.type === 'hu').length, 1, 'seat1 可以胡')
+  assert.equal(legalActions(s, 2).filter(o => o.type === 'hu').length, 1, 'seat2 同时也拿到胡权（不因 seat1 先到而失效）')
+  // seat1 先叫胡：窗口不关，seat2 仍可胡（有人先点胡也不能马上关闭窗口）
   r = dispatch(s, { type: 'hu', seat: 1, actionId: 'm1', stateVersion: s.version })
   assert.ok(r.ok)
   s = r.state
-  // seat1 胡后窗口未关（seat2 未表态）
-  assert.equal(s.phase, 'respond', 'seat2 仍可表态')
+  assert.equal(s.phase, 'respond', 'seat1 叫胡后窗口仍未关闭，等这一批胡权全部有结果')
+  assert.equal(s.players[1].hu, null, '未全部表态前不结算')
+  assert.deepEqual(s.huWait, [2], '只剩 seat2 还没表态')
+  assert.ok(legalActions(s, 2).some(o => o.type === 'hu'), 'seat2 依然拥有胡权')
+  // seat2 也叫胡 → 这一批全部有结果，一次性批量结算两家
   r = dispatch(s, { type: 'hu', seat: 2, actionId: 'm2', stateVersion: s.version })
-  assert.ok(r.ok)
+  assert.ok(r.ok, `seat2 胡失败: ${r.error}`)
   s = r.state
-  const hu1 = s.players[1].hu
-  const hu2 = s.players[2].hu
-  assert.ok(hu1 && hu2, '两家都胡')
-  assert.equal(hu1.how, 'dianpao')
-  assert.equal(hu2.how, 'dianpao')
+  assert.ok(s.players[1].hu && s.players[2].hu, '两家同时胡成（一炮多响）')
+  assert.equal(s.players[1].hu.how, 'dianpao')
+  assert.equal(s.players[2].hu.how, 'dianpao')
+  assert.equal(s.huOrder.length, 2)
   const pays = s.ledger.filter(e => e.reason === 'dianpao')
-  assert.equal(pays.length, 2)
-  assert.ok(pays.every(e => e.from === 0))
-  const d0 = s.players[0].delta
-  assert.equal(d0, -(pays[0].amount + pays[1].amount), '点炮者合计支付')
-  // 血战继续：由胡牌人的下家摸牌（seat1、seat2 已离场 → 轮到 seat3），
-  // 不会退回点炮者 seat0 自己再摸一张
-  assert.equal(s.turn, 3)
+  assert.equal(pays.length, 2, '向两位胡者各结算一份')
+  assert.ok(pays.every(e => e.from === 0), '均由点炮者 seat0 支付')
+  assert.equal(s.players[0].delta, -pays.reduce((a, e) => a + e.amount, 0), '点炮者付两份')
+  // 血战继续：下一手复用引擎活跃座位逻辑——seat1/seat2 已出阵，轮到 seat3
+  assert.equal(s.turn, 3, '两位胡家出阵后，由其次位活跃玩家摸牌')
   assert.notEqual(s.drawnTile, null)
-  conservation(s, '一炮多响后')
+  conservation(s, '一炮多响一次性结算后')
 })
 
 ok('自摸比平胡多一番：同一副平胡牌点炮 1 分 / 自摸每户 2 分', () => {
@@ -1271,6 +1296,7 @@ ok('响应窗口：先过不能跳过其他玩家的胡权', () => {
  * 构造「seat2（对家）打 7 万，seat3（左家/上家）与 seat0（我）都能碰」的牌桌。
  * 幺鸡局：seat0 用「幺鸡 + 7万」碰（较远），seat3 用 2 张真 7万 碰（较近）。
  * 摸牌顺序自 seat2 起为 3 → 0 → 1，故 seat3 比 seat0 优先叫碰。
+ * 两家的牌面都刻意不成胡，保证只测「碰/杠同级按顺序」。
  */
 function twoClaimersForW7(seed) {
   const s = fastForward(seed, undefined, { yaojiEnabled: true })
@@ -1279,7 +1305,7 @@ function twoClaimersForW7(seed) {
     drawnTile: W(7),
     specs: {
       0: {
-        tiles: [YAOJI_TILE, W(7), W(1), W(2), W(3), W(4), W(5), W(6), W(8), W(9), I(5), I(6), I(7)],
+        tiles: [W(7), YAOJI_TILE, W(1), W(4), W(9), W(2), W(5), W(8), I(2), I(5), I(8), I(3), I(6)],
         void: 'tong'
       },
       1: {
@@ -1291,24 +1317,24 @@ function twoClaimersForW7(seed) {
         void: 'tiao'
       },
       3: {
-        tiles: [W(7), W(7), W(1), W(1), W(2), W(2), W(3), W(3), W(4), W(4), I(8), I(9), I(9)],
+        tiles: [W(7), W(7), W(1), W(3), W(5), W(9), I(2), I(4), I(6), I(8), I(3), I(5), I(7)],
         void: 'tong'
       }
     }
   })
   const r = dispatch(s, { type: 'discard', seat: 2, tile: W(7), actionId: aid('w7', seed), stateVersion: s.version })
   assert.ok(r.ok, `出牌失败: ${r.error}`)
+  // 无胡候选人、也无杠候选人：直接进入碰阶段，测的就是同级按顺序
+  assert.equal(r.state.respondStage, 'peng', '无人可胡/杠 → 直接进入碰阶段')
   return r.state
 }
 
 ok('响应顺序：waiting 按摸牌顺序排列，更近的一家没表态前较远者拿不到碰', () => {
   let s = twoClaimersForW7(21)
   assert.deepEqual(s.waiting, [3, 0], 'waiting 应按离出牌者的距离排列（左家 3 在前）')
+  assert.equal(s.currentResponder, 3, '最近的一家先获得决定权')
   assert.ok(legalActions(s, 3).some(o => o.type === 'peng'), '最近的一家应能叫碰')
-  assert.ok(
-    !legalActions(s, 0).some(o => o.type === 'peng'),
-    '更近的一家还没表态时，较远者不应拿到碰选项（他不碰我才有机会）'
-  )
+  assert.equal(legalActions(s, 0).length, 0, '更近的一家还没表态时，较远者没有决定权')
   // 左家放弃 → 才轮到我思考，这时才出现「碰」
   let r = dispatch(s, { type: 'pass', seat: 3, actionId: aid('ord', 2), stateVersion: s.version })
   assert.ok(r.ok, `过牌失败: ${r.error}`)
@@ -1326,13 +1352,13 @@ ok('响应顺序：waiting 按摸牌顺序排列，更近的一家没表态前�
   conservation(s, '响应顺序：先叫后碰')
 })
 
-ok('响应顺序：更近者未表态时 view 明确标注 awaitingNearer（UI 不再只挂一个「过」）', () => {
+ok('响应顺序：非当前响应者的 view 标注 awaitingNearer（UI 显示等待而不是可点的「过」）', () => {
   let s = twoClaimersForW7(23)
   const v0 = playerView(s, 0)
   assert.deepEqual(v0.my.awaitingNearer, [3], '我应被告知：在等左家先叫牌（他不是我的回合）')
-  assert.ok(!v0.legal.some(o => o.type === 'peng'), '更近者未表态前不给碰（引擎侧不变）')
-  assert.ok(v0.legal.some(o => o.type === 'pass'), '仍保留「过」占位，由 UI 决定是否换成等待提示')
-  assert.deepEqual(playerView(s, 3).my.awaitingNearer, [], '最近的左家不该等任何人')
+  assert.equal(v0.legal.length, 0, '不是我的回合：引擎不给任何动作（不给可点的「过」）')
+  assert.deepEqual(playerView(s, 3).my.awaitingNearer, [], '最近的左家是当前响应者，不该等任何人')
+  assert.ok(playerView(s, 3).legal.some(o => o.type === 'peng'), '当前响应者才拿到「碰」')
   // 左家表态后：等待清空，碰才出现——UI 那一下等待提示就会换成「碰」
   const r = dispatch(s, { type: 'pass', seat: 3, actionId: aid('aw', 2), stateVersion: s.version })
   assert.ok(r.ok, `过牌失败: ${r.error}`)
@@ -1343,9 +1369,9 @@ ok('响应顺序：更近者未表态时 view 明确标注 awaitingNearer（UI �
   conservation(s, 'awaitingNearer')
 })
 
-ok('响应优先级：碰从属于胡——有人叫胡时不必等只有碰权的近家表态', () => {
-  // 对面(2)打 4 万：我(0)能用幺鸡碰，右家(1)吃这张就胡。胡 > 碰，
-  // 右家叫胡后应立刻成立，不能等我把「过」点掉才结算。
+ok('响应优先级：碰从属于胡——有胡候选人时先问胡，碰权玩家要等', () => {
+  // 对面(2)打 4 万：我(0)能用幺鸡碰，右家(1)吃这张就胡。胡 > 碰：
+  // 先按顺序逐个问胡候选人（右家），他叫胡立即成立；我(0)的碰要等胡阶段结束。
   let s = fastForward(31, undefined, { yaojiEnabled: true })
   setupTable(s, {
     turn: 2,
@@ -1377,30 +1403,29 @@ ok('响应优先级：碰从属于胡——有人叫胡时不必等只有碰权�
   assert.ok(r.ok, `出牌失败: ${r.error}`)
   s = r.state
   assert.deepEqual(s.waiting, [0, 1], '响应者应为：等碰的我(0) + 等胡的右家(1)')
-  assert.ok(legalActions(s, 0).some(o => o.type === 'peng'), '我应能用幺鸡碰')
-  assert.ok(!legalActions(s, 0).some(o => o.type === 'hu'), '我这手胡不了（否则测不到优先级）')
+  assert.equal(s.respondStage, 'hu', '先进入胡阶段')
+  assert.equal(s.currentResponder, null, 'HU 阶段并行收集，没有唯一响应者')
+  assert.equal(legalActions(s, 0).length, 0, '胡阶段我不该拿到碰（要等胡候选人表态）')
   assert.deepEqual(legalActions(s, 1).map(o => o.type), ['hu', 'pass'], '右家只有胡 / 过')
 
-  // 右家叫胡：胡 > 碰，此时我等不等都不影响胡成立
+  // 右家叫胡：胡 > 碰，立即成立，我的碰权随之失效
   r = dispatch(s, { type: 'hu', seat: 1, actionId: aid('hp', 2), stateVersion: s.version })
   assert.ok(r.ok, `叫胡失败: ${r.error}`)
   s = r.state
-  assert.ok(s.players[1].hu, '右家应立刻胡成，不必等我点「过」')
+  assert.ok(s.players[1].hu, '右家应立刻胡成')
   assert.equal(s.players[1].hu.how, 'dianpao')
   assert.equal(s.players[0].melds.length, 0, '胡优先于碰：我的碰不应成立')
   assert.equal(s.pendingDiscard, null, '点炮那张已被胡走，响应窗口关闭')
-  assert.ok(!s.waiting.includes(0), '窗口已裁决，不再等我表态')
+  assert.equal(s.currentResponder, null, '窗口已裁决，无响应者')
   conservation(s, '胡优先于碰')
 })
 
-ok('响应顺序：两家都叫碰时，由离出牌者最近的一家碰成（较远者抢不走）', () => {
+ok('响应顺序：两家都能碰，近家先决定——远家抢先提交被拒，近家碰成', () => {
   let s = twoClaimersForW7(22)
-  // 较远者（我）抢先叫碰、较近者（左家）后叫 —— 裁决仍应按距离给左家
+  // 当前响应者是较近的左家(3)；较远的我(0)抢先叫碰必须被拒绝
   let r = dispatch(s, { type: 'peng', seat: 0, actionId: aid('pri', 2), stateVersion: s.version })
-  assert.ok(r.ok, `碰失败: ${r.error}`)
-  s = r.state
-  assert.equal(s.phase, 'respond', '两家都表态前不应裁决')
-  assert.equal(s.players[0].melds.length, 0, '还未裁决，不应先给自己编入副露')
+  assert.ok(!r.ok, '非当前响应者（较远者）提交碰被拒绝')
+  assert.equal(s.players[0].melds.length, 0, '被拒后不应给自己编入副露')
   r = dispatch(s, { type: 'peng', seat: 3, actionId: aid('pri', 3), stateVersion: s.version })
   assert.ok(r.ok, `碰失败: ${r.error}`)
   s = r.state
@@ -1409,7 +1434,7 @@ ok('响应顺序：两家都叫碰时，由离出牌者最近的一家碰成（�
   assert.ok(!s.players[3].melds[0].wild, '左家用 2 张真牌碰，不带幺鸡')
   assert.equal(s.players[0].melds.length, 0, '较远者抢不走碰权')
   assert.equal(s.turn, 3, '碰者（左家）进入强制出牌回合')
-  conservation(s, '响应顺序：两家同时叫碰')
+  conservation(s, '响应顺序：近家先碰')
 })
 
 // ============================================================
@@ -1556,9 +1581,10 @@ ok('流局退杠：已听牌者不收退杠，杠钱照收', () => {
   assert.equal(s.players.reduce((a, p) => a + p.delta, 0), 0)
 })
 
-ok('三人胡满立即结束', () => {
+ok('三人胡满立即结束（不做一炮多响：多家胡须跨回合逐个累计）', () => {
   let s = fastForward(14)
-  // 一炮三响：seat1/2/3 都听 W9
+  // seat0 打 W9 → 只有 seat1 有胡权（seat2/seat3 听条，不能胡/碰 W9）；
+  // 其余两家在后续回合自摸成胡，凑满三人即结束（一炮三响已按新规则取消）。
   const tingW9 = pair => [pair, pair, W(1), W(2), W(3), W(4), W(5), W(6), W(7), W(8), T(5), T(6), T(7)]
   setupTable(s, {
     turn: 0,
@@ -1566,18 +1592,34 @@ ok('三人胡满立即结束', () => {
     specs: {
       0: { tiles: [T(1), T(2), T(3), T(4), T(5), T(6), T(7), T(8), I(2), I(3), I(4), I(5), I(6)], void: 'wan' },
       1: { tiles: tingW9(T(4)), void: 'tiao' },
-      2: { tiles: tingW9(T(1)), void: 'tiao' },
-      3: { tiles: tingW9(T(8)), void: 'tiao' }
+      2: { tiles: [I(1), I(2), I(3), I(4), I(5), I(6), I(7), I(8), I(9), T(1), T(2), T(3), I(9)], void: 'wan' },
+      3: { tiles: [I(1), I(2), I(3), I(4), I(5), I(6), I(7), I(8), I(9), T(4), T(5), T(6), I(1)], void: 'wan' }
     }
   })
+  // 把 seat2 / seat3 的自摸张排到墙头，保证两家依次自摸成胡
+  const bringFront = (arr, t) => { const i = arr.indexOf(t); if (i > 0) { arr.splice(i, 1); arr.unshift(t) } }
+  bringFront(s.wall, I(1))
+  bringFront(s.wall, I(9))
   let r = dispatch(s, { type: 'discard', seat: 0, tile: W(9), actionId: 't0', stateVersion: s.version })
-  assert.ok(r.ok)
+  assert.ok(r.ok, `seat0 打 W9 失败: ${r.error}`)
   s = r.state
-  for (const seat of [1, 2, 3]) {
-    r = dispatch(s, { type: 'hu', seat, actionId: `t${seat}`, stateVersion: s.version })
-    assert.ok(r.ok, `seat${seat} 胡失败: ${r.error}`)
-    s = r.state
-  }
+  assert.deepEqual(s.waiting, [1], '只有 seat1 能胡 W9（不做一炮多响）')
+  r = dispatch(s, { type: 'hu', seat: 1, actionId: 't1', stateVersion: s.version })
+  assert.ok(r.ok, `seat1 胡失败: ${r.error}`)
+  s = r.state
+  assert.equal(s.players[1].hu.how, 'dianpao')
+  // 第 2 家：seat2 自摸成胡
+  assert.equal(s.turn, 2, '胡后由 seat2 摸牌')
+  assert.equal(s.drawnTile, I(9), '墙头已排好 seat2 的自摸张')
+  r = dispatch(s, { type: 'hu', seat: 2, actionId: 't2', stateVersion: s.version })
+  assert.ok(r.ok, `seat2 胡失败: ${r.error}`)
+  s = r.state
+  assert.equal(s.phase, 'discard', '两人胡未满，继续血战')
+  // 第 3 家：seat3 自摸成胡 → 三人胡满立即结束
+  assert.equal(s.turn, 3, '胡后由 seat3 摸牌')
+  r = dispatch(s, { type: 'hu', seat: 3, actionId: 't3', stateVersion: s.version })
+  assert.ok(r.ok, `seat3 胡失败: ${r.error}`)
+  s = r.state
   assert.equal(s.phase, 'finished', '三人胡满应立即结束')
   const results = settlementOf(s)
   assert.equal(results.huOrder.length, 3)
@@ -1587,7 +1629,8 @@ ok('三人胡满立即结束', () => {
 })
 
 ok('结算牌面：暴露各家终局手牌 + 副露（点炮胡的牌张用 hu.winTile 补全即可复原胡牌型）', () => {
-  let s = fastForward(14)
+  // endWhenHuPlayers=1：单家胡牌即结束，便于直接检视结算牌面（不做一炮多响）
+  let s = fastForward(14, undefined, { endWhenHuPlayers: 1 })
   const tingW9 = pair => [pair, pair, W(1), W(2), W(3), W(4), W(5), W(6), W(7), W(8), T(5), T(6), T(7)]
   setupTable(s, {
     turn: 0,
@@ -1602,11 +1645,19 @@ ok('结算牌面：暴露各家终局手牌 + 副露（点炮胡的牌张用 hu.
   let r = dispatch(s, { type: 'discard', seat: 0, tile: W(9), actionId: 'fs0', stateVersion: s.version })
   assert.ok(r.ok)
   s = r.state
-  for (const seat of [1, 2, 3]) {
-    r = dispatch(s, { type: 'hu', seat, actionId: `fs${seat}`, stateVersion: s.version })
-    assert.ok(r.ok, `seat${seat} 胡失败: ${r.error}`)
-    s = r.state
-  }
+  // HU 阶段并行收集：seat1/seat2/seat3 同时拥有胡权，全部表态后才一次性结算。
+  // 本用例设 endWhenHuPlayers=1，只让 seat1 胡、seat2/seat3 过，便于直接检视结算牌面。
+  assert.equal(s.respondStage, 'hu', 'HU 阶段并行收集')
+  assert.equal(s.currentResponder, null, 'HU 阶段没有唯一响应者')
+  assert.deepEqual(s.huWait, [1, 2, 3], '三家同时拥有胡权')
+  r = dispatch(s, { type: 'hu', seat: 1, actionId: 'fs1', stateVersion: s.version })
+  assert.ok(r.ok, `seat1 胡失败: ${r.error}`)
+  assert.equal(r.state.players[1].hu, null, '未全部表态前不结算')
+  r = dispatch(r.state, { type: 'pass', seat: 2, actionId: 'fs2', stateVersion: r.state.version })
+  assert.ok(r.ok, `seat2 过失败: ${r.error}`)
+  r = dispatch(r.state, { type: 'pass', seat: 3, actionId: 'fs3', stateVersion: r.state.version })
+  assert.ok(r.ok, `seat3 过失败: ${r.error}`)
+  s = r.state
   const results = settlementOf(s)
   assert.equal(results.seats.length, 4, '结算应给出 4 家终局牌面')
   results.seats.forEach(ps => {
@@ -1631,7 +1682,8 @@ ok('结算牌面：暴露各家终局手牌 + 副露（点炮胡的牌张用 hu.
 })
 
 ok('胡满结束不退杠：已收杠钱照收（区别于流局）', () => {
-  let s = fastForward(15)
+  // endWhenHuPlayers=1：单家胡牌即胡满结束（不做一炮多响）
+  let s = fastForward(15, undefined, { endWhenHuPlayers: 1 })
   // seat0 先暗杠 W5，收 3×2 = 6 分
   setupTable(s, {
     turn: 0,
@@ -1644,29 +1696,25 @@ ok('胡满结束不退杠：已收杠钱照收（区别于流局）', () => {
   assert.ok(r.ok, `暗杠失败: ${r.error}`)
   s = r.state
   assert.equal(s.players[0].delta, 6)
-  // 再构造一炮三响（seat1/2/3 同听 W9）→ 三人胡满结束
+  // 再构造 seat1 点炮胡 W9 → 立即胡满结束
   const tingW9 = pair => [pair, pair, W(1), W(2), W(3), W(4), W(5), W(6), W(7), W(8), T(5), T(6), T(7)]
   setupTable(s, {
     turn: 0,
     drawnTile: W(9),
     specs: {
       0: { tiles: [T(1), T(2), T(3), T(4), T(5), T(6), T(7), T(8), I(2), I(3), I(4), I(5), I(6)], void: 'wan' },
-      1: { tiles: tingW9(T(4)), void: 'tiao' },
-      2: { tiles: tingW9(T(1)), void: 'tiao' },
-      3: { tiles: tingW9(T(8)), void: 'tiao' }
+      1: { tiles: tingW9(T(4)), void: 'tiao' }
     }
   })
   r = dispatch(s, { type: 'discard', seat: 0, tile: W(9), actionId: 'rh1', stateVersion: s.version })
   assert.ok(r.ok)
   s = r.state
-  for (const seat of [1, 2, 3]) {
-    r = dispatch(s, { type: 'hu', seat, actionId: `rh${seat + 1}`, stateVersion: s.version })
-    assert.ok(r.ok, `seat${seat} 胡失败: ${r.error}`)
-    s = r.state
-  }
+  r = dispatch(s, { type: 'hu', seat: 1, actionId: 'rh2', stateVersion: s.version })
+  assert.ok(r.ok, `seat1 胡失败: ${r.error}`)
+  s = r.state
   assert.equal(s.phase, 'finished')
   const results = settlementOf(s)
-  assert.equal(results.liuju, false, '三人胡满结束，非流局')
+  assert.equal(results.liuju, false, '胡满结束，非流局')
   // 胡满结束不走退杠：杠钱已落袋
   assert.equal(s.ledger.filter(e => e.reason === 'gang-refund').length, 0, '胡满结束不退杠')
   assert.equal(results.refundItems.length, 0)
@@ -1974,6 +2022,13 @@ ok('幺鸡赖子：明杠用幺鸡补位，之后摸到同一张真牌可换回�
   assert.ok(r.ok, `出牌失败: ${r.error}`)
   s = r.state
   assert.deepEqual(s.waiting, [0], '只有 seat0 能响应')
+  // 此手牌带幺鸡可成胡（幺鸡当 W6）→ 胡阶段先只给「胡 / 过」，必须先过胡才轮到碰/杠
+  assert.equal(s.respondStage, 'hu', '胡优先于碰/杠')
+  assert.deepEqual(legalActions(s, 0).map(o => o.type), ['hu', 'pass'], '胡阶段只有胡 / 过')
+  let rp = dispatch(s, { type: 'pass', seat: 0, actionId: 'yj-ming-pass', stateVersion: s.version })
+  assert.ok(rp.ok, `过胡失败: ${rp.error}`)
+  s = rp.state
+  assert.equal(s.respondStage, 'gang', '过胡后先进入 GANG 阶段（杠优先于碰）')
   const gangOpt = legalActions(s, 0).find(o => o.type === 'gang')
   assert.ok(
     gangOpt && gangOpt.options.some(g => g.tile === W(5) && g.gangType === 'ming'),
@@ -2471,6 +2526,456 @@ ok('相同 seed + 相同动作序列 → 完全相同的最终 state', () => {
   }
   assert.equal(s.phase, 'finished')
   assert.deepEqual(JSON.parse(JSON.stringify(s)), JSON.parse(JSON.stringify(first)))
+})
+
+// ============================================================
+// 13. 出牌响应仲裁与抢杠胡 专项（用户规则 TEST1~15）
+// ------------------------------------------------------------
+// 三阶段模型（单机 / 联机 / AI / 超时托管 / 断线托管共用同一引擎）：
+//   DISCARD → HU 窗口（并行）→ GANG 窗口（串行）→ PENG 窗口（串行）→ 下一家摸牌
+//   · HU 阶段（并行收集）：所有胡候选人同时思考、同时拿到「胡 / 过」，共享同一
+//     截止时间；谁先叫胡都不关别人的窗口，全部有结果才一次性结算（一炮多响）。
+//     此阶段绝不提前开放杠/碰按钮。
+//   · GANG 阶段（串行仲裁）：所有胡都过了才有杠权，按「自出牌者下家起的有效摸牌
+//     顺序」逐个询问，一旦有人杠即成交，后面的人不再有机会。
+//   · PENG 阶段（串行仲裁）：所有杠都过了才有碰权，同一顺序逐个询问，成交即结束。
+//   · 「胡 + 碰」同一人：过胡后仍要等 GANG 阶段全部问完，才轮到他碰。
+//   · 「过」是本窗口内的最终决定：同一座位重复提交、旧 stateVersion / 重复
+//     actionId 一律拒绝，不能反悔（超时 / 断线由 AI 替该座位提交一次最终动作）。
+//   · 过水（passHu）限制完整保留：放弃点炮胡后、自己摸牌（过庄）前，同番或更低番
+//     的炮不再给「胡」；番更大的炮仍可胡；自摸不受限。
+//   · 下一手摸牌一律复用引擎「活跃座位」逻辑（跳过已胡出阵者），联机层不自己算。
+// ============================================================
+console.log('=== 响应仲裁专项（三阶段 HU→GANG→PENG）===')
+
+const yqid = n => `spec-${n}`
+
+/** 公共出牌者规格：座位 0 手里无万、缺万 → 可直接打出摸到的 W9 */
+const D0_W9 = {
+  tiles: [T(3), T(4), T(5), T(6), T(7), T(8), T(9), I(4), I(5), I(6), I(7), I(8), I(9)],
+  void: 'wan'
+}
+
+/** 座位 0 打 W9，按 specs 摆好其余座位；markHu 里的座位先标记为已胡出阵 */
+function w9Respond(seed, specs, { yaoji = false, markHu = [] } = {}) {
+  const s = fastForward(seed, undefined, yaoji ? { yaojiEnabled: true } : undefined)
+  setupTable(s, { turn: 0, drawnTile: W(9), specs: { 0: D0_W9, ...specs } })
+  for (const seat of markHu) {
+    s.players[seat].hu = { how: 'zimo', winTile: null, fan: 0, names: [], huOrder: 0, scoreDelta: 0 }
+  }
+  const r = dispatch(s, {
+    type: 'discard', seat: 0, tile: W(9), actionId: yqid(`${seed}-d`), stateVersion: s.version
+  })
+  assert.ok(r.ok, `打 W9 失败: ${r.error}`)
+  return r.state
+}
+
+// 各座位手牌规格（缺门一律取手里没有的花色，才能参与响应）
+// seat1：幺鸡局下 1 真 W9 + 1 赖即可碰（只能碰，胡不了）
+const H1_PENG = {
+  tiles: [W(9), YAOJI_TILE, W(1), W(4), W(7), I(2), I(2), I(5), I(5), I(8), I(8), I(3), I(3)],
+  void: 'tong'
+}
+// seat2：幺鸡局下 2 真 W9 + 1 赖可明杠（也能碰）
+const H2_GANG = {
+  tiles: [W(9), W(9), YAOJI_TILE, W(1), W(4), W(7), I(3), I(3), I(6), I(6), I(9), I(9), I(4)],
+  void: 'tong'
+}
+// seat1：吃 W9 即胡（W123 W456 W789 + T111 + T22）
+const H1_HU = {
+  tiles: [W(1), W(2), W(3), W(4), W(5), W(6), W(7), W(8), T(1), T(1), T(1), T(2), T(2)],
+  void: 'tiao'
+}
+// seat2：2 真 W9 可碰（非幺鸡局；胡不了）
+const H2_PENG = {
+  tiles: [W(9), W(9), W(1), W(3), W(5), W(7), T(3), T(3), T(5), T(5), T(7), T(7), T(9)],
+  void: 'tiao'
+}
+// seat3：吃 W9 即胡（W123 W456 W789 + T888 + T99）
+const H3_HU = {
+  tiles: [W(1), W(2), W(3), W(4), W(5), W(6), W(7), W(8), T(8), T(8), T(8), T(9), T(9)],
+  void: 'tiao'
+}
+// seat3：幺鸡局下 1 真 W9 + 1 赖可碰（胡不了）
+const H3_PENG = {
+  tiles: [W(9), YAOJI_TILE, W(2), W(5), W(8), I(2), I(2), I(5), I(5), I(7), I(7), I(8), I(8)],
+  void: 'tong'
+}
+// seat1：手里 3 真 W9，同时可碰可明杠（非幺鸡局）
+const H1_PENG_GANG = {
+  tiles: [W(9), W(9), W(9), W(1), W(4), W(7), T(1), T(1), T(4), T(4), T(7), T(7), T(9)],
+  void: 'tiao'
+}
+// seat1：幺鸡局下吃 W9 即胡（W999 用 1 真 + 1 赖补位 + W123 + W456 + T111 + T22），
+// 同时手里 1 真 W9 + 1 赖可碰——「胡 + 碰」双重资格：过胡后必须等 GANG 阶段问完，
+// 才能轮到碰。
+const H1_HU_PENG = {
+  tiles: [W(9), YAOJI_TILE, W(1), W(2), W(3), W(4), W(5), W(6), T(1), T(1), T(1), T(2), T(2)],
+  void: 'tiao'
+}
+// seat2：幺鸡局下 2 真 W9 + 1 赖可明杠（也能碰），牌面不成胡
+// （Seat0 出 1 张、Seat1 占 1 张、Seat2 占 2 张，正好用满 4 张 W9）
+const H2_GANG3 = {
+  tiles: [W(9), W(9), YAOJI_TILE, W(1), W(4), W(7), T(1), T(2), T(3), T(4), T(5), T(7), T(9)],
+  void: 'tiao'
+}
+// seat1：碰碰胡听 T9（W111 W222 W333 T555 + T9），点炮 1 番（> 平胡 0 番）
+const H1_PENGPENGHU = {
+  tiles: [W(1), W(1), W(1), W(2), W(2), W(2), W(3), W(3), W(3), T(5), T(5), T(5), T(9)],
+  void: 'tiao'
+}
+// 通用「手里无筒、缺筒」的出牌者规格：可自由打出任意万 / 条
+const NO_TONG_DISCARDER = {
+  tiles: [W(1), W(2), W(3), W(4), W(5), W(6), W(7), W(8), W(9), I(1), I(2), I(3), I(4)],
+  void: 'tong'
+}
+
+ok('TEST1 HU 阶段并行收集：所有胡候选人同时拿到「胡/过」，碰/杠此刻连按钮都没有', () => {
+  const s = w9Respond(101, { 1: H1_PENG, 2: H2_GANG, 3: H3_HU }, { yaoji: true })
+  assert.deepEqual(s.waiting, [1, 2, 3], '候选按有效摸牌顺序 1→2→3')
+  assert.equal(s.respondStage, 'hu', '先进入 HU 阶段')
+  assert.equal(s.currentResponder, null, 'HU 阶段并行收集，没有唯一响应者')
+  assert.deepEqual(s.huWait, [3], '只有 seat3 有胡权，但它走并行窗口而非串行排队')
+  assert.deepEqual(legalActions(s, 3).map(o => o.type), ['hu', 'pass'], 'seat3 拿到胡/过')
+  assert.equal(legalActions(s, 1).length, 0, 'seat1 有碰权，但 HU 窗口期间不给按钮')
+  assert.equal(legalActions(s, 2).length, 0, 'seat2 有杠权，但 HU 窗口期间不给按钮')
+  let r = dispatch(s, { type: 'peng', seat: 1, actionId: yqid('t1-p'), stateVersion: s.version })
+  assert.ok(!r.ok && r.error === 'not-active', 'seat1 此时提交碰必须无效')
+  r = dispatch(s, {
+    type: 'gang', seat: 2, tile: W(9), gangType: 'ming',
+    actionId: yqid('t1-g'), stateVersion: s.version
+  })
+  assert.ok(!r.ok && r.error === 'not-active', 'seat2 此时提交杠必须无效')
+  r = dispatch(s, { type: 'hu', seat: 3, actionId: yqid('t1-h'), stateVersion: s.version })
+  assert.ok(r.ok, `seat3 胡失败: ${r.error}`)
+  assert.ok(r.state.players[3].hu, 'seat3 胡成')
+  assert.equal(r.state.players[1].melds.length, 0, 'seat1 的碰失效')
+  assert.equal(r.state.players[2].melds.length, 0, 'seat2 的杠失效')
+  conservation(r.state, 'TEST1')
+})
+
+ok('TEST2 先叫胡不关窗：seat1 叫胡后 seat3 仍可胡，全部有结果后一次性结算（一炮多响）', () => {
+  const s = w9Respond(102, { 1: H1_HU, 2: H2_PENG, 3: H3_HU })
+  assert.deepEqual(s.huWait, [1, 3], '两家同时拥有胡权')
+  let r = dispatch(s, { type: 'hu', seat: 1, actionId: yqid('t2-h1'), stateVersion: s.version })
+  assert.ok(r.ok, `seat1 胡失败: ${r.error}`)
+  let st = r.state
+  assert.equal(st.phase, 'respond', 'seat1 叫胡后窗口不关（不能关掉别人的胡权）')
+  assert.equal(st.players[1].hu, null, '未全部表态前不结算')
+  assert.deepEqual(st.huWait, [3], '只剩 seat3 还没表态')
+  assert.deepEqual(legalActions(st, 3).map(o => o.type), ['hu', 'pass'], 'seat3 依然拥有胡权')
+  r = dispatch(st, { type: 'hu', seat: 3, actionId: yqid('t2-h3'), stateVersion: st.version })
+  assert.ok(r.ok, `seat3 胡失败: ${r.error}`)
+  st = r.state
+  assert.ok(st.players[1].hu && st.players[3].hu, '两家同时胡成（一炮多响）')
+  assert.equal(st.players[1].hu.how, 'dianpao')
+  assert.equal(st.players[3].hu.how, 'dianpao')
+  assert.equal(st.huOrder.length, 2, '一次性结算两位胡者（不是先改状态再处理第二个）')
+  assert.equal(st.ledger.filter(e => e.reason === 'dianpao').length, 2, '向两位胡者各结算一份')
+  assert.equal(st.players[2].melds.length, 0, 'seat2 的碰权随窗口结束失效')
+  conservation(st, 'TEST2')
+})
+
+ok('TEST3 HU→GANG→PENG：Seat1(胡+碰)/Seat2(杠)/Seat3(胡)——过胡后 Seat1 不能立刻碰，先等 Seat2 的杠', () => {
+  const s = w9Respond(103, { 1: H1_HU_PENG, 2: H2_GANG3, 3: H3_HU }, { yaoji: true })
+  assert.deepEqual(s.waiting, [1, 2, 3], '候选按有效摸牌顺序 1→2→3')
+  assert.deepEqual(s.huWait, [1, 3], '第一阶段：Seat1 / Seat3 有胡权')
+  assert.deepEqual(s.gangWait, [2], '第二阶段：Seat2 排在杠')
+  assert.deepEqual(s.pengWait, [1, 2], '第三阶段：Seat1 / Seat2 排在碰')
+  assert.equal(s.respondStage, 'hu', '当前是并行 HU 阶段')
+  assert.equal(legalActions(s, 2).length, 0, 'Seat2 在 HU 阶段没有任何按钮')
+  // Seat1 过胡
+  let r = dispatch(s, { type: 'pass', seat: 1, actionId: yqid('t3-p1'), stateVersion: s.version })
+  assert.ok(r.ok, `Seat1 过失败: ${r.error}`)
+  let st = r.state
+  assert.equal(st.respondStage, 'hu', 'Seat3 还没表态，仍停在 HU 阶段')
+  assert.equal(legalActions(st, 1).length, 0, 'Seat1 过胡后不能立刻碰（中间还有更高优先级的杠）')
+  // Seat3 过胡 → HU 阶段结束，才进入 GANG 阶段
+  r = dispatch(st, { type: 'pass', seat: 3, actionId: yqid('t3-p3'), stateVersion: st.version })
+  assert.ok(r.ok, `Seat3 过失败: ${r.error}`)
+  st = r.state
+  assert.equal(st.respondStage, 'gang', '所有胡都过了才进入 GANG 阶段')
+  assert.equal(st.currentResponder, 2, '轮到 Seat2 的杠')
+  assert.equal(legalActions(st, 1).length, 0, 'Seat1 的碰仍在排队（杠优先于碰）')
+  assert.ok(legalActions(st, 2).some(o => o.type === 'gang'), 'Seat2 这时才拿到杠')
+  // Seat2 过杠 → 才进入 PENG 阶段，Seat1 终于拿到碰
+  r = dispatch(st, { type: 'pass', seat: 2, actionId: yqid('t3-p2'), stateVersion: st.version })
+  assert.ok(r.ok, `Seat2 过失败: ${r.error}`)
+  st = r.state
+  assert.equal(st.respondStage, 'peng', '所有杠都过了才进入 PENG 阶段')
+  assert.equal(st.currentResponder, 1, '轮到最近的 Seat1 碰')
+  assert.ok(legalActions(st, 1).some(o => o.type === 'peng'), 'Seat1 这时才拿到碰')
+  r = dispatch(st, { type: 'peng', seat: 1, actionId: yqid('t3-k1'), stateVersion: st.version })
+  assert.ok(r.ok, `Seat1 碰失败: ${r.error}`)
+  assert.equal(r.state.players[1].melds[0].kind, 'peng')
+  conservation(r.state, 'TEST3')
+})
+
+ok('TEST4 GANG 成交即结束：Seat2 杠成，Seat1 的碰权随之失效', () => {
+  const s = w9Respond(104, { 1: H1_HU_PENG, 2: H2_GANG3, 3: H3_HU }, { yaoji: true })
+  let r = dispatch(s, { type: 'pass', seat: 1, actionId: yqid('t4-p1'), stateVersion: s.version })
+  assert.ok(r.ok)
+  r = dispatch(r.state, { type: 'pass', seat: 3, actionId: yqid('t4-p3'), stateVersion: r.state.version })
+  assert.ok(r.ok)
+  assert.equal(r.state.respondStage, 'gang')
+  r = dispatch(r.state, {
+    type: 'gang', seat: 2, tile: W(9), gangType: 'ming',
+    actionId: yqid('t4-g2'), stateVersion: r.state.version
+  })
+  assert.ok(r.ok, `Seat2 明杠失败: ${r.error}`)
+  const st = r.state
+  assert.equal(st.players[2].melds[0].kind, 'gang')
+  assert.equal(st.players[1].melds.length, 0, 'Seat1 的碰不得执行')
+  assert.equal(st.players[0].delta, -1, '明杠由放杠者付 1 分')
+  conservation(st, 'TEST4')
+})
+
+ok('TEST5 GANG 优先于 PENG：Seat1 能碰、Seat2 能杠，先问 Seat2 的杠', () => {
+  const s = w9Respond(105, { 1: H1_PENG, 2: H2_GANG }, { yaoji: true })
+  assert.deepEqual(s.waiting, [1, 2], '无胡候选人 → 直接进入杠/碰阶段')
+  assert.equal(s.respondStage, 'gang', '杠优先：先进入 GANG 阶段')
+  assert.equal(s.currentResponder, 2, '杠候选者 Seat2 先决定')
+  assert.ok(legalActions(s, 2).some(o => o.type === 'gang'), 'Seat2 拿到杠')
+  assert.ok(!legalActions(s, 2).some(o => o.type === 'peng'), 'GANG 阶段不给碰按钮')
+  assert.equal(legalActions(s, 1).length, 0, 'Seat1 的碰要等杠阶段结束')
+  const rP = dispatch(s, { type: 'peng', seat: 1, actionId: yqid('t5-p'), stateVersion: s.version })
+  assert.ok(!rP.ok && rP.error === 'not-active', 'Seat1 越过杠抢碰被拒')
+  // Seat2 过杠 → 才轮到 Seat1 碰
+  const r = dispatch(s, { type: 'pass', seat: 2, actionId: yqid('t5-pg'), stateVersion: s.version })
+  assert.ok(r.ok, `Seat2 过失败: ${r.error}`)
+  const st = r.state
+  assert.equal(st.respondStage, 'peng', '所有杠都过了才进入 PENG 阶段')
+  assert.equal(st.currentResponder, 1, 'Seat1（碰）这时才获决定权')
+  assert.ok(legalActions(st, 1).some(o => o.type === 'peng'))
+  conservation(st, 'TEST5')
+})
+
+ok('TEST6 杠成交后后面的碰失效：Seat1 过胡 → Seat2 杠成 → Seat3 碰不得执行', () => {
+  const s = w9Respond(106, { 1: H1_HU, 2: H2_GANG, 3: H3_PENG }, { yaoji: true })
+  assert.deepEqual(s.huWait, [1], 'Seat1 是胡候选人（并行窗口）')
+  assert.equal(s.currentResponder, null)
+  let r = dispatch(s, { type: 'pass', seat: 1, actionId: yqid('t6-p1'), stateVersion: s.version })
+  assert.ok(r.ok, `seat1 过失败: ${r.error}`)
+  const st = r.state
+  assert.equal(st.respondStage, 'gang', 'Seat1 过完胡后进入 GANG 阶段')
+  assert.equal(st.currentResponder, 2, '轮到杠候选者 Seat2')
+  assert.equal(legalActions(st, 3).length, 0, 'Seat3 的碰还没有决定权')
+  r = dispatch(st, {
+    type: 'gang', seat: 2, tile: W(9), gangType: 'ming',
+    actionId: yqid('t6-g'), stateVersion: st.version
+  })
+  assert.ok(r.ok, `seat2 明杠失败: ${r.error}`)
+  assert.equal(r.state.players[2].melds[0].gangType, 'ming')
+  assert.equal(r.state.players[3].melds.length, 0, 'seat3 的碰不得执行')
+  conservation(r.state, 'TEST6')
+})
+
+ok('TEST7 同一人可碰可杠：先 GANG 阶段问杠，过杠后才在 PENG 阶段问碰', () => {
+  const s = w9Respond(107, { 1: H1_PENG_GANG })
+  assert.deepEqual(s.waiting, [1], '只有 seat1 能响应')
+  assert.equal(s.respondStage, 'gang', '有杠资格时先进入 GANG 阶段')
+  assert.equal(s.currentResponder, 1)
+  const gTypes = legalActions(s, 1).map(o => o.type)
+  assert.ok(gTypes.includes('gang'), 'GANG 阶段含 GANG：' + gTypes.join('/'))
+  assert.ok(gTypes.includes('pass'), 'GANG 阶段含 PASS：' + gTypes.join('/'))
+  assert.ok(!gTypes.includes('peng'), 'GANG 阶段不给碰（杠优先于碰）')
+  // 过杠 → 才在 PENG 阶段拿到碰
+  let r = dispatch(s, { type: 'pass', seat: 1, actionId: yqid('t7-pg'), stateVersion: s.version })
+  assert.ok(r.ok, `seat1 过杠失败: ${r.error}`)
+  const st = r.state
+  assert.equal(st.respondStage, 'peng', '过杠后进入 PENG 阶段')
+  assert.ok(legalActions(st, 1).some(o => o.type === 'peng'), '这时才给碰')
+  r = dispatch(st, { type: 'peng', seat: 1, actionId: yqid('t7-p'), stateVersion: st.version })
+  assert.ok(r.ok, `seat1 碰失败: ${r.error}`)
+  assert.equal(r.state.players[1].melds[0].kind, 'peng')
+  conservation(r.state, 'TEST7')
+})
+
+/** 抢杠场景：seat0 碰 W5 后摸到第 4 张 W5 发起补杠；seat1、seat3 都听 W5 */
+const ROB_SEAT0 = {
+  melds: [{ kind: 'peng', tile: W(5), from: 2 }],
+  tiles: [W(2), W(3), W(4), W(6), W(7), W(8), T(2), T(2), T(3), T(3)],
+  void: 'tiao'
+}
+const ROB_H1 = {
+  tiles: [T(1), T(1), W(1), W(2), W(3), W(7), W(8), W(9), T(5), T(6), T(7), W(4), W(6)],
+  void: 'tiao'
+}
+const ROB_H3 = {
+  tiles: [W(4), W(6), I(2), I(2), I(2), I(5), I(5), I(5), I(8), I(8), I(8), I(9), I(9)],
+  void: 'tong'
+}
+
+function robBuGang(seed) {
+  const s = fastForward(seed)
+  setupTable(s, { turn: 0, drawnTile: W(5), specs: { 0: ROB_SEAT0, 1: ROB_H1, 3: ROB_H3 } })
+  const r = dispatch(s, {
+    type: 'gang', seat: 0, tile: W(5), gangType: 'bu',
+    actionId: yqid(`${seed}-bu`), stateVersion: s.version
+  })
+  assert.ok(r.ok, `补杠失败: ${r.error}`)
+  return r.state
+}
+
+ok('TEST8 抢杠并行：补杠不落地（仍 pending），所有抢杠候选人同时拿到「抢杠胡/过」', () => {
+  const s = robBuGang(108)
+  assert.equal(s.phase, 'respond')
+  assert.ok(s.pendingKong && s.pendingKong.tile === W(5), '补杠仍处于 pending（未落地）')
+  assert.equal(s.players[0].melds[0].kind, 'peng', '副露仍是碰，杠没有先写成')
+  assert.deepEqual(s.waiting, [1, 3], '抢杠胡候选人按被杠者下家起顺序：seat1 → seat3')
+  assert.equal(s.respondStage, 'hu', '抢杠窗口只有并行 HU 阶段')
+  assert.equal(s.currentResponder, null, '并行收集，没有唯一响应者')
+  assert.deepEqual(s.huWait, [1, 3], '两家同时拥有抢杠胡权')
+  assert.deepEqual(legalActions(s, 1).map(o => o.type), ['hu', 'pass'], 'seat1 拿到抢杠胡/过')
+  assert.deepEqual(legalActions(s, 3).map(o => o.type), ['hu', 'pass'], 'seat3 同时拿到抢杠胡/过')
+  assert.ok(legalActions(s, 1).some(o => o.how === 'qianggang'), '动作为抢杠胡')
+  conservation(s, 'TEST8')
+})
+
+ok('TEST9 多人抢杠一次性结算：两家都抢，补杠取消、杠不成立，一次结算两家抢杠胡', () => {
+  const s = robBuGang(109)
+  let r = dispatch(s, { type: 'hu', seat: 1, actionId: yqid('t9-h1'), stateVersion: s.version })
+  assert.ok(r.ok, `seat1 抢杠胡失败: ${r.error}`)
+  let st = r.state
+  assert.equal(st.phase, 'respond', 'seat1 抢杠后窗口不关，等 seat3 表态')
+  assert.equal(st.players[1].hu, null, '未全部表态前不结算')
+  assert.deepEqual(st.huWait, [3])
+  assert.ok(legalActions(st, 3).some(o => o.type === 'hu'), 'seat3 依然拥有抢杠胡权')
+  r = dispatch(st, { type: 'hu', seat: 3, actionId: yqid('t9-h3'), stateVersion: st.version })
+  assert.ok(r.ok, `seat3 抢杠胡失败: ${r.error}`)
+  st = r.state
+  assert.equal(st.players[1].hu.how, 'qianggang')
+  assert.equal(st.players[3].hu.how, 'qianggang')
+  assert.ok(st.players[1].hu.names.includes('抢杠胡'), st.players[1].hu.names.join('/'))
+  assert.equal(st.huOrder.length, 2, '一次性结算两家抢杠胡')
+  assert.equal(st.pendingKong, null, 'pendingKong 被取消')
+  assert.equal(st.players[0].melds[0].kind, 'peng', '杠没有真正成立')
+  assert.ok(!st.ledger.some(e => e.reason.startsWith('gang')), '杠分一分不收')
+  assert.ok(st.players[0].discards.includes(W(5)), '被抢的牌算 seat0 点炮')
+  assert.equal(st.turn, 0, '被抢者（seat0）接着摸牌')
+  conservation(st, 'TEST9')
+})
+
+ok('TEST10 抢杠全过：seat1、seat3 都过 → 补杠才真正成立并补牌', () => {
+  const s = robBuGang(110)
+  let r = dispatch(s, { type: 'pass', seat: 1, actionId: yqid('t10-p1'), stateVersion: s.version })
+  assert.ok(r.ok, `seat1 过失败: ${r.error}`)
+  let st = r.state
+  assert.ok(st.pendingKong, 'seat1 过后补杠仍 pending（等 seat3）')
+  assert.equal(st.respondStage, 'hu', '仍停在 HU 并行窗口')
+  assert.deepEqual(st.huWait, [3])
+  assert.ok(legalActions(st, 3).some(o => o.how === 'qianggang'), 'seat3 仍可抢杠胡')
+  r = dispatch(st, { type: 'pass', seat: 3, actionId: yqid('t10-p3'), stateVersion: st.version })
+  assert.ok(r.ok, `seat3 过失败: ${r.error}`)
+  st = r.state
+  assert.equal(st.pendingKong, null, '抢杠窗口关闭')
+  assert.equal(st.players[0].melds[0].kind, 'gang', '补杠这时才真正成立')
+  assert.equal(st.players[0].melds[0].gangType, 'bu')
+  assert.equal(st.phase, 'discard', '补杠成立后从墙尾补牌，进入摸打')
+  assert.notEqual(st.drawnTile, null, '已完成补牌')
+  assert.ok(st.ledger.some(e => e.reason === 'gang-an'), '补杠分已入账')
+  conservation(st, 'TEST10')
+})
+
+ok('TEST11 「过」是本窗口的最终决定：不能改口，重复 / 过期请求一律拒绝', () => {
+  const s = w9Respond(111, { 1: H1_HU, 2: H2_PENG, 3: H3_HU })
+  let r = dispatch(s, { type: 'pass', seat: 1, actionId: yqid('t11-p1'), stateVersion: s.version })
+  assert.ok(r.ok, `seat1 过失败: ${r.error}`)
+  const st = r.state
+  const r2 = dispatch(st, { type: 'hu', seat: 1, actionId: yqid('t11-h1'), stateVersion: st.version })
+  assert.ok(!r2.ok && r2.error === 'not-active', '同一窗口内过胡后不能改口胡')
+  const r3 = dispatch(st, { type: 'hu', seat: 3, actionId: yqid('t11-h3'), stateVersion: s.version })
+  assert.ok(!r3.ok && r3.error === 'stale', '旧 stateVersion 请求被拒（不可反悔）')
+  const r4 = dispatch(st, { type: 'pass', seat: 1, actionId: yqid('t11-p1'), stateVersion: st.version })
+  assert.ok(!r4.ok && r4.error === 'duplicate', '重复 actionId（网络重发）被拒')
+  conservation(st, 'TEST11')
+})
+
+ok('TEST12 超时 / AI 托管：HU 窗口内每个待表态者各自被托管一次', () => {
+  let s = w9Respond(112, { 1: H1_HU, 2: H2_PENG, 3: H3_HU })
+  assert.deepEqual(s.huWait, [1, 3], '两家同时待表态，共享同一窗口')
+  for (const seat of [1, 3]) {
+    const hosted = aiDecide(playerView(s, seat), 'normal', mulberry32(seat)) || { type: 'pass' }
+    const r = dispatch(s, { ...hosted, seat, actionId: yqid('t12-' + seat), stateVersion: s.version })
+    assert.ok(r.ok, `seat${seat} 托管失败: ${r.error}`)
+    s = r.state
+  }
+  assert.ok(!s.huWait.includes(1) && !s.huWait.includes(3), '两家都已表态，窗口不再等他们')
+  conservation(s, 'TEST12')
+})
+
+ok('TEST13 跳过已胡出阵者：seat1 已退出，响应顺序为 seat2 → seat3', () => {
+  const s = w9Respond(113, { 2: H2_PENG, 3: H3_HU }, { markHu: [1] })
+  assert.deepEqual(s.waiting, [2, 3], '已胡出阵的 seat1 被跳过')
+  assert.deepEqual(s.huWait, [3], 'HU 阶段只有 seat3')
+  assert.deepEqual(s.pengWait, [2], 'PENG 阶段只有 seat2')
+  assert.equal(s.respondStage, 'hu', '仍有胡候选人 → 先走 HU 阶段')
+  const r1 = dispatch(s, { type: 'pass', seat: 1, actionId: yqid('t13-x'), stateVersion: s.version })
+  assert.ok(!r1.ok, '已胡出阵的 seat1 不能提交')
+  const r = dispatch(s, { type: 'hu', seat: 3, actionId: yqid('t13-h'), stateVersion: s.version })
+  assert.ok(r.ok, `seat3 胡失败: ${r.error}`)
+  assert.ok(r.state.players[3].hu)
+  assert.equal(r.state.players[2].melds.length, 0, 'seat2 的碰因 seat3 胡而失效')
+  conservation(r.state, 'TEST13')
+})
+
+ok('TEST14 多人胡后下一手：复用引擎活跃座位逻辑（跳过已胡出阵者）', () => {
+  const s = w9Respond(114, { 1: H1_HU, 2: H2_PENG, 3: H3_HU })
+  let r = dispatch(s, { type: 'hu', seat: 1, actionId: yqid('t14-h1'), stateVersion: s.version })
+  assert.ok(r.ok)
+  r = dispatch(r.state, { type: 'hu', seat: 3, actionId: yqid('t14-h3'), stateVersion: r.state.version })
+  assert.ok(r.ok, `seat3 胡失败: ${r.error}`)
+  const st = r.state
+  assert.equal(st.huOrder.length, 2)
+  assert.ok(st.players[1].hu && st.players[3].hu, 'seat1 / seat3 出阵')
+  assert.equal(st.players[2].hu, null, 'seat2 未胡')
+  // 最靠近出牌者的胡家是 seat1，其次位活跃玩家是 seat2 → 由 seat2 摸牌
+  // （不是 lastWinner + 1，也不是出牌者 + 1；已胡的 seat1/seat3 被跳过）
+  assert.equal(st.turn, 2, '由引擎按活跃座位算出下一手')
+  assert.equal(st.phase, 'discard')
+  assert.notEqual(st.drawnTile, null)
+  conservation(st, 'TEST14')
+})
+
+ok('TEST15 过水限制保留：放弃的点炮胡被记录，同番被挡、过庄解除、番更大仍可胡', () => {
+  // (a) 放弃点炮胡 → 记录 passHu（平胡 0 番）；未过庄前限制保持
+  let s = w9Respond(115, { 1: H1_HU, 2: H2_PENG, 3: H3_HU })
+  let r = dispatch(s, { type: 'pass', seat: 1, actionId: yqid('t15-p1'), stateVersion: s.version })
+  assert.ok(r.ok, `seat1 过失败: ${r.error}`)
+  s = r.state
+  assert.ok(s.players[1].passHu, '放弃的这手点炮胡被记录')
+  assert.equal(s.players[1].passHu.fan, 0, '平胡 0 番')
+  assert.equal(s.players[1].passHu.tile, W(9))
+  // seat3 也过 → 无人要牌 → 出牌者下家 seat1 摸牌（过庄）→ 过水限制自动解除
+  r = dispatch(s, { type: 'pass', seat: 3, actionId: yqid('t15-p3'), stateVersion: s.version })
+  assert.ok(r.ok, `seat3 过失败: ${r.error}`)
+  s = r.state
+  assert.equal(s.currentResponder, 2, '轮到碰候选者 seat2')
+  r = dispatch(s, { type: 'pass', seat: 2, actionId: yqid('t15-p2'), stateVersion: s.version })
+  assert.ok(r.ok, `seat2 过失败: ${r.error}`)
+  s = r.state
+  assert.equal(s.turn, 1, '无人要牌 → 出牌者下家 seat1 摸牌（过庄）')
+  assert.equal(s.players[1].passHu, null, '过庄后过水限制解除')
+
+  // (b) 同番：另一窗口里同一张牌被过水挡住，不再给「胡」
+  const b = fastForward(1151)
+  setupTable(b, { turn: 2, drawnTile: W(9), specs: { 1: H1_HU, 2: NO_TONG_DISCARDER } })
+  b.players[1].passHu = { fan: 0, tile: W(9) } // 模拟已记录的过水（同番 0）
+  const rB = dispatch(b, { type: 'discard', seat: 2, tile: W(9), actionId: yqid('t15-d2'), stateVersion: b.version })
+  assert.ok(rB.ok, `同番场景出牌失败: ${rB.error}`)
+  assert.ok(!rB.state.huWait.includes(1), '同番点炮被过水挡住，不再给「胡」')
+  assert.equal(legalActions(rB.state, 1).length, 0, 'seat1 拿不到胡按钮')
+
+  // (c) 番更大：碰碰胡 1 番 > 已放弃的 0 番 → 仍可胡
+  const c0 = fastForward(1152)
+  setupTable(c0, { turn: 2, drawnTile: T(9), specs: { 1: H1_PENGPENGHU, 2: NO_TONG_DISCARDER } })
+  c0.players[1].passHu = { fan: 0, tile: W(9) } // 之前放弃过一次 0 番点炮胡
+  const rC = dispatch(c0, { type: 'discard', seat: 2, tile: T(9), actionId: yqid('t15-d3'), stateVersion: c0.version })
+  assert.ok(rC.ok, `番更大场景出牌失败: ${rC.error}`)
+  assert.ok(rC.state.huWait.includes(1), '番更大的炮（碰碰胡 1 番 > 0 番）仍可胡')
+  assert.ok(legalActions(rC.state, 1).some(o => o.type === 'hu'))
+  conservation(rB.state, 'TEST15b')
+  conservation(rC.state, 'TEST15c')
 })
 
 console.log(`\n=== 全部通过：${passed} 项 ===`)

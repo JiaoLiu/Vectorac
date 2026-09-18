@@ -20,15 +20,34 @@
 //   换三张 / 定缺阶段即持有 14 张，定缺完成后由庄家直接打出第一张。
 // - 出牌暂存 pendingDiscard，无人碰/杠/胡才落进弃牌区；
 //   碰/明杠直接把该牌编入副露，弃牌区不出现。
-// - 响应窗口等所有 waiting 玩家表态（claims）后统一裁决：
-//   胡（可多响）> 碰/明杠（同级）> 全过。waiting 按摸牌顺序排列（自出牌者
-//   下家起逆时针），碰/明杠取离出牌者最近的一家——更近的一家没放弃前，较远
-//   者不会拿到碰/杠选项（等它先叫牌），避免「较远者抢走碰权」的错误优先级。
+// - 响应仲裁：三阶段 HU → GANG → PENG，胡是「并行收集」，杠/碰才是「按顺序仲裁」。
+//   候选座位一律按「自出牌者下家起的有效摸牌顺序」（跳过已胡出阵者）排列，
+//   阶段写在 state.respondStage（'hu' | 'gang' | 'peng'）：
+//     1) HU 阶段（并行）——所有能胡且未过水的人同时思考、同时拿到「胡 / 过」，
+//        共享同一个截止时间。引擎不因为某人先叫胡就关闭窗口，必须等这一批胡权
+//        全部有结果；全部有结果后，把 {seat: HU} 一次性收集起来批量结算
+//        （resolveHuBatch），不会出现「先结算的人改了 GameState 导致后来者胡失败」。
+//        任意时刻 currentResponder 为 null，huWait 列出还没表态的胡候选人。
+//     2) GANG 阶段（串行）——所有胡家都过之后，才有明杠候选人获权；
+//        按有效摸牌顺序逐个询问「杠 / 碰 / 过」（同一张牌既能杠又能碰时两个按钮
+//        同屏给出，由该玩家自己选），一旦有人杠/碰即成交，后面不再有机会。
+//        HU 窗口期间绝不提前开放杠/碰（legalActions 只会给出胡/过）。
+//     3) PENG 阶段（串行）——杠候选人都过之后，才轮到「只能碰、不能杠」的候选人；
+//        按同一顺序逐个询问「碰 / 过」，一旦有人碰即成交。
+//        因此「同时能胡+碰」的人即便过了胡，也要等中间更高优先级的杠问完才能碰。
+//   全员过则出牌落弃牌区，下一位活跃玩家摸牌。
+//   放弃过胡的人仍保留碰/杠权（claims 标记 'pass-hu'）。
+//   「过」是本窗口内的最终决定：同一座位重复提交、旧 windowId 请求都会被拒，
+//   不能反悔（超时/断线由 AI 替该座位提交一次最终动作）。
 // - 杠分即时入账（ledger + players.delta）；胡牌/查叫也在 ledger 留流水。
 // - 杠上胡加番：所有杠（明/暗/补）后都从墙尾补牌，该回合自摸即“杠上花”、
 //   打出的牌被胡即“杠上炮”，都给胡牌者额外加番（抢杠胡不算，杠未成立）。
-// - 抢杠胡：补杠被抢则杠不成立——杠钱一分不收（相当于没杠到），被抢的牌落进
-//   被抢者弃牌区（相当于他点炮），抢杠者额外加 1 番（qianggangFan）。幺鸡补的
+// - 抢杠胡：补杠申请后先建 pendingKong（不落地），与出牌点炮同一模型——
+//   所有能抢杠胡的人同时思考、同时拿到「抢杠胡 / 过」，共享同一个截止时间，
+//   全部有结果才结算。有人抢杠胡即取消补杠（多人抢则一次性结算多人抢杠胡），
+//   只有全员过，补杠才真正成立。补杠被抢则杠不成立——杠钱一分不收（相当于
+//   没杠到），被抢的牌落进被抢者弃牌区（相当于他点炮），抢杠者额外加 1 番
+//   （qianggangFan）。幺鸡补的
 //   那张留在副露里顶替被取走的真牌（副露退回碰；要再杠只能等摸到对应真牌）。
 // - 根加番：胡牌时手牌 + 副露中每有一组 4 张相同牌（明/暗/补杠，或碰后
 //   手留一张、手里 4 张未杠）额外加 1 番（genFan），与杠钱互相独立。
@@ -120,6 +139,21 @@ function nextActive(s, from) {
     if (!s.players[seat].hu) return seat
   }
   return from
+}
+
+/**
+ * 有效摸牌顺序：自 from 的下家起逆时针，跳过已胡出阵的玩家。
+ * 响应仲裁（胡 / 碰 / 明杠 / 抢杠）一律以此为唯一顺序依据，
+ * 不能用 (from + 1) % 4 硬算——血战里已胡的玩家必须跳过。
+ */
+function seatOrderFrom(s, from) {
+  const order = []
+  for (let k = 1; k <= 3; k++) {
+    const seat = (from + k) % 4
+    if (s.players[seat].hu) continue
+    order.push(seat)
+  }
+  return order
 }
 
 /** 本局是否为幺鸡赖子局 */
@@ -270,8 +304,18 @@ export function createGame(opts = {}) {
     // 本回合杠分暂存：幺鸡局「杠上炮转雨」用——杠者若在该回合打出的牌被胡，
     // 本次收到的杠钱要转给胡牌者（见 huSettle）。下一家摸牌/回合结束即清空。
     gangTurn: null,
-    claims: {}, // respond 窗口：{seat: 'hu'|'peng'|'gang'|'pass'}
-    waiting: [], // respond 窗口：需要表态的座位
+    claims: {}, // respond 窗口：{seat: 'hu'|'peng'|'gang'|'pass-hu'|'pass'}
+    // respond 窗口三阶段（见文件头）：'hu' | 'gang' | 'peng'。
+    //   · HU 阶段并行：所有胡候选人同时表态，currentResponder 为 null，
+    //     huWait 列出还没表态的胡候选人；全部有结果才一次性批量结算/进入下一阶段。
+    //   · GANG / PENG 阶段串行：只有唯一 currentResponder 拥有决定权，
+    //     按有效摸牌顺序逐个询问，一旦成交后面的人不再有机会。
+    currentResponder: null, // 当前唯一可提交响应的座位（HU 阶段为 null）
+    respondStage: null, // 'hu' | 'gang' | 'peng'：当前响应阶段
+    waiting: [], // respond 窗口：全部候选响应者（已按有效摸牌顺序排列）
+    huWait: [], // HU 阶段：仍需表态的胡候选人（并行收集）
+    gangWait: [], // GANG 阶段：仍待询问的明杠候选人（串行，按摸牌顺序）
+    pengWait: [], // PENG 阶段：仍待询问的碰候选人（串行，按摸牌顺序）
     huOrder: [], // 胡牌顺序流水
     ledger: [], // 收支流水（杠分/胡牌/查叫）
     results: null,
@@ -357,67 +401,44 @@ export function legalActions(state, seat) {
     }
     return out
   }
-  // 响应窗口（waiting 且未表态）
+  // 响应窗口三阶段（见文件头）：HU 并行、GANG/PENG 串行。
   if (s.phase === PHASE_RESPOND) {
-    if (!s.waiting.includes(seat) || s.claims[seat] != null) return []
-    const yaoji = yaojiOn(s)
-    const out = []
-    if (s.pendingKong) {
-      // 抢杠窗口：只能胡或过
-      if (canHuOn(s, seat, s.pendingKong.tile)) {
-        out.push({ type: ACTION.HU, how: 'qianggang' })
+    const tile = respondTile(s)
+    if (tile == null) return []
+    // HU 阶段（并行）：所有胡候选人同时拿到「胡 / 过」，谁先表态都不会关掉
+    // 别人的窗口；其他人此刻连碰/杠按钮都不出现。
+    if (s.respondStage === 'hu') {
+      if (!s.huWait.includes(seat)) return []
+      if (s.pendingKong) {
+        // 抢杠窗口：只能抢杠胡或过（补杠尚未落地，不得抢碰）
+        if (!canHuOn(s, seat, tile)) return []
+        return [{ type: ACTION.HU, how: 'qianggang' }, { type: ACTION.PASS }]
       }
-      out.push({ type: ACTION.PASS })
-      return out
+      if (!canClaimHu(s, seat)) return []
+      return [{ type: ACTION.HU, how: 'dianpao' }, { type: ACTION.PASS }]
     }
-    if (s.pendingDiscard) {
-      const tile = s.pendingDiscard.tile
-      const payer = s.pendingDiscard.seat
-      if (canClaimHu(s, seat)) {
-        out.push({ type: ACTION.HU, how: 'dianpao' })
-      }
-      // 响应优先级：胡（可多响）> 碰 / 明杠。碰与明杠同级，按摸牌顺序由离出牌者
-      // 最近的一家先叫：更近的一家还没表态时，本轮先不提供任何动作（等它先叫，别
-      // 把碰权抢过来）；更近的一家已经叫了碰/杠，则自己碰/杠已无机会，只剩胡或过。
-      const nearerUndecided = s.waiting.some(
-        s2 =>
-          s2 !== seat &&
-          respDist(payer, s2) < respDist(payer, seat) &&
-          s.claims[s2] == null
-      )
-      if (nearerUndecided) {
-        // 更近的一家还没表态：碰 / 明杠先不提供（等它先叫，别抢它的碰权），
-        // 但「胡 / 过」是玩家自己的选择权，任何时候都要给出来——否则操作栏
-        // 只剩一个「胡」，想不胡都没得点。
-        out.push({ type: ACTION.PASS })
-        return out
-      }
-      const nearerClaimed = s.waiting.some(
-        s2 =>
-          s2 !== seat &&
-          respDist(payer, s2) < respDist(payer, seat) &&
-          (s.claims[s2] === 'peng' || s.claims[s2] === 'gang')
-      )
-      const hand = p.hand
-      const opts = []
+    // GANG / PENG 阶段（串行）：只有 currentResponder 拥有决定权；
+    // 杠与碰分处两个阶段——所有杠候选人都过之后才轮到碰。
+    if (s.currentResponder !== seat) return []
+    if (s.pendingKong) return []
+    if (s.respondStage === 'gang') {
+      const out = []
       // 明杠：3 张真牌，或 2 张真牌 + 1 只幺鸡
-      if (
-        !nearerClaimed &&
-        pengWildCount(hand, tile, yaoji) != null &&
-        gangMingWildCount(hand, tile, yaoji) != null
-      ) {
-        opts.push({ tile, gangType: 'ming' })
+      if (canClaimGang(s, seat, tile)) {
+        out.push({ type: ACTION.GANG, options: [{ tile, gangType: 'ming' }] })
       }
-      if (!nearerClaimed && pengWildCount(hand, tile, yaoji) != null) {
-        // 碰与明杠分开成两个动作项，便于 UI 分别渲染
-        out.push({ type: ACTION.PENG, tile })
-        if (opts.length) {
-          out.push({ type: ACTION.GANG, options: opts })
-        }
-      }
+      // 同一张牌既能杠又能碰时，两个按钮同屏给出让玩家自己选（不必先过杠才轮到碰）
+      if (canClaimPeng(s, seat, tile)) out.push({ type: ACTION.PENG, tile })
       out.push({ type: ACTION.PASS })
       return out
     }
+    if (s.respondStage === 'peng') {
+      const out = []
+      if (canClaimPeng(s, seat, tile)) out.push({ type: ACTION.PENG, tile })
+      out.push({ type: ACTION.PASS })
+      return out
+    }
+    return []
   }
   return []
 }
@@ -515,14 +536,6 @@ function canClaimHu(s, seat) {
   }
   if (s.pendingKong) return canHuOn(s, seat, s.pendingKong.tile)
   return false
-}
-
-/**
- * 响应优先级距离：自出牌者按摸牌顺序数（下家 1、对家 2、上家 3）。
- * 数值越小越优先——碰/明杠同级时由最近的一家先叫。
- */
-function respDist(payer, seat) {
-  return (seat - payer + 4) % 4
 }
 
 // ---------- 动作裁决 ----------
@@ -686,15 +699,13 @@ function doDiscard(s, a) {
 
 /** 打出牌后开响应窗口；无人可响应则直接轮转 */
 function openRespond(s, discarder, tile, push, afterGang) {
-  // waiting 按摸牌顺序排列（自出牌者下家起逆时针）：碰/明杠同级时取最近的一家，
-  // legalActions 也据此判断「更近的一家是否还没表态/已经叫牌」。
+  // 候选响应者按有效摸牌顺序排列（自出牌者下家起逆时针，跳过已胡出阵者）
   const waiting = []
-  for (let k = 1; k <= 3; k++) {
-    const seat = (discarder + k) % 4
-    if (s.players[seat].hu) continue
+  for (const seat of seatOrderFrom(s, discarder)) {
     const can =
       (canHuOn(s, seat, tile) && !passHuBlocks(s, seat, tile, afterGang)) ||
-      canClaimPeng(s, seat, tile)
+      canClaimPeng(s, seat, tile) ||
+      canClaimGang(s, seat, tile)
     if (can) waiting.push(seat)
   }
   if (waiting.length === 0) {
@@ -708,7 +719,15 @@ function openRespond(s, discarder, tile, push, afterGang) {
   s.pendingKong = null
   s.waiting = waiting
   s.claims = {}
+  // 三阶段候选：HU 并行收集、GANG 串行、PENG 串行，均按有效摸牌顺序预排。
+  // 三个阶段同时预排好，但一次只开放一个阶段（见 advanceRespond）——
+  // HU 窗口期间绝不提前开放杠/碰，所有胡都过了才轮到杠，所有杠都过了才轮到碰。
+  s.huWait = waiting.filter(seat => canClaimHu(s, seat))
+  s.gangWait = waiting.filter(seat => canClaimGang(s, seat, tile))
+  s.pengWait = waiting.filter(seat => canClaimPeng(s, seat, tile))
   s.phase = PHASE_RESPOND
+  // 无胡候选人则直接落到杠/碰阶段；仍无人可响应则全过轮转
+  if (advanceRespond(s) == null) settleAllPass(s, push)
 }
 
 // ---- 碰（响应窗口） ----
@@ -716,7 +735,13 @@ function openRespond(s, discarder, tile, push, afterGang) {
 function doPeng(s, a) {
   if (s.phase !== PHASE_RESPOND) return { error: ERR.WRONG_PHASE }
   if (!s.pendingDiscard) return { error: ERR.WRONG_PHASE }
-  if (!s.waiting.includes(a.seat) || s.claims[a.seat] != null) {
+  // 碰在 PENG 阶段（所有杠候选人都过之后）；若同一张牌当前座位既能杠又能碰，
+  // GANG 阶段就同屏给出「杠 / 碰 / 过」，玩家在 GANG 阶段直接选碰也允许。
+  // 无论哪个阶段，都只有当前串行响应者能提交。
+  if (
+    (s.respondStage !== 'peng' && s.respondStage !== 'gang') ||
+    s.currentResponder !== a.seat
+  ) {
     return { error: ERR.NOT_ACTIVE }
   }
   const tile = s.pendingDiscard.tile
@@ -726,11 +751,8 @@ function doPeng(s, a) {
   s.claims[a.seat] = 'peng'
   return {
     after: push => {
-      // 叫碰后是否立即裁决交给 respondSettled：已有人叫胡时不必再等碰/杠，
-      // 但还有胡资格的人必须等，不能剥夺他们的胡权
-      if (respondSettled(s)) {
-        resolveRespond(s, push)
-      }
+      // 当前响应者一旦选择碰即成交，后面的座位不再有机会
+      settleMeld(s, a.seat, 'peng', push)
     }
   }
 }
@@ -790,7 +812,8 @@ function doGang(s, a) {
 /** 明杠（响应他人出牌） */
 function doGangMing(s, a) {
   if (!s.pendingDiscard) return { error: ERR.WRONG_PHASE }
-  if (!s.waiting.includes(a.seat) || s.claims[a.seat] != null) {
+  // 明杠只在 GANG 阶段（胡阶段/碰阶段都不给杠），且只有当前串行响应者能提交
+  if (s.respondStage !== 'gang' || s.currentResponder !== a.seat) {
     return { error: ERR.NOT_ACTIVE }
   }
   const tile = s.pendingDiscard.tile
@@ -800,9 +823,8 @@ function doGangMing(s, a) {
   s.claims[a.seat] = 'gang'
   return {
     after: push => {
-      if (respondSettled(s)) {
-        resolveRespond(s, push)
-      }
+      // 当前响应者一旦选择杠即成交，后面的座位不再有机会
+      settleMeld(s, a.seat, 'gang', push)
     }
   }
 }
@@ -848,13 +870,15 @@ function doSwapYaoji(s, a) {
 
 /**
  * 补杠后的抢杠窗口：无人可抢直接成杠，否则等待表态。
+ * 与出牌点炮同一模型（并行收集）：所有能抢杠胡的人同时思考，共享同一截止时间，
+ * 全部有结果才结算。有人抢即取消补杠（多人抢则一次性结算多人抢杠胡），
+ * 只有全员过，补杠才真正成立。
  * buWild 记录补的那张是不是幺鸡（1 = 用幺鸡补位），被抢杠胡时决定
  * 副露里是否留下幺鸡顶替被抢杠者取走的真牌。
  */
 function openRobWindow(s, seat, tile, pengMeld, push, buWild = 0) {
   const waiting = []
-  for (const r of activeSeats(s)) {
-    if (r === seat) continue
+  for (const r of seatOrderFrom(s, seat)) {
     if (canHuOn(s, r, tile)) waiting.push(r)
   }
   if (waiting.length === 0) {
@@ -866,8 +890,13 @@ function openRobWindow(s, seat, tile, pengMeld, push, buWild = 0) {
   s.pendingDiscard = null
   s.waiting = waiting
   s.claims = {}
+  s.huWait = waiting.slice() // 抢杠窗口只有 HU 阶段（并行），没有杠/碰阶段
+  s.gangWait = []
+  s.pengWait = []
   s.phase = PHASE_RESPOND
   push('rob-start', { tile }, seat)
+  // 补杠暂不落地：所有人同时思考，有胡则一次性结算，全过才真正成杠
+  if (advanceRespond(s) == null) settleAllPass(s, push)
 }
 
 /** 补杠成立：peng 副露升级为杠，杠分入账，墙尾摸牌 */
@@ -877,8 +906,7 @@ function finishBuGang(s, seat, tile, pengMeld, push, buWild = 0) {
   // 用幺鸡补的第 4 张：副露标记 wild，杠价与番数按「带幺鸡」计算
   if (buWild > 0) pengMeld.wild = (pengMeld.wild || 0) + buWild
   s.pendingKong = null
-  s.waiting = []
-  s.claims = {}
+  closeRespondWindow(s)
   push('gang', { tile, gangType: 'bu', wild: pengMeld.wild || 0 }, seat)
   payGangSelf(s, seat, 'bu', pengMeld.wild || 0, push)
   drawFromTail(s, seat, push)
@@ -963,31 +991,22 @@ function doHu(s, a) {
     }
   }
   if (s.phase === PHASE_RESPOND) {
-    if (!s.waiting.includes(a.seat) || s.claims[a.seat] != null) {
-      return { error: ERR.NOT_ACTIVE }
-    }
+    // HU 阶段（并行）：只有本阶段胡候选人（huWait）能提交；提交只登记表态，
+    // 绝不立即结算——必须等这一批胡权全部有结果，由 afterRespond 一次性批量结算。
+    if (s.respondStage !== 'hu') return { error: ERR.NOT_ACTIVE }
+    if (!s.huWait.includes(a.seat)) return { error: ERR.NOT_ACTIVE }
     if (s.pendingKong) {
       if (!canHuOn(s, a.seat, s.pendingKong.tile)) return { error: ERR.ILLEGAL }
-      s.claims[a.seat] = 'hu'
-      return {
-        after: push => {
-          if (respondSettled(s)) {
-            resolveRespond(s, push)
-          }
-        }
-      }
+    } else if (s.pendingDiscard) {
+      if (!canClaimHu(s, a.seat)) return { error: ERR.ILLEGAL }
+    } else {
+      return { error: ERR.WRONG_PHASE }
     }
-    if (s.pendingDiscard) {
-      if (!canClaimHu(s, a.seat)) {
-        return { error: ERR.ILLEGAL }
-      }
-      s.claims[a.seat] = 'hu'
-      return {
-        after: push => {
-          if (respondSettled(s)) {
-            resolveRespond(s, push)
-          }
-        }
+    s.claims[a.seat] = 'hu'
+    return {
+      after: push => {
+        // 只登记表态并推进：全部胡权有结果后才批量结算（见 afterRespond）
+        afterRespond(s, push)
       }
     }
   }
@@ -1089,136 +1108,209 @@ function huSettle(s, seat, how, winTile, payerSeat, push, discardTag, afterGang)
 
 function doPass(s, a) {
   if (s.phase !== PHASE_RESPOND) return { error: ERR.WRONG_PHASE }
-  if (!s.waiting.includes(a.seat) || s.claims[a.seat] != null) {
-    return { error: ERR.NOT_ACTIVE }
-  }
-  // 过水登记：放弃的是一次真能胡的点炮 → 记下这手番数，自己摸牌（过庄）
-  // 之前不能再胡同番或更低番的炮（自摸不受限、番更大的炮仍可胡）。
-  // 抢杠（pendingKong）不属于「别人打出的牌」，不登记。
-  if (
-    s.pendingDiscard &&
-    canHuOn(s, a.seat, s.pendingDiscard.tile) &&
-    !passHuBlocks(s, a.seat, s.pendingDiscard.tile, s.pendingDiscard.isAfterGang === true)
-  ) {
-    s.players[a.seat].passHu = {
-      fan: dianpaoFanOn(s, a.seat, s.pendingDiscard.tile, s.pendingDiscard.isAfterGang === true),
-      tile: s.pendingDiscard.tile
+  if (a.seat == null) return { error: ERR.ILLEGAL }
+  // HU 阶段（并行）：huWait 里的胡候选人各自表态；「过」= 放弃这次胡，但若本人
+  // 还有碰/明杠资格，权利保留到后面的 GANG / PENG 阶段（claims 记 'pass-hu'）。
+  if (s.respondStage === 'hu') {
+    if (!s.huWait.includes(a.seat)) return { error: ERR.NOT_ACTIVE }
+    // 过水登记：放弃的是一次真能胡的点炮 → 记下这手番数，自己摸牌（过庄）
+    // 之前不能再胡同番或更低番的炮（自摸不受限、番更大的炮仍可胡）。
+    // 抢杠（pendingKong）不属于「别人打出的牌」，不登记。
+    if (
+      s.pendingDiscard &&
+      canHuOn(s, a.seat, s.pendingDiscard.tile) &&
+      !passHuBlocks(s, a.seat, s.pendingDiscard.tile, s.pendingDiscard.isAfterGang === true)
+    ) {
+      s.players[a.seat].passHu = {
+        fan: dianpaoFanOn(s, a.seat, s.pendingDiscard.tile, s.pendingDiscard.isAfterGang === true),
+        tile: s.pendingDiscard.tile
+      }
+    }
+    const tile = respondTile(s)
+    s.claims[a.seat] = tile != null && canClaimMeld(s, a.seat, tile) ? 'pass-hu' : 'pass'
+    return {
+      after: push => {
+        push('pass', { stage: 'hu' }, a.seat)
+        afterRespond(s, push)
+      }
     }
   }
+  // GANG / PENG 阶段（串行）：只有当前唯一响应者能提交「过」
+  if (s.currentResponder !== a.seat) return { error: ERR.NOT_ACTIVE }
+  const stage = s.respondStage
+  // 「过」是本窗口内的最终决定：GANG 阶段同屏给过「杠 / 碰 / 过」，
+  // 点「过」即同时放弃杠和碰，不再于 PENG 阶段重复询问。
   s.claims[a.seat] = 'pass'
   return {
     after: push => {
-      push('pass', null, a.seat)
-      // 不能因第一个玩家点「过」就提前落牌，剥夺其他玩家的胡/碰/杠权；
-      // 但有人已叫胡时，碰/杠从属于胡，不必再等只有碰/杠资格的人表态。
-      if (respondSettled(s)) {
-        resolveRespond(s, push)
-      }
+      push('pass', { stage }, a.seat)
+      afterRespond(s, push)
     }
   }
 }
 
 // ---------- 响应窗口裁决 ----------
 
-/**
- * 响应窗口是否已可裁决。
- * 优先级 胡 > 碰 > 明杠，碰 / 明杠从属于胡：已经有人叫胡时，不该再等只有碰 / 杠
- * 资格的人表态——否则能胡的一家会被近家的碰决策卡住（「他要等我点过才能胡」）。
- * 但「还有胡资格且未表态」的人必须等，保证一炮多响 / 抢杠多响不漏人。
- * 无人叫胡时保持原口径：全员表态后才按距离裁决碰 / 明杠。
- */
-function respondSettled(s) {
-  if (s.waiting.some(seat => s.claims[seat] == null && canClaimHu(s, seat))) {
-    return false
-  }
-  if (s.waiting.some(seat => s.claims[seat] === 'hu')) return true
-  return s.waiting.every(seat => s.claims[seat] != null)
+/** 当前响应窗口待裁决的那张牌（抢杠窗口为被抢的补杠牌） */
+function respondTile(s) {
+  if (s.pendingKong) return s.pendingKong.tile
+  if (s.pendingDiscard) return s.pendingDiscard.tile
+  return null
 }
 
-/** 全部表态后统一处理：胡（可多响）> 碰 > 明杠 > 全过 */
-function resolveRespond(s, push) {
-  // 抢杠窗口
-  if (s.pendingKong) {
-    const robbed = s.pendingKong.seat
-    const tile = s.pendingKong.tile
-    const tag = s.pendingKong.tag
-    // 补杠用的是幺鸡（buWild=1）还是真牌：被抢时决定副露里是否留下幺鸡补位
-    const buWild = s.pendingKong.buWild || 0
-    const hus = s.waiting.filter(seat => s.claims[seat] === 'hu')
-    s.pendingKong = null
-    s.waiting = []
-    s.claims = {}
-    if (hus.length > 0) {
-      // 抢杠胡：杠不成立，相当于被抢那家点炮——抢杠者取走一张「真牌」凑胡，
-      // 副露退回碰；补杠若用的是幺鸡，这张幺鸡留在副露里顶替被取走的真牌
-      // （此幺鸡来自补杠那一步，故不标 wildPeng；要再杠只能等摸到对应真牌）。
-      // 被抢者付分后继续摸牌。
-      if (buWild > 0) {
-        const meld = s.players[robbed].melds.find(
-          m => m.kind === 'peng' && m.tile === tile
-        )
-        if (meld) meld.wild = (meld.wild || 0) + buWild
-      }
-      // 物理牌：被抢的那张落进被抢者弃牌区——相当于他点炮打了这张牌。
-      // 多响只用这一张物理牌表示（与点炮多响一致，展示走 hu.winTile）。
-      s.players[robbed].discards.push(tile)
-      for (const seat of hus) {
-        huSettle(s, seat, 'qianggang', tile, robbed, push, tag)
-      }
-      if (s.phase !== PHASE_FINISHED) {
-        drawFor(s, robbed, push)
-      }
+/** 该座位能否在该牌上碰/明杠（放弃过胡后是否保留后续阶段权利） */
+function canClaimMeld(s, seat, tile) {
+  if (tile == null) return false
+  return canClaimPeng(s, seat, tile) || canClaimGang(s, seat, tile)
+}
+
+/** seat 玩家能否明杠 tile（响应窗口 GANG 阶段；缺门约束与碰一致） */
+function canClaimGang(s, seat, tile) {
+  if (tile == null) return false
+  const p = s.players[seat]
+  const yaoji = yaojiOn(s)
+  if (hasVoidTiles(p.hand, p.void, { yaoji })) return false
+  if (p.void && tileSuit(tile) === p.void && !(yaoji && tile === YAOJI_TILE)) return false
+  return gangMingWildCount(p.hand, tile, yaoji) != null
+}
+
+/**
+ * 推进响应窗口到「下一个拥有决定权的阶段 / 座位」：
+ *   1) HU 阶段（并行收集）——只要 huWait 还有未表态的胡候选人，就停在 HU 阶段，
+ *      所有人同时拥有决定权（currentResponder 为 null）；绝不因为某人先叫胡
+ *      就关掉别人的窗口。所有胡候选人都表态后，才轮到下一阶段。
+ *   2) GANG 阶段（串行）——按有效摸牌顺序逐个问明杠；过胡者（pass-hu）仍保留
+ *      杠权，所以会继续排到它。该座位同一张牌既能杠又能碰时，两个选项同屏给
+ *      出（选碰也立即成交）；一旦有人杠/碰即成交，后面不再有机会。
+ *   3) PENG 阶段（串行）——所有杠候选人都过之后，才按同一顺序逐个问碰；
+ *      过胡（pass-hu）者仍保留碰权。
+ * 返回当前阶段 'hu' | 'gang' | 'peng'，无人可响应时返回 null。
+ */
+function advanceRespond(s) {
+  // HU 阶段（并行）
+  if (s.huWait.length > 0) {
+    s.respondStage = 'hu'
+    s.currentResponder = null
+    return 'hu'
+  }
+  s.respondStage = null
+  s.currentResponder = null
+  // 抢杠窗口只有 HU 阶段，没有杠/碰
+  if (s.pendingKong) return null
+  const tile = respondTile(s)
+  if (tile == null) return null
+  // GANG 阶段（串行）：过胡者仍保留杠权，继续排到它；已彻底出局（pass/gang 已表态）的跳过
+  while (s.gangWait.length && !waitingForStage(s.claims[s.gangWait[0]])) s.gangWait.shift()
+  if (s.gangWait.length) {
+    s.respondStage = 'gang'
+    s.currentResponder = s.gangWait[0]
+    return 'gang'
+  }
+  // PENG 阶段（串行）：过胡者仍保留碰权
+  while (s.pengWait.length && !waitingForStage(s.claims[s.pengWait[0]])) s.pengWait.shift()
+  if (s.pengWait.length) {
+    s.respondStage = 'peng'
+    s.currentResponder = s.pengWait[0]
+    return 'peng'
+  }
+  return null
+}
+
+/**
+ * 该座位在 GANG / PENG 阶段的表态是否「尚未发生」：
+ * 从未表态（null）或只过过胡（pass-hu）的人都还要问；
+ * 已表态（pass / gang / peng）即为本窗口内的最终决定，不再重复询问。
+ */
+function waitingForStage(claim) {
+  if (claim == null) return true
+  return claim === 'pass-hu'
+}
+
+/**
+ * 一次响应表态之后的统一推进（HU 并行收集 / GANG·PENG 串行推进）：
+ *   · HU 阶段：把已表态者移出 huWait；只要还有人没表态就继续等（窗口不关、
+ *     不结算）。全部有结果后——有人叫胡则一次性批量结算所有胡
+ *     （resolveHuBatch），无人叫胡才进入 GANG / PENG 阶段。
+ *   · GANG / PENG 阶段：当前响应者已表态，推进到下一个（或下一阶段 / 全过轮转）。
+ */
+function afterRespond(s, push) {
+  if (s.phase !== PHASE_RESPOND) return
+  if (s.respondStage === 'hu') {
+    s.huWait = s.huWait.filter(seat => s.claims[seat] == null)
+    if (s.huWait.length > 0) return // 还有胡权玩家在思考：不关窗、不结算
+    const huSeats = s.waiting.filter(seat => s.claims[seat] === 'hu')
+    if (huSeats.length > 0) {
+      resolveHuBatch(s, huSeats, push)
       return
     }
-    // 无人抢：补杠成立
-    const meld = s.players[robbed].melds.find(
-      m => m.kind === 'peng' && m.tile === tile
-    )
-    if (meld) {
-      finishBuGang(s, robbed, tile, meld, push, buWild)
-    } else {
-      drawFor(s, robbed, push)
-    }
+    if (advanceRespond(s) == null) settleAllPass(s, push)
     return
   }
+  if (advanceRespond(s) == null) settleAllPass(s, push)
+}
 
-  // 出牌响应窗口
-  if (!s.pendingDiscard) return
+/**
+ * 一次性结算本窗口所有叫胡的座位（一炮多响 / 多人抢杠胡）。
+ * 关键：所有胡者的结算都在同一份「还未被胡牌修改过」的 GameState 上一次做完，
+ * 不会出现「先结算的人改了状态导致后来者胡失败」。结算顺序取有效摸牌顺序
+ * （s.waiting），保证 huOrder 确定可复现。
+ */
+function resolveHuBatch(s, huSeats, push) {
+  const isRob = !!s.pendingKong
+  const block = isRob ? s.pendingKong : s.pendingDiscard
+  const tile = block.tile
+  const payer = block.seat
+  const tag = block.tag
+  const afterGang = isRob ? false : block.isAfterGang === true
+  if (isRob) {
+    // 抢杠胡成立 → 补杠取消（杠不成立、杠钱一分不收）；用幺鸡补的第 4 张留在
+    // 副露里顶替被取走的真牌；被抢的牌相当于被杠者点炮，落进他的弃牌区。
+    const buWild = s.pendingKong.buWild || 0
+    if (buWild > 0) {
+      const meld = s.players[payer].melds.find(m => m.kind === 'peng' && m.tile === tile)
+      if (meld) meld.wild = (meld.wild || 0) + buWild
+    }
+    s.players[payer].discards.push(tile)
+    s.pendingKong = null
+  }
+  const ordered = s.waiting.filter(seat => huSeats.includes(seat))
+  closeRespondWindow(s)
+  for (const seat of ordered) {
+    if (s.phase === PHASE_FINISHED) break // 胡满（如 endWhenHuPlayers）即止
+    huSettle(s, seat, isRob ? 'qianggang' : 'dianpao', tile, payer, push, tag, afterGang)
+  }
+  if (s.phase === PHASE_FINISHED) return
+  // 点炮的牌由 huSettle 落进点炮者弃牌区（多响只落一次）；这里只作防御性收尾
+  if (s.pendingDiscard) {
+    s.players[s.pendingDiscard.seat].discards.push(s.pendingDiscard.tile)
+    s.pendingDiscard = null
+  }
+  // 血战继续：下一手摸牌一律复用引擎「活跃座位」逻辑（跳过已胡出阵者），不在
+  // 联机层另算。多人胡时以最靠近出牌者的那位胡家为基准取其次位活跃玩家；
+  // 抢杠胡则由被抢者（本次的负方）接着摸牌（他的杠被打断，回合归还给他）。
+  drawFor(s, isRob ? payer : nextActive(s, ordered[0]), push)
+}
+
+/** 关闭响应窗口（清空窗口字段与三阶段队列） */
+function closeRespondWindow(s) {
+  s.waiting = []
+  s.claims = {}
+  s.currentResponder = null
+  s.respondStage = null
+  s.huWait = []
+  s.gangWait = []
+  s.pengWait = []
+}
+
+/**
+ * 碰/明杠响应：同级按顺序，当前响应者一旦选择即成交，后面的座位不再有机会。
+ */
+function settleMeld(s, seat, kind, push) {
   const payer = s.pendingDiscard.seat
   const tile = s.pendingDiscard.tile
-  const tag = s.pendingDiscard.tag
-  // 杠上炮：这张牌是杠后补牌回合打出的（多响时 pendingDiscard 会被清空，
-  // 需先取出标记再逐家结算）
-  const afterGang = s.pendingDiscard.isAfterGang === true
-  const hus = s.waiting.filter(seat => s.claims[seat] === 'hu')
-  if (hus.length > 0) {
-    // 一炮多响：每位胡者各自结算，点炮者各付一份
-    // （pendingDiscard 的落牌在 huSettle 内处理，多响只落一次）
-    s.waiting = []
-    s.claims = {}
-    for (const seat of hus) {
-      huSettle(s, seat, 'dianpao', tile, payer, push, tag, afterGang)
-    }
-    s.pendingDiscard = null
-    if (s.phase !== PHASE_FINISHED) {
-      // 血战继续：由胡牌人的下家摸牌（胡牌人已离场，nextActive 自动跳过）。
-      // 同一张牌多家胡时，取环序上距点炮者最近的胡者为准，保证轮转沿出牌
-      // 方向向前推进，不会退回点炮者自己再摸一张。
-      let ref = hus[0]
-      for (const seat of hus) {
-        if ((seat - payer + 4) % 4 < (ref - payer + 4) % 4) ref = seat
-      }
-      drawFor(s, nextActive(s, ref), push)
-    }
-    return
-  }
-  // 碰 / 明杠：同级，取离出牌者最近的一家（waiting 已按摸牌顺序排列）
-  const claimSeat = s.waiting.find(
-    seat => s.claims[seat] === 'peng' || s.claims[seat] === 'gang'
-  )
-  if (claimSeat != null && s.claims[claimSeat] === 'peng') {
+  const p = s.players[seat]
+  if (kind === 'peng') {
     // 碰：不摸牌直接进入碰者出牌（强制出牌回合：只许打一张，不能胡/杠）
-    const p = s.players[claimSeat]
     const wild = pengWildCount(p.hand, tile, yaojiOn(s)) || 0
     removeTiles(p.hand, new Array(2 - wild).fill(tile).concat(new Array(wild).fill(YAOJI_TILE)))
     const meld = { kind: 'peng', tile, from: payer }
@@ -1229,39 +1321,55 @@ function resolveRespond(s, push) {
     }
     p.melds.push(meld)
     s.pendingDiscard = null
-    s.waiting = []
-    s.claims = {}
+    closeRespondWindow(s)
     s.phase = PHASE_DISCARD
-    s.turn = claimSeat
+    s.turn = seat
     s.drawnTile = null
     s.mustDiscard = true
     // 上一回合的杠分风险随出牌结束而解除（该回合已无杠上炮可能）
     s.gangTurn = null
-    push('peng', { tile, from: payer, wild }, claimSeat)
-    push('turn', { turn: claimSeat })
+    push('peng', { tile, from: payer, wild }, seat)
+    push('turn', { turn: seat })
     return
   }
-  if (claimSeat != null) {
-    // 明杠：出牌者付分（幺鸡局带幺鸡 1 / 不带幺鸡 2），杠者墙尾摸牌继续
-    const p = s.players[claimSeat]
-    const wild = gangMingWildCount(p.hand, tile, yaojiOn(s)) || 0
-    removeTiles(p.hand, new Array(3 - wild).fill(tile).concat(new Array(wild).fill(YAOJI_TILE)))
-    const meld = { kind: 'gang', gangType: 'ming', tile, from: payer }
-    if (wild > 0) meld.wild = wild
-    p.melds.push(meld)
-    s.pendingDiscard = null
-    s.waiting = []
-    s.claims = {}
-    push('gang', { tile, gangType: 'ming', from: payer, wild }, claimSeat)
-    payGangMing(s, claimSeat, payer, wild, push)
-    drawFromTail(s, claimSeat, push)
+  // 明杠：出牌者付分（幺鸡局带幺鸡 1 / 不带幺鸡 2），杠者墙尾摸牌继续
+  const wild = gangMingWildCount(p.hand, tile, yaojiOn(s)) || 0
+  removeTiles(p.hand, new Array(3 - wild).fill(tile).concat(new Array(wild).fill(YAOJI_TILE)))
+  const meld = { kind: 'gang', gangType: 'ming', tile, from: payer }
+  if (wild > 0) meld.wild = wild
+  p.melds.push(meld)
+  s.pendingDiscard = null
+  closeRespondWindow(s)
+  push('gang', { tile, gangType: 'ming', from: payer, wild }, seat)
+  payGangMing(s, seat, payer, wild, push)
+  drawFromTail(s, seat, push)
+}
+
+/** 全部响应者都过：出牌落弃牌区轮转 / 补杠真正成立并补牌 */
+function settleAllPass(s, push) {
+  if (s.pendingKong) {
+    const robbed = s.pendingKong.seat
+    const tile = s.pendingKong.tile
+    const buWild = s.pendingKong.buWild || 0
+    s.pendingKong = null
+    closeRespondWindow(s)
+    const meld = s.players[robbed].melds.find(m => m.kind === 'peng' && m.tile === tile)
+    if (meld) {
+      finishBuGang(s, robbed, tile, meld, push, buWild)
+    } else {
+      drawFor(s, robbed, push)
+    }
     return
   }
-  // 全部过：牌落弃牌区，下一位活跃玩家摸牌
+  if (!s.pendingDiscard) {
+    closeRespondWindow(s)
+    return
+  }
+  const payer = s.pendingDiscard.seat
+  const tile = s.pendingDiscard.tile
   s.players[payer].discards.push(tile)
   s.pendingDiscard = null
-  s.waiting = []
-  s.claims = {}
+  closeRespondWindow(s)
   drawFor(s, nextActive(s, payer), push)
 }
 
@@ -1305,8 +1413,7 @@ function finish(s, push) {
   s.phase = PHASE_FINISHED
   s.pendingDiscard = null
   s.pendingKong = null
-  s.waiting = []
-  s.claims = {}
+  closeRespondWindow(s)
   s.drawnTile = null
   s.gangTurn = null
   s.xiItems = settleXi(s)
@@ -1348,8 +1455,7 @@ function finishByFlow(s, push) {
   s.phase = PHASE_FINISHED
   s.pendingDiscard = null
   s.pendingKong = null
-  s.waiting = []
-  s.claims = {}
+  closeRespondWindow(s)
   s.drawnTile = null
   s.gangTurn = null
 
@@ -1527,27 +1633,19 @@ export function playerView(state, seat) {
     })
     myFan = { fan: pf.fan, names: pf.names, kind: 'potential' }
   }
-  // 「更近的一家还没表态」：碰/明杠同级由离出牌者最近的一家先叫，更近者表态前
-  // 我这边只会拿到一个「过」——但此刻并不是我的回合，UI 据此把「过」换成等待
-  // 提示，免得玩家误点掉碰权。引擎侧 legal 不变（AI 仍按「过」表态推进牌局）。
-  const awaitingNearer = []
-  if (
-    s.phase === PHASE_RESPOND &&
-    s.pendingDiscard &&
-    s.waiting.includes(seat) &&
-    s.claims[seat] == null
-  ) {
-    const payer = s.pendingDiscard.seat
-    for (const s2 of s.waiting) {
-      if (
-        s2 !== seat &&
-        s.claims[s2] == null &&
-        respDist(payer, s2) < respDist(payer, seat)
-      ) {
-        awaitingNearer.push(s2)
-      }
-    }
-  }
+  // 响应窗口三阶段（HU 并行 / GANG·PENG 串行）：当前拥有决定权的座位集合——
+  // HU 阶段是 huWait 里所有未表态的胡候选人（并行），GANG/PENG 阶段是唯一
+  // currentResponder。我不在其中时 legal 为空，UI 依据 awaitingNearer 显示
+  // 「等待 X 叫牌…」而不是一个会被误点的「过」。
+  const deciders =
+    s.phase === PHASE_RESPOND
+      ? s.respondStage === 'hu'
+        ? s.huWait.slice()
+        : s.currentResponder != null
+          ? [s.currentResponder]
+          : []
+      : []
+  const awaitingNearer = deciders.filter(s2 => s2 !== seat)
   const my = {
     seat,
     hand: clone(me.hand),
@@ -1562,8 +1660,8 @@ export function playerView(state, seat) {
     // 过水状态：本巡已放弃的点炮番数（UI 用来解释「为什么这次不能胡」）。
     // 自己摸牌（过庄）后自动清空；自摸与番更大的炮不受影响。
     passHu: me.passHu ? { fan: me.passHu.fan, tile: me.passHu.tile } : null,
-    // 仍在等我表态、且离出牌者更近的座位：非空表示此刻「更近的一家先叫牌」，
-    // 我的碰/杠权还在排队，legal 里那个「过」只是占位，不是我的回合。
+    // 此刻仍拥有决定权、且不是我的座位：非空表示「还在等其他家表态」，
+    // 我的碰/杠权还在排队，UI 显示等待提示而不是可点的「过」。
     awaitingNearer
   }
   return {
@@ -1579,10 +1677,13 @@ export function playerView(state, seat) {
     players,
     my,
     legal: legalActions(s, seat),
-    waiting:
-      s.phase === PHASE_RESPOND
-        ? s.waiting.filter(seat2 => s.claims[seat2] == null)
-        : [],
+    // 响应窗口：暴露当前拥有决定权的座位（HU 阶段可能多家并行，GANG/PENG 阶段
+    // 只有唯一 currentResponder）；其余座位 legal 为空，UI 依据
+    // my.awaitingNearer 显示等待提示。respondStage 一并暴露便于前端与日志对齐
+    // 三阶段（'hu' | 'gang' | 'peng'）。
+    waiting: s.phase === PHASE_RESPOND ? deciders : [],
+    currentResponder: s.phase === PHASE_RESPOND ? s.currentResponder : null,
+    respondStage: s.phase === PHASE_RESPOND ? s.respondStage : null,
     lastEvents: s.events.slice(-20).map(ev => {
       // 隐私过滤：他人摸到的牌不可见
       if (ev.type === 'draw' && ev.seat !== seat) {

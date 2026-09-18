@@ -11,23 +11,26 @@ module.exports = {
     '!.private/**',
     '!**/node_modules/**'
   ],
-  // dev 模式所有响应都强制 no-store，修改 shorturl-demo.js 等文件后无需硬刷即可生效
-  chainWebpack(config, isServer) {
-    if (!isServer && config.devServer) {
-      config.devServer.set('headers', {
-        'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
-        'Pragma': 'no-cache',
-        'Expires': '0'
-      });
-      // 麻将联机服务反向代理（仅 dev）：前端联机大厅走同源路径，
-      // 生产环境由 nginx 做同样的反代，前端代码无需区分环境。
-      // 需先启动 mahjong-service（默认 127.0.0.1:3032）。
-      config.devServer.set('proxy', {
-        '/api/rooms': { target: 'http://127.0.0.1:3032', changeOrigin: true },
-        '/api/game-stats': { target: 'http://127.0.0.1:3032', changeOrigin: true },
-        '/mahjong-ws': { target: 'ws://127.0.0.1:3032', ws: true, changeOrigin: true }
-      });
+  // 注意：devServer 只能写在顶层。VuePress 1.x 只读 siteConfig.devServer
+  // （@vuepress/core/lib/node/dev/index.js 里 Object.assign(默认值, siteConfig.devServer)），
+  // 在 chainWebpack 里 config.devServer.set(...) 不会被消费，写了等于没写。
+  devServer: {
+    // dev 模式所有响应都强制 no-store，修改 shorturl-demo.js 等文件后无需硬刷即可生效
+    headers: {
+      'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+      Pragma: 'no-cache',
+      Expires: '0'
+    },
+    // 麻将联机服务反向代理（仅 dev）：前端联机大厅走同源路径，
+    // 生产环境由 nginx 做同样的反代（见 mahjong-service/scripts/mahjong-proxy.conf），
+    // 前端代码无需区分环境。需先启动 mahjong-service（默认 127.0.0.1:3032）。
+    proxy: {
+      '/api/rooms': { target: 'http://127.0.0.1:3032', changeOrigin: true },
+      '/api/game-stats': { target: 'http://127.0.0.1:3032', changeOrigin: true },
+      '/mahjong-ws': { target: 'ws://127.0.0.1:3032', ws: true, changeOrigin: true }
     }
+  },
+  chainWebpack(config, isServer) {
     // *.worker.js 由 worker-loader 打包成独立 worker（webpack 4 不支持
     // new Worker(new URL(...)) 语法；enforce 'pre' 确保在 VuePress 默认
     // babel rule 之前匹配，globalObject 'this' 让包体在 worker 里也能跑）

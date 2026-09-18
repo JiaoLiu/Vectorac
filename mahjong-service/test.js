@@ -165,6 +165,22 @@ async function driveToFinish(room, maxSteps = 4000) {
   return steps
 }
 
+/**
+ * 把房间打到「破产终态」（FINISHED）。
+ * 多局联机下一局打完若无人破产，房间是回 WAITING 等准备的（不是终态），
+ * 需要终态房间的 TTL / 限流用例改用本 helper：先正常打完一局，再把某家积分
+ * 压到 0 并复用房间自己的结束流程判破产，保证与线上口径一致。
+ */
+async function driveToBankrupt(room) {
+  await driveToFinish(room)
+  if (room.status === ROOM_STATUS.FINISHED) return
+  room.scores[0] = 0
+  room.onSessionFinished(room.gameSession, {
+    ...(room.lastResults || {}),
+    perSeat: [0, 1, 2, 3].map(seat => ({ seat, delta: 0 }))
+  })
+}
+
 /** 等房间串行队列彻底排空（用于验证「异步排队的操作」已完成） */
 function drain(room) {
   return room.queue.push(() => {})
@@ -250,6 +266,48 @@ async function suiteCapacity() {
       eq(s.manager.getRoomByCode(victim.roomCode), null, 'roomCode 索引已删除')
     })
   )
+
+  await test('满员时优先回收「已结束且无在线真人」的房间腾名额', () =>
+    withServer(async s => {
+      // 一间打到结束、真人已断线的房间：结束房是终态不能原地重开，无人观看即纯占位
+      const { room: done, players } = makePlayingRoom(s.manager, { humans: 1 })
+      await done.startGame(players[0].playerId)
+      await driveToBankrupt(done)
+      eq(done.status, ROOM_STATUS.FINISHED, '先进入 FINISHED')
+      await done.disconnect(players[0].playerId, 'X')
+      // 其余名额用普通 WAITING 房间填满
+      while (s.manager.size < config.maxRooms) {
+        s.manager.createRoom({ displayName: 'P' + s.manager.size })
+      }
+      eq(s.manager.size, config.maxRooms, '已满员')
+      // 再建房：应回收那间空闲结束房腾名额，而不是报容量上限
+      const { room: fresh } = s.manager.createRoom({ displayName: '新房间' })
+      eq(s.manager.size, config.maxRooms, '腾名额后仍在上限')
+      eq(s.manager.getRoom(done.roomId), null, '空闲结束房被回收')
+      eq(s.manager.getRoomByCode(done.roomCode), null, '结束房房号索引已删除')
+      assert(s.manager.getRoom(fresh.roomId) != null, '新房间创建成功')
+    })
+  )
+
+  await test('满员且结束房仍有在线真人（在看结算）→ 不回收，仍返回 ROOM_CAPACITY_REACHED', () =>
+    withServer(async s => {
+      const { room: done, players } = makePlayingRoom(s.manager, { humans: 1 })
+      await done.startGame(players[0].playerId)
+      await driveToBankrupt(done)
+      eq(done.status, ROOM_STATUS.FINISHED, '先进入 FINISHED')
+      // 真人保持在线（还在结算页）→ 不算空闲房
+      while (s.manager.size < config.maxRooms) {
+        s.manager.createRoom({ displayName: 'P' + s.manager.size })
+      }
+      eq(s.manager.size, config.maxRooms, '已满员')
+      await expectFail(
+        Promise.resolve().then(() => s.manager.createRoom({ displayName: 'P21' })),
+        ERR.ROOM_CAPACITY_REACHED
+      )
+      eq(s.manager.size, config.maxRooms, '有在线真人的结束房不被回收')
+      assert(s.manager.getRoom(done.roomId) != null, '房间仍在')
+    })
+  )
 }
 
 // ============================================================
@@ -318,6 +376,17 @@ async function suiteAdmin() {
       await expectFail(room.addAi(lisi.playerId, 2), ERR.NOT_ROOM_ADMIN)
       await expectFail(room.updateRules(lisi.playerId, {}), ERR.NOT_ROOM_ADMIN)
       await expectFail(room.startGame(lisi.playerId), ERR.NOT_ROOM_ADMIN)
+    })
+  )
+
+  await test('房规 assist（AI 提示）：建房可设、等待室可改、非布尔拒绝', () =>
+    withServer(async s => {
+      const { room, player } = s.manager.createRoom({ displayName: '张三', rules: { assist: false } })
+      eq(room.rules.assist, false, '建房即关闭 AI 提示')
+      eq(room.summary().rules.assist, false, 'summary 带上该房规')
+      await room.updateRules(player.playerId, { assist: true })
+      eq(room.rules.assist, true, '等待室改回开启')
+      await expectFail(room.updateRules(player.playerId, { assist: 'yes' }), ERR.INVALID_RULES, '非布尔')
     })
   )
 }
@@ -626,6 +695,78 @@ async function suiteStartGame() {
 }
 
 // ============================================================
+// 十三、思考时长（建房间可设；定缺 / 换三张固定并行超时）
+// ============================================================
+
+async function suiteTurnTimeout() {
+  console.log('\n[十三] 思考时长与窗口 deadline')
+
+  await test('建房可自设思考时长（秒）并暴露在 summary；缺省用服务端默认值', () =>
+    withServer(async s => {
+      const { room } = s.manager.createRoom({ displayName: '张三', turnTimeoutSeconds: 120 })
+      eq(room.turnTimeoutSeconds, 120, '房间思考时长')
+      eq(room.summary().turnTimeoutSeconds, 120, 'summary 暴露给等待室')
+      const { room: def } = s.manager.createRoom({ displayName: '李四' })
+      eq(def.turnTimeoutSeconds, config.turnTimeoutSeconds, '不传则用默认值')
+      eq(def.summary().turnTimeoutSeconds, config.turnTimeoutSeconds, '默认值同样暴露')
+    })
+  )
+
+  await test('思考时长越界 / 非数字 → INVALID_RULES（不静默 clamp）', () =>
+    withServer(async s => {
+      await expectFail(
+        Promise.resolve().then(() =>
+          s.manager.createRoom({ displayName: 'P', turnTimeoutSeconds: config.minRoomTurnTimeoutSeconds - 1 })
+        ),
+        ERR.INVALID_RULES,
+        '低于下限'
+      )
+      await expectFail(
+        Promise.resolve().then(() =>
+          s.manager.createRoom({ displayName: 'P', turnTimeoutSeconds: config.maxRoomTurnTimeoutSeconds + 1 })
+        ),
+        ERR.INVALID_RULES,
+        '高于上限'
+      )
+      await expectFail(
+        Promise.resolve().then(() =>
+          s.manager.createRoom({ displayName: 'P', turnTimeoutSeconds: 'abc' })
+        ),
+        ERR.INVALID_RULES,
+        '非数字'
+      )
+    })
+  )
+
+  await test('窗口 deadline 按阶段取值：定缺/换三张走固定并行超时，摸打走房间思考时长', () =>
+    withServer(async s => {
+      // 关掉换三张 → 开局直接进定缺，方便分别断言两种窗口
+      const { room } = s.manager.createRoom({
+        displayName: '房主',
+        rules: { swapThree: false },
+        turnTimeoutSeconds: 90
+      })
+      for (const seat of [1, 2, 3]) await room.addAi(room.seats[0].humanPlayerId, seat)
+      await room.startGame(room.seats[0].humanPlayerId)
+      const gs = room.gameSession
+      eq(gs.state.phase, 'void', '关掉换三张后开局即定缺')
+      eq(gs.window.type, 'DINGQUE_SELECTION', '定缺窗口')
+      eq(
+        gs.window.deadlineAt - gs.window.openedAt,
+        config.voidTimeoutSeconds * 1000,
+        '定缺用固定并行超时（不受房间思考时长放大）'
+      )
+
+      // 全桌定缺完 → 摸打窗口：deadline 应换成房间设置的 90 秒
+      await advanceToDiscard(room)
+      eq(gs.state.phase, 'discard', '已进入摸打')
+      eq(gs.window.type, 'SELF_TURN', '摸打窗口')
+      eq(gs.window.deadlineAt - gs.window.openedAt, 90 * 1000, '摸打用房间思考时长')
+    })
+  )
+}
+
+// ============================================================
 // 七、WAITING 真人优先于 AI（文档 §20 / §64）
 // ============================================================
 
@@ -888,20 +1029,40 @@ async function suiteAi() {
     })
   )
 
-  await test('1 真人 + 3 AI 可以完整打完一局（血战到底）', () =>
+  await test('1 真人 + 3 AI 打完一局 → 回 WAITING 等准备；全员就绪自动开下一局', () =>
     withServer(async s => {
       const { room, players } = makePlayingRoom(s.manager, { humans: 1 })
       await room.startGame(players[0].playerId)
+      const seat = players[0].seatIndex
+      const baseScore = room.scores[seat]
+      const firstGameId = room.gameSession.gameId
       await driveToFinish(room)
-      eq(room.status, ROOM_STATUS.FINISHED, '牌局结束 → FINISHED')
-      const results = room.gameSession.state.results
+      // 多局联机：无人破产时不进终态，而是回 WAITING 等真人点「准备下一局」
+      eq(room.status, ROOM_STATUS.WAITING, '一局结束 → 回 WAITING 等待准备')
+      eq(room.round, 1, '局号仍是第 1 局')
+      const results = room.lastResults
       assert(results != null, '有结算结果')
       const sum = results.perSeat.reduce((a, x) => a + x.delta, 0)
       eq(sum, 0, '积分守恒（perSeat 之和为 0）')
       eq(humanCount(room.seats), 1, '真人仍在（未销毁）')
-      // 结算视图按座位旋转后仍然完整
-      const view = room.gameSession.viewFor(0)
+      // 累计积分 = 起始分 + 本局 delta（服务端是积分权威）
+      const delta = results.perSeat.find(p => p.seat === seat).delta
+      eq(room.scores[seat], baseScore + delta, '累计积分按 delta 入账')
+      // 结算视图：按座位旋转后仍完整，且带上房间累计积分 / 破产座位
+      const view = room.gameSession.viewFor(seat)
       assert(view.results && Array.isArray(view.results.seats), '结算明细按视角下发')
+      assert(
+        Array.isArray(view.meta.scores) && view.meta.scores.length === 4,
+        '视图下发四人累计积分'
+      )
+      assert(Array.isArray(view.meta.bankruptSeats), '视图下发破产座位')
+      eq(room.seats[seat].ready, false, '局间真人 ready 已清零（需重新准备）')
+      // 真人点「准备下一局」→ 其余座位是 AI（恒就绪）→ 自动开第 2 局
+      await room.setReady(players[0].playerId, true)
+      eq(room.status, ROOM_STATUS.PLAYING, '全员就绪自动开下一局')
+      eq(room.round, 2, '局号 +1')
+      assert(room.gameSession.gameId !== firstGameId, '换了新的牌局')
+      eq(room.scores[seat], baseScore + delta, '跨局积分保留（开新局不重置）')
     })
   )
 }
@@ -940,7 +1101,7 @@ async function suiteTtl() {
     withServer(async s => {
       const { room, players } = makePlayingRoom(s.manager, { humans: 1 })
       await room.startGame(players[0].playerId)
-      await driveToFinish(room)
+      await driveToBankrupt(room)
       eq(room.status, ROOM_STATUS.FINISHED, '先进入 FINISHED')
       room.finishedAt = Date.now() - config.finishedRoomTtlMs - 1000
       s.manager.sweep(Date.now())
@@ -986,11 +1147,12 @@ async function suiteHttp() {
       const created = await j('/api/rooms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ displayName: '张三', rules: { capFan: 5 } })
+        body: JSON.stringify({ displayName: '张三', rules: { capFan: 5 }, turnTimeoutSeconds: 120 })
       })
       eq(created.status, 200, '创建 200')
       assert(created.body.data.player.resumeToken, '返回 resumeToken')
       eq(created.body.data.room.rules.capFan, 5, '规则生效')
+      eq(created.body.data.room.turnTimeoutSeconds, 120, '建房思考时长生效')
       const code = created.body.data.room.roomCode
 
       const list = await j('/api/rooms')
@@ -1055,6 +1217,7 @@ async function main() {
   await suiteAi()
   await suiteTtl()
   await suiteHttp()
+  await suiteTurnTimeout()
 
   const elapsed = Date.now() - t0
   console.log('\n=== 测试结束 ===')

@@ -30,6 +30,7 @@ export function createSeats(n = 4) {
       displayName: null,
       connected: false, // 仅 HUMAN 有意义
       autoPlay: false, // 断线 / 超时托管标记（仅展示与决策来源用）
+      ready: false, // 多局联机：是否已准备下一局（AI 座恒为 true）
       joinedAt: null,
       disconnectedAt: null,
       aiProfile: null
@@ -73,6 +74,7 @@ export function clearSeat(seat) {
   seat.displayName = null
   seat.connected = false
   seat.autoPlay = false
+  seat.ready = false
   seat.joinedAt = null
   seat.disconnectedAt = null
   seat.aiProfile = null
@@ -85,6 +87,7 @@ export function setHuman(seat, { playerId, displayName }) {
   seat.displayName = displayName || '玩家'
   seat.connected = true
   seat.autoPlay = false
+  seat.ready = false
   seat.joinedAt = Date.now()
   seat.disconnectedAt = null
   seat.aiProfile = null
@@ -97,6 +100,7 @@ export function setAi(seat) {
   seat.displayName = AI_PERSONAS[seat.seatIndex] || 'AI'
   seat.connected = false
   seat.autoPlay = false
+  seat.ready = true // AI 永远就绪，不阻塞「全员准备」开下一局
   seat.joinedAt = Date.now()
   seat.disconnectedAt = null
   seat.aiProfile = { level: null } // level 由 AIService 按房间配置补
@@ -141,6 +145,7 @@ export function seatSnapshot(seat) {
     displayName: seat.displayName,
     connected: seat.occupantType === OCCUPANT.HUMAN ? seat.connected : false,
     autoPlay: seat.occupantType === OCCUPANT.HUMAN ? seat.autoPlay : false,
+    ready: seat.occupantType === OCCUPANT.HUMAN ? !!seat.ready : seat.occupantType === OCCUPANT.AI,
     isAi: seat.occupantType === OCCUPANT.AI
   }
 }

@@ -147,6 +147,7 @@ export class NetClient {
     this.retry = 0
     this._retryTimer = null
     this._pingTimer = null
+    this._leaveCloseTimer = null
     this._reconnectWaiters = []
   }
 
@@ -184,8 +185,8 @@ export class NetClient {
     return this.http('/api/rooms/' + encodeURIComponent(roomCode))
   }
 
-  createRoom({ displayName, rules } = {}) {
-    return this.http('/api/rooms', { method: 'POST', body: { displayName, rules } })
+  createRoom({ displayName, rules, turnTimeoutSeconds } = {}) {
+    return this.http('/api/rooms', { method: 'POST', body: { displayName, rules, turnTimeoutSeconds } })
   }
 
   joinRoom({ roomCode, displayName } = {}) {
@@ -199,6 +200,7 @@ export class NetClient {
    * @param {Object} cred { roomId, playerId, resumeToken, displayName, roomCode, seatIndex }
    */
   connect(cred) {
+    clearTimeout(this._leaveCloseTimer) // 撤销上一轮 leaveRoom 的延迟关闭（见 leaveRoom）
     this.roomId = cred.roomId
     this.playerId = cred.playerId
     this.resumeToken = cred.resumeToken
@@ -357,7 +359,10 @@ export class NetClient {
     this._sendRaw({ type: 'LEAVE_ROOM', requestId: randomId(), reason })
     this.closed = true
     clearCredential()
-    setTimeout(() => this.close(), 150)
+    // 稍等 150ms 再关，确保 LEAVE_ROOM 发得出去。若这期间玩家又建房/坐下，
+    // connect() 会清掉这个定时器，否则刚连上的新连接会被它顺手关掉（像点了没反应）。
+    clearTimeout(this._leaveCloseTimer)
+    this._leaveCloseTimer = setTimeout(() => this.close(), 150)
   }
 
   resync() {

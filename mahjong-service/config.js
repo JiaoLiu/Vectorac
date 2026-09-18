@@ -30,6 +30,9 @@ export const config = {
   maxRooms: intEnv('MAX_ROOMS', 20, 1),
   seatsPerRoom: 4,
 
+  // 多局联机：每人起始积分（跨局累计，与单机一致），任一家 ≤ 0 即破产结束
+  startScore: intEnv('START_SCORE', 100, 1),
+
   // 房号：6 位，字母表剔除容易混淆的 0 O 1 I L
   roomCodeLength: 6,
   roomCodeAlphabet: '23456789ABCDEFGHJKMNPQRSTUVWXYZ',
@@ -38,8 +41,16 @@ export const config = {
   // 重连令牌强度（文档 §7：禁止只靠昵称 / 房号 / 座位重连）
   resumeTokenBytes: intEnv('RESUME_TOKEN_BYTES', 32, 16),
 
-  // 回合超时（秒）：ActionWindow 的 deadline
-  turnTimeoutSeconds: intEnv('TURN_TIMEOUT_SECONDS', 20, 1),
+  // 回合计时（秒）：摸打 / 响应窗口的 deadline。
+  // 建房间时可传 turnTimeoutSeconds 覆盖本房间（见 min/maxRoomTurnTimeoutSeconds）；
+  // 未传则用这个默认值。
+  turnTimeoutSeconds: intEnv('TURN_TIMEOUT_SECONDS', 30, 1),
+  // 定缺 / 换三张（并行窗口：所有人一起等同一家）的 deadline（秒）。
+  // 与摸打分开：这两步只是选花色 / 选三张牌，放长会拖住整桌开局，故固定不长。
+  voidTimeoutSeconds: intEnv('VOID_TIMEOUT_SECONDS', 20, 1),
+  // 房间可设置的思考时长范围（秒）：建房间时填「分钟」换算，越界拒绝
+  minRoomTurnTimeoutSeconds: intEnv('MIN_ROOM_TURN_TIMEOUT_SECONDS', 10, 1),
+  maxRoomTurnTimeoutSeconds: intEnv('MAX_ROOM_TURN_TIMEOUT_SECONDS', 600, 1),
   // 真人断线后 AI 接管前的额外等待（毫秒）：不必等满整轮超时
   disconnectedAiDelayMs: intEnv('DISCONNECTED_AI_DELAY_MS', 1500, 0),
 

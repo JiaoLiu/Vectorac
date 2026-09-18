@@ -76,8 +76,8 @@ export function createServer({ logger } = {}) {
   // 创建房间（创建者 = Seat0 + 第一任管理员）
   app.post('/api/rooms', async (req, res) => {
     try {
-      const { displayName, rules } = req.body || {}
-      const { summary, player } = manager.createRoom({ displayName, rules })
+      const { displayName, rules, turnTimeoutSeconds } = req.body || {}
+      const { summary, player } = manager.createRoom({ displayName, rules, turnTimeoutSeconds })
       res.json({ ok: true, data: { room: summary, player } })
     } catch (err) {
       sendHttpError(res, err, log, 'create-room')
@@ -204,6 +204,9 @@ export function createServer({ logger } = {}) {
       case 'START_GAME':
         return handleAdminCommand(ws, msg, 'START_GAME')
 
+      case 'TOGGLE_READY':
+        return handleReady(ws, msg)
+
       case 'LEAVE_ROOM':
         return handleLeave(ws, msg)
 
@@ -308,7 +311,7 @@ export function createServer({ logger } = {}) {
     try {
       if (kind === 'ADD_AI') await room.addAi(playerId, msg.seatIndex)
       else if (kind === 'REMOVE_AI') await room.removeAi(playerId, msg.seatIndex)
-      else if (kind === 'UPDATE_RULES') await room.updateRules(playerId, msg.rules)
+      else if (kind === 'UPDATE_RULES') await room.updateRules(playerId, msg.rules, msg.turnTimeoutSeconds)
       else if (kind === 'START_GAME') await room.startGame(playerId)
     } catch (err) {
       const payload = toErrorPayload(err)
@@ -322,6 +325,28 @@ export function createServer({ logger } = {}) {
         ...hub.envelope(room, 'ERROR', {}),
         requestId: msg.requestId || null,
         command: kind,
+        errorCode: payload.errorCode,
+        message: payload.message
+      })
+    }
+  }
+
+  // ---- 准备下一局（多局联机，非管理员命令）----
+  async function handleReady(ws, msg) {
+    const { playerId, room } = requireBound(ws)
+    try {
+      await room.setReady(playerId, msg.ready)
+    } catch (err) {
+      const payload = toErrorPayload(err)
+      log('ready-rejected', {
+        roomId: room.roomId,
+        seatIndex: ws.seatIndex,
+        errorCode: payload.errorCode
+      }, 'warn')
+      safeSend(ws, {
+        ...hub.envelope(room, 'ERROR', {}),
+        requestId: msg.requestId || null,
+        command: 'TOGGLE_READY',
         errorCode: payload.errorCode,
         message: payload.message
       })

@@ -85,6 +85,8 @@ export function buildPlayerViewForSeat(state, viewerSeat, meta) {
     },
     legal: raw.legal,
     waiting: (raw.waiting || []).map(m),
+    currentResponder: raw.currentResponder == null ? null : m(raw.currentResponder),
+    respondStage: raw.respondStage == null ? null : raw.respondStage,
     lastEvents: (raw.lastEvents || []).map(ev => (ev.seat == null ? ev : { ...ev, seat: m(ev.seat) })),
     results: remapResults(raw.results, viewerSeat),
     meta: buildMeta(meta, viewerSeat)
@@ -106,6 +108,7 @@ function buildMeta(meta, viewerSeat) {
       autoPlay: !!s.autoPlay,
       isAi: s.occupantType === 'AI',
       isEmpty: s.occupantType === 'EMPTY',
+      ready: !!s.ready,
       isAdmin: meta.adminSeat === abs
     }
   })
@@ -126,6 +129,12 @@ function buildMeta(meta, viewerSeat) {
     dice: Array.isArray(meta.dice) && meta.dice.length === 2 ? [meta.dice[0], meta.dice[1]] : null,
     headSeat: meta.headSeat == null ? null : m(meta.headSeat),
     mode: meta.mode || 'dealer',
+    // 多局联机：累计积分 / 破产座位（绝对座位口径 → 视角座位口径）
+    scores:
+      Array.isArray(meta.scores) && meta.scores.length === 4
+        ? [0, 1, 2, 3].map(i => meta.scores[(i + viewerSeat) % 4])
+        : null,
+    bankruptSeats: Array.isArray(meta.bankruptSeats) ? meta.bankruptSeats.map(m) : [],
     // 视角座位（UI 只需要 seats 这一份），保留原始座位仅供排查
     mySeat: viewerSeat,
     adminSeat: meta.adminSeat == null ? null : m(meta.adminSeat),
@@ -142,6 +151,14 @@ export function roomSummary(room) {
     status: room.status,
     adminSeat: room.adminSeat,
     rules: room.rules,
+    // 本房间的思考时长（秒）：建房时房主设置，等待室展示给所有人
+    turnTimeoutSeconds: room.turnTimeoutSeconds,
+    // 多局联机：局号 / 是否已打过至少一局（等待室据此区分「首局等房主开始」与
+    // 「局间等全员准备」）/ 每个座位累计积分 / 破产座位
+    round: room.round || 1,
+    hasPlayed: room.lastResults != null,
+    scores: (room.scores || []).slice(),
+    bankruptSeats: (room.bankruptSeats || []).slice(),
     createdAt: room.createdAt,
     startedAt: room.startedAt,
     finishedAt: room.finishedAt,
@@ -152,6 +169,7 @@ export function roomSummary(room) {
       displayName: s.displayName,
       connected: s.occupantType === 'HUMAN' ? !!s.connected : false,
       autoPlay: s.occupantType === 'HUMAN' ? !!s.autoPlay : false,
+      ready: s.occupantType === 'HUMAN' ? !!s.ready : s.occupantType === 'AI',
       isAdmin: room.adminSeat === s.seatIndex,
       isAi: s.occupantType === 'AI'
     })),

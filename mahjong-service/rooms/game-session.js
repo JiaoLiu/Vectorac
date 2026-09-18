@@ -68,13 +68,30 @@ function windowIdentity(state) {
     case PHASE_DISCARD:
       return 'discard:' + state.turn
     case PHASE_RESPOND:
+      // 阶段（hu / gang / peng）也进 identity：同一阶段内所有座位共享同一个
+      // 窗口与截止时间（HU 并行窗口下多家同时思考，谁先表态都不影响别人），
+      // 换阶段才 ++windowId，旧阶段未表态的请求一律过期。
       if (state.pendingKong) {
-        return 'respond-kong:' + state.pendingKong.seat + ':' + state.pendingKong.tag
+        return (
+          'respond-kong:' +
+          state.pendingKong.seat +
+          ':' +
+          state.pendingKong.tag +
+          ':' +
+          state.respondStage
+        )
       }
       if (state.pendingDiscard) {
-        return 'respond:' + state.pendingDiscard.seat + ':' + state.pendingDiscard.tag
+        return (
+          'respond:' +
+          state.pendingDiscard.seat +
+          ':' +
+          state.pendingDiscard.tag +
+          ':' +
+          state.respondStage
+        )
       }
-      return 'respond:' + state.turn
+      return 'respond:' + state.turn + ':' + state.respondStage
     default:
       return null
   }
@@ -105,7 +122,11 @@ function eligibleSeatsOf(state) {
     case PHASE_DISCARD:
       return [state.turn]
     case PHASE_RESPOND:
-      return state.waiting.filter(seat => state.claims[seat] == null)
+      // HU 阶段（并行收集）：所有未表态的胡候选人同时拥有决定权，共享同一
+      // 截止时间——任何一家先叫胡都不会关掉别人的窗口；GANG / PENG 阶段
+      // （串行仲裁）只有唯一 currentResponder 有决定权。
+      if (state.respondStage === 'hu') return state.huWait.slice()
+      return state.currentResponder != null ? [state.currentResponder] : []
     default:
       return []
   }
@@ -134,7 +155,7 @@ function firstLegalAction(legal) {
 }
 
 export class GameSession {
-  constructor({ room, aiService, hub, logger, seed, dealer, wallOffset, dice, headSeat }) {
+  constructor({ room, aiService, hub, logger, seed, dealer, wallOffset, dice, headSeat, round }) {
     this.room = room
     this.ai = aiService
     this.hub = hub
@@ -143,7 +164,7 @@ export class GameSession {
     this.gameId = 'g' + (++gameCounter) + '-' + room.roomCode
     this.seed = seed >>> 0
     // 本局骰子与墙头方位（纯展示 + 牌墙缺口表现，不参与任何牌权判定）
-    this.round = 1
+    this.round = round == null ? 1 : Number(round) || 1
     this.dice = Array.isArray(dice) && dice.length === 2 ? [Number(dice[0]) | 0, Number(dice[1]) | 0] : [1, 1]
     this.dealer = dealer
     this.headSeat = headSeat != null ? headSeat : dealer
@@ -224,7 +245,7 @@ export class GameSession {
         type: windowTypeOf(this.state),
         eligibleSeats: eligible,
         legalActionsBySeat: legalBySeat,
-        timeoutMs: config.turnTimeoutSeconds * 1000,
+        timeoutMs: this.windowTimeoutMs(),
         now: Date.now()
       })
       this.hub.broadcastEvent(this.room, 'ACTION_WINDOW_OPENED', {
@@ -242,6 +263,19 @@ export class GameSession {
     for (const t of this.seatTimers.values()) clearTimeout(t)
     this.seatTimers.clear()
     this.window = null
+  }
+
+  /**
+   * 本窗口的 deadline 时长（毫秒）。
+   *   · 定缺 / 换三张是**并行窗口**：全桌都在等同一家选完，固定走
+   *     config.voidTimeoutSeconds（不随房间思考时长放大，否则开局会被拖住）；
+   *   · 摸打 / 响应按本房间的思考时长（建房间时房主可设置，缺省服务端默认值）。
+   */
+  windowTimeoutMs() {
+    if (this.state.phase === PHASE_SWAP || this.state.phase === PHASE_VOID) {
+      return config.voidTimeoutSeconds * 1000
+    }
+    return (this.room.turnTimeoutSeconds || config.turnTimeoutSeconds) * 1000
   }
 
   // ---------- 计时（服务端是计时权威） ----------
@@ -448,6 +482,9 @@ export class GameSession {
       dice: this.dice,
       headSeat: this.headSeat,
       mode: 'dealer',
+      // 多局联机：房间累计积分（绝对座位口径，serializer 会按视角旋转）与破产座位
+      scores: (room.scores || []).slice(),
+      bankruptSeats: (room.bankruptSeats || []).slice(),
       seats: room.seats.map(seatSnapshot)
     }
     return buildPlayerViewForSeat(this.state, seat, meta)

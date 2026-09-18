@@ -153,13 +153,19 @@ export function createLocalGame(opts = {}) {
       return
     }
     if (state.phase === 'respond') {
-      // state.waiting 已按「自出牌者下家起逆时针」排好序，即离出牌者最近的一家排最前。
-      // 延迟必须跟着这个顺序走（更近的先行动）：否则远处的 AI 先表态触发 pump，
-      // 会把近处 AI 的定时器 clearTimers 掉再往后排，近处叫牌被一路推迟，
-      // 人类就得对着「等待…」干等更久。
-      state.waiting.forEach((seat, i) => {
-        if (seat !== HUMAN) scheduleAi(seat, delayOf(500 + i * 150))
-      })
+      // 三阶段响应：HU 阶段是并行收集，所有胡候选人同时拥有决定权
+      // （respondStage='hu'，currentResponder 为 null）；GANG/PENG 阶段是按有效
+      // 摸牌顺序串行仲裁的唯一 currentResponder。AI 托管所有此刻有待办事项的
+      // 非人类座位（scheduleAi 回调里会重新校验 legal，过期即跳过不卡死）。
+      const seats =
+        state.respondStage === 'hu'
+          ? state.huWait.slice()
+          : state.currentResponder != null
+            ? [state.currentResponder]
+            : []
+      for (const seat of seats) {
+        if (seat !== HUMAN) scheduleAi(seat, delayOf(500))
+      }
       return
     }
     if (state.phase === 'swap') {
