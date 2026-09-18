@@ -16,6 +16,9 @@
 <label class="scmj-entry-opt">
 <input type="checkbox" data-scmj-entry-yaoji /> 幺鸡赖子
 </label>
+<label class="scmj-entry-opt" title="关闭后不显示听牌提示与出牌建议，方便练习自己看牌">
+<input type="checkbox" data-scmj-entry-assist checked /> AI 辅助
+</label>
 <div class="scmj-entry-opt">
 <span class="scmj-entry-label">封顶番数</span>
 <div class="scmj-stepper">

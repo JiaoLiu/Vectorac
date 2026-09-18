@@ -147,7 +147,16 @@ export default class ScmjUI {
     // capFan：封顶番数（入口 − / ＋ 步进 2~6 可选，默认 3 番）
     // swapThree：换三张开关（入口勾选，关掉则本局直接定缺，不换牌）
     // yaojiEnabled：幺鸡赖子开关（入口勾选，开启后幺鸡当万能牌）
-    this.settings = { sound: true, animation: true, passHuConfirm: true, capFan: 3, swapThree: true, yaojiEnabled: false }
+    this.settings = {
+      sound: true,
+      animation: true,
+      passHuConfirm: true,
+      capFan: 3,
+      swapThree: true,
+      yaojiEnabled: false,
+      // AI 辅助：关闭后隐藏听牌提示与出牌建议，供玩家自己看牌练习
+      assist: true
+    }
     this.selectedIdx = null // 手牌选中实例下标（hand + drawnTile 合并数组）
     this.swapPickIdxs = [] // 换三张已选实例下标
     // 会话积分：进游戏每人 100 分，跨局累计（本局 delta 在结算时一次性入账）
@@ -190,6 +199,7 @@ export default class ScmjUI {
       btnExit: q('[data-scmj-btn-exit]'),
       entrySwap: q('[data-scmj-entry-swap]'),
       entryYaoji: q('[data-scmj-entry-yaoji]'),
+      entryAssist: q('[data-scmj-entry-assist]'),
       entryCapFanDec: q('[data-scmj-capfan-dec]'),
       entryCapFanInc: q('[data-scmj-capfan-inc]'),
       entryCapFanVal: q('[data-scmj-entry-capfan-val]'),
@@ -319,6 +329,7 @@ export default class ScmjUI {
     }
     setChecked(e.entrySwap, this.settings.swapThree)
     setChecked(e.entryYaoji, this.settings.yaojiEnabled)
+    setChecked(e.entryAssist, this.settings.assist !== false)
     setChecked(e.setSound, this.settings.sound)
     setChecked(e.setAnim, this.settings.animation)
     setChecked(e.setPassHu, this.settings.passHuConfirm)
@@ -513,6 +524,13 @@ export default class ScmjUI {
     on(e.entryYaoji, 'change', () => {
       this.settings.yaojiEnabled = e.entryYaoji.checked
       this.saveSettings()
+    })
+    // 入口：AI 辅助开关（关闭后隐藏听牌提示与出牌建议，练习自己看牌）
+    on(e.entryAssist, 'change', () => {
+      this.settings.assist = e.entryAssist.checked
+      this.saveSettings()
+      // 立即刷新提示区，无需等下一次牌桌重绘（对局中改设置也能即时生效）
+      if (this.view) this.renderHints(this.view)
     })
     // 入口：封顶番数步进器（2~6，点 − / ＋ 加减，改完即时保存）
     const stepCap = delta => {
@@ -1531,6 +1549,12 @@ export default class ScmjUI {
 
   // ---------- 听牌提示 + AI 建议 ----------
   renderHints(v) {
+    // AI 辅助关闭：听牌提示与右侧出牌建议一并清空，交给玩家自己看牌
+    if (this.settings.assist === false) {
+      this._els.ting.innerHTML = ''
+      this._els.suggest.textContent = ''
+      return
+    }
     // 听牌提示（依赖 adapter 的扩展字段 my.ting，未提供时隐藏）
     const tingEl = this._els.ting
     tingEl.innerHTML = ''
