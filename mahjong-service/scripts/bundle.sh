@@ -17,7 +17,7 @@ trap 'rm -rf "$WORK" 2>/dev/null' EXIT
 
 echo "==> 复制源码到临时目录"
 mkdir -p "$WORK/mahjong-service"
-cp -r server.js config.js errors.js engine rooms scripts package.json package-lock.json \
+cp -r server.js config.js errors.js engine rooms scripts package.json package-lock.json README.md \
   "$WORK/mahjong-service/"
 
 # 规则只有一份（文档 §六十六：不要复制第二套麻将规则）：
@@ -56,8 +56,12 @@ SIZE=$(du -h "$OUT" | cut -f1)
 echo ""
 echo "✓ 已生成: $OUT  ($SIZE)"
 echo "  在 Finder 打开: open $DIST_DIR"
-echo "  上传并部署："
-echo "    scp $OUT <user>@<server>:/tmp/"
+echo ""
+echo "  上传并部署（中转目录用官网同级 .deploy，不要用 /tmp；详见 README.md）："
+echo "    ssh <user>@<server> 'mkdir -p /home/www/vectorac/.deploy'"
+echo "    scp $OUT <user>@<server>:/home/www/vectorac/.deploy/"
 echo "    ssh <user>@<server>"
-echo "    tar -xzf /tmp/$(basename "$OUT") -C /tmp/mahjong-new"
-echo "    sudo ADMIN_TOKEN=\$(openssl rand -hex 16) bash scripts/install.sh"
+echo "    cd /home/www/vectorac/.deploy && rm -rf mahjong-service"
+echo "    tar -xzf $(basename "$OUT")   # 解出 .deploy/mahjong-service/"
+echo "    cd mahjong-service && sudo ADMIN_TOKEN=\$(openssl rand -hex 16) bash scripts/install.sh"
+echo "    # 安装目录：/home/www/vectorac/mahjong-service（与官网 dist/ 平级）"

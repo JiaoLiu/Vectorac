@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
 # 一键安装/更新 Vectorac 联机麻将服务
 # 用法：先解压 tarball，再在解压目录中运行本脚本
-#   tar -xzf mahjong-service-*.tar.gz
+#   cd /home/www/vectorac/.deploy                       # 官网同级中转目录（不要用 /tmp）
+#   rm -rf mahjong-service && tar -xzf mahjong-service-*.tar.gz
 #   cd mahjong-service
 #   sudo ADMIN_TOKEN=$(openssl rand -hex 16) bash scripts/install.sh
-# 脚本幂等，重跑就升级（.env 不会被覆盖，只补缺失字段）。
+# 安装目录固定 /home/www/vectorac/mahjong-service（与官网 dist/ 平级）。
+# 脚本幂等，重跑就升级（.env 不会被覆盖，只补缺失字段）→ 升级/回滚同一套流程。
+# 完整部署文档（打包 / 上传 / nginx / 回滚 / 运维）：../README.md
 #
 # 说明：本服务只监听 127.0.0.1，对外由 nginx 反代到 vectorac.com 同源路径
 #   /api/rooms、/api/game-stats（HTTP）与 /mahjong-ws（WebSocket）。
@@ -105,6 +108,8 @@ ensure_env WS_PATH "$WS_PATH"
 ensure_env ADMIN_TOKEN "$ADMIN_TOKEN"
 # 容量与超时（不填则用 config.js 内置默认值：20 房 / 摸打 30s / 定缺 20s / 2 路 AI 并发）
 ensure_env MAX_ROOMS "20"
+# 每人起始积分：多局连打跨局累计，任一家 ≤ 0 判破产结束房间
+ensure_env START_SCORE "100"
 ensure_env TURN_TIMEOUT_SECONDS "30"
 ensure_env VOID_TIMEOUT_SECONDS "20"
 ensure_env MIN_ROOM_TURN_TIMEOUT_SECONDS "10"

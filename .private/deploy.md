@@ -1,7 +1,7 @@
 ## 项目概述
 这是一个基于 **VuePress 1.5.4** 构建的静态网站项目，使用了 **vuepress-theme-reco** 主题，主要用于展示成都向量加速科技有限公司的信息。
 
-项目同时包含一个独立的 **短链跳转 API 服务**（`shorturl-service/`），用于为官网「产品 → 短链跳转」提供后端能力。部署流程与官网静态站不同，详见 [短链服务部署](#短链服务部署一建) 章节。
+项目同时包含三个独立的 Node.js 后端服务：**短链跳转 API 服务**（`shorturl-service/`，为官网「产品 → 短链跳转」提供后端能力）、**设备管理服务**（`usermgr-service/`）和**联机麻将服务**（`mahjong-service/`，四川麻将好友房）。部署流程与官网静态站不同，详见 [短链服务部署](#短链服务部署一键) / [usermgr-service 部署](#usermgr-service-部署一键) / [联机麻将服务部署](#联机麻将服务部署一键) 章节。
 
 ## 运行方式
 
@@ -185,6 +185,67 @@ sudo nginx -t && sudo systemctl reload nginx
 sudo systemctl status usermgr
 sudo systemctl restart usermgr
 sudo journalctl -u usermgr -f
+```
+
+## 联机麻将服务部署（一键）
+
+四川麻将「血战到底」好友房后端（房间管理 + WebSocket 实时同步 + 服务端规则裁决）。
+完整文档见 `mahjong-service/README.md`，下面是最少步骤。
+
+### 1. 本地打包（含 node_modules，服务器无需 npm install）
+
+```bash
+cd mahjong-service
+bash scripts/bundle.sh
+# → dist/mahjong-service-YYYYMMDD-HHmm.tar.gz（约 1MB）
+
+# 上传到官网同级的中转目录（不要用 /tmp）
+ssh root@jane66.com 'mkdir -p /home/www/vectorac/.deploy'
+scp dist/mahjong-service-*.tar.gz root@jane66.com:/home/www/vectorac/.deploy/
+```
+
+### 2. 服务器一键部署
+
+```bash
+ssh root@jane66.com
+cd /home/www/vectorac/.deploy
+rm -rf mahjong-service && tar -xzf "$(ls -t mahjong-service-*.tar.gz | head -1)"
+cd mahjong-service
+sudo ADMIN_TOKEN=$(openssl rand -hex 16) bash scripts/install.sh
+```
+
+安装到 `/home/www/vectorac/mahjong-service`（与 `dist/` 平级）；`.env` 不覆盖、只补缺失字段，
+幂等可重跑 —— **升级和回滚都是同一套流程**（回滚就解压旧 tarball 再跑 install.sh）。
+
+### 3. nginx 反代（必须合并进 vectorac.conf 主 server 块）
+
+麻将的三个 location **不能**像短链那样丢到 `conf.d/` 独立文件里：
+`location` 指令不允许出现在 `server` 块之外，会直接报 `location directive is not allowed here`。
+
+```bash
+sudo vim /etc/nginx/conf.d/vectorac.conf
+# 把 mahjong-service/scripts/mahjong-proxy.conf 里的三段 location 粘进 server { }：
+#   location /api/rooms        房间列表 / 创建 / 加入
+#   location = /api/game-stats 后台统计（需 X-Admin-Token）
+#   location = /mahjong-ws     房间实时同步（WebSocket，含 Upgrade 头 + 600s 超时）
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+前端走官网同源路径（`https://vectorac.com/api/rooms`、`wss://vectorac.com/mahjong-ws`），不用改 DNS。
+
+### 备份
+
+服务无持久化数据（房间全在内存，重启即清空）；唯一要留的是
+`/home/www/vectorac/mahjong-service/.env`（含 `ADMIN_TOKEN` / 超时 / 容量配置）。
+`.deploy/` 里的历史 tarball 就是回滚点，建议留最近 3 份。
+
+### 运维命令
+
+```bash
+sudo systemctl status mahjong
+sudo systemctl restart mahjong
+sudo journalctl -u mahjong -f
+curl http://127.0.0.1:3032/api/health
 ```
 
 ## 部署配置
@@ -606,5 +667,5 @@ npm run deploy
 
 ---
 
-**更新时间**：2026-06-05
+**更新时间**：2026-09-18
 **维护人员**：Jiao
