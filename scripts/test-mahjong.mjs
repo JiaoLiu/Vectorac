@@ -1655,6 +1655,82 @@ ok('幺鸡赖子：带幺鸡的杠可换回幺鸡；碰带幺鸡不可换', () =
   assert.equal(legalActions(t, 0).find(o => o.type === 'swap-yaoji'), undefined, '碰带幺鸡不可换')
 })
 
+ok('幺鸡赖子：真牌碰后用幺鸡补杠，之后摸到第 4 张真牌可换回幺鸡', () => {
+  // 用户场景：先用 3 张真 W5 碰（副露不含幺鸡），再用手里唯一的幺鸡补杠（第 4 张），
+  // 之后摸到第 4 张真 W5 → 应可把幺鸡换回手牌（幺鸡来自补杠，不是碰）
+  let s = fastForward(7, undefined, { yaojiEnabled: true })
+  setupTable(s, {
+    turn: 0,
+    specs: {
+      0: {
+        tiles: [YAOJI_TILE, W(1), W(2), W(3), W(7), W(8), W(9), T(1), T(2), T(3)],
+        melds: [{ kind: 'peng', tile: W(5), from: 1 }],
+        void: 'tiao'
+      }
+    }
+  })
+  const buOpt = legalActions(s, 0)
+    .filter(o => o.type === 'gang')
+    .flatMap(o => o.options)
+    .find(o => o.tile === W(5) && o.gangType === 'bu')
+  assert.ok(buOpt, '手里有幺鸡、无真 W5 时，应可用幺鸡补杠')
+  let r = dispatch(s, { type: 'gang', seat: 0, tile: W(5), gangType: 'bu', actionId: 'yj-bu-g', stateVersion: s.version })
+  assert.ok(r.ok, `幺鸡补杠失败: ${r.error}`)
+  s = r.state
+  let p0 = s.players[0]
+  assert.equal(p0.melds[0].kind, 'gang')
+  assert.equal(p0.melds[0].gangType, 'bu')
+  assert.equal(p0.melds[0].wild, 1, '补杠用 1 只幺鸡补位')
+  assert.ok(!(p0.melds[0].wildPeng > 0), '幺鸡来自补杠而非碰，不应标记 wildPeng')
+  assert.equal(p0.hand.filter(t => t === YAOJI_TILE).length, 0, '幺鸡已编入副露')
+  conservation(s, '真牌碰 + 幺鸡补杠后')
+
+  // 之后摸到第 4 张真 W5 → 可换回幺鸡
+  drawTile(s, W(5))
+  const swap = legalActions(s, 0).find(o => o.type === 'swap-yaoji')
+  assert.ok(swap && swap.tile === W(5), '摸到第 4 张真牌后应提供换幺鸡')
+  r = dispatch(s, { type: 'swap-yaoji', seat: 0, tile: W(5), actionId: 'yj-bu-s', stateVersion: s.version })
+  assert.ok(r.ok, `换幺鸡失败: ${r.error}`)
+  s = r.state
+  p0 = s.players[0]
+  assert.ok(!p0.melds[0].wild, '换牌后副露为 4 张真牌')
+  assert.equal(s.drawnTile, YAOJI_TILE, '幺鸡回到「刚摸到」的牌位')
+  conservation(s, '补杠换回幺鸡后')
+})
+
+ok('幺鸡赖子：碰赖升级成的杠不可换（幺鸡是碰那一步进来的）', () => {
+  // 用户给的例外：2 真 W5 + 1 幺鸡碰（碰赖）→ 摸到真 W5 补杠成杠 → 又来 W5 也不能换
+  let s = fastForward(7, undefined, { yaojiEnabled: true })
+  setupTable(s, {
+    turn: 0,
+    specs: {
+      0: {
+        tiles: [W(5), W(1), W(2), W(3), W(7), W(8), W(9), T(1), T(2), T(3)],
+        melds: [{ kind: 'peng', tile: W(5), from: 1, wild: 1, wildPeng: 1 }],
+        void: 'tiao'
+      }
+    }
+  })
+  let r = dispatch(s, { type: 'gang', seat: 0, tile: W(5), gangType: 'bu', actionId: 'yj-bu2-g', stateVersion: s.version })
+  assert.ok(r.ok, `补杠失败: ${r.error}`)
+  s = r.state
+  const p0 = s.players[0]
+  assert.equal(p0.melds[0].kind, 'gang')
+  assert.equal(p0.melds[0].gangType, 'bu')
+  assert.equal(p0.melds[0].wild, 1, '3 真 + 1 赖')
+  assert.equal(p0.melds[0].wildPeng, 1, '幺鸡来自碰，标记应保留')
+  conservation(s, '碰赖升级补杠后')
+
+  // 摸到第 4 张真牌也不可换
+  drawTile(s, W(5))
+  assert.equal(
+    legalActions(s, 0).find(o => o.type === 'swap-yaoji'),
+    undefined,
+    '碰赖升级成的杠不可换回幺鸡'
+  )
+  conservation(s, '碰赖升级杠后摸真牌')
+})
+
 ok('幺鸡赖子：明杠用幺鸡补位，之后摸到同一张真牌可换回幺鸡（完整杠牌流程）', () => {
   let s = fastForward(7, undefined, { yaojiEnabled: true })
   // seat1 定缺万，摸到 W5 只能打它；seat0 手里 W5×2 + 幺鸡，可带幺鸡明杠

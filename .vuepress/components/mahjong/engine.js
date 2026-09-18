@@ -27,7 +27,7 @@
 //   打出的牌被胡即“杠上炮”，都给胡牌者额外加番（抢杠胡不算，杠未成立）。
 // - 抢杠胡：补杠被抢则杠不成立——杠钱一分不收（相当于没杠到），被抢的牌落进
 //   被抢者弃牌区（相当于他点炮），抢杠者额外加 1 番（qianggangFan）。幺鸡补的
-//   那张留在副露里顶替被取走的真牌（碰带幺鸡不可换回，要再杠只能等真牌）。
+//   那张留在副露里顶替被取走的真牌（副露退回碰；要再杠只能等摸到对应真牌）。
 // - 根加番：胡牌时手牌 + 副露中每有一组 4 张相同牌（明/暗/补杠，或碰后
 //   手留一张、手里 4 张未杠）额外加 1 番（genFan），与杠钱互相独立。
 // - 流局查叫：查花猪（未打缺赔封顶给所有其他未胡玩家）优先于
@@ -38,8 +38,10 @@
 // - 幺鸡赖子（rules.yaojiEnabled）：幺鸡（一条）当万能牌（详见 rules.js）。
 //   · 碰/明杠/暗杠/补杠允许「真牌 + 幺鸡」补位，副露用 meld.wild 记录用了几只幺鸡
 //     （一副露最多 1 只：碰里已经带了幺鸡的，只能等摸到真牌再补杠）；
-//   · 带幺鸡的明杠/暗杠，之后手里又摸到对应真牌时可用 swap-yaoji 把幺鸡换回
-//     手牌（碰带幺鸡、碰后补杠都不允许换）；
+//   · 带幺鸡补位的杠（明杠/暗杠/补杠），之后手里又摸到对应真牌时可用
+//     swap-yaoji 把幺鸡换回手牌。判定看幺鸡从哪一步进来：只要是在「碰」那一步
+//     进来的（meld.wildPeng > 0，即碰赖），即便之后用真牌补杠成了杠也不可换；
+//     碰本身是纯真牌、幺鸡是在补杠那一步才补进来的，则可以换；
 //   · 杠钱：带幺鸡按基准、不带幺鸡翻倍（明杠 1/2、暗杠 2/4、补杠 1/2）；
 //   · 杠上炮转雨：杠后补牌回合打出的牌被胡时，本回合收到的杠钱转给胡牌者
 //     （gangTurn 暂存，理由 gang-zhuan-yu）；
@@ -389,9 +391,10 @@ export function legalActions(state, seat) {
 }
 
 /**
- * 幺鸡换牌可选项：幺鸡局里「明杠/暗杠」用幺鸡补位（meld.wild>0），
+ * 幺鸡换牌可选项：幺鸡局里带幺鸡补位的杠（明杠/暗杠/补杠），
  * 之后手里又拿到对应真牌时，可把真牌编入副露、把幺鸡换回手牌继续当赖子。
- * 碰带幺鸡、碰后补杠都不允许换（呼应规则：只有杠形成的幺鸡才能换回）。
+ * 唯一的例外：幺鸡是在「碰」这一步进来的（meld.wildPeng > 0）——这种碰赖
+ * 即便之后用真牌补杠成了杠，也不允许换（呼应规则：幺鸡碰出来的不能换）。
  */
 function swapYaojiOptions(s, seat) {
   if (!yaojiOn(s) || s.mustDiscard) return []
@@ -401,7 +404,8 @@ function swapYaojiOptions(s, seat) {
   const out = []
   const seen = new Set()
   for (const m of p.melds) {
-    if (m.kind !== 'gang' || m.gangType === 'bu') continue
+    if (m.kind !== 'gang') continue
+    if ((m.wildPeng || 0) > 0) continue
     if (!((m.wild || 0) > 0)) continue
     if (seen.has(m.tile) || !full.includes(m.tile)) continue
     seen.add(m.tile)
@@ -705,9 +709,10 @@ function doGangMing(s, a) {
 }
 
 /**
- * 幺鸡换牌：把带幺鸡补位的明杠/暗杠里的幺鸡换回手牌——
+ * 幺鸡换牌：把带幺鸡补位的杠（明杠/暗杠/补杠）里的幺鸡换回手牌——
  * 玩家手里又拿到该副露对应的真牌时，用真牌补全副露、幺鸡回到手里继续当赖子。
- * 碰带幺鸡、碰后补杠一律不可换（只有杠才有此权利）。
+ * 幺鸡是在「碰」这一步进来的（meld.wildPeng > 0）不可换：无论它现在是碰赖，
+ * 还是之后用真牌补杠成的杠，都不能换（只有杠那一步引入的幺鸡才有此权利）。
  */
 function doSwapYaoji(s, a) {
   if (s.phase !== PHASE_DISCARD) return { error: ERR.WRONG_PHASE }
@@ -716,7 +721,11 @@ function doSwapYaoji(s, a) {
   if (!yaojiOn(s)) return { error: ERR.ILLEGAL }
   const p = s.players[a.seat]
   const meld = p.melds.find(
-    m => m.kind === 'gang' && m.gangType !== 'bu' && m.tile === a.tile && (m.wild || 0) > 0
+    m =>
+      m.kind === 'gang' &&
+      m.tile === a.tile &&
+      (m.wild || 0) > 0 &&
+      !((m.wildPeng || 0) > 0)
   )
   if (!meld) return { error: ERR.ILLEGAL }
   const full = fullHandOf(s, a.seat)
@@ -1013,7 +1022,8 @@ function resolveRespond(s, push) {
     if (hus.length > 0) {
       // 抢杠胡：杠不成立，相当于被抢那家点炮——抢杠者取走一张「真牌」凑胡，
       // 副露退回碰；补杠若用的是幺鸡，这张幺鸡留在副露里顶替被取走的真牌
-      // （碰带幺鸡不可换回，要再杠只能等摸到对应真牌）。被抢者付分后继续摸牌。
+      // （此幺鸡来自补杠那一步，故不标 wildPeng；要再杠只能等摸到对应真牌）。
+      // 被抢者付分后继续摸牌。
       if (buWild > 0) {
         const meld = s.players[robbed].melds.find(
           m => m.kind === 'peng' && m.tile === tile
@@ -1080,7 +1090,11 @@ function resolveRespond(s, push) {
     const wild = pengWildCount(p.hand, tile, yaojiOn(s)) || 0
     removeTiles(p.hand, new Array(2 - wild).fill(tile).concat(new Array(wild).fill(YAOJI_TILE)))
     const meld = { kind: 'peng', tile, from: payer }
-    if (wild > 0) meld.wild = wild
+    if (wild > 0) {
+      meld.wild = wild
+      // 幺鸡是在「碰」这一步进来的：此类副露不可换回幺鸡（含之后用真牌补杠）
+      meld.wildPeng = wild
+    }
     p.melds.push(meld)
     s.pendingDiscard = null
     s.waiting = []
