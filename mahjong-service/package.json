@@ -1,0 +1,20 @@
+{
+  "name": "vectorac-mahjong",
+  "version": "1.0.0",
+  "description": "Vectorac 四川麻将好友房联机服务（服务器权威、内存房间、WebSocket）",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "test": "node test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "express": "^4.17.1",
+    "ws": "^8.18.0"
+  }
+}

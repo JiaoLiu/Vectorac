@@ -7,6 +7,7 @@ module.exports = {
     '**/*.vue',
     '!shorturl-service/**',
     '!usermgr-service/**',
+    '!mahjong-service/**',
     '!.private/**',
     '!**/node_modules/**'
   ],
@@ -17,6 +18,14 @@ module.exports = {
         'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
         'Pragma': 'no-cache',
         'Expires': '0'
+      });
+      // 麻将联机服务反向代理（仅 dev）：前端联机大厅走同源路径，
+      // 生产环境由 nginx 做同样的反代，前端代码无需区分环境。
+      // 需先启动 mahjong-service（默认 127.0.0.1:3032）。
+      config.devServer.set('proxy', {
+        '/api/rooms': { target: 'http://127.0.0.1:3032', changeOrigin: true },
+        '/api/game-stats': { target: 'http://127.0.0.1:3032', changeOrigin: true },
+        '/mahjong-ws': { target: 'ws://127.0.0.1:3032', ws: true, changeOrigin: true }
       });
     }
     // *.worker.js 由 worker-loader 打包成独立 worker（webpack 4 不支持

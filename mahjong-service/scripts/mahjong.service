@@ -1,0 +1,24 @@
+[Unit]
+Description=Vectorac Mahjong Online Service
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=__INSTALL_DIR__
+EnvironmentFile=__INSTALL_DIR__/.env
+ExecStart=__NODE_PATH__ __INSTALL_DIR__/server.js
+Restart=on-failure
+RestartSec=5
+StartLimitIntervalSec=300
+StartLimitBurst=10
+
+User=__RUN_USER__
+Group=__RUN_GROUP__
+
+# 日志走 journald（服务本身输出结构化 JSON，一行一条）
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=mahjong
+
+[Install]
+WantedBy=multi-user.target

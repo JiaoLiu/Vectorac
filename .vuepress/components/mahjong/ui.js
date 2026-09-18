@@ -187,6 +187,23 @@ export default class ScmjUI {
     this._destroyed = false
     this._els = {}
     this._discLens = [0, 0, 0, 0] // 各座位上次渲染的弃牌数（判断新牌以自动滚到末尾）
+
+    // ---------- 联机（服务端权威）----------
+    // isOnline=true 时：game 来自 remote-game.js，view 由服务端推送；
+    // 座位名/头像/积分一律以服务端快照为准（见 applyOnlineMeta）。
+    this.createOnlineGame = options.createOnlineGame || null
+    this.onlineConfig = options.onlineConfig || {}
+    this.isOnline = false
+    this.net = null
+    this.lobby = null
+    this.onlineRoom = null
+    this.onlinePlayer = null
+    this._countdownTimer = null
+    this._clockSkew = 0
+    // 座位的显示名/简称/头像：本地模式恒用默认人设，联机模式随快照刷新
+    this._labels = SEAT_LABELS
+    this._shorts = SEAT_SHORT
+    this._avatars = SEAT_AVATARS
   }
 
   // ==================== 生命周期 ====================
@@ -220,6 +237,9 @@ export default class ScmjUI {
       confirmOk: q('[data-scmj-confirm-ok]'),
       confirmCancel: q('[data-scmj-confirm-cancel]'),
       settle: q('[data-scmj-settle]'),
+      countdown: q('[data-scmj-countdown]'),
+      lobby: q('[data-scmj-lobby]'),
+      entryOnline: q('[data-scmj-online]'),
       dice: q('[data-scmj-dice]'),
       dicePair: q('[data-scmj-dice-pair]'),
       diceMsg: q('[data-scmj-dice-msg]'),
@@ -267,6 +287,7 @@ export default class ScmjUI {
     }
     this.loadSettings()
     this.bindStatic()
+    this.bindOnline()
     // 中央面板与牌墙都是正方形，尺寸依赖中央区实际宽高 → 窗口尺寸变化时重算
     // （fitCenterBox 先定面板边长，fitWallRing 再按面板内的牌墙盒计算）
     this._onResize = () => {
@@ -483,6 +504,10 @@ export default class ScmjUI {
   settleRound(v) {
     if (this._roundSettled || !v.results) return
     this._roundSettled = true
+    if (this.isOnline) {
+      // 联机：以服务端 perSeat.delta 为唯一口径重算，不与 render 里的派生值重复累加
+      this.scores = [START_SCORE, START_SCORE, START_SCORE, START_SCORE]
+    }
     v.results.perSeat.forEach(p => {
       if (p.seat >= 0 && p.seat < 4) this.scores[p.seat] += p.delta
     })
@@ -491,7 +516,7 @@ export default class ScmjUI {
     this.bankruptSeats = this.scores
       .map((score, seat) => (score <= 0 ? seat : -1))
       .filter(seat => seat >= 0)
-    this.saveSession()
+    if (!this.isOnline) this.saveSession()
   }
 
   refreshEntry() {
@@ -613,11 +638,13 @@ export default class ScmjUI {
     if (this._els.entry) this._els.entry.hidden = false
     if (this._els.table) this._els.table.hidden = true
     if (this._els.settle) this._els.settle.hidden = true
+    if (this._els.lobby) this._els.lobby.hidden = true
   }
 
   showTable() {
     if (this._els.entry) this._els.entry.hidden = true
     if (this._els.table) this._els.table.hidden = false
+    if (this._els.lobby) this._els.lobby.hidden = true
     // 竖屏提示：开局后在原位显示 5s，再收起腾出高度给牌桌
     this.showPortraitTip()
   }
@@ -631,10 +658,179 @@ export default class ScmjUI {
     this._tipTimer = setTimeout(() => { tip.hidden = true }, 5000)
   }
 
+  // ==================== 联机（大厅 / 牌桌） ====================
+
+  /** 入口页「联机对战」：懒加载大厅模块，避免单机玩家多付一份解析成本 */
+  bindOnline() {
+    const btn = this._els.entryOnline
+    if (!btn) return
+    btn.addEventListener('click', () => {
+      this.sound('click')
+      this.openOnlineLobby()
+    })
+  }
+
+  async openOnlineLobby() {
+    if (!this.createOnlineGame) return this.toast('联机模块未加载，请刷新页面重试')
+    if (!this.lobby) {
+      try {
+        const { Lobby } = await import('./multiplayer/lobby.js')
+        this.lobby = new Lobby({ root: this.root, ui: this, config: this.onlineConfig })
+      } catch (e) {
+        console.error('[四川麻将] 联机大厅加载失败：', e)
+        return this.toast('联机大厅加载失败，请刷新重试')
+      }
+    }
+    if (this._els.entry) this._els.entry.hidden = true
+    if (this._els.table) this._els.table.hidden = true
+    if (this._els.settle) this._els.settle.hidden = true
+    if (this._els.lobby) this._els.lobby.hidden = false
+    this.lobby.open()
+  }
+
+  /**
+   * 等待室 → 牌桌。服务端推来的 PlayerView 已做隐私过滤与视角旋转
+   * （自己永远是 0 号位），所以牌桌渲染逻辑与单机完全一致。
+   */
+  startOnlineGame({ net, player, room, view }) {
+    if (this.game && this.game.dispose) this.game.dispose()
+    this.isOnline = true
+    this.net = net
+    this.onlinePlayer = player || null
+    this.onlineRoom = room || null
+    this.selectedIdx = null
+    this.swapPickIdxs = []
+    this._discLens = [0, 0, 0, 0]
+    // 联机一局定胜负：局号恒为 1，积分由服务端 delta 派生（见 render）
+    this.round = 1
+    this._roundSettled = false
+    this.bankruptSeats = []
+    this.scores = [START_SCORE, START_SCORE, START_SCORE, START_SCORE]
+    this.streakSeat = null
+    this.streakCount = 0
+    this.game = this.createOnlineGame({
+      net,
+      player,
+      view,
+      aiLevel: this.aiLevel,
+      onEvent: ev => this.onGameEvent(ev)
+    })
+    this.syncSession()
+    this.showTable()
+    this.enterFullscreen()
+    this.render()
+    this.sound('deal')
+    this.playOpening()
+    this.startCountdown()
+    // 保险：再要一帧，确保牌桌与服务端状态严格一致（重连/进桌共用）
+    if (net && net.resync) net.resync()
+  }
+
+  /** 联机退出：明确 LEAVE（永久退出，座位转 AI / 释放），回到大厅 */
+  onOnlineExit() {
+    this.confirm('退出房间？退出后座位会立即交给 AI 托管，无法再回到本局。', () => this.leaveOnline())
+  }
+
+  leaveOnline() {
+    this.stopCountdown()
+    if (this.game && this.game.dispose) this.game.dispose()
+    this.game = null
+    this.view = null
+    this.isOnline = false
+    this.hideOpening()
+    this.exitFullscreen()
+    if (this.net) this.net.leaveRoom()
+    this.net = null
+    this.onlinePlayer = null
+    this.onlineRoom = null
+    if (this.lobby) this.lobby.returnToList()
+    else this.showEntry()
+  }
+
+  /** 房间被销毁 / 令牌失效（由大厅回调）：中止牌局并回到大厅列表 */
+  onlineAborted(reason) {
+    if (!this.isOnline) return
+    this.stopCountdown()
+    if (this.game && this.game.dispose) this.game.dispose()
+    this.game = null
+    this.view = null
+    this.isOnline = false
+    this.net = null
+    this.onlinePlayer = null
+    this.onlineRoom = null
+    this.hideOpening()
+    this.exitFullscreen()
+    if (reason) this.toast(reason)
+    if (this.lobby) this.lobby.open()
+    else this.showEntry()
+  }
+
+  // ---------- 联机：座位元信息与倒计时 ----------
+
+  /** 联机座位名/头像/积分全部以服务端快照为准；本地模式保持原人设 */
+  applyOnlineMeta(v) {
+    const meta = v && v.meta
+    if (!(this.isOnline && meta && meta.online && Array.isArray(meta.seats))) {
+      this._labels = SEAT_LABELS
+      this._shorts = SEAT_SHORT
+      this._avatars = SEAT_AVATARS
+      return
+    }
+    const nameOf = s => s.displayName || (s.isAi ? 'AI' : '玩家')
+    this._labels = meta.seats.map((s, i) => (i === 0 ? '你' : nameOf(s)))
+    this._shorts = meta.seats.map((s, i) => {
+      if (i === 0) return '你'
+      const n = nameOf(s)
+      return n.length > 4 ? n.slice(0, 4) : n
+    })
+    this._avatars = meta.seats.map((s, i) => (i === 0 ? '' : s.isAi ? '🤖' : '🙂'))
+    // 联机是单局制：积分 = 起始分 + 服务端本局得失（含杠分与结算），不本地累加
+    // 结算帧的积分由 settleRound 按 perSeat.delta 定位，这里不覆盖
+    if (Array.isArray(v.players) && !v.results) {
+      this.scores = [0, 1, 2, 3].map(i => START_SCORE + ((v.players[i] && v.players[i].delta) || 0))
+    }
+  }
+
+  /** 服务端是本局计时权威：按 deadlineAt 显示剩余秒数（用 serverTime 校正时钟偏差） */
+  startCountdown() {
+    this.stopCountdown()
+    this._countdownTimer = setInterval(() => this.renderCountdown(), 250)
+    this.renderCountdown()
+  }
+
+  stopCountdown() {
+    if (this._countdownTimer) clearInterval(this._countdownTimer)
+    this._countdownTimer = null
+    if (this._els.countdown) {
+      this._els.countdown.textContent = ''
+      this._els.countdown.hidden = true
+    }
+  }
+
+  renderCountdown() {
+    const el = this._els.countdown
+    if (!el) return
+    const v = this.view
+    const meta = v && v.meta
+    if (!this.isOnline || !meta || !meta.deadlineAt || v.phase === 'finished' || !v.legal || !v.legal.length) {
+      el.textContent = ''
+      el.hidden = true
+      return
+    }
+    const left = Math.max(0, Math.round((meta.deadlineAt - (Date.now() - this._clockSkew)) / 1000))
+    el.hidden = false
+    el.textContent = '⏳ ' + left + 's'
+    el.classList.toggle('scmj-countdown-urgent', left <= 5)
+  }
+
   // ==================== 对局控制 ====================
 
   startGame(opts = {}) {
     if (this.game && this.game.dispose) this.game.dispose()
+    // 单机模式：撤掉联机状态与倒计时（从大厅回来时可能还留着）
+    this.stopCountdown()
+    this.isOnline = false
+    this.net = null
     this.saveSettings()
     this.selectedIdx = null
     this.swapPickIdxs = []
@@ -712,7 +908,7 @@ export default class ScmjUI {
       e.dicePair.appendChild(this.makeDie(dice[1]))
       e.diceMsg.textContent =
         mode === 'dealer'
-          ? '点数 ' + (dice[0] + dice[1]) + ' · ' + windOf(dealer, dealer) + '家坐庄（' + SEAT_SHORT[dealer] + '）'
+          ? '点数 ' + (dice[0] + dice[1]) + ' · ' + windOf(dealer, dealer) + '家坐庄（' + this._shorts[dealer] + '）'
           : '第 ' + round + ' 局 · 点数 ' + (dice[0] + dice[1]) + ' · 由 ' + windOf(startSeat, dealer) + '家方位起牌'
       this.sound('click')
       this._diceHideTimer = setTimeout(() => this.hideOpening(), this.settings.animation ? 1100 : 600)
@@ -800,7 +996,7 @@ export default class ScmjUI {
     // 碰/杠/胡结果浮层（只表现结果，不做长过场）
     if (ev && ev.seat != null && (ev.type === 'peng' || ev.type === 'gang' || ev.type === 'hu')) {
       const verb = ev.type === 'peng' ? '碰' : ev.type === 'gang' ? '杠' : '胡'
-      this.float((ev.seat === 0 ? '你' : SEAT_SHORT[ev.seat]) + ' · ' + verb + '！')
+      this.float((ev.seat === 0 ? '你' : this._shorts[ev.seat]) + ' · ' + verb + '！')
       // 杠特效：明杠 / 补杠「刮风」、暗杠「下雨」，约 1s
       if (ev.type === 'gang') this.gangFx(ev.data && ev.data.gangType)
     }
@@ -825,6 +1021,8 @@ export default class ScmjUI {
   }
 
   onExit() {
+    // 联机退出 = 明确 LEAVE（永久退出，座位交由 AI 托管或释放），与断线严格区分
+    if (this.isOnline) return this.onOnlineExit()
     this.confirm('退出本局？进度将自动保存，可从首页“继续上局”恢复。', () => {
       this.saveGame()
       if (this.game && this.game.dispose) this.game.dispose()
@@ -887,6 +1085,9 @@ export default class ScmjUI {
     const v = this.game.view()
     if (!v) return
     this.view = v
+    // 联机：座位名/头像/积分以服务端快照为准，并记录服务端时钟偏差供倒计时使用
+    if (v.meta && v.meta.serverTime) this._clockSkew = Date.now() - v.meta.serverTime
+    this.applyOnlineMeta(v)
     this.hideSeatPop() // 状态已变，详情弹层内容会过期，先收起
     if (v.results) this.settleRound(v) // 本局积分一次性入账（跨局累计），先入账再渲染
     this.renderSeats(v)
@@ -907,8 +1108,10 @@ export default class ScmjUI {
       this.refreshEntry()
     } else {
       this._els.settle.hidden = true
-      this.saveGame()
+      // 联机牌局状态由服务端持有，不写本地存档（避免「继续上局」误入联机残局）
+      if (!this.isOnline) this.saveGame()
     }
+    this.renderCountdown()
   }
 
   // ---------- 三个 AI 面板（上/左/右三个方向） ----------
@@ -922,14 +1125,14 @@ export default class ScmjUI {
       el.innerHTML = ''
       el.classList.toggle('scmj-seat-active', v.turn === s && v.phase !== 'finished')
       el.classList.toggle('scmj-seat-hu', !!p.hu)
-      el.title = '点击查看 ' + SEAT_LABELS[s] + ' 的详情'
+      el.title = '点击查看 ' + this._labels[s] + ' 的详情'
       // 头上角标：定缺后显示该家缺门（缺万/缺筒/缺条），未定时显示风位 + 桌面方位。
       // 缺门是公开信息，比「左/西」这类方位更实用。
       if (p.void != null) {
         const voidTag = document.createElement('div')
         voidTag.className = 'scmj-voidtag scmj-voidtag-' + p.void
         voidTag.textContent = '缺' + SUIT_NAMES[p.void]
-        voidTag.title = SEAT_SHORT[s] + ' 缺' + SUIT_NAMES[p.void] + '（整局公开）'
+        voidTag.title = this._shorts[s] + ' 缺' + SUIT_NAMES[p.void] + '（整局公开）'
         el.appendChild(voidTag)
       } else {
         const wind = document.createElement('div')
@@ -946,13 +1149,13 @@ export default class ScmjUI {
       }
       const av = document.createElement('div')
       av.className = 'scmj-avatar'
-      av.textContent = SEAT_AVATARS[s]
+      av.textContent = this._avatars[s]
       // 手牌数角标：常驻显示，一眼看出对手手里还剩几张、有没有在憋大牌
       const handBadge = document.createElement('span')
       handBadge.className = 'scmj-seat-hand'
       handBadge.textContent = p.handCount
       handBadge.title =
-        SEAT_SHORT[s] + ' 手牌 ' + p.handCount + ' 张' +
+        this._shorts[s] + ' 手牌 ' + p.handCount + ' 张' +
         (p.melds.length ? '，已副露 ' + p.melds.length + ' 组' : '') +
         '（张数越少越接近听牌）'
       av.appendChild(handBadge)
@@ -961,7 +1164,7 @@ export default class ScmjUI {
       meta.className = 'scmj-seat-meta'
       const name = document.createElement('div')
       name.className = 'scmj-seat-name'
-      name.textContent = SEAT_SHORT[s]
+      name.textContent = this._shorts[s]
       meta.appendChild(name)
       const score = document.createElement('div')
       score.className = 'scmj-seat-score'
@@ -973,7 +1176,7 @@ export default class ScmjUI {
         const streak = document.createElement('div')
         streak.className = 'scmj-streak' + (this.streakCount >= 3 ? ' scmj-streak-hot' : '')
         streak.textContent = (this.streakCount >= 3 ? '🔥' : '') + '连庄x' + this.streakCount
-        streak.title = SEAT_SHORT[s] + ' 已连续坐庄 ' + this.streakCount + ' 轮'
+        streak.title = this._shorts[s] + ' 已连续坐庄 ' + this.streakCount + ' 轮'
         el.appendChild(streak)
       }
       // 已胡/行动中用小角标提示（不再整排徽章占空间）
@@ -1020,7 +1223,7 @@ export default class ScmjUI {
     const title = pop.querySelector('[data-scmj-pop-title]')
     if (title) {
       title.textContent =
-        windOf(s, v.dealer) + '家 · ' + SEAT_LABELS[s] + (v.dealer === s ? '（庄家）' : '')
+        windOf(s, v.dealer) + '家 · ' + this._labels[s] + (v.dealer === s ? '（庄家）' : '')
     }
     if (body) {
       const rows = []
@@ -1078,13 +1281,13 @@ export default class ScmjUI {
       if (v.dealer === s) cls += ' scmj-wind-dealer'
       w.className = cls
       w.title =
-        windOf(s, v.dealer) + '家 · ' + SEAT_LABELS[s] + (v.dealer === s ? ' · 庄家' : '')
+        windOf(s, v.dealer) + '家 · ' + this._labels[s] + (v.dealer === s ? ' · 庄家' : '')
       const ch = document.createElement('span')
       ch.textContent = windOf(s, v.dealer)
       w.appendChild(ch)
       const sub = document.createElement('span')
       sub.className = 'scmj-wind-seat'
-      sub.textContent = SEAT_SHORT[s]
+      sub.textContent = this._shorts[s]
       w.appendChild(sub)
       el.appendChild(w)
     })
@@ -1095,7 +1298,9 @@ export default class ScmjUI {
     this.fitCenterBox() // 中央面板恒为正方形，尺寸依赖中央区实际宽高
     this._els.wall.textContent = v.wallCount
     if (this._els.roundChip) {
-      this._els.roundChip.textContent = '第 ' + this.round + ' 局 · 你 ' + this.scores[0] + ' 分'
+      this._els.roundChip.textContent = this.isOnline
+        ? '房间 ' + ((this.onlineRoom && this.onlineRoom.roomCode) || '') + ' · 你 ' + this.scores[0] + ' 分'
+        : '第 ' + this.round + ' 局 · 你 ' + this.scores[0] + ' 分'
     }
     this.renderCompass(v)
     let turnText
@@ -1103,16 +1308,16 @@ export default class ScmjUI {
       turnText = '本局结束'
     } else {
       turnText =
-        '行动：' + windOf(v.turn, v.dealer) + '家 · ' + SEAT_LABELS[v.turn] +
+        '行动：' + windOf(v.turn, v.dealer) + '家 · ' + this._labels[v.turn] +
         '（' + (PHASE_NAMES[v.phase] || v.phase) + '）'
       if (v.phase === 'respond' && v.waiting && v.waiting.length) {
-        turnText += ' · 等待 ' + v.waiting.map(s => SEAT_SHORT[s]).join('、') + ' 表态'
+        turnText += ' · 等待 ' + v.waiting.map(s => this._shorts[s]).join('、') + ' 表态'
       }
     }
     this._els.turn.textContent = turnText
     const latest = this._els.latest
     if (v.pendingDiscard) {
-      latest.textContent = '最新出牌：' + SEAT_SHORT[v.pendingDiscard.seat] + ' · ' + tileName(v.pendingDiscard.tile)
+      latest.textContent = '最新出牌：' + this._shorts[v.pendingDiscard.seat] + ' · ' + tileName(v.pendingDiscard.tile)
     } else if (v.my && v.my.drawnTile != null) {
       latest.textContent = '你摸到了「' + tileName(v.my.drawnTile) + '」'
     } else {
@@ -1541,7 +1746,7 @@ export default class ScmjUI {
       }
     }
     if (waitingNearer) {
-      mkInfo('等待 ' + awaitingSeats.map(s2 => SEAT_SHORT[s2]).join('、') + ' 叫牌…')
+      mkInfo('等待 ' + awaitingSeats.map(s2 => this._shorts[s2]).join('、') + ' 叫牌…')
     }
     if (!v.legal.length && v.phase !== 'finished') {
       if (v.my.hu) {
@@ -1689,7 +1894,7 @@ export default class ScmjUI {
       const bank = document.createElement('div')
       bank.className = 'scmj-settle-bankrupt'
       const who = this.bankruptSeats
-        .map(seat => SEAT_LABELS[seat] + '（积分 ' + this.scores[seat] + '）')
+        .map(seat => this._labels[seat] + '（积分 ' + this.scores[seat] + '）')
         .join('、')
       bank.innerHTML =
         '<div class="scmj-settle-bankrupt-title">已破产</div>' +
@@ -1708,7 +1913,7 @@ export default class ScmjUI {
         const tag = p.score <= 0 ? '<em class="scmj-bankrupt-tag">已破产</em>' : ''
         row.innerHTML =
           '<span class="scmj-rank-no">' + (i + 1) + '</span>' +
-          '<span class="scmj-rank-name">' + SEAT_LABELS[p.seat] + tag + '</span>' +
+          '<span class="scmj-rank-name">' + this._labels[p.seat] + tag + '</span>' +
           '<span class="scmj-rank-delta ' + cls + '">' + p.score + ' 分</span>'
         secFinalRank.body.appendChild(row)
       })
@@ -1723,7 +1928,7 @@ export default class ScmjUI {
       const cls = p.delta > 0 ? 'pos' : p.delta < 0 ? 'neg' : 'zero'
       row.innerHTML =
         '<span class="scmj-rank-no">' + (i + 1) + '</span>' +
-        '<span class="scmj-rank-name">' + SEAT_LABELS[p.seat] + '</span>' +
+        '<span class="scmj-rank-name">' + this._labels[p.seat] + '</span>' +
         '<span class="scmj-rank-delta ' + cls + '">' + fmtDelta(p.delta) + '</span>' +
         '<span class="scmj-rank-total">积分 ' + this.scores[p.seat] + '</span>'
       secRank.body.appendChild(row)
@@ -1763,11 +1968,11 @@ export default class ScmjUI {
       r.huOrder.forEach((hh, i) => {
         const row = document.createElement('div')
         row.className = 'scmj-settle-row'
-        const fromText = hh.from != null ? '（放炮：' + SEAT_LABELS[hh.from] + '）' : ''
+        const fromText = hh.from != null ? '（放炮：' + this._labels[hh.from] + '）' : ''
         // 天胡（庄家起手 14 张成胡）没有单独的胡牌张，不展示牌面
         const winText = hh.winTile != null ? '胡「' + tileName(hh.winTile) + '」' : '天胡（起手成胡）'
         row.textContent =
-          '第 ' + (i + 1) + ' 胡 · ' + SEAT_LABELS[hh.seat] + ' · ' + (HOW_NAMES[hh.how] || hh.how) +
+          '第 ' + (i + 1) + ' 胡 · ' + this._labels[hh.seat] + ' · ' + (HOW_NAMES[hh.how] || hh.how) +
           fromText + ' · ' + winText + ' · ' + (hh.names || []).join(' + ') +
           ' · ' + hh.fan + ' 番 · ' + fmtDelta(hh.scoreDelta) + ' 分'
         secHu.body.appendChild(row)
@@ -1786,7 +1991,7 @@ export default class ScmjUI {
         const row = document.createElement('div')
         row.className = 'scmj-settle-row scmj-ledger-row'
         row.innerHTML =
-          '<span class="scmj-ledger-who">' + SEAT_LABELS[l.from] + ' → ' + SEAT_LABELS[l.to] + '</span>' +
+          '<span class="scmj-ledger-who">' + this._labels[l.from] + ' → ' + this._labels[l.to] + '</span>' +
           '<span class="scmj-ledger-reason">' + (REASON_NAMES[l.reason] || l.reason) + '</span>' +
           '<span class="scmj-ledger-amt">' + l.amount + ' 分</span>'
         secLedger.body.appendChild(row)
@@ -1805,7 +2010,7 @@ export default class ScmjUI {
         const row = document.createElement('div')
         row.className = 'scmj-settle-row'
         row.textContent =
-          SEAT_LABELS[c.seat] + ' 未听牌，退还 ' + c.count + ' 笔杠钱共 ' + c.amount + ' 分'
+          this._labels[c.seat] + ' 未听牌，退还 ' + c.count + ' 笔杠钱共 ' + c.amount + ' 分'
         secRefund.body.appendChild(row)
       })
       detail.appendChild(secRefund.el)
@@ -1817,7 +2022,7 @@ export default class ScmjUI {
         const row = document.createElement('div')
         row.className = 'scmj-settle-row'
         row.textContent =
-          (c.type === 'huazhu' ? '查花猪' : '查大叫') + ' · ' + SEAT_LABELS[c.seat] +
+          (c.type === 'huazhu' ? '查花猪' : '查大叫') + ' · ' + this._labels[c.seat] +
           (c.fan ? '（' + (c.names || []).join(' + ') + ' ' + c.fan + ' 番）' : '') +
           ' 共赔付 ' + c.amount + ' 分'
         secCha.body.appendChild(row)
@@ -1831,7 +2036,7 @@ export default class ScmjUI {
         const row = document.createElement('div')
         row.className = 'scmj-settle-row'
         row.textContent =
-          SEAT_LABELS[c.seat] + ' 手上 ' + c.count + ' 只幺鸡，每家给 ' + c.amount +
+          this._labels[c.seat] + ' 手上 ' + c.count + ' 只幺鸡，每家给 ' + c.amount +
           ' 分，共收 ' + c.total + ' 分'
         secXi.body.appendChild(row)
       })
@@ -1844,13 +2049,14 @@ export default class ScmjUI {
     const again = document.createElement('button')
     again.type = 'button'
     again.className = 'scmj-btn scmj-btn-primary'
-    again.textContent = '再来一局'
-    if (this.bankruptSeats.length) {
+    // 联机一局定胜负：结算后没有「再来一局」，退房回到大厅列表（座位随之释放/AI 托管）
+    again.textContent = this.isOnline ? '返回房间列表' : '再来一局'
+    if (!this.isOnline && this.bankruptSeats.length) {
       // 破产即结束：本局打完不再开下一局
       again.disabled = true
       again.textContent = '已破产 · 无法再开一局'
     }
-    again.addEventListener('click', () => this.onRestart())
+    again.addEventListener('click', () => (this.isOnline ? this.leaveOnline() : this.onRestart()))
     const home = document.createElement('button')
     home.type = 'button'
     home.className = 'scmj-btn'
@@ -1897,7 +2103,7 @@ export default class ScmjUI {
         ' · ' + ps.hu.fan + ' 番'
       : ps.ting ? '听牌 · 未胡' : '未听牌'
     head.innerHTML =
-      '<span class="scmj-final-name">' + SEAT_LABELS[ps.seat] + '</span>' +
+      '<span class="scmj-final-name">' + this._labels[ps.seat] + '</span>' +
       '<span class="scmj-final-status">' + status + '</span>' +
       (tags.length ? '<span class="scmj-final-tags">' + tags.join(' · ') + '</span>' : '')
     row.appendChild(head)

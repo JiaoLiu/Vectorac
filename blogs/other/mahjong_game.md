@@ -19,15 +19,16 @@ meta:
     content: 四川麻将
 ---
 
-::: warning 四川麻将 · 血战到底（人机版）
+::: warning 四川麻将 · 血战到底（人机 / 联机好友房）
 四人血战到底：换三张、定缺、碰杠胡，三家 AI 陪打；胡了不算完，血战到最后三人胡牌或流局为止！
+想和朋友打？点「联机对战 · 好友房」创建房间（房号发给好友即可）或坐下空位，空位可由房主补 AI。
 :::
 
 <div id="scmjGame" class="scmj-root">
 <div class="scmj-entry" data-scmj-entry>
 <div class="scmj-entry-card">
 <div class="scmj-entry-title">🀄 四川麻将 · 血战到底</div>
-<div class="scmj-entry-sub">换三张 · 定缺 · 碰杠胡 · 血战到底 · 困难 AI 陪打</div>
+<div class="scmj-entry-sub">换三张 · 定缺 · 碰杠胡 · 血战到底 · 困难 AI 陪打 · 支持联机好友房</div>
 <div class="scmj-entry-opts">
 <label class="scmj-entry-opt">
 <input type="checkbox" data-scmj-entry-swap checked /> 换三张
@@ -49,16 +50,21 @@ meta:
 </div>
 <div class="scmj-entry-btns">
 <button type="button" class="scmj-btn scmj-btn-primary" data-scmj-start>开始游戏</button>
+<button type="button" class="scmj-btn scmj-btn-online" data-scmj-online>🌐 联机对战 · 好友房</button>
 <button type="button" class="scmj-btn" data-scmj-continue disabled>继续上局</button>
 <button type="button" class="scmj-btn" data-scmj-rules>规则说明</button>
 </div>
 <div class="scmj-entry-tip">每人 100 分起算，跨局累计；首局掷骰定庄，之后先胡者坐庄（一炮多响时点炮者坐庄），连庄 3 轮挂 🔥。</div>
 </div>
 </div>
+<div class="scmj-lobby" data-scmj-lobby hidden>
+<div class="scmj-lobby-shell" data-scmj-lobby-shell></div>
+</div>
 <div class="scmj-table" data-scmj-table hidden>
 <div class="scmj-topbar">
 <span class="scmj-topbar-title">🀄 四川麻将 · 血战到底</span>
 <span class="scmj-round-chip" data-scmj-round></span>
+<span class="scmj-countdown" data-scmj-countdown hidden></span>
 <div class="scmj-topbar-btns">
 <button type="button" class="scmj-btn scmj-btn-ghost" data-scmj-btn-rules>规则</button>
 <button type="button" class="scmj-btn scmj-btn-ghost" data-scmj-btn-settings>设置</button>
@@ -186,6 +192,7 @@ meta:
 <div class="scmj-intro">
 <h3>游戏介绍</h3>
 <p>四川麻将（血战到底）人机版：四人对局，你坐下方，三家 AI 分别在右、上、左。换三张、定缺后开始摸打，碰、杠、胡全凭手气与取舍；有人胡牌后离场观战，牌桌继续，直到三人胡牌或流局结算（含查花猪 / 查大叫 / 退杠）；结算详情里会把四家终局牌面（手牌 + 副露 + 胡牌那张）整组摆出来，番型（七对 / 清一色等）、杠了几组、谁听牌一眼可核对。</p>
+<p>联机好友房：点入口的「联机对战 · 好友房」进入房间列表，没有房间就「创建房间」，有房间直接「坐下」；把房号或邀请链接发给朋友即可同房对局。房间最多 4 座，空位由房主添加 AI 补齐后开始。规则完全由服务端裁决，掉线自动重连并临时由 AI 托管，只有点「退出」才会真正离开座位。每位玩家只能看到自己的手牌，看不到别人的牌。</p>
 <p>进游戏每人 100 积分，本局输赢在结算时一次性累计到总积分；首局掷骰定庄（庄家起手 14 张先打），之后每局掷骰决定摸排起点，并由上局最先胡牌者坐庄（一炮多响时点炮者坐庄）；同一玩家连庄 2 轮起显示「连庄 xN」，满 3 轮挂 🔥。封顶番数在进游戏前用 − / ＋ 调整（2~6 番）。番型：平胡 0 番（1 倍）、对对胡 1 番、七对 2 番、龙七对 3 番、金钩钓 3 番（四副露碰 / 杠到底、手里单吊将，比对对胡高一档）；清一色固定 +2 番。自摸、海底（捞月 / 炮）、杠上花（杠后补牌自摸）与杠上炮（杠后补牌打出的牌被胡）都会额外加番，补杠被抢（抢杠胡）也加 1 番——被抢则杠不成立、杠钱一分不收，被抢的那张牌算你点炮，用幺鸡补的那张留在副露里顶替被抢走的真牌（只能等摸到真牌再杠了；这只幺鸡结算喜钱时仍算你的）；另外每有一组 4 张相同的牌（明杠 / 暗杠 / 补杠，或碰后手里留一张、手里 4 张没杠）再加 1 番，叫做「根」——不杠就拿不到杠钱，但根番照算。杠钱是预收：流局时没听牌的人不仅赔叫，还要把本局收到的杠钱全部退回去，只有胡走了（三人胡满结束）才真收得进。牌桌中央的四方牌背就是剩余牌墙，每摸一张就少一张。</p>
 <h3>操作方式</h3>
 <ul>
@@ -196,6 +203,7 @@ meta:
 <li>对手头像右下角的数字是他的手牌张数（越少越接近听牌）；他的碰、杠按整组牌面 + 标签显示，牌型一眼可辨</li>
 <li>点击任意对手头像，可查看其积分、手牌数、缺门、副露与本局得失</li>
 <li>电脑端鼠标点击，移动端触控操作，所有按钮均已做触控友好处理</li>
+<li>联机对局：房主（头像旁 👑）可改规则、加 / 移除 AI、开始游戏；轮到你的操作会在顶栏显示剩余秒数，超时由 AI 代打一手，不会卡住牌局</li>
 </ul>
 </div>
 
@@ -349,7 +357,129 @@ meta:
 #scmjGame .scmj-entry-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 #scmjGame .scmj-entry-btns .scmj-btn { width: 100%; }
 #scmjGame .scmj-entry-btns .scmj-btn:first-child { grid-column: 1 / -1; }
+/* 联机入口：与单机「开始游戏」同为整行主按钮，但用描金深底区分两种玩法 */
+#scmjGame .scmj-entry-btns .scmj-btn-online {
+  grid-column: 1 / -1;
+  background: rgba(13, 59, 32, 0.65);
+  border-color: #d4af37;
+  color: #ffd968;
+}
 #scmjGame .scmj-entry-tip { margin-top: 10px; font-size: 11.5px; color: #9fbfa8; }
+
+/* ============ 联机倒计时（服务端权威 deadline） ============ */
+#scmjGame .scmj-countdown {
+  flex: 0 1 auto;
+  font-size: 12.5px;
+  font-weight: 800;
+  color: #ffd968;
+  background: rgba(212, 175, 55, 0.16);
+  border: 1px solid rgba(212, 175, 55, 0.45);
+  border-radius: 10px;
+  padding: 3px 10px;
+  white-space: nowrap;
+}
+#scmjGame .scmj-countdown-urgent {
+  color: #ffb4a2;
+  border-color: #e07a5f;
+  background: rgba(224, 122, 95, 0.22);
+}
+
+/* ============ 联机大厅 / 等待室 ============ */
+#scmjGame .scmj-lobby { padding: 4px 0; }
+#scmjGame .scmj-lobby-shell { width: min(760px, 100%); margin: 0 auto; }
+#scmjGame .scmj-lb {
+  background: rgba(9, 40, 21, 0.55);
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  border-radius: 16px;
+  padding: 14px 16px;
+  color: #f3ead8;
+}
+#scmjGame .scmj-lb-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; flex-wrap: wrap; margin-bottom: 12px;
+}
+#scmjGame .scmj-lb-title { font-size: 18px; font-weight: 800; color: #ffd968; }
+#scmjGame .scmj-lb-code { color: #ffd968; letter-spacing: 2px; }
+#scmjGame .scmj-lb-banner {
+  margin-bottom: 10px; padding: 7px 10px; border-radius: 10px; font-size: 13px;
+  background: rgba(212, 175, 55, 0.16); border: 1px solid rgba(212, 175, 55, 0.5); color: #ffd968;
+}
+#scmjGame .scmj-lb-banner-bad {
+  background: rgba(224, 122, 95, 0.18); border-color: #e07a5f; color: #ffb4a2;
+}
+#scmjGame .scmj-lb-resume {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  flex-wrap: wrap; margin-bottom: 10px; padding: 8px 10px; border-radius: 10px; font-size: 13px;
+  background: rgba(13, 59, 32, 0.7); border: 1px dashed #3f7a54;
+}
+#scmjGame .scmj-lb-name,
+#scmjGame .scmj-lb-join { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+#scmjGame .scmj-lb-name > span { flex: none; font-size: 13px; color: #cfe3d2; }
+/* 输入框：桌面/移动端都能选中文字（容器整体 user-select: none，这里必须放开） */
+#scmjGame .scmj-lb input {
+  flex: 1 1 auto; min-width: 0; min-height: 44px; box-sizing: border-box;
+  padding: 8px 12px; border-radius: 12px; font: inherit; font-size: 15px;
+  color: #f3ead8; background: rgba(9, 40, 21, 0.7); border: 1px solid #3f7a54;
+  -webkit-user-select: text; user-select: text;
+}
+#scmjGame .scmj-lb input::placeholder { color: #7f9c88; }
+#scmjGame .scmj-lb-join input { flex: 0 1 200px; text-transform: uppercase; letter-spacing: 3px; }
+#scmjGame .scmj-lb-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+#scmjGame .scmj-lb-meta { font-size: 12px; color: #9fbfa8; margin-bottom: 8px; }
+#scmjGame .scmj-lb-warn { color: #ffb4a2; }
+#scmjGame .scmj-lb-rooms {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px;
+}
+#scmjGame .scmj-lb-empty { padding: 18px; text-align: center; color: #9fbfa8; font-size: 13px; }
+#scmjGame .scmj-lb-room {
+  background: rgba(13, 59, 32, 0.6); border: 1px solid #3f7a54; border-radius: 12px; padding: 10px;
+}
+#scmjGame .scmj-lb-room-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+#scmjGame .scmj-lb-status { font-size: 11.5px; padding: 2px 8px; border-radius: 8px; border: 1px solid; }
+#scmjGame .scmj-lb-status-WAITING { color: #9ee6b4; border-color: #3f7a54; background: rgba(63, 122, 84, 0.25); }
+#scmjGame .scmj-lb-status-PLAYING { color: #ffd968; border-color: #b8942a; background: rgba(212, 175, 55, 0.16); }
+#scmjGame .scmj-lb-status-FINISHED { color: #c9b98a; border-color: #7a6f52; background: rgba(201, 185, 138, 0.12); }
+#scmjGame .scmj-lb-count { font-size: 11.5px; color: #9fbfa8; margin-left: auto; }
+#scmjGame .scmj-lb-seats,
+#scmjGame .scmj-lb-waitseats { display: flex; flex-wrap: wrap; gap: 6px; }
+#scmjGame .scmj-lb-waitseats { margin-bottom: 12px; }
+#scmjGame .scmj-lb-seat {
+  display: flex; align-items: center; gap: 6px; flex: 1 1 calc(50% - 6px); min-width: 130px;
+  padding: 6px 8px; border-radius: 10px; font-size: 13px;
+  border: 1px solid #3f7a54; background: rgba(9, 40, 21, 0.5);
+}
+#scmjGame .scmj-lb-seat-empty { color: #7f9c88; border-style: dashed; }
+#scmjGame .scmj-lb-seat-ai { color: #cfe3d2; border-color: #4d7c8a; }
+#scmjGame .scmj-lb-seat-offline { color: #ffb4a2; border-color: #e07a5f; }
+#scmjGame .scmj-lb-seat-human { color: #f3ead8; }
+#scmjGame .scmj-lb-seatname { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#scmjGame .scmj-lb-seatpos { font-size: 11px; color: #9fbfa8; }
+#scmjGame .scmj-lb-crown { font-style: normal; }
+#scmjGame .scmj-lb-me { font-size: 11px; color: #14532d; background: #ffd968; border-radius: 6px; padding: 0 5px; }
+#scmjGame .scmj-lb-seatbtn,
+#scmjGame .scmj-lb-step {
+  appearance: none; -webkit-appearance: none; font: inherit; cursor: pointer;
+  min-height: 28px; padding: 2px 8px; border-radius: 8px; font-size: 12px;
+  color: #14532d; background: rgba(247, 241, 227, 0.92); border: 1px solid #c9b98a;
+}
+#scmjGame .scmj-lb-step { min-width: 30px; padding: 0 6px; font-weight: 800; }
+#scmjGame .scmj-lb-seatbtn:disabled,
+#scmjGame .scmj-lb-step:disabled { opacity: 0.45; cursor: default; }
+#scmjGame .scmj-lb-room-btns { margin-top: 8px; }
+#scmjGame .scmj-lb-room-btns .scmj-btn { width: 100%; min-height: 38px; }
+#scmjGame .scmj-lb-invite {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin-bottom: 10px; font-size: 13px; color: #cfe3d2;
+}
+#scmjGame .scmj-lb-rules {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  margin-bottom: 12px; font-size: 13px; color: #cfe3d2;
+}
+#scmjGame .scmj-lb-rule { display: inline-flex; align-items: center; gap: 6px; }
+#scmjGame .scmj-lb-rules-ro { opacity: 0.75; }
+#scmjGame .scmj-lb-foot { display: flex; justify-content: center; }
+#scmjGame .scmj-lb-foot .scmj-btn { width: 100%; }
+#scmjGame .scmj-lb-tip { text-align: center; color: #9fbfa8; font-size: 13px; padding: 10px; }
 
 /* ============ 牌桌顶栏 ============ */
 #scmjGame .scmj-topbar {
@@ -1761,12 +1891,15 @@ export default {
       }
       try {
         // 动态 import：UI 模块与真实规则引擎适配器，避免 SSR 执行 DOM 代码
-        const [{ default: ScmjUI }, { createLocalGame }] = await Promise.all([
+        // createOnlineGame 一并注入，但联机大厅/网络客户端仍在点击「联机对战」
+        // 时才由 ui.js 懒加载（单机玩家不多付解析成本）
+        const [{ default: ScmjUI }, { createLocalGame }, { createOnlineGame }] = await Promise.all([
           import('../../.vuepress/components/mahjong/ui'),
-          import('../../.vuepress/components/mahjong/adapter')
+          import('../../.vuepress/components/mahjong/adapter'),
+          import('../../.vuepress/components/mahjong/multiplayer/remote-game')
         ])
         if (this._isDestroyed || !root.isConnected) return
-        this._scmj = new ScmjUI(root, { createLocalGame, router: this.$router })
+        this._scmj = new ScmjUI(root, { createLocalGame, createOnlineGame, router: this.$router })
         this._scmj.mount()
         window.__scmjUI = this._scmj
       } catch (err) {
