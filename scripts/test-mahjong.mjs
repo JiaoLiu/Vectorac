@@ -571,6 +571,38 @@ ok('未打缺时能暗杠（自己回合）：定缺只禁「胡」和「打非�
   conservation(r.state, '未打缺暗杠')
 })
 
+ok('幺鸡局：定缺条时幺鸡不在可打集合（赖子不算缺门牌），打完真条后恢复可打', () => {
+  const s = fastForward(11, undefined, { yaojiEnabled: true })
+  setupTable(s, {
+    turn: 0,
+    drawnTile: W(1),
+    specs: {
+      0: {
+        // 缺条：手里有真条 I2/I5，也有幺鸡 I1（赖子，豁免定缺）
+        tiles: [W(1), W(2), W(3), W(4), T(2), T(3), T(4), I(1), I(2), I(5), T(6), T(7), T(8)],
+        void: 'tiao'
+      }
+    }
+  })
+  assert.equal(I(1), YAOJI_TILE)
+  const disc = legalActions(s, 0).find(o => o.type === 'discard')
+  assert.ok(disc.tiles.includes(I(2)) && disc.tiles.includes(I(5)), '真条是缺门牌，可打')
+  assert.ok(!disc.tiles.includes(I(1)), '幺鸡（赖子）不该被点亮成可打的缺门牌')
+  // 校验与可打集合同口径：打幺鸡被拒，打真条放行
+  const bad = dispatch(s, {
+    type: 'discard', seat: 0, tile: I(1),
+    actionId: 'yj-bad', stateVersion: s.version
+  })
+  assert.ok(!bad.ok, '打缺期间把幺鸡当缺门牌打掉应被拒')
+  assert.equal(bad.error, 'illegal')
+  const r = dispatch(s, {
+    type: 'discard', seat: 0, tile: I(5),
+    actionId: 'yj-ok', stateVersion: s.version
+  })
+  assert.ok(r.ok, `打真条应放行: ${r.error}`)
+  conservation(r.state, '幺鸡豁免定缺')
+})
+
 // ============================================================
 // 4. 碰 / 明杠 / 暗杠 / 补杠
 // ============================================================

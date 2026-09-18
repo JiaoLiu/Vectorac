@@ -1237,6 +1237,34 @@ async function suiteLegalOptions() {
       )
     }
   })
+
+  await test('幺鸡局：定缺条时幺鸡不算缺门牌，服务端必须拒绝把幺鸡当缺门牌打掉（回归）', () => {
+    const s = createGame({ seed: 1, rules: { yaojiEnabled: true, swapThree: false } })
+    s.phase = 'discard'
+    s.turn = 0
+    s.mustDiscard = false
+    s.drawnTile = mj('wan', 1)
+    const p = s.players[0]
+    p.void = 'tiao' // 缺条：真条要打，幺鸡（赖子）豁免
+    p.melds = []
+    p.hand = [
+      mj('wan', 1), mj('wan', 2), mj('wan', 3), mj('wan', 4),
+      mj('tong', 2), mj('tong', 3), mj('tong', 4),
+      mj('tiao', 1), mj('tiao', 2), mj('tiao', 5),
+      mj('tong', 6), mj('tong', 7), mj('tong', 8)
+    ]
+
+    const legal = legalActions(s, 0)
+    const disc = legal.find(o => o.type === 'discard')
+    assert(disc, '应有 discard 选项')
+    assert(disc.tiles.indexOf(mj('tiao', 2)) >= 0 && disc.tiles.indexOf(mj('tiao', 5)) >= 0,
+      '真条是缺门牌，应可打')
+    assert(disc.tiles.indexOf(mj('tiao', 1)) < 0, '幺鸡（赖子）不该出现在可打的缺门牌里')
+    assert(!matchesLegalOption(legal, { type: 'discard', tile: mj('tiao', 1) }),
+      '服务端必须拒绝把幺鸡当缺门牌打掉')
+    assert(matchesLegalOption(legal, { type: 'discard', tile: mj('tiao', 5) }),
+      '服务端必须认可打真条')
+  })
 }
 
 // ============================================================

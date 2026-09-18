@@ -358,11 +358,13 @@ export function legalActions(state, seat) {
     // 杠/碰之后照旧只能打缺门牌，打缺义务不变。
     const voiding = hasVoidTiles(full, p.void, { yaoji })
     const out = []
-    // 出牌：有缺门牌时只能打缺门，否则全部可打
+    // 出牌：有缺门牌时只能打缺门，否则全部可打。
+    // 幺鸡（赖子）豁免定缺、不算缺门牌（hasVoidTiles 同样跳过它，UI 也只标「赖」不标「缺」），
+    // 所以缺门恰好是条时不能把幺鸡当成「可打的缺门牌」列出来——那是玩家的万能张，不该被点亮。
     out.push({
       type: ACTION.DISCARD,
       tiles: voiding
-        ? [...new Set(full.filter(t => tileSuit(t) === p.void))]
+        ? [...new Set(full.filter(t => tileSuit(t) === p.void && !(yaoji && t === YAOJI_TILE)))]
         : [...new Set(full)]
     })
     if (!s.mustDiscard) {
@@ -680,8 +682,13 @@ function doDiscard(s, a) {
   const p = s.players[a.seat]
   const full = fullHandOf(s, a.seat)
   if (!full.includes(a.tile)) return { error: ERR.ILLEGAL }
-  // 定缺约束：有缺门牌时必须先打缺门（幺鸡局幺鸡豁免，不算缺门牌）
-  if (hasVoidTiles(full, p.void, { yaoji: yaojiOn(s) }) && tileSuit(a.tile) !== p.void) {
+  // 定缺约束：有缺门牌时必须先打缺门（幺鸡局幺鸡豁免、不算缺门牌，缺门是条时也不许
+  // 把幺鸡当缺门牌打掉——与 legalActions 的可打集合保持一致，否则客户端与校验会分叉）
+  const yaoji = yaojiOn(s)
+  if (
+    hasVoidTiles(full, p.void, { yaoji }) &&
+    (tileSuit(a.tile) !== p.void || (yaoji && a.tile === YAOJI_TILE))
+  ) {
     return { error: ERR.ILLEGAL }
   }
   // 消耗：drawnTile 并回手牌再移除（统一处理）
