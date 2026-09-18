@@ -28,6 +28,17 @@ const STATUS_TEXT = {
   FINISHED: '已结束'
 }
 
+// 房规复选（建房表单 new-* / 等待室 rule-*）：checkbox 也是 INPUT，
+// 必须在「其余输入框不绑点击」之前处理，否则 change 绑不上、勾选毫无反应。
+const RULE_CHECKS = {
+  'rule-swap': 'swapThree',
+  'rule-yaoji': 'yaojiEnabled',
+  'rule-assist': 'assist',
+  'new-swap': 'swapThree',
+  'new-yaoji': 'yaojiEnabled',
+  'new-assist': 'assist'
+}
+
 function esc(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({
     '&': '&amp;',
@@ -354,11 +365,11 @@ export class Lobby {
       this.rooms = (data && data.rooms) || []
       this.maxRooms = (data && data.maxRooms) || 20
       this.activeRooms = (data && data.activeRooms) || this.rooms.length
-      if (this.view === 'list') this._renderList()
+      if (this.view === 'list') this._paintRooms()
     } catch (e) {
       if (this.view === 'list') {
         this.notice = errorText(e.errorCode, e.message)
-        this._renderList()
+        this._paintRooms()
       }
     }
   }
@@ -367,9 +378,6 @@ export class Lobby {
     if (!this.shell) return
     this.view = 'list'
     const cred = loadCredential()
-    const cards = this.rooms.length
-      ? this.rooms.map(r => this._roomCard(r)).join('')
-      : '<div class="scmj-lb-empty">还没有房间，创建一个等朋友来吧～</div>'
     const resume = cred
       ? '<div class="scmj-lb-resume">检测到未退出的房间 <b>' + esc(cred.roomCode || '') + '</b>' +
         '<button type="button" class="scmj-btn scmj-btn-primary" data-lb="resume">回到房间</button></div>'
@@ -395,15 +403,45 @@ export class Lobby {
       '<input type="text" maxlength="6" data-lb="code" placeholder="输入 6 位房号" value="' + esc(this.pendingCode || '') + '" />' +
       '<button type="button" class="scmj-btn" data-lb="join">加入</button>' +
       '</div>' +
-      '<div class="scmj-lb-meta">房间 ' + this.rooms.length + ' / ' + (this.maxRooms || 20) + ' · 点击「坐下」进入等待室' +
-      (this.notice ? ' · <span class="scmj-lb-warn">' + esc(this.notice) + '</span>' : '') +
-      '</div>' +
-      '<div class="scmj-lb-rooms">' + cards + '</div>' +
+      '<div class="scmj-lb-meta" data-lb-meta></div>' +
+      '<div class="scmj-lb-rooms" data-lb-rooms></div>' +
       '</div>'
-    this.notice = ''
+    // 骨架重建后动态部分的缓存作废，强制重绘一次
+    this._roomsHtml = null
+    this._metaHtml = null
     this._bindShell()
+    this._paintRooms()
     this.pendingCode = ''
     this._maybeAutoJoin()
+  }
+
+  /**
+   * 只重绘会变化的动态部分（房间卡片 + 数量提示），骨架不动。
+   * 大厅列表每 4 秒轮询一次，若整块 innerHTML 重建，昵称/房号输入框会被销毁
+   * —— 手机键盘会跟着收起（输入昵称时一直「被弹回去」），已输入的房号也会被清空。
+   * 内容没变时连 DOM 都不碰，避免列表无谓闪烁。
+   */
+  _paintRooms() {
+    const box = this.shell && this.shell.querySelector('[data-lb-rooms]')
+    if (!box) return this._renderList() // 骨架还没建（首次进大厅）：整块渲染一次
+    const html = this.rooms.length
+      ? this.rooms.map(r => this._roomCard(r)).join('')
+      : '<div class="scmj-lb-empty">还没有房间，创建一个等朋友来吧～</div>'
+    if (html !== this._roomsHtml) {
+      box.innerHTML = html
+      this._roomsHtml = html
+      this._bindActions(box) // 卡片是新建的节点，点击要重新绑定
+    }
+    const meta = this.shell.querySelector('[data-lb-meta]')
+    if (meta) {
+      const text = '房间 ' + this.rooms.length + ' / ' + (this.maxRooms || 20) + ' · 点击「坐下」进入等待室' +
+        (this.notice ? ' · <span class="scmj-lb-warn">' + esc(this.notice) + '</span>' : '')
+      if (text !== this._metaHtml) {
+        meta.innerHTML = text
+        this._metaHtml = text
+      }
+    }
+    this.notice = ''
   }
 
   /**
@@ -589,26 +627,29 @@ export class Lobby {
       })
     }
     // 房规复选（建房表单 new-* / 等待室 rule-*）：checkbox 也是 INPUT，
-    // 必须在下面「其余输入框不绑点击」之前处理，否则 change 绑不上、勾选毫无反应。
-    const RULE_CHECKS = {
-      'rule-swap': 'swapThree',
-      'rule-yaoji': 'yaojiEnabled',
-      'rule-assist': 'assist',
-      'new-swap': 'swapThree',
-      'new-yaoji': 'yaojiEnabled',
-      'new-assist': 'assist'
-    }
+    // 必须在「其余输入框不绑点击」之前处理，否则 change 绑不上、勾选毫无反应。
     shell.querySelectorAll('[data-lb]').forEach(el => {
       const act = el.getAttribute('data-lb')
-      if (RULE_CHECKS[act]) {
-        el.addEventListener('change', () => {
-          // 建房表单只改本地草稿（建房时才提交）；等待室即时提交给服务端
-          if (act.indexOf('new-') === 0) this.createRules[RULE_CHECKS[act]] = el.checked
-          else this._updateRules()
-        })
-        return
-      }
-      if (el.tagName === 'INPUT') return // 其余输入框只读值，不绑点击
+      if (!RULE_CHECKS[act]) return
+      el.addEventListener('change', () => {
+        // 建房表单只改本地草稿（建房时才提交）；等待室即时提交给服务端
+        if (act.indexOf('new-') === 0) this.createRules[RULE_CHECKS[act]] = el.checked
+        else this._updateRules()
+      })
+    })
+    this._bindActions(shell)
+  }
+
+  /**
+   * 给 scope 内所有 [data-lb] 可点元素绑点击。
+   * 房间卡片是动态重绘的（见 _paintRooms），重绘后要重新调用；
+   * 复选在 _bindShell 里绑 change、其余 INPUT 只读值，这里一律跳过。
+   */
+  _bindActions(scope) {
+    if (!scope) return
+    scope.querySelectorAll('[data-lb]').forEach(el => {
+      const act = el.getAttribute('data-lb')
+      if (RULE_CHECKS[act] || el.tagName === 'INPUT') return
       el.addEventListener('click', () => this._onAct(act, el))
     })
   }
