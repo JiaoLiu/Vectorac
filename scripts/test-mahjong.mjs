@@ -1326,6 +1326,23 @@ ok('响应顺序：waiting 按摸牌顺序排列，更近的一家没表态前�
   conservation(s, '响应顺序：先叫后碰')
 })
 
+ok('响应顺序：更近者未表态时 view 明确标注 awaitingNearer（UI 不再只挂一个「过」）', () => {
+  let s = twoClaimersForW7(23)
+  const v0 = playerView(s, 0)
+  assert.deepEqual(v0.my.awaitingNearer, [3], '我应被告知：在等左家先叫牌（他不是我的回合）')
+  assert.ok(!v0.legal.some(o => o.type === 'peng'), '更近者未表态前不给碰（引擎侧不变）')
+  assert.ok(v0.legal.some(o => o.type === 'pass'), '仍保留「过」占位，由 UI 决定是否换成等待提示')
+  assert.deepEqual(playerView(s, 3).my.awaitingNearer, [], '最近的左家不该等任何人')
+  // 左家表态后：等待清空，碰才出现——UI 那一下等待提示就会换成「碰」
+  const r = dispatch(s, { type: 'pass', seat: 3, actionId: aid('aw', 2), stateVersion: s.version })
+  assert.ok(r.ok, `过牌失败: ${r.error}`)
+  s = r.state
+  const v1 = playerView(s, 0)
+  assert.deepEqual(v1.my.awaitingNearer, [], '左家表态后不再等待')
+  assert.ok(v1.legal.some(o => o.type === 'peng'), '这时才出现「碰」')
+  conservation(s, 'awaitingNearer')
+})
+
 ok('响应顺序：两家都叫碰时，由离出牌者最近的一家碰成（较远者抢不走）', () => {
   let s = twoClaimersForW7(22)
   // 较远者（我）抢先叫碰、较近者（左家）后叫 —— 裁决仍应按距离给左家
@@ -2262,6 +2279,46 @@ ok('playerView.my.fan：听牌给当前番数，有副露未听给潜力番', ()
   assert.equal(v.my.ting.length, 0, '不应听牌')
   assert.ok(v.my.fan && v.my.fan.kind === 'potential', '有副露未听应给潜力番')
   assert.equal(v.my.fan.fan, 0, '散牌潜力 = 平胡 0 番（1 倍）')
+})
+
+ok('定缺未亮底：定缺阶段看不到他人缺门，四家定完才公开', () => {
+  let s = createGame({ seed: 41, rules: { swapThree: false } })
+  assert.equal(s.phase, 'void')
+  // 自己先定，再让 AI（座位1、2）定完：阶段仍是 void（座位3 未定）
+  for (const [seat, suit] of [[0, 'tong'], [1, 'wan'], [2, 'tiao']]) {
+    const r = dispatch(s, {
+      type: 'void', seat, suit,
+      actionId: `pv-void-${seat}`, stateVersion: s.version
+    })
+    assert.ok(r.ok, `定缺失败: ${r.error}`)
+    s = r.state
+  }
+  assert.equal(s.phase, 'void')
+  let view = playerView(s, 0)
+  assert.equal(view.my.void, 'tong', '自己的缺门自己可见')
+  assert.equal(view.players[0].void, 'tong')
+  for (const seat of [1, 2]) {
+    assert.equal(view.players[seat].void, null, `定缺阶段不得看到座位${seat}的缺门`)
+  }
+  assert.equal(view.players[3].void, null)
+  // 事件流同样不泄露：他人的 void-set 只报事件、不带花色，自己的带花色
+  const others = view.lastEvents.filter(e => e.type === 'void-set' && e.seat !== 0)
+  assert.ok(others.length > 0, '应有他人的定缺事件')
+  others.forEach(e => assert.equal(e.data.suit, undefined, '他人定缺花色不可见'))
+  const mine = view.lastEvents.find(e => e.type === 'void-set' && e.seat === 0)
+  assert.ok(mine && mine.data.suit === 'tong', '自己的定缺事件带花色')
+  // 四家定完 → 转入摸打，他人缺门一并公开
+  const r = dispatch(s, {
+    type: 'void', seat: 3, suit: 'wan',
+    actionId: 'pv-void-3', stateVersion: s.version
+  })
+  assert.ok(r.ok, `定缺失败: ${r.error}`)
+  s = r.state
+  assert.equal(s.phase, 'discard')
+  view = playerView(s, 0)
+  assert.equal(view.players[1].void, 'wan', '定完后公开他人缺门')
+  assert.equal(view.players[2].void, 'tiao')
+  assert.equal(view.players[3].void, 'wan')
 })
 
 // ============================================================

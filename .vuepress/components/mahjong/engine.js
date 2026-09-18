@@ -226,7 +226,10 @@ export function createGame(opts = {}) {
       void: null,
       hu: null,
       delta: 0,
-      swapPicked: null
+      swapPicked: null,
+      // 过水（过胡）：{fan, tile} = 本巡放弃的那手点炮胡番数；自己摸牌（过庄）
+      // 即清空（见 drawFor / drawFromTail）。null = 没有未清的过水限制。
+      passHu: null
     })
   }
 
@@ -370,7 +373,7 @@ export function legalActions(state, seat) {
     if (s.pendingDiscard) {
       const tile = s.pendingDiscard.tile
       const payer = s.pendingDiscard.seat
-      if (canHuOn(s, seat, tile)) {
+      if (canHuOn(s, seat, tile) && !passHuBlocks(s, seat, tile, s.pendingDiscard.isAfterGang === true)) {
         out.push({ type: ACTION.HU, how: 'dianpao' })
       }
       // 响应优先级：胡（可多响）> 碰 / 明杠。碰与明杠同级，按摸牌顺序由离出牌者
@@ -382,7 +385,13 @@ export function legalActions(state, seat) {
           respDist(payer, s2) < respDist(payer, seat) &&
           s.claims[s2] == null
       )
-      if (nearerUndecided) return out
+      if (nearerUndecided) {
+        // 更近的一家还没表态：碰 / 明杠先不提供（等它先叫，别抢它的碰权），
+        // 但「胡 / 过」是玩家自己的选择权，任何时候都要给出来——否则操作栏
+        // 只剩一个「胡」，想不胡都没得点。
+        out.push({ type: ACTION.PASS })
+        return out
+      }
       const nearerClaimed = s.waiting.some(
         s2 =>
           s2 !== seat &&
@@ -444,6 +453,41 @@ function canHuOn(s, seat, tile) {
   if (hasVoidTiles(p.hand, p.void, { yaoji })) return false
   if (p.void && tileSuit(tile) === p.void && !(yaoji && tile === YAOJI_TILE)) return false
   return isWinHand([...p.hand, tile], p.melds.length, { yaoji })
+}
+
+/**
+ * 过水（俗称「过胡 / 没过庄」）：放弃一次点炮胡之后，在自己下一次摸牌
+ * （过庄）之前，不能再胡同番或更低番的炮——自摸不受限，番数更大的炮
+ * 仍然可以胡；胡还是不胡始终由玩家自己决定（这里只决定「给不给胡按钮」）。
+ * 返回 true = 本次点炮胡被过水挡住，不提供「胡」选项。
+ */
+function passHuBlocks(s, seat, tile, afterGang) {
+  const rec = s.players[seat].passHu
+  if (!rec) return false
+  return dianpaoFanOn(s, seat, tile, afterGang) <= rec.fan
+}
+
+/**
+ * 某张牌点炮胡时的实际番数（过水比较口径：与 huSettle 同一套番型 + 实况番，
+ * 海底 / 杠上炮都算进去，保证「番更大」的判断和真正结算一致）。
+ */
+function dianpaoFanOn(s, seat, tile, afterGang) {
+  const p = s.players[seat]
+  const res = finalFan([...p.hand, tile].sort((x, y) => x - y), p.melds, {
+    zimo: false,
+    haidi: s.wall.length === 0,
+    gangshang: afterGang === true,
+    qianggang: false,
+    capFan: s.rules.capFan,
+    zimoFan: s.rules.zimoFan,
+    haidiFan: s.rules.haidiFan,
+    gangShangFan: s.rules.gangShangFan,
+    qianggangFan: s.rules.qianggangFan,
+    genFan: s.rules.genFan,
+    yaoji: yaojiOn(s),
+    tianhu: false
+  })
+  return res ? res.fan : 0
 }
 
 /** seat 玩家能否碰/明杠 tile（无缺门牌且 tile 非其缺门；幺鸡豁免定缺） */
@@ -630,7 +674,9 @@ function openRespond(s, discarder, tile, push, afterGang) {
   for (let k = 1; k <= 3; k++) {
     const seat = (discarder + k) % 4
     if (s.players[seat].hu) continue
-    const can = canHuOn(s, seat, tile) || canClaimPeng(s, seat, tile)
+    const can =
+      (canHuOn(s, seat, tile) && !passHuBlocks(s, seat, tile, afterGang)) ||
+      canClaimPeng(s, seat, tile)
     if (can) waiting.push(seat)
   }
   if (waiting.length === 0) {
@@ -913,7 +959,12 @@ function doHu(s, a) {
       }
     }
     if (s.pendingDiscard) {
-      if (!canHuOn(s, a.seat, s.pendingDiscard.tile)) return { error: ERR.ILLEGAL }
+      if (
+        !canHuOn(s, a.seat, s.pendingDiscard.tile) ||
+        passHuBlocks(s, a.seat, s.pendingDiscard.tile, s.pendingDiscard.isAfterGang === true)
+      ) {
+        return { error: ERR.ILLEGAL }
+      }
       s.claims[a.seat] = 'hu'
       return {
         after: push => {
@@ -1024,6 +1075,19 @@ function doPass(s, a) {
   if (s.phase !== PHASE_RESPOND) return { error: ERR.WRONG_PHASE }
   if (!s.waiting.includes(a.seat) || s.claims[a.seat] != null) {
     return { error: ERR.NOT_ACTIVE }
+  }
+  // 过水登记：放弃的是一次真能胡的点炮 → 记下这手番数，自己摸牌（过庄）
+  // 之前不能再胡同番或更低番的炮（自摸不受限、番更大的炮仍可胡）。
+  // 抢杠（pendingKong）不属于「别人打出的牌」，不登记。
+  if (
+    s.pendingDiscard &&
+    canHuOn(s, a.seat, s.pendingDiscard.tile) &&
+    !passHuBlocks(s, a.seat, s.pendingDiscard.tile, s.pendingDiscard.isAfterGang === true)
+  ) {
+    s.players[a.seat].passHu = {
+      fan: dianpaoFanOn(s, a.seat, s.pendingDiscard.tile, s.pendingDiscard.isAfterGang === true),
+      tile: s.pendingDiscard.tile
+    }
   }
   s.claims[a.seat] = 'pass'
   return {
@@ -1184,6 +1248,7 @@ function drawFor(s, seat, push) {
   s.mustDiscard = false // 新摸牌回合，恢复可胡可杠
   s.afterGangDraw = false // 普通摸牌（墙头）非杠后补牌
   s.gangTurn = null // 新回合开始：上一回合的杠分不再有转雨风险
+  s.players[seat].passHu = null // 过庄：本巡的过水限制解除（自摸/再点炮都可胡）
   push('draw', { tile: s.drawnTile, wallCount: s.wall.length }, seat)
   push('turn', { turn: seat })
 }
@@ -1199,6 +1264,7 @@ function drawFromTail(s, seat, push) {
   s.phase = PHASE_DISCARD
   s.mustDiscard = false // 新摸牌回合，恢复可胡可杠
   s.afterGangDraw = true // 杠后补牌：本回合自摸即“杠上花”，打出的牌被胡即“杠上炮”
+  s.players[seat].passHu = null // 过庄：杠后补牌同样是「摸到牌」，过水限制解除
   push('draw', { tile: s.drawnTile, wallCount: s.wall.length, tail: true }, seat)
   push('turn', { turn: seat })
 }
@@ -1373,9 +1439,13 @@ export function settlementOf(state) {
 /**
  * 玩家视角（受限信息）：严禁泄露他人手牌内容与墙序。
  * draw 事件的 tile 仅对摸牌者本人可见；他人手牌只给 handCount。
+ * 定缺是「同时亮底」：定缺阶段他人缺门一律为 null（只看得到自己的），
+ * 四家全部定完（阶段转入摸打）才公开——否则先定完的 AI 会变成后面玩家
+ * 针对性定缺的依据。
  */
 export function playerView(state, seat) {
   const s = state
+  const allVoided = s.players.every(p => p.void != null)
   const players = s.players.map(p => ({
     seat: p.seat,
     handCount:
@@ -1386,7 +1456,7 @@ export function playerView(state, seat) {
       s.pendingDiscard && s.pendingDiscard.seat === p.seat
         ? [...p.discards, s.pendingDiscard.tile]
         : clone(p.discards),
-    void: p.void,
+    void: p.seat === seat || allVoided ? p.void : null,
     hu: clone(p.hu),
     delta: p.delta
   }))
@@ -1426,6 +1496,27 @@ export function playerView(state, seat) {
     })
     myFan = { fan: pf.fan, names: pf.names, kind: 'potential' }
   }
+  // 「更近的一家还没表态」：碰/明杠同级由离出牌者最近的一家先叫，更近者表态前
+  // 我这边只会拿到一个「过」——但此刻并不是我的回合，UI 据此把「过」换成等待
+  // 提示，免得玩家误点掉碰权。引擎侧 legal 不变（AI 仍按「过」表态推进牌局）。
+  const awaitingNearer = []
+  if (
+    s.phase === PHASE_RESPOND &&
+    s.pendingDiscard &&
+    s.waiting.includes(seat) &&
+    s.claims[seat] == null
+  ) {
+    const payer = s.pendingDiscard.seat
+    for (const s2 of s.waiting) {
+      if (
+        s2 !== seat &&
+        s.claims[s2] == null &&
+        respDist(payer, s2) < respDist(payer, seat)
+      ) {
+        awaitingNearer.push(s2)
+      }
+    }
+  }
   const my = {
     seat,
     hand: clone(me.hand),
@@ -1436,7 +1527,13 @@ export function playerView(state, seat) {
     hu: clone(me.hu),
     delta: me.delta,
     ting: myTing,
-    fan: myFan
+    fan: myFan,
+    // 过水状态：本巡已放弃的点炮番数（UI 用来解释「为什么这次不能胡」）。
+    // 自己摸牌（过庄）后自动清空；自摸与番更大的炮不受影响。
+    passHu: me.passHu ? { fan: me.passHu.fan, tile: me.passHu.tile } : null,
+    // 仍在等我表态、且离出牌者更近的座位：非空表示此刻「更近的一家先叫牌」，
+    // 我的碰/杠权还在排队，legal 里那个「过」只是占位，不是我的回合。
+    awaitingNearer
   }
   return {
     version: s.version,
@@ -1465,6 +1562,12 @@ export function playerView(state, seat) {
       if (ev.type === 'swap-select' && ev.seat !== seat) {
         const d = { ...ev.data }
         delete d.tiles
+        return { ...ev, data: d }
+      }
+      // 定缺未亮底：他人的 void-set 只报事件、不带花色
+      if (ev.type === 'void-set' && ev.seat !== seat && !allVoided) {
+        const d = { ...ev.data }
+        delete d.suit
         return { ...ev, data: d }
       }
       return ev

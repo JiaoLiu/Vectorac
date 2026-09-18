@@ -1136,14 +1136,14 @@ export default class ScmjUI {
   /**
    * 牌墙恒为正方形：取牌墙盒（正方形面板内）可用宽高的较小值作为边长居中，
    * 并按边长反推单张牌背尺寸（写入 CSS 变量），保证每边铺得下、不被裁切。
-   * 牌背是真实牌张（back.png，竖版），四边一律竖着显示背面花纹：
-   *   上下墙 7 摞 × 2 层（沿 X 排 7 列，2 行为两层牌深）；
-   *   左右墙 2 层 × 7 摞（2 列为两层牌深，沿 Y 排 7 行）。
-   * 四边等厚 = 两层牌深 = 2×牌高 + 缝，故
-   *   边长 = 2×内缩 + 7×牌高 + 6×缝，内缩 = 2×牌高 + 缝
-   *        = 11×牌高 + 8×缝
-   * 反推牌高（左右墙沿竖直方向排 7 摞，每摞占一张牌高，是四条边里最紧的一条，
-   * 用它反推才能保证任何边长下都不溢出）。
+   * 牌背是真实牌张（back.png，竖版），长边一律顺着墙走（横躺 = 贴图转 90°）：
+   *   上下墙（横向墙）牌横躺：沿 X 排 7 摞，2 行 = 两层牌深；
+   *   左右墙（纵向墙）牌竖放：沿 Y 排 7 摞，2 列 = 两层牌深。
+   * 这样每张牌沿墙方向占「一张牌高」，四边摞距一致、整条边看起来是连续的一条；
+   * 径向占「一张牌宽」，四条边等厚 = 两层牌深 = 2×牌宽 + 缝。故
+   *   边长 = 2×内缩 + 7×牌高 + 6×缝，内缩 = 2×牌宽 + 缝
+   *        = 4×牌宽 + 7×牌高 + 8×缝
+   * 牌宽 = 牌高 / TILE_ASPECT，回代反推牌高（取整向下，保证任何边长下都不溢出）。
    */
   fitWallRing() {
     const ring = this._els.wallring
@@ -1155,10 +1155,11 @@ export default class ScmjUI {
     const size = Math.min(w, h)
     const COLS = 7 // 每边可见 7 摞（每摞 2 张 = 两层牌深）
     const GAP = 1 // 牌间 1px 缝
-    // 边长 = 11×牌高 + 8×缝（见上方推导）→ 反推牌高，再按真实比例得牌宽
-    const tileH = Math.max(8, Math.floor((size - 8 * GAP) / (4 + COLS)))
-    const tileW = Math.max(5, Math.round(tileH / TILE_ASPECT))
-    const inset = 2 * tileH + GAP
+    // 边长 = 4×牌宽 + 7×牌高 + 8×缝（见上方推导），牌宽 = 牌高 / TILE_ASPECT，
+    // 故 牌高 = (边长 - 8×缝) / (7 + 4 / TILE_ASPECT)；牌宽向下取整，保证不溢出。
+    const tileH = Math.max(8, Math.floor((size - 8 * GAP) / (COLS + 4 / TILE_ASPECT)))
+    const tileW = Math.max(5, Math.floor(tileH / TILE_ASPECT))
+    const inset = 2 * tileW + GAP
     // 罗盘（含探出的风位圆牌）同比缩放，限制在内圈里且封顶 104px
     const inner = Math.max(0, size - 2 * inset)
     const compass = Math.max(40, Math.min(104, Math.round(size * 0.62), inner))
@@ -1487,6 +1488,17 @@ export default class ScmjUI {
     // 本回合除出牌外还允许碰/杠/胡：出牌是主路径，这些只是可选项，
     // 未选牌时必须给出指引，否则操作栏只剩「杠」按钮，玩家会误以为必须杠。
     const hasOptional = v.legal.some(o => o.type !== 'discard')
+    // 更近的一家还没表态时，引擎给的 legal 只有「过」——那不是我的回合，是
+    // 左家/对家优先叫牌。这个「过」不能渲染成可点按钮：玩家看到操作栏只有
+    // 一个「过」会以为轮到自己，一点就把碰权送掉了。改成等待提示，等更近的
+    // 一家叫完，重渲染时自然会出现「碰 / 过」。
+    // 例外：能胡时 legal 里还有「胡」（胡不受叫牌顺序影响），此时「过」是
+    // 「放弃这次胡」的正常选项，照旧保留。
+    const awaitingSeats =
+      v.phase === 'respond' && v.my && Array.isArray(v.my.awaitingNearer)
+        ? v.my.awaitingNearer
+        : []
+    const waitingNearer = awaitingSeats.length > 0 && !v.legal.some(o => o.type === 'hu')
     let needDiscardHint = false
     for (const o of v.legal) {
       if (o.type === 'discard') {
@@ -1514,8 +1526,12 @@ export default class ScmjUI {
           this.act({ type: 'swap-yaoji', tile: o.tile })
         )
       } else if (o.type === 'pass') {
+        if (waitingNearer) continue // 不是我的回合：不渲染可点的「过」（下面给等待提示）
         mkBtn('过', 'scmj-btn-pass', () => this.onPass())
       }
+    }
+    if (waitingNearer) {
+      mkInfo('等待 ' + awaitingSeats.map(s2 => SEAT_SHORT[s2]).join('、') + ' 叫牌…')
     }
     if (!v.legal.length && v.phase !== 'finished') {
       if (v.my.hu) {
@@ -1526,6 +1542,10 @@ export default class ScmjUI {
     }
     if (needDiscardHint) {
       mkInfo(hasOptional ? '点选下方手牌出牌（杠可选，不杠即正常出牌）' : '点选下方手牌即可出牌', true)
+    }
+    // 过水提示：本巡已放弃过低番的炮，所以这次没给「胡」（自摸、番更大的炮照旧可胡）
+    if (v.phase === 'respond' && v.my.passHu) {
+      mkInfo('过水：本巡已放弃 ' + v.my.passHu.fan + ' 番的点炮胡，需更高番的炮或自摸才能胡', true)
     }
     // 横屏小屏时操作栏可横向滚动：每次重渲染回到最左，保证主要动作按钮可见
     bar.scrollLeft = 0

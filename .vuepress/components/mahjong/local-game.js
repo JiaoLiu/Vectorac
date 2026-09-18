@@ -153,9 +153,13 @@ export function createLocalGame(opts = {}) {
       return
     }
     if (state.phase === 'respond') {
-      for (const seat of state.waiting) {
-        if (seat !== HUMAN) scheduleAi(seat, delayOf(500 + seat * 100))
-      }
+      // state.waiting 已按「自出牌者下家起逆时针」排好序，即离出牌者最近的一家排最前。
+      // 延迟必须跟着这个顺序走（更近的先行动）：否则远处的 AI 先表态触发 pump，
+      // 会把近处 AI 的定时器 clearTimers 掉再往后排，近处叫牌被一路推迟，
+      // 人类就得对着「等待…」干等更久。
+      state.waiting.forEach((seat, i) => {
+        if (seat !== HUMAN) scheduleAi(seat, delayOf(500 + i * 150))
+      })
       return
     }
     if (state.phase === 'swap') {

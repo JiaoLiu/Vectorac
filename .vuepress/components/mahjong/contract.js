@@ -206,9 +206,19 @@ export const DEFAULT_RULES = {
  *   yaoji: bool,                 // 是否幺鸡赖子局（UI 用来显示幺鸡副露 / 换牌按钮）
  *   pendingDiscard, pendingKong,
  *   players: [{seat, handCount, melds, discards, void, hu, delta}],  // 含自己
+ *     // void = 'wan'|'tong'|'tiao'|null。定缺阶段只公开自己的缺门（他人为 null），
+ *     //   四家全部定完才公开他人缺门，避免后定缺者照着先定完的 AI 针对性选择
  *   my: {hand:[升序,不含drawnTile], drawnTile, melds, discards, void, hu, delta,
- *        ting:[可胡牌张 id], fan:{fan, names, kind:'hu'|'ting'|'potential'}|null},
+ *        ting:[可胡牌张 id], fan:{fan, names, kind:'hu'|'ting'|'potential'}|null,
+ *        passHu:{fan, tile}|null, awaitingNearer:[seat...]},
  *     // fan = 当前番数：已胡给胡牌番数；听牌取听张最大番；未听但有副露时估番
+ *     // passHu = {fan, tile}|null：过水（过庄前）已放弃的点炮番数。
+ *     //   放弃点炮胡后、自己摸牌前不能再胡同番或更低番的炮——此时「胡」不出现
+ *     //   在 legal 里，只剩「过」；自摸与番更大的炮不受限，玩家始终可继续选择过。
+ *     // awaitingNearer = [seat...]：响应窗口里仍在等我表态、且离出牌者更近的座位。
+ *     //   非空 = 此刻是「更近的一家先叫牌」，我的碰/杠权还在排队（legal 里的
+ *     //   「过」只是占位，不是我的回合）。UI 用它把那个孤零零的「过」换成等待
+ *     //   提示，避免玩家误点一下就把碰权送掉；等这些座位表态后会重新给出碰/杠。
  *   legal: [ActionOption...],
  *   waiting: [seat...],          // 响应窗口内尚未表态的座位（按摸牌顺序排列：自出牌者
  *                                //   下家起逆时针；碰/明杠同级时最近的先叫，更近者没
