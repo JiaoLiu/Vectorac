@@ -383,6 +383,64 @@ function scenarioVoid() {
   })
 }
 
+// 场景I（幺鸡局-换三张）：条门真牌只有条5/条9 两张 + 1 只幺鸡（最零散），
+// 幺鸡是赖子必须留手里 → 只能换出万或筒的真牌
+function scenarioYaojiSwap() {
+  return baseView({
+    yaoji: true,
+    phase: 'swap',
+    my: {
+      hand: [18, 22, 26, 0, 1, 2, 3, 4, 9, 10, 11, 12, 13],
+      drawnTile: null,
+      melds: [],
+      discards: [],
+      void: null,
+      hu: null,
+      delta: 0
+    },
+    legal: [{ type: 'swap' }]
+  })
+}
+
+// 场景J（幺鸡局-定缺）：条门真牌只有条5/条9（全孤立，最少），幺鸡(条1)不算条门牌
+// → 应定缺条；若把幺鸡算作条牌，条门张数会被虚高，就会错定成筒
+function scenarioYaojiVoid() {
+  return baseView({
+    yaoji: true,
+    phase: 'void',
+    my: {
+      hand: [18, 22, 26, 9, 12, 15, 0, 1, 2, 3, 4, 5, 6],
+      drawnTile: null,
+      melds: [],
+      discards: [],
+      void: null,
+      hu: null,
+      delta: 0
+    },
+    legal: [{ type: 'void', suits: ['wan', 'tong', 'tiao'] }]
+  })
+}
+
+// 场景K（幺鸡局-弃牌）：只有幺鸡是孤张，其余万/筒都已成搭子 → 也不该打幺鸡
+function scenarioYaojiDiscard() {
+  const hand = [18, 0, 1, 2, 3, 4, 5, 9, 10, 11, 12, 13, 14]
+  return baseView({
+    yaoji: true,
+    phase: 'discard',
+    turn: 0,
+    my: {
+      hand,
+      drawnTile: null,
+      melds: [],
+      discards: [],
+      void: null,
+      hu: null,
+      delta: 0
+    },
+    legal: [{ type: 'discard', tiles: hand.slice() }]
+  })
+}
+
 // ============================================================
 // 测试主体
 // ============================================================
@@ -566,6 +624,36 @@ test('确定性：相同 view + 相同 rng 序列 → 决策完全一致（可�
       const a2 = aiDecide(v, lv, mulberry32(42))
       assert.deepStrictEqual(a1, a2, lv + ' 相同输入必须产出相同决策')
     }
+  }
+})
+
+test('幺鸡局：换三张绝不换出幺鸡（赖子留手里），只从真牌里挑同花色 3 张', () => {
+  const v = scenarioYaojiSwap()
+  for (const lv of ['easy', 'normal', 'hard']) {
+    const a = aiDecide(v, lv, mulberry32(13))
+    assert.ok(a && a.type === 'swap', lv + ' 应返回换三张')
+    assert.ok(!a.tiles.includes(18), lv + ' 换出的牌不得含幺鸡(18)，实际 ' + JSON.stringify(a.tiles))
+    assert.strictEqual(new Set(a.tiles.map(tileSuit)).size, 1, '必须同花色')
+    assert.strictEqual(a.tiles.length, 3)
+  }
+})
+
+test('幺鸡局：定缺不把幺鸡算作条门牌（条门真牌最少时定缺条）', () => {
+  const v = scenarioYaojiVoid()
+  for (const lv of ['easy', 'normal', 'hard']) {
+    const a = aiDecide(v, lv, mulberry32(14))
+    assert.ok(a && a.type === 'void', lv + ' 应返回定缺')
+    assert.strictEqual(a.suit, 'tiao', lv + ' 真牌最少的条门应定缺，实际 ' + a.suit)
+  }
+})
+
+test('幺鸡局：弃牌绝不主动打幺鸡（只有它是孤张也不打）', () => {
+  const v = scenarioYaojiDiscard()
+  for (const lv of ['easy', 'normal', 'hard']) {
+    const a = aiDecide(v, lv, mulberry32(15))
+    assert.ok(a && a.type === 'discard', lv + ' 应返回弃牌')
+    assert.notStrictEqual(a.tile, 18, lv + ' 不得打出幺鸡，实际 ' + a.tile)
+    assert.ok(v.legal[0].tiles.includes(a.tile), '所选牌必须在 legal.tiles 内')
   }
 })
 

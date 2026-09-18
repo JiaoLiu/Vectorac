@@ -25,6 +25,10 @@
 //           倾向打安全张维持听牌）、番型偏好（碰/杠/暗杠决策考虑清一色/
 //           对对胡成形度，简单权重）、响应窗口能胡必胡（含抢杠）。
 //
+// 幺鸡局（view.yaoji = true）：幺鸡是万能牌，AI 一律留手里当赖子——
+//   永不换出（换三张 / 兜底都不选它）、永不主动打出，统计定缺与换三张的
+//   花色张数时也不计它（它豁免定缺，属条门但不算条门牌）。
+//
 // 铁律：
 //   1. 只读 PlayerView 字段（自己 hand/melds、他人 handCount/discards/
 //      melds/void、wallCount），严禁访问引擎内部 state、他人手牌内容、墙序。
@@ -304,10 +308,17 @@ function drawScoreOf(view, hand3n1, meldCount, s, opts) {
 function decideSwap(view, level, rand) {
   const hand = (view.my && view.my.hand) || []
   if (hand.length < 3) return null
+  const yaoji = view.yaoji === true
   const bySuit = { wan: [], tong: [], tiao: [] }
-  for (const t of hand) bySuit[tileSuit(t)].push(t)
+  for (const t of hand) {
+    // 幺鸡局：幺鸡是万能牌（赖子），绝不当换三张的筹码送出去，留手里最值钱。
+    // 幺鸡本属条门，若不去掉，条门张数会被高估、且它的邻居恒为 0，
+    // 排序时反而排在最前被优先换出。
+    if (yaoji && t === YAOJI_TILE) continue
+    bySuit[tileSuit(t)].push(t)
+  }
   const cands = SUITS.filter(s => bySuit[s].length >= 3)
-  if (!cands.length) return null // 13 张三门花色必有一门 ≥5，实际不可达
+  if (!cands.length) return null // 13 张真牌去幺鸡后必有一门 ≥3，实际不可达
   let pick = cands[0]
   let best = Infinity
   for (const s of cands) {
@@ -338,8 +349,14 @@ function decideVoid(view, level, rand) {
   const opt = (view.legal || []).find(o => o.type === 'void')
   if (!opt || !Array.isArray(opt.suits) || !opt.suits.length) return null
   const hand = (view.my && view.my.hand) || []
+  const yaoji = view.yaoji === true
   const bySuit = { wan: [], tong: [], tiao: [] }
-  for (const t of hand) bySuit[tileSuit(t)].push(t)
+  for (const t of hand) {
+    // 幺鸡局：幺鸡豁免定缺（不算缺门牌），统计各门张数时不计入，
+    // 否则条门被虚高，AI 反而不愿把真正零散的条门定为缺。
+    if (yaoji && t === YAOJI_TILE) continue
+    bySuit[tileSuit(t)].push(t)
+  }
   let pick = opt.suits[0]
   let best = Infinity
   for (const s of opt.suits) {
@@ -482,7 +499,14 @@ function decideDiscardPhase(view, level, rand) {
   }
   const discOpt = legal.find(o => o.type === 'discard')
   if (!discOpt || !Array.isArray(discOpt.tiles) || !discOpt.tiles.length) return null
-  return decideDiscard(view, discOpt.tiles, level, rand, opts)
+  // 幺鸡局：幺鸡是万能牌，绝不主动打出（它当任意牌用，比任何真牌都值钱）。
+  // 只在引擎确实给了别的可打牌时才过滤，避免把候选清空。
+  let cands = discOpt.tiles
+  if (view.yaoji === true && cands.length > 1) {
+    const real = cands.filter(t => t !== YAOJI_TILE)
+    if (real.length) cands = real
+  }
+  return decideDiscard(view, cands, level, rand, opts)
 }
 
 /**
@@ -563,8 +587,11 @@ function decideRespond(view, level, rand) {
 /** 换三张兜底：任意一门 ≥3 张的花色取 3 张（鸽笼保证存在） */
 function fallbackSwapTiles(view) {
   const hand = (view.my && view.my.hand) || []
+  const yaoji = view && view.yaoji === true
   const bySuit = {}
   for (const t of hand) {
+    // 幺鸡局：幺鸡留手里当赖子，不参与换三张（同 decideSwap）
+    if (yaoji && t === YAOJI_TILE) continue
     const s = tileSuit(t)
     ;(bySuit[s] = bySuit[s] || []).push(t)
   }
