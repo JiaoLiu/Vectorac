@@ -2002,6 +2002,42 @@ ok('幺鸡赖子：真牌碰后用幺鸡补杠，之后摸到第 4 张真牌可�
   conservation(s, '补杠换回幺鸡后')
 })
 
+ok('幺鸡赖子：暗杠与补杠同屏时合并成一条 gang（不拆成两条，否则补杠被判非法）', () => {
+  // 复现线上反馈：碰赖 5万 后摸到真 5万，手里又刚好有 4 张别的牌可暗杠。
+  // legal 必须是一条 gang 带两个 options——服务端 matchesLegalOption 用 find 取第一条，
+  // 拆成两条会让「补杠」被服务端判成不合法（引擎自己 dispatch 是放行的）。
+  const s = fastForward(11, undefined, { yaojiEnabled: true })
+  setupTable(s, {
+    turn: 0,
+    drawnTile: W(5),
+    specs: {
+      0: {
+        tiles: [W(3), W(3), W(3), W(3), W(5), W(7), I(1), I(2), I(3), I(5)],
+        melds: [{ kind: 'peng', tile: W(5), from: 1, wild: 1, wildPeng: 1 }],
+        void: 'tong'
+      }
+    }
+  })
+  const legal = legalActions(s, 0)
+  const gangEntries = legal.filter(o => o.type === 'gang')
+  assert.equal(gangEntries.length, 1, '暗杠/补杠必须合并成一条 gang 选项')
+  assert.ok(gangEntries[0].options.some(o => o.tile === W(3) && o.gangType === 'an'), '含暗杠 3万')
+  assert.ok(gangEntries[0].options.some(o => o.tile === W(5) && o.gangType === 'bu'), '含补杠 5万')
+  // 两个候选都要能真正执行（哪个按钮点下去都不该被拒）
+  const rb = dispatch(s, {
+    type: 'gang', seat: 0, tile: W(5), gangType: 'bu',
+    actionId: 'sg-bu', stateVersion: s.version
+  })
+  assert.ok(rb.ok, `补杠应可执行: ${rb.error}`)
+  conservation(rb.state, '暗杠补杠同屏-补杠')
+  const ra = dispatch(s, {
+    type: 'gang', seat: 0, tile: W(3), gangType: 'an',
+    actionId: 'sg-an', stateVersion: s.version
+  })
+  assert.ok(ra.ok, `暗杠应可执行: ${ra.error}`)
+  conservation(ra.state, '暗杠补杠同屏-暗杠')
+})
+
 ok('幺鸡赖子：碰赖升级成的杠不可换（幺鸡是碰那一步进来的）', () => {
   // 用户给的例外：2 真 W5 + 1 幺鸡碰（碰赖）→ 摸到真 W5 补杠成杠 → 又来 W5 也不能换
   let s = fastForward(7, undefined, { yaojiEnabled: true })

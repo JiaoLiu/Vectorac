@@ -366,36 +366,30 @@ export function legalActions(state, seat) {
         : [...new Set(full)]
     })
     if (!s.mustDiscard) {
+      // 杠选项：暗杠 + 补杠合并成同一条 gang（契约见 contract.js：每种 type 只出现
+      // 一次，多个候选放在 options 里逐项列出）。若拆成两条，服务端校验
+      // （matchesLegalOption 用 find 取第一条）只会认暗杠，点补杠会被判「不合法」。
+      const gangOptions = []
       // 暗杠：手里 4 张同 id；幺鸡局允许 3 张真牌 + 1 只幺鸡
-      const anGang = []
       const seen = new Set()
       for (const t of full) {
         if (seen.has(t)) continue
         seen.add(t)
-        if (anGangWildCount(full, t, yaoji) != null) anGang.push(t)
-      }
-      if (anGang.length) {
-        out.push({ type: ACTION.GANG, options: anGang.map(t => ({ tile: t, gangType: 'an' })) })
+        if (anGangWildCount(full, t, yaoji) != null) gangOptions.push({ tile: t, gangType: 'an' })
       }
       // 补杠：已有该牌的碰副露，手里还有 1 张真牌即可补杠；
       // 幺鸡局手里没有真牌时，也可用手里的幺鸡当第 4 张补杠（真牌优先，幺鸡记入副露 wild），
       // 这样「碰 + 赖子」也能成杠去冲杠上花。
       // 一副露最多含 1 只幺鸡：碰里已经带了幺鸡的，只能等摸到真牌再补杠
       // （被抢杠后副露会退回成「2 真 + 1 幺鸡」，同理只能等真牌）。
-      const buGang = []
       for (const m of p.melds) {
         if (m.kind !== 'peng') continue
         const useReal = countTile(full, m.tile) >= 1
         const useWild = !useReal && yaoji && m.tile !== YAOJI_TILE &&
           !((m.wild || 0) > 0) && yaojiCount(full) >= 1
-        if (useReal || useWild) buGang.push(m.tile)
+        if (useReal || useWild) gangOptions.push({ tile: m.tile, gangType: 'bu' })
       }
-      if (buGang.length) {
-        out.push({
-          type: ACTION.GANG,
-          options: buGang.map(t => ({ tile: t, gangType: 'bu' }))
-        })
-      }
+      if (gangOptions.length) out.push({ type: ACTION.GANG, options: gangOptions })
     }
     // 幺鸡换牌：带幺鸡的明杠/暗杠，手里又摸到对应真牌时可把幺鸡收回
     out.push(...swapYaojiOptions(s, seat))

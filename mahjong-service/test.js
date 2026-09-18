@@ -12,6 +12,8 @@ import { createServer } from './server.js'
 import { ERR } from './errors.js'
 import { OCCUPANT, ROOM_STATUS, humanCount } from './rooms/seat.js'
 import { config } from './config.js'
+import { createGame, legalActions } from './engine/engine.js'
+import { matchesLegalOption } from './rooms/action-window.js'
 
 // ---------- 迷你测试框架 ----------
 
@@ -1199,6 +1201,45 @@ async function suiteHttp() {
 }
 
 // ============================================================
+// 合法选项结构：引擎产出的 legal ↔ 服务端 matchesLegalOption 的契约
+// ============================================================
+
+/** 牌 id：万 0-8 / 筒 9-17 / 条 18-26 */
+const mj = (suit, rank) => ({ wan: 0, tong: 9, tiao: 18 }[suit] + rank - 1)
+
+async function suiteLegalOptions() {
+  console.log('\n--- 合法选项结构 ---')
+
+  await test('幺鸡局：暗杠与补杠同屏合并成一条 gang，服务端必须认可补杠（回归）', () => {
+    const s = createGame({ seed: 1, rules: { yaojiEnabled: true, swapThree: false } })
+    // 摆到「摸打阶段、轮到 seat0、刚摸到 5万」：碰赖 5万 + 手里 4 张 3万
+    s.phase = 'discard'
+    s.turn = 0
+    s.mustDiscard = false
+    s.drawnTile = mj('wan', 5)
+    const p = s.players[0]
+    p.void = 'tong'
+    p.melds = [{ kind: 'peng', tile: mj('wan', 5), from: 1, wild: 1, wildPeng: 1 }]
+    p.hand = [
+      mj('wan', 3), mj('wan', 3), mj('wan', 3), mj('wan', 3),
+      mj('wan', 5), mj('wan', 7),
+      mj('tiao', 1), mj('tiao', 2), mj('tiao', 3), mj('tiao', 5)
+    ]
+
+    const legal = legalActions(s, 0)
+    const gangEntries = legal.filter(o => o.type === 'gang')
+    eq(gangEntries.length, 1, 'gang 只应有一条（暗杠/补杠合并，拆两条会让 find 漏掉补杠）')
+    assert(gangEntries[0].options.length >= 2, '本例应同时存在暗杠与补杠候选')
+    for (const g of gangEntries[0].options) {
+      assert(
+        matchesLegalOption(legal, { type: 'gang', tile: g.tile, gangType: g.gangType }),
+        '服务端必须认可 ' + g.gangType + ' 杠（客户端按钮点了不该被判非法）'
+      )
+    }
+  })
+}
+
+// ============================================================
 // 主流程
 // ============================================================
 
@@ -1218,6 +1259,7 @@ async function main() {
   await suiteTtl()
   await suiteHttp()
   await suiteTurnTimeout()
+  await suiteLegalOptions()
 
   const elapsed = Date.now() - t0
   console.log('\n=== 测试结束 ===')
