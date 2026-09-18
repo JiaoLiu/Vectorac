@@ -1,0 +1,538 @@
+mahjong-service/test.js
+  1efb2cdd1e5a75ab 1-1072
+mahjong-service/rooms/sessions.js
+  1efb2cdd1e5a75ab 1-93
+mahjong-service/rooms/action-window.js
+  1efb2cdd1e5a75ab 1-82
+mahjong-service/rooms/room-queue.js
+  1efb2cdd1e5a75ab 1-44
+mahjong-service/server.js
+  1efb2cdd1e5a75ab 1-418
+mahjong-service/engine/contract.js
+  1efb2cdd1e5a75ab 1-9
+mahjong-service/errors.js
+  1efb2cdd1e5a75ab 1-70
+mahjong-service/scripts/mahjong-proxy.conf
+  1efb2cdd1e5a75ab 1-54
+mahjong-service/rooms/room.js
+  1efb2cdd1e5a75ab 1-572
+.vuepress/components/mahjong/multiplayer/net-client.js
+  1efb2cdd1e5a75ab 1-435
+mahjong-service/rooms/room-manager.js
+  1efb2cdd1e5a75ab 1-271
+mahjong-service/.gitignore
+  1efb2cdd1e5a75ab 1-4
+.vuepress/components/mahjong/multiplayer/lobby.js
+  1efb2cdd1e5a75ab 181-182,185-187,222-223,276-277,445
+mahjong-service/rooms/ai-jobs.js
+  1efb2cdd1e5a75ab 1-187
+.vuepress/components/mahjong/ui.js
+  1efb2cdd1e5a75ab 190-206,240-242,290,507-510,519,641,647,661-825,830-833,911,999,1024-1025,1088-1090,1111-1112,1114,1128,1135,1152,1158,1167,1179,1226,1284,1290,1301-1303,1311,1314,1320,1749,1897,1916,1931,1971,1975,1994,2013,2025,2039,2052-2054,2059,2106
+mahjong-service/engine/engine.js
+  1efb2cdd1e5a75ab 1-2
+.vuepress/components/mahjong/multiplayer/remote-game.js
+  1efb2cdd1e5a75ab 1-156
+mahjong-service/package.json
+  1efb2cdd1e5a75ab 1-20
+mahjong-service/scripts/bundle.sh
+  1efb2cdd1e5a75ab 1-63
+mahjong-service/config.js
+  1efb2cdd1e5a75ab 1-62
+mahjong-service/rooms/seat.js
+  1efb2cdd1e5a75ab 1-146
+mahjong-service/engine/rules.js
+  1efb2cdd1e5a75ab 1-2
+mahjong-service/scripts/mahjong.service
+  1efb2cdd1e5a75ab 1-24
+mahjong-service/scripts/install.sh
+  1efb2cdd1e5a75ab 1-178
+.vuepress/config.js
+  1efb2cdd1e5a75ab 10,22-28
+mahjong-service/rooms/game-session.js
+  1efb2cdd1e5a75ab 1-465
+mahjong-service/rooms/hub.js
+  1efb2cdd1e5a75ab 1-190
+blogs/other/mahjong_game.md
+  1efb2cdd1e5a75ab 22,24,31,53,60-62,67,195,206,360-366,369-482,1894-1896,1898-1899,1902
+mahjong-service/rooms/serializer.js
+  1efb2cdd1e5a75ab 1-163
+mahjong-service/engine/ai.js
+  1efb2cdd1e5a75ab 1-2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.8",
+  "base_commit_sha": "2f21e37a96950a743658ee547f8f898416459480",
+  "prompts": {
+    "005cae9c1dbc73d5": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a7d220af85496fd0502022c",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 16,
+      "overriden_lines": 0
+    },
+    "056992989d58fd24": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a38e6391d55a586f6a882f6",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 885,
+      "overriden_lines": 0
+    },
+    "1efb2cdd1e5a75ab": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6aac9e69d2a55b0267c00651",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 5967,
+      "total_deletions": 166,
+      "accepted_lines": 5640,
+      "overriden_lines": 0
+    },
+    "2f1af447cbbb2318": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a9a6a0f994bdfd3aac25077",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 268,
+      "overriden_lines": 0
+    },
+    "32a9729784f18ef1": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6aa0c0f23a379370e56fccd6",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 995,
+      "overriden_lines": 0
+    },
+    "32f1490497ddf831": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6aa8e843d1ffdab544cb0b84",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 44,
+      "overriden_lines": 0
+    },
+    "4a68a259acc17f46": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a7152c27fd21251a8b13b6c",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 228,
+      "overriden_lines": 0
+    },
+    "5f2ae642c403f7ed": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6aa371d13a379370e56fda4b",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 269,
+      "overriden_lines": 0
+    },
+    "a1cd53983a2dd32f": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a9a80e2994bdfd3aac25415",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 602,
+      "overriden_lines": 0
+    },
+    "b4fb3f2dd63721b9": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6aa265113a379370e56fd6f9",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 269,
+      "overriden_lines": 0
+    },
+    "bfcf2812a5394d1a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ffe24-0691-79c0-9329-ff854e9d5202",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 128,
+      "overriden_lines": 0
+    },
+    "c56a32e809737a22": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a82d2b6f85496fd05021002",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 584,
+      "overriden_lines": 0
+    },
+    "f58fab71a540773a": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a97c6b8b6e5888c03083198",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    },
+    "f80830a51a6eab6f": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a9faac33a379370e56fc8c3",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 182,
+      "overriden_lines": 0
+    }
+  },
+  "commit_stats": {
+    "git_diff_added_lines": 5837,
+    "git_diff_deleted_lines": 36,
+    "ai_additions": 5176,
+    "ai_accepted": 5176,
+    "BYMC": 659,
+    "mixed_additions": 0,
+    "BYAC": 5176,
+    "BYRC": 0,
+    "per_file": {
+      ".vuepress/components/mahjong/multiplayer/lobby.js": {
+        "BYMC": [
+          "1-180",
+          "183-184",
+          "188-221",
+          "224-275",
+          "278-444",
+          "446-669"
+        ],
+        "BYAC": [
+          "181-182",
+          "185-187",
+          "222-223",
+          "276-277",
+          "445"
+        ],
+        "BYRC": []
+      },
+      ".vuepress/components/mahjong/multiplayer/net-client.js": {
+        "BYMC": [],
+        "BYAC": [
+          "1-435"
+        ],
+        "BYRC": []
+      },
+      ".vuepress/components/mahjong/multiplayer/remote-game.js": {
+        "BYMC": [],
+        "BYAC": [
+          "1-156"
+        ],
+        "BYRC": []
+      },
+      ".vuepress/components/mahjong/ui.js": {
+        "BYMC": [],
+        "BYAC": [
+          "190-206",
+          "240-242",
+          "290",
+          "507-510",
+          "519",
+          "641",
+          "647",
+          "661-825",
+          "830-833",
+          "911",
+          "999",
+          "1024-1025",
+          "1088-1090",
+          "1111-1112",
+          "1114",
+          "1128",
+          "1135",
+          "1152",
+          "1158",
+          "1167",
+          "1179",
+          "1226",
+          "1284",
+          "1290",
+          "1301-1303",
+          "1311",
+          "1314",
+          "1320",
+          "1749",
+          "1897",
+          "1916",
+          "1931",
+          "1971",
+          "1975",
+          "1994",
+          "2013",
+          "2025",
+          "2039",
+          "2052-2054",
+          "2059",
+          "2106"
+        ],
+        "BYRC": []
+      },
+      ".vuepress/config.js": {
+        "BYMC": [],
+        "BYAC": [
+          "10",
+          "22-28"
+        ],
+        "BYRC": []
+      },
+      "blogs/other/mahjong_game.md": {
+        "BYMC": [],
+        "BYAC": [
+          "22",
+          "24",
+          "31",
+          "53",
+          "60-62",
+          "67",
+          "195",
+          "206",
+          "360-366",
+          "369-482",
+          "1894-1896",
+          "1898-1899",
+          "1902"
+        ],
+        "BYRC": []
+      },
+      "mahjong-service/.gitignore": {
+        "BYMC": [],
+        "BYAC": [
+          "1-4"
+        ],
+        "BYRC": []
+      },
+      "mahjong-service/config.js": {
+        "BYMC": [],
+        "BYAC": [
+          "1-62"
+        ],
+        "BYRC": []
+      },
+      "mahjong-service/engine/ai.js": {
+        "BYMC": [],
+        "BYAC": [
+          "1-2"
+        ],
+        "BYRC": []
+      },
+      "mahjong-service/engine/contract.js": {
+        "BYMC": [],
+        "BYAC": [
+          "1-9"
+        ],
+        "BYRC": []
+      },
+      "mahjong-service/engine/engine.js": {
+        "BYMC": [],
+        "BYAC": [
+          "1-2"
+        ],
+        "BYRC": []
+      },
+      "mahjong-service/engine/rules.js": {
+        "BYMC": [],
+        "BYAC": [
+          "1-2"
+        ],
+        "BYRC": []
+      },
+      "mahjong-service/errors.js": {
+        "BYMC": [],
+        "BYAC": [
+          "1-70"
+        ],
+        "BYRC": []
+      },
+      "mahjong-service/package.json": {
+        "BYMC": [],
+        "BYAC": [
+          "1-20"
+        ],
+        "BYRC": []
+      },
+      "mahjong-service/rooms/action-window.js": {
+        "BYMC": [],
+        "BYAC": [
+          "1-82"
+        ],
+        "BYRC": []
+      },
+      "mahjong-service/rooms/ai-jobs.js": {
+        "BYMC": [],
+        "BYAC": [
+          "1-187"
+        ],
+        "BYRC": []
+      },
+      "mahjong-service/rooms/game-session.js": {
+        "BYMC": [],
+        "BYAC": [
+          "1-465"
+        ],
+        "BYRC": []
+      },
+      "mahjong-service/rooms/hub.js": {
+        "BYMC": [],
+        "BYAC": [
+          "1-190"
+        ],
+        "BYRC": []
+      },
+      "mahjong-service/rooms/room-manager.js": {
+        "BYMC": [],
+        "BYAC": [
+          "1-271"
+        ],
+        "BYRC": []
+      },
+      "mahjong-service/rooms/room-queue.js": {
+        "BYMC": [],
+        "BYAC": [
+          "1-44"
+        ],
+        "BYRC": []
+      },
+      "mahjong-service/rooms/room.js": {
+        "BYMC": [],
+        "BYAC": [
+          "1-572"
+        ],
+        "BYRC": []
+      },
+      "mahjong-service/rooms/seat.js": {
+        "BYMC": [],
+        "BYAC": [
+          "1-146"
+        ],
+        "BYRC": []
+      },
+      "mahjong-service/rooms/serializer.js": {
+        "BYMC": [],
+        "BYAC": [
+          "1-163"
+        ],
+        "BYRC": []
+      },
+      "mahjong-service/rooms/sessions.js": {
+        "BYMC": [],
+        "BYAC": [
+          "1-93"
+        ],
+        "BYRC": []
+      },
+      "mahjong-service/scripts/bundle.sh": {
+        "BYMC": [],
+        "BYAC": [
+          "1-63"
+        ],
+        "BYRC": []
+      },
+      "mahjong-service/scripts/install.sh": {
+        "BYMC": [],
+        "BYAC": [
+          "1-178"
+        ],
+        "BYRC": []
+      },
+      "mahjong-service/scripts/mahjong-proxy.conf": {
+        "BYMC": [],
+        "BYAC": [
+          "1-54"
+        ],
+        "BYRC": []
+      },
+      "mahjong-service/scripts/mahjong.service": {
+        "BYMC": [],
+        "BYAC": [
+          "1-24"
+        ],
+        "BYRC": []
+      },
+      "mahjong-service/server.js": {
+        "BYMC": [],
+        "BYAC": [
+          "1-418"
+        ],
+        "BYRC": []
+      },
+      "mahjong-service/test.js": {
+        "BYMC": [],
+        "BYAC": [
+          "1-1072"
+        ],
+        "BYRC": []
+      }
+    }
+  },
+  "commit_timestamp": 1789719788,
+  "requirement_id": ""
+}
