@@ -9,7 +9,7 @@
 //   1. rules 单元（胡牌判定/牌型/番型/向听/听牌）
 //   2. 发牌与 108 张守恒
 //   3. 换三张（同花色校验、方向传递）
-//   4. 定缺约束（未打缺不能打非缺门/碰/杠/胡）
+//   4. 定缺约束（未打缺只能打缺门、不能胡；碰/杠不受限）
 //   5. 碰 / 明杠 / 暗杠 / 补杠（状态与杠分）
 //   6. 抢杠胡
 //   7. 一炮多响
@@ -523,19 +523,52 @@ ok('未打缺时打非缺门牌被拒', () => {
   assert.ok(r2.ok, `打缺门失败: ${r2.error}`)
 })
 
-ok('未打缺时不能碰/杠/胡（自摸）', () => {
-  let s = fastForward(7)
+ok('未打缺时不能胡（自摸）：含缺门牌的成胡型不给胡，仍只能打缺门', () => {
+  const s = fastForward(7)
   s.turn = 0
   s.drawnTile = W(1)
   const p0 = s.players[0]
   p0.void = 'tong'
-  // 有缺门牌 + 自摸胡型 → 不允许胡
-  p0.hand = [W(1), W(1), W(2), W(3), W(4), W(5), W(6), W(7), T(2), T(3), T(4), I(5), I(6)]
-  // hand(13) + drawnTile(W1) = 14: 111 234 567 + T234 + I56 +?  数一下: W1,W1,W2,W3,W4,W5,W6,W7,T2,T3,T4,I5,I6 + W1 = 14 张
-  // 分解: W111 W234 W567 T234 I56+I? 不成胡 → 换个可胡但含缺门的：
+  // W123 W456 W789 T222 T99：14 张成胡型，但含缺门筒 → 定缺没打完，不许胡
+  p0.hand = [W(2), W(3), W(4), W(5), W(6), W(7), W(8), W(9), T(2), T(2), T(2), T(9), T(9)]
   const legal = legalActions(s, 0)
   assert.equal(legal.find(o => o.type === 'hu'), undefined, '有缺门时不应有胡选项')
-  assert.equal(legal.find(o => o.type === 'gang'), undefined, '有缺门时不应有杠选项')
+  const disc = legal.find(o => o.type === 'discard')
+  assert.ok(disc && disc.tiles.length > 0 && disc.tiles.every(t => tileSuit(t) === 'tong'),
+    '有缺门时出牌只能打缺门')
+})
+
+ok('未打缺时能暗杠（自己回合）：定缺只禁「胡」和「打非缺门」，不禁止杠', () => {
+  const s = fastForward(9)
+  setupTable(s, {
+    turn: 0,
+    drawnTile: W(1),
+    specs: {
+      0: {
+        // 手牌 3 张真 W1 + 摸到的第 4 张 → 可暗杠；同时手里有缺门筒（未打缺）
+        tiles: [W(1), W(1), W(1), W(2), W(3), W(4), T(1), T(1), T(1), T(5), T(5), I(2), I(3)],
+        void: 'tong'
+      }
+    }
+  })
+  const legal = legalActions(s, 0)
+  const gang = legal.find(o => o.type === 'gang')
+  assert.ok(gang && gang.options.some(x => x.gangType === 'an' && x.tile === W(1)),
+    '未打缺也能暗杠 W1')
+  assert.equal(legal.find(o => o.type === 'hu'), undefined, '未打缺不给胡')
+  const disc = legal.find(o => o.type === 'discard')
+  assert.ok(disc.tiles.every(t => tileSuit(t) === 'tong'), '出牌仍只能打缺门筒')
+  // 引擎真的放行，且杠完照旧只能打缺门（打缺义务不变）
+  const r = dispatch(s, {
+    type: 'gang', seat: 0, tile: W(1), gangType: 'an',
+    actionId: 'v-gang-an', stateVersion: s.version
+  })
+  assert.ok(r.ok, `未打缺暗杠失败: ${r.error}`)
+  assert.equal(r.state.players[0].melds[0].kind, 'gang')
+  const disc2 = legalActions(r.state, 0).find(o => o.type === 'discard')
+  assert.ok(disc2 && disc2.tiles.every(t => tileSuit(t) === 'tong'),
+    '杠完（补牌后）仍只能打缺门筒')
+  conservation(r.state, '未打缺暗杠')
 })
 
 // ============================================================
@@ -547,7 +580,7 @@ console.log('=== 碰/杠 ===')
  * 场景构造：把全桌牌收进池，再按 specs 重新分配（保证守恒）。
  * specs: { turn, drawnTile, specs: {seat: {tiles, melds, void}}, keepWall? }
  * 未指定 tiles 的座位从池里补 13 张，并把 void 设为手里存在的花色
- * （有缺门牌 → 永不响应，便于隔离被测交互）。
+ * （有缺门牌 → 不能胡；碰/杠仍允许，隔离被测交互靠默认补牌构不成对子）。
  */
 function setupTable(s, { turn = 0, drawnTile = null, specs = {} }) {
   const pool = s.wall.slice()
@@ -610,7 +643,8 @@ function setupTable(s, { turn = 0, drawnTile = null, specs = {} }) {
     if (spec.void) {
       p.void = spec.void
     } else {
-      // 默认：手里存在的花色 → 有缺门牌，不会响应任何声明
+      // 默认：手里存在的花色 → 有缺门牌（不能胡；碰/杠仍允许，隔离被测交互
+      // 靠默认补牌构不成对子）
       const inHand = ['wan', 'tong', 'tiao'].filter(su =>
         p.hand.some(t => tileSuit(t) === su)
       )
@@ -659,7 +693,7 @@ function drawTile(s, want) {
 
 ok('碰：副露正确、碰者直接出牌（不摸牌）', () => {
   let s = fastForward(7)
-  // seat0 打 W9；seat1 持 2 张 W9 且无缺门（万+筒两门）；seat2/3 有缺门牌不响应
+  // seat0 打 W9；seat1 持 2 张 W9 且无缺门（万+筒两门）；seat2/3 手里没有 W9 对子不响应
   setupTable(s, {
     turn: 0,
     drawnTile: W(9),
@@ -1555,7 +1589,7 @@ ok('流局退杠：已听牌者不收退杠，杠钱照收', () => {
         tiles: [W(9), W(9), W(9), T(1), T(1), T(1), T(2), T(3), T(4), T(5), T(6), T(7), T(9)],
         void: 'tiao'
       },
-      // seat1/seat3：默认缺门（手里有缺门牌）→ 不响应，隔离被测交互
+      // seat1/seat3：默认补牌里没有 W9 对子 → 不响应，隔离被测交互
       // seat2：出牌者（无筒），打 W9 给 seat0 明杠
       2: { tiles: [W(1), W(2), W(4), W(6), W(7), W(9), I(1), I(2), I(3), I(4), I(5), I(7), I(8)], void: 'tong' }
     }
@@ -2537,11 +2571,15 @@ ok('相同 seed + 相同动作序列 → 完全相同的最终 state', () => {
 //     截止时间；谁先叫胡都不关别人的窗口，全部有结果才一次性结算（一炮多响）。
 //     此阶段绝不提前开放杠/碰按钮。
 //   · GANG 阶段（串行仲裁）：所有胡都过了才有杠权，按「自出牌者下家起的有效摸牌
-//     顺序」逐个询问，一旦有人杠即成交，后面的人不再有机会。
+//     顺序」逐个询问，一旦有人杠即成交，后面的人不再有机会。当前座位同一张牌
+//     「既能杠又能碰」时，杠/碰/过三个按钮同屏给出，由本人当场选（选碰也成交）。
 //   · PENG 阶段（串行仲裁）：所有杠都过了才有碰权，同一顺序逐个询问，成交即结束。
-//   · 「胡 + 碰」同一人：过胡后仍要等 GANG 阶段全部问完，才轮到他碰。
+//   · 「胡 + 碰」同一人（只能碰不能杠）：过胡后仍要等 GANG 阶段全部问完，才轮到他碰。
 //   · 「过」是本窗口内的最终决定：同一座位重复提交、旧 stateVersion / 重复
-//     actionId 一律拒绝，不能反悔（超时 / 断线由 AI 替该座位提交一次最终动作）。
+//     actionId 一律拒绝，不能反悔；GANG 阶段点「过」即同时放弃杠和碰，
+//     不再于 PENG 阶段二次询问（超时 / 断线由 AI 替该座位提交一次最终动作）。
+//   · 定缺：未打完缺（手里还有缺门牌）只是不能胡、出牌只能打缺门，
+//     碰 / 明杠照样可以叫牌（碰完仍必须打缺门）。
 //   · 过水（passHu）限制完整保留：放弃点炮胡后、自己摸牌（过庄）前，同番或更低番
 //     的炮不再给「胡」；番更大的炮仍可胡；自摸不受限。
 //   · 下一手摸牌一律复用引擎「活跃座位」逻辑（跳过已胡出阵者），联机层不自己算。
@@ -2736,7 +2774,9 @@ ok('TEST5 GANG 优先于 PENG：Seat1 能碰、Seat2 能杠，先问 Seat2 的�
   assert.equal(s.respondStage, 'gang', '杠优先：先进入 GANG 阶段')
   assert.equal(s.currentResponder, 2, '杠候选者 Seat2 先决定')
   assert.ok(legalActions(s, 2).some(o => o.type === 'gang'), 'Seat2 拿到杠')
-  assert.ok(!legalActions(s, 2).some(o => o.type === 'peng'), 'GANG 阶段不给碰按钮')
+  // 杠碰同屏：Seat2 手里 2 真 W9 + 1 赖，同一张牌既能杠又能碰 → 杠/碰一起给出，
+  // 由本人当场选（不必先过杠才轮到碰）
+  assert.ok(legalActions(s, 2).some(o => o.type === 'peng'), 'Seat2 同时能碰 → GANG 阶段同屏给出碰按钮')
   assert.equal(legalActions(s, 1).length, 0, 'Seat1 的碰要等杠阶段结束')
   const rP = dispatch(s, { type: 'peng', seat: 1, actionId: yqid('t5-p'), stateVersion: s.version })
   assert.ok(!rP.ok && rP.error === 'not-active', 'Seat1 越过杠抢碰被拒')
@@ -2770,25 +2810,70 @@ ok('TEST6 杠成交后后面的碰失效：Seat1 过胡 → Seat2 杠成 → Sea
   conservation(r.state, 'TEST6')
 })
 
-ok('TEST7 同一人可碰可杠：先 GANG 阶段问杠，过杠后才在 PENG 阶段问碰', () => {
+ok('TEST7 同一人可碰可杠：GANG 阶段同屏给出「杠/碰/过」，由本人当场选', () => {
   const s = w9Respond(107, { 1: H1_PENG_GANG })
   assert.deepEqual(s.waiting, [1], '只有 seat1 能响应')
   assert.equal(s.respondStage, 'gang', '有杠资格时先进入 GANG 阶段')
   assert.equal(s.currentResponder, 1)
   const gTypes = legalActions(s, 1).map(o => o.type)
   assert.ok(gTypes.includes('gang'), 'GANG 阶段含 GANG：' + gTypes.join('/'))
+  assert.ok(gTypes.includes('peng'), 'GANG 阶段同屏含 PENG：' + gTypes.join('/'))
   assert.ok(gTypes.includes('pass'), 'GANG 阶段含 PASS：' + gTypes.join('/'))
-  assert.ok(!gTypes.includes('peng'), 'GANG 阶段不给碰（杠优先于碰）')
-  // 过杠 → 才在 PENG 阶段拿到碰
-  let r = dispatch(s, { type: 'pass', seat: 1, actionId: yqid('t7-pg'), stateVersion: s.version })
-  assert.ok(r.ok, `seat1 过杠失败: ${r.error}`)
-  const st = r.state
-  assert.equal(st.respondStage, 'peng', '过杠后进入 PENG 阶段')
-  assert.ok(legalActions(st, 1).some(o => o.type === 'peng'), '这时才给碰')
-  r = dispatch(st, { type: 'peng', seat: 1, actionId: yqid('t7-p'), stateVersion: st.version })
-  assert.ok(r.ok, `seat1 碰失败: ${r.error}`)
+  // 直接选碰（不必先过杠）也能成交
+  const r = dispatch(s, { type: 'peng', seat: 1, actionId: yqid('t7-pk'), stateVersion: s.version })
+  assert.ok(r.ok, `seat1 在 GANG 阶段选碰失败: ${r.error}`)
   assert.equal(r.state.players[1].melds[0].kind, 'peng')
   conservation(r.state, 'TEST7')
+})
+
+ok('TEST7b 同一人可碰可杠：点「过」即同时放弃杠和碰，不再二次询问碰', () => {
+  const s = w9Respond(107, { 1: H1_PENG_GANG })
+  const r = dispatch(s, { type: 'pass', seat: 1, actionId: yqid('t7b-pass'), stateVersion: s.version })
+  assert.ok(r.ok, `seat1 过失败: ${r.error}`)
+  assert.equal(r.state.players[1].melds.length, 0, '点过 = 杠、碰都放弃')
+  conservation(r.state, 'TEST7b')
+})
+
+// 定缺未打完时照样可碰/明杠：定缺只限制「打什么」和「能不能胡」。
+// （缺筒且手里有筒 = 未打缺；手里 W9 成对/成刻即可叫牌）
+const H1_PENG_VOIDING = {
+  tiles: [W(9), W(9), W(1), W(4), W(7), T(1), T(1), T(4), T(4), T(7), T(7), T(9), T(2)],
+  void: 'tong'
+}
+const H2_GANG_VOIDING = {
+  tiles: [W(9), W(9), W(9), W(1), W(4), W(7), T(1), T(1), T(4), T(4), T(7), T(9), T(2)],
+  void: 'tong'
+}
+
+ok('TEST7c 定缺未打完也能碰：碰完仍必须打缺门牌', () => {
+  const s = w9Respond(115, { 1: H1_PENG_VOIDING })
+  assert.deepEqual(s.waiting, [1], 'seat1 未打缺但有 2 张 W9 → 可碰')
+  assert.equal(s.respondStage, 'peng', '只有碰资格（无杠）→ 直接进入 PENG 阶段')
+  assert.ok(legalActions(s, 1).some(o => o.type === 'peng'), '未打缺也拿到碰按钮')
+  const r = dispatch(s, { type: 'peng', seat: 1, actionId: yqid('t7c-peng'), stateVersion: s.version })
+  assert.ok(r.ok, `未打缺碰失败: ${r.error}`)
+  const st = r.state
+  assert.equal(st.players[1].melds[0].kind, 'peng')
+  assert.equal(st.mustDiscard, true, '碰后进入强制出牌回合')
+  const disc = legalActions(st, 1).find(o => o.type === 'discard')
+  assert.ok(disc && disc.tiles.length > 0 && disc.tiles.every(t => tileSuit(t) === 'tong'),
+    '碰完仍只能打缺门筒')
+  conservation(st, 'TEST7c')
+})
+
+ok('TEST7d 定缺未打完也能明杠', () => {
+  const s = w9Respond(116, { 2: H2_GANG_VOIDING })
+  assert.deepEqual(s.waiting, [2], 'seat2 未打缺但有 3 张 W9 → 可明杠')
+  assert.equal(s.respondStage, 'gang')
+  assert.equal(s.currentResponder, 2)
+  assert.ok(legalActions(s, 2).some(o => o.type === 'gang'), '未打缺也拿到杠按钮')
+  const r = dispatch(s, {
+    type: 'gang', seat: 2, tile: W(9), gangType: 'ming',
+    actionId: yqid('t7d-gang'), stateVersion: s.version
+  })
+  assert.ok(r.ok, `未打缺明杠失败: ${r.error}`)
+  assert.equal(r.state.players[2].melds[0].gangType, 'ming')
+  conservation(r.state, 'TEST7d')
 })
 
 /** 抢杠场景：seat0 碰 W5 后摸到第 4 张 W5 发起补杠；seat1、seat3 都听 W5 */

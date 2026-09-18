@@ -56,6 +56,9 @@
 //   这副牌的最大可能番数算，非一律封顶）；已胡玩家不再参与。
 // - 退杠：杠分是预收，流局时未听牌者（含花猪）须退还本局全部已收
 //   杠钱（理由 gang-refund，逐笔原路退回）；有人胡满结束的局不退。
+// - 定缺（rules.voidRequired）：手里还有缺门牌（幺鸡豁免）时只能打缺门牌，
+//   并且不能胡——胡必须已打缺（否则查花猪无从谈起）。碰 / 明杠 / 暗杠 / 补杠
+//   不受定缺限制：可以边打缺边叫牌，碰杠之后照旧只能打缺门牌，打缺义务不变。
 // - 幺鸡赖子（rules.yaojiEnabled）：幺鸡（一条）当万能牌（详见 rules.js）。
 //   · 碰/明杠/暗杠/补杠允许「真牌 + 幺鸡」补位，副露用 meld.wild 记录用了几只幺鸡
 //     （一副露最多 1 只：碰里已经带了幺鸡的，只能等摸到真牌再补杠）；
@@ -350,15 +353,18 @@ export function legalActions(state, seat) {
     const full = fullHandOf(s, seat)
     const meldCount = p.melds.length
     const yaoji = yaojiOn(s)
+    // 定缺只限制两件事：①手里还有缺门牌（幺鸡豁免）时只能打缺门牌；
+    // ②必须打完缺才能胡。碰 / 明杠 / 暗杠 / 补杠都不受定缺限制——可以边打缺边叫牌，
+    // 杠/碰之后照旧只能打缺门牌，打缺义务不变。
     const voiding = hasVoidTiles(full, p.void, { yaoji })
-    // 有缺门牌：只能打缺门，且不允许碰杠胡（幺鸡局幺鸡豁免，不算缺门牌）
-    if (voiding) {
-      const tiles = [...new Set(full.filter(t => tileSuit(t) === p.void))]
-      return [{ type: ACTION.DISCARD, tiles }, ...swapYaojiOptions(s, seat)]
-    }
     const out = []
-    // 出牌：全部可打
-    out.push({ type: ACTION.DISCARD, tiles: [...new Set(full)] })
+    // 出牌：有缺门牌时只能打缺门，否则全部可打
+    out.push({
+      type: ACTION.DISCARD,
+      tiles: voiding
+        ? [...new Set(full.filter(t => tileSuit(t) === p.void))]
+        : [...new Set(full)]
+    })
     if (!s.mustDiscard) {
       // 暗杠：手里 4 张同 id；幺鸡局允许 3 张真牌 + 1 只幺鸡
       const anGang = []
@@ -396,7 +402,8 @@ export function legalActions(state, seat) {
     // 自摸胡（碰牌后的强制出牌回合除外：碰了必须打一张）。
     // drawnTile 为空 = 庄家起手 14 张还没摸牌，此时成胡即天胡（结算按封顶番），
     // 没有单独的「胡牌张」，其余回合自摸的胡牌张就是刚摸进来的 drawnTile。
-    if (!s.mustDiscard && isWinHand(full, meldCount, { yaoji })) {
+    // 定缺：手里还有缺门牌时不许胡（胡必须已打缺）。
+    if (!s.mustDiscard && !voiding && isWinHand(full, meldCount, { yaoji })) {
       out.push({ type: ACTION.HU, how: 'zimo' })
     }
     return out
@@ -511,11 +518,14 @@ function dianpaoFanOn(s, seat, tile, afterGang) {
   return res ? res.fan : 0
 }
 
-/** seat 玩家能否碰/明杠 tile（无缺门牌且 tile 非其缺门；幺鸡豁免定缺） */
+/**
+ * seat 玩家能否碰 tile（tile 非其缺门；幺鸡豁免定缺）。
+ * 定缺只限制「打什么」和「能不能胡」：手里还有缺门牌时照样可以碰/杠，
+ * 碰完把缺门牌打掉即可（碰/杠不会让你不用打缺，只是不禁止你叫牌）。
+ */
 function canClaimPeng(s, seat, tile) {
   const p = s.players[seat]
   const yaoji = yaojiOn(s)
-  if (hasVoidTiles(p.hand, p.void, { yaoji })) return false
   if (p.void && tileSuit(tile) === p.void && !(yaoji && tile === YAOJI_TILE)) return false
   return pengWildCount(p.hand, tile, yaoji) != null
 }
@@ -768,7 +778,8 @@ function doGang(s, a) {
   const p = s.players[a.seat]
   const full = fullHandOf(s, a.seat)
   const yaoji = yaojiOn(s)
-  if (hasVoidTiles(full, p.void, { yaoji })) return { error: ERR.ILLEGAL }
+  // 有缺门牌也能暗杠/补杠（定缺只限制「打什么」与「能不能胡」）：
+  // 杠完照旧只能打缺门牌，不会因此跳过打缺。
 
   if (a.gangType === 'an') {
     const wild = anGangWildCount(full, a.tile, yaoji)
@@ -1164,12 +1175,11 @@ function canClaimMeld(s, seat, tile) {
   return canClaimPeng(s, seat, tile) || canClaimGang(s, seat, tile)
 }
 
-/** seat 玩家能否明杠 tile（响应窗口 GANG 阶段；缺门约束与碰一致） */
+/** seat 玩家能否明杠 tile（tile 非其缺门；缺门约束与碰一致：有缺门牌也能杠） */
 function canClaimGang(s, seat, tile) {
   if (tile == null) return false
   const p = s.players[seat]
   const yaoji = yaojiOn(s)
-  if (hasVoidTiles(p.hand, p.void, { yaoji })) return false
   if (p.void && tileSuit(tile) === p.void && !(yaoji && tile === YAOJI_TILE)) return false
   return gangMingWildCount(p.hand, tile, yaoji) != null
 }

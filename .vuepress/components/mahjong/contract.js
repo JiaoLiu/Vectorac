@@ -100,7 +100,7 @@ export const DEFAULT_RULES = {
   qianggangFan: 1, // 抢杠胡加番（补杠被抢：杠不成立，抢杠者额外加番）
   genFan: 1, // 根加番：每有一组 4 张相同牌（明/暗/补杠，或碰后手留一张、手里 4 张未杠）加 1 番
   swapThree: true, // 换三张（方向由 seed 派生：下家/上家/对家）
-  voidRequired: true, // 定缺；未打完缺门牌不能碰杠胡
+  voidRequired: true, // 定缺；未打完缺门牌只能打缺门且不能胡（碰/杠不受限）
   chi: false, // 不允许吃
   gangMing: 1, // 明杠（刮风）：放杠者付 1
   gangAn: 2, // 暗杠（下雨）：每位活跃未胡玩家付 2

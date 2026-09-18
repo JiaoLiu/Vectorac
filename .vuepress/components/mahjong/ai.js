@@ -81,7 +81,7 @@ function removeForMeld(hand, tile, need, opts) {
 
 /**
  * 幺鸡局真牌是否单色（清一色路径；幺鸡可当任意花色，不计）。
- * 定缺阶段能碰/杠说明手上已无缺门牌，故只看真牌是否同花色即可。
+ * 只看真牌是否同花色即可——手里若还有缺门牌，真牌天然跨门，会被判为非清一色路径。
  */
 function isQingPath(hand) {
   let suit = null
