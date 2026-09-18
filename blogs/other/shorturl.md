@@ -4,7 +4,7 @@
 
 ## 在线演示
 
-<a id="demo-cta" class="demo-cta" href="https://s.vectorac.com/" target="_blank" rel="noopener">
+<a id="demo-cta" class="demo-cta" data-shorturl-demo href="https://s.vectorac.com/" target="_blank" rel="noopener">
   🚀 在新标签页中打开在线演示
 </a>
 

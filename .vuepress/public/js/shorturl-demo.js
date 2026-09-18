@@ -8,16 +8,14 @@
     : 'https://s.vectorac.com';
 
   window.__SHORTURL_DEMO_URL__ = url;
-  console.log('[shorturl-demo] host =', h, '→ demo url =', url);
 
   function apply() {
-    // 同时用 id 和属性选择器找，VuePress 偶尔会改 id 形式
-    var a = document.getElementById('demo-cta') || document.querySelector('a.demo-cta');
-    if (a) {
+    // 这是全局脚本，只允许命中短链页面的专用标记；不能使用通用
+    // .demo-cta，否则会误改小V等其他页面的同名按钮。
+    var a = document.querySelector('a[data-shorturl-demo]') || document.querySelector('a#demo-cta');
+    if (a && a.href !== url) {
       a.href = url;
       console.log('[shorturl-demo] updated button href →', url);
-    } else {
-      console.warn('[shorturl-demo] 没找到 a.demo-cta 按钮（页面可能还没渲染完）');
     }
   }
 
