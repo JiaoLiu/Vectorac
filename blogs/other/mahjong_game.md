@@ -666,14 +666,18 @@
   overflow: hidden;
 }
 #scmjGame .scmj-wallring > div { position: absolute; display: grid; gap: 1px; }
-/* 上下墙：2 行两层，沿长度方向均匀铺满整条边 */
+/* 上下墙：2 行两层，每摞按「一张牌高」的间距沿边铺满。
+   竖版牌横排时单张只有牌宽，若按牌宽紧排则上下墙摞距比左右墙小、四角还会缺一块；
+   统一按牌高做摞距（牌在格内居中），四条边摞距一致、四角正好接上。 */
 #scmjGame .scmj-wallring-top,
 #scmjGame .scmj-wallring-bottom {
   left: var(--scmj-wall-inset, 20px);
   right: var(--scmj-wall-inset, 20px);
   grid-template-rows: repeat(2, auto);
+  grid-template-columns: repeat(7, var(--scmj-wall-tile-h, 22px));
   grid-auto-flow: column;
-  justify-content: space-evenly;
+  justify-content: center;
+  justify-items: center;
 }
 #scmjGame .scmj-wallring-top { top: 0; }
 #scmjGame .scmj-wallring-bottom { bottom: 0; }
@@ -688,24 +692,17 @@
 }
 #scmjGame .scmj-wallring-left { left: 0; }
 #scmjGame .scmj-wallring-right { right: 0; }
-/* 牌背：上下墙为横躺（宽 × 厚），2 行紧叠成两层。
-   圆角厚块造型（参考主流麻将界面的一段段牌墙），顶亮底暗有体积感。 */
+/* 牌背：真实牌张贴图（/mahjong/tiles/back.png，158×200 竖版，带透明通道），
+   四边一律竖着显示背面花纹，尺寸按真实比例由 ui.js fitWallRing 写入。
+   上下墙 2 行为两层牌深，左右墙 2 列为两层牌深，与真实牌墙的叠砌一致。 */
 #scmjGame .scmj-wallback {
   box-sizing: border-box;
-  width: var(--scmj-wall-long, 12px);
-  height: var(--scmj-wall-thick, 9px);
-  border-radius: 3px;
-  background: linear-gradient(180deg, #46bd7e 0%, #1d7346 55%, #0f4d2c 100%);
-  border: 1px solid rgba(6, 38, 20, 0.65);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.3),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.28),
-    0 1px 1px rgba(0, 0, 0, 0.3);
-}
-/* 左右墙：牌背竖躺（厚 × 长） */
-#scmjGame .scmj-wallback-v {
-  width: var(--scmj-wall-thick, 9px);
-  height: var(--scmj-wall-long, 12px);
+  width: var(--scmj-wall-tile-w, 17px);
+  height: var(--scmj-wall-tile-h, 22px);
+  background-image: url('/mahjong/tiles/back.png');
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.4));
 }
 /* 被摸走的牌位：留空位但占位不位移，缺口即开牌/消耗轨迹 */
 #scmjGame .scmj-wallback-gap {

@@ -88,6 +88,9 @@ const SETTINGS_KEY = 'scmj-settings'
 const SESSION_KEY = 'scmj-session'
 const START_SCORE = 100 // 进游戏每人起始积分
 export const WALL_SIDE_SLOTS = 14 // 牌墙每边牌位（双层 2×7），四边共 56
+// 牌背贴图真实比例（/mahjong/tiles/back.png，158×200 竖版）：
+// 牌墙按真实牌张比例绘制时用「高 = 宽 × TILE_ASPECT」换算，保证牌背不被拉伸。
+const TILE_ASPECT = 200 / 158
 
 /**
  * 牌墙环逐牌位占用掩码：掷骰在起点方位墙内开牌，从开牌点起逐张消耗。
@@ -1132,10 +1135,15 @@ export default class ScmjUI {
 
   /**
    * 牌墙恒为正方形：取牌墙盒（正方形面板内）可用宽高的较小值作为边长居中，
-   * 并按边长反推牌背尺寸（写入 CSS 变量），保证每边铺得下、不被裁切。
-   * 注意：上下墙是「2 行 × 7 列」（14 个牌位两两叠成一摞），沿边方向只排 7 摞，
-   * 因此每边占用 = 7×长 + 6×缝 + 两侧对边牌墙厚度；按这个关系反推牌背长度，
-   * 牌背才不会被裁掉（旧公式按 14 个牌位算，横屏下牌背只有一半大小还被裁切）。
+   * 并按边长反推单张牌背尺寸（写入 CSS 变量），保证每边铺得下、不被裁切。
+   * 牌背是真实牌张（back.png，竖版），四边一律竖着显示背面花纹：
+   *   上下墙 7 摞 × 2 层（沿 X 排 7 列，2 行为两层牌深）；
+   *   左右墙 2 层 × 7 摞（2 列为两层牌深，沿 Y 排 7 行）。
+   * 四边等厚 = 两层牌深 = 2×牌高 + 缝，故
+   *   边长 = 2×内缩 + 7×牌高 + 6×缝，内缩 = 2×牌高 + 缝
+   *        = 11×牌高 + 8×缝
+   * 反推牌高（左右墙沿竖直方向排 7 摞，每摞占一张牌高，是四条边里最紧的一条，
+   * 用它反推才能保证任何边长下都不溢出）。
    */
   fitWallRing() {
     const ring = this._els.wallring
@@ -1145,15 +1153,15 @@ export default class ScmjUI {
     const h = box.clientHeight
     if (!w || !h) return
     const size = Math.min(w, h)
-    const COLS = 7 // 每边可见 7 摞（2 层叠 1 摞）
-    const GAP = 1 // 摞间 1px 缝
-    // 边长 = 7×长 + 6×缝 + 2×内缩；内缩 = 2×厚 + 2，厚 = 0.75×长
-    // → 长 ≤ (边长 - 10) / 10
-    const long = Math.max(4, Math.floor((size - 10) / (COLS + 3)))
-    const thick = Math.max(3, Math.round(long * 0.75))
-    const inset = 2 * thick + 2
-    // 罗盘（含探出的风位圆牌）同比缩放并限制在内圈里，封顶 104px
-    const compass = Math.max(40, Math.min(104, Math.round(size * 0.62)))
+    const COLS = 7 // 每边可见 7 摞（每摞 2 张 = 两层牌深）
+    const GAP = 1 // 牌间 1px 缝
+    // 边长 = 11×牌高 + 8×缝（见上方推导）→ 反推牌高，再按真实比例得牌宽
+    const tileH = Math.max(8, Math.floor((size - 8 * GAP) / (4 + COLS)))
+    const tileW = Math.max(5, Math.round(tileH / TILE_ASPECT))
+    const inset = 2 * tileH + GAP
+    // 罗盘（含探出的风位圆牌）同比缩放，限制在内圈里且封顶 104px
+    const inner = Math.max(0, size - 2 * inset)
+    const compass = Math.max(40, Math.min(104, Math.round(size * 0.62), inner))
     const left = Math.round((w - size) / 2)
     const top = Math.round((h - size) / 2)
     ring.style.left = left + 'px'
@@ -1161,12 +1169,10 @@ export default class ScmjUI {
     ring.style.width = size + 'px'
     ring.style.height = size + 'px'
     // 变量挂在牌墙盒上，供牌背与罗盘（子元素）按同一边长取尺寸
-    box.style.setProperty('--scmj-wall-long', long + 'px')
-    box.style.setProperty('--scmj-wall-thick', thick + 'px')
+    box.style.setProperty('--scmj-wall-tile-w', tileW + 'px')
+    box.style.setProperty('--scmj-wall-tile-h', tileH + 'px')
     box.style.setProperty('--scmj-wall-inset', inset + 'px')
     box.style.setProperty('--scmj-compass-size', compass + 'px')
-    void COLS
-    void GAP
   }
 
   // ---------- 中央牌墙（四方围一圈双层牌背，摸一张少一张） ----------
@@ -1179,20 +1185,21 @@ export default class ScmjUI {
     // 环序 = 出牌顺序「下→右→上→左」，掩码下标沿此环序递增，缺口从开牌点
     // 起顺着牌桌转圈扩大。右/上两边的 DOM 排布方向（右：上→下；上：左→右）
     // 与环序相反，需要对位反向，否则缺口会在边上反向生长、看起来在四边乱跳。
+    // 四边都竖着显示牌背（真实牌张），不再区分横躺/竖躺，故只保留对位反向标记
     const sides = [
-      [this._els.wallringBottom, mask[0], false, false], // 座位0 = 自己(下)
-      [this._els.wallringRight, mask[1], true, true], // 座位1 = 右(下家)
-      [this._els.wallringTop, mask[2], false, true], // 座位2 = 上(对家)
-      [this._els.wallringLeft, mask[3], true, false] // 座位3 = 左(上家)
+      [this._els.wallringBottom, mask[0], false], // 座位0 = 自己(下)
+      [this._els.wallringRight, mask[1], true], // 座位1 = 右(下家)
+      [this._els.wallringTop, mask[2], true], // 座位2 = 上(对家)
+      [this._els.wallringLeft, mask[3], false] // 座位3 = 左(上家)
     ]
-    for (const [el, slots, vertical, reverse] of sides) {
+    for (const [el, slots, reverse] of sides) {
       if (!el) continue
       // 每边固定渲染 14 个牌位：有牌显示牌背，被摸走的位置留空位
       // （visibility 占位，剩余牌不位移，缺口位置就是开牌与消耗轨迹）
       while (el.childElementCount > slots.length) el.removeChild(el.lastElementChild)
       while (el.childElementCount < slots.length) {
         const back = document.createElement('i')
-        back.className = 'scmj-wallback' + (vertical ? ' scmj-wallback-v' : '')
+        back.className = 'scmj-wallback'
         el.appendChild(back)
       }
       for (let i = 0; i < slots.length; i++) {
