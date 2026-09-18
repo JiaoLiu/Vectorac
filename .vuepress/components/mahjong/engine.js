@@ -373,7 +373,7 @@ export function legalActions(state, seat) {
     if (s.pendingDiscard) {
       const tile = s.pendingDiscard.tile
       const payer = s.pendingDiscard.seat
-      if (canHuOn(s, seat, tile) && !passHuBlocks(s, seat, tile, s.pendingDiscard.isAfterGang === true)) {
+      if (canClaimHu(s, seat)) {
         out.push({ type: ACTION.HU, how: 'dianpao' })
       }
       // 响应优先级：胡（可多响）> 碰 / 明杠。碰与明杠同级，按摸牌顺序由离出牌者
@@ -497,6 +497,24 @@ function canClaimPeng(s, seat, tile) {
   if (hasVoidTiles(p.hand, p.void, { yaoji })) return false
   if (p.void && tileSuit(tile) === p.void && !(yaoji && tile === YAOJI_TILE)) return false
   return pengWildCount(p.hand, tile, yaoji) != null
+}
+
+/**
+ * 该座位此刻是否「还能胡这张牌」——点炮胡 / 抢杠胡，含过水限制。
+ * 响应裁决要靠它判断还该等谁：胡优先级高于碰 / 明杠，但一炮多响（含抢杠多响）
+ * 不能漏人，所以只有「还有胡资格且未表态」的人才值得等；只有碰 / 杠资格的
+ * 人不能拖住胡。
+ */
+function canClaimHu(s, seat) {
+  if (s.pendingDiscard) {
+    const tile = s.pendingDiscard.tile
+    return (
+      canHuOn(s, seat, tile) &&
+      !passHuBlocks(s, seat, tile, s.pendingDiscard.isAfterGang === true)
+    )
+  }
+  if (s.pendingKong) return canHuOn(s, seat, s.pendingKong.tile)
+  return false
 }
 
 /**
@@ -708,8 +726,9 @@ function doPeng(s, a) {
   s.claims[a.seat] = 'peng'
   return {
     after: push => {
-      // 全员表态后才裁决（避免剥夺其他玩家的胡权）
-      if (s.waiting.every(seat => s.claims[seat] != null)) {
+      // 叫碰后是否立即裁决交给 respondSettled：已有人叫胡时不必再等碰/杠，
+      // 但还有胡资格的人必须等，不能剥夺他们的胡权
+      if (respondSettled(s)) {
         resolveRespond(s, push)
       }
     }
@@ -781,7 +800,7 @@ function doGangMing(s, a) {
   s.claims[a.seat] = 'gang'
   return {
     after: push => {
-      if (s.waiting.every(seat => s.claims[seat] != null)) {
+      if (respondSettled(s)) {
         resolveRespond(s, push)
       }
     }
@@ -952,23 +971,20 @@ function doHu(s, a) {
       s.claims[a.seat] = 'hu'
       return {
         after: push => {
-          if (s.waiting.every(seat => s.claims[seat] != null)) {
+          if (respondSettled(s)) {
             resolveRespond(s, push)
           }
         }
       }
     }
     if (s.pendingDiscard) {
-      if (
-        !canHuOn(s, a.seat, s.pendingDiscard.tile) ||
-        passHuBlocks(s, a.seat, s.pendingDiscard.tile, s.pendingDiscard.isAfterGang === true)
-      ) {
+      if (!canClaimHu(s, a.seat)) {
         return { error: ERR.ILLEGAL }
       }
       s.claims[a.seat] = 'hu'
       return {
         after: push => {
-          if (s.waiting.every(seat => s.claims[seat] != null)) {
+          if (respondSettled(s)) {
             resolveRespond(s, push)
           }
         }
@@ -1093,9 +1109,9 @@ function doPass(s, a) {
   return {
     after: push => {
       push('pass', null, a.seat)
-      // 必须等所有 waiting 玩家表态，不能因第一个玩家点“过”就提前
-      // 落牌，剥夺其他玩家的胡/碰/杠权。
-      if (s.waiting.every(seat => s.claims[seat] != null)) {
+      // 不能因第一个玩家点「过」就提前落牌，剥夺其他玩家的胡/碰/杠权；
+      // 但有人已叫胡时，碰/杠从属于胡，不必再等只有碰/杠资格的人表态。
+      if (respondSettled(s)) {
         resolveRespond(s, push)
       }
     }
@@ -1103,6 +1119,21 @@ function doPass(s, a) {
 }
 
 // ---------- 响应窗口裁决 ----------
+
+/**
+ * 响应窗口是否已可裁决。
+ * 优先级 胡 > 碰 > 明杠，碰 / 明杠从属于胡：已经有人叫胡时，不该再等只有碰 / 杠
+ * 资格的人表态——否则能胡的一家会被近家的碰决策卡住（「他要等我点过才能胡」）。
+ * 但「还有胡资格且未表态」的人必须等，保证一炮多响 / 抢杠多响不漏人。
+ * 无人叫胡时保持原口径：全员表态后才按距离裁决碰 / 明杠。
+ */
+function respondSettled(s) {
+  if (s.waiting.some(seat => s.claims[seat] == null && canClaimHu(s, seat))) {
+    return false
+  }
+  if (s.waiting.some(seat => s.claims[seat] === 'hu')) return true
+  return s.waiting.every(seat => s.claims[seat] != null)
+}
 
 /** 全部表态后统一处理：胡（可多响）> 碰 > 明杠 > 全过 */
 function resolveRespond(s, push) {

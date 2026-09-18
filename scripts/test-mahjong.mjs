@@ -1343,6 +1343,56 @@ ok('响应顺序：更近者未表态时 view 明确标注 awaitingNearer（UI �
   conservation(s, 'awaitingNearer')
 })
 
+ok('响应优先级：碰从属于胡——有人叫胡时不必等只有碰权的近家表态', () => {
+  // 对面(2)打 4 万：我(0)能用幺鸡碰，右家(1)吃这张就胡。胡 > 碰，
+  // 右家叫胡后应立刻成立，不能等我把「过」点掉才结算。
+  let s = fastForward(31, undefined, { yaojiEnabled: true })
+  setupTable(s, {
+    turn: 2,
+    drawnTile: W(4),
+    specs: {
+      // 我(0)：1 张真 4 万 + 1 只幺鸡 → 能碰；牌面散乱，胡不了
+      0: {
+        tiles: [W(4), YAOJI_TILE, W(1), W(3), W(5), W(7), W(9), T(1), T(2), T(3), T(5), T(7), T(9)],
+        void: 'tiao'
+      },
+      // 右家(1)：吃 4 万即胡（W123 / W456 / W99 / T123 / T456）
+      1: {
+        tiles: [W(1), W(2), W(3), W(5), W(6), W(9), W(9), T(1), T(2), T(3), T(4), T(5), T(6)],
+        void: 'tiao'
+      },
+      // 对面(2)：drawnTile 即要打出的 4 万（不发幺鸡，留给座位 0 用）
+      2: {
+        tiles: [T(4), T(6), T(8), T(8), I(2), I(2), I(3), I(3), I(4), I(4), I(5), I(5), I(6)],
+        void: 'wan'
+      },
+      // 左家(3)：无 4 万、也胡不了，不参与本次响应
+      3: {
+        tiles: [T(9), T(9), T(8), T(7), I(3), I(3), I(4), I(4), I(7), I(7), I(8), I(8), I(9)],
+        void: 'wan'
+      }
+    }
+  })
+  let r = dispatch(s, { type: 'discard', seat: 2, tile: W(4), actionId: aid('hp', 1), stateVersion: s.version })
+  assert.ok(r.ok, `出牌失败: ${r.error}`)
+  s = r.state
+  assert.deepEqual(s.waiting, [0, 1], '响应者应为：等碰的我(0) + 等胡的右家(1)')
+  assert.ok(legalActions(s, 0).some(o => o.type === 'peng'), '我应能用幺鸡碰')
+  assert.ok(!legalActions(s, 0).some(o => o.type === 'hu'), '我这手胡不了（否则测不到优先级）')
+  assert.deepEqual(legalActions(s, 1).map(o => o.type), ['hu', 'pass'], '右家只有胡 / 过')
+
+  // 右家叫胡：胡 > 碰，此时我等不等都不影响胡成立
+  r = dispatch(s, { type: 'hu', seat: 1, actionId: aid('hp', 2), stateVersion: s.version })
+  assert.ok(r.ok, `叫胡失败: ${r.error}`)
+  s = r.state
+  assert.ok(s.players[1].hu, '右家应立刻胡成，不必等我点「过」')
+  assert.equal(s.players[1].hu.how, 'dianpao')
+  assert.equal(s.players[0].melds.length, 0, '胡优先于碰：我的碰不应成立')
+  assert.equal(s.pendingDiscard, null, '点炮那张已被胡走，响应窗口关闭')
+  assert.ok(!s.waiting.includes(0), '窗口已裁决，不再等我表态')
+  conservation(s, '胡优先于碰')
+})
+
 ok('响应顺序：两家都叫碰时，由离出牌者最近的一家碰成（较远者抢不走）', () => {
   let s = twoClaimersForW7(22)
   // 较远者（我）抢先叫碰、较近者（左家）后叫 —— 裁决仍应按距离给左家

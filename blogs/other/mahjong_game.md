@@ -1117,6 +1117,27 @@ meta:
 }
 #scmjGame .scmj-settle-detail { margin-top: 10px; }
 #scmjGame .scmj-settle-title { font-size: 22px; font-weight: 800; color: #ffd968; text-align: center; margin-bottom: 14px; }
+/* 破产提示：任一家累计积分 ≤ 0，本局打完牌局即终止 */
+#scmjGame .scmj-settle-bankrupt {
+  background: rgba(255, 92, 92, 0.14);
+  border: 1px solid rgba(255, 122, 122, 0.55);
+  border-radius: 12px;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  text-align: center;
+}
+#scmjGame .scmj-settle-bankrupt-title { font-size: 20px; font-weight: 800; color: #ff9d9d; letter-spacing: 2px; }
+#scmjGame .scmj-settle-bankrupt-desc { margin-top: 4px; font-size: 13px; color: #f3d7d7; line-height: 1.6; }
+#scmjGame .scmj-bankrupt-tag {
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 700;
+  color: #ff9d9d;
+  border: 1px solid rgba(255, 122, 122, 0.6);
+  border-radius: 6px;
+  padding: 1px 6px;
+  margin-left: 6px;
+}
 #scmjGame .scmj-settle-section { margin-bottom: 14px; }
 #scmjGame .scmj-settle-section-title {
   font-size: 14px;
@@ -1711,6 +1732,9 @@ body.scmj-lock #cw-panel { display: none !important; }
   #scmjGame .scmj-settle { padding: 8px; align-items: flex-start; }
   #scmjGame .scmj-settle-card { padding: 12px 16px; margin-top: auto; margin-bottom: auto; }
   #scmjGame .scmj-settle-title { font-size: 17px; margin-bottom: 8px; }
+  #scmjGame .scmj-settle-bankrupt { padding: 7px 10px; margin-bottom: 8px; }
+  #scmjGame .scmj-settle-bankrupt-title { font-size: 16px; }
+  #scmjGame .scmj-settle-bankrupt-desc { font-size: 11.5px; }
   #scmjGame .scmj-settle-section { margin-bottom: 8px; }
   #scmjGame .scmj-settle-section-title { font-size: 12.5px; margin-bottom: 4px; padding-bottom: 2px; }
   #scmjGame .scmj-settle-rank { padding: 3px 4px; font-size: 13.5px; }

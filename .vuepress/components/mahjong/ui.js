@@ -165,6 +165,8 @@ export default class ScmjUI {
     // 会话积分：进游戏每人 100 分，跨局累计（本局 delta 在结算时一次性入账）
     this.round = 1
     this.scores = [START_SCORE, START_SCORE, START_SCORE, START_SCORE]
+    // 破产座位：结算时任一家累计积分 ≤ 0 即记入，牌局终止（不允许再开下一局）
+    this.bankruptSeats = []
     // 连庄：streakSeat 连续坐庄的座位，streakCount 连庄轮数（>=3 挂 🔥）
     this.streakSeat = null
     this.streakCount = 0
@@ -412,6 +414,7 @@ export default class ScmjUI {
   resetSession() {
     this.round = 1
     this.scores = [START_SCORE, START_SCORE, START_SCORE, START_SCORE]
+    this.bankruptSeats = []
     this.streakSeat = null
     this.streakCount = 0
     this._roundSettled = false
@@ -432,6 +435,8 @@ export default class ScmjUI {
       this.streakSeat = null
       this.streakCount = 0
     }
+    // 破产只在局末结算时判定；能续上的存档必然没判过破产
+    this.bankruptSeats = []
     this._roundSettled = false
   }
 
@@ -481,6 +486,11 @@ export default class ScmjUI {
     v.results.perSeat.forEach(p => {
       if (p.seat >= 0 && p.seat < 4) this.scores[p.seat] += p.delta
     })
+    // 破产判定：任一家累计积分 ≤ 0，本局照常算完，但牌局到此终止。
+    // 因为积分只在结算时入账，所以只可能在局末判出，天然满足「本局打完」。
+    this.bankruptSeats = this.scores
+      .map((score, seat) => (score <= 0 ? seat : -1))
+      .filter(seat => seat >= 0)
     this.saveSession()
   }
 
@@ -1674,6 +1684,36 @@ export default class ScmjUI {
     h.className = 'scmj-settle-title'
     h.textContent = (r.liuju ? '流局 · ' : '') + '第 ' + this.round + ' 局结束'
     card.appendChild(h)
+    // 破产：任一家累计积分 ≤ 0 —— 本局已打完，牌局终止，不再开下一局
+    if (this.bankruptSeats.length) {
+      const bank = document.createElement('div')
+      bank.className = 'scmj-settle-bankrupt'
+      const who = this.bankruptSeats
+        .map(seat => SEAT_LABELS[seat] + '（积分 ' + this.scores[seat] + '）')
+        .join('、')
+      bank.innerHTML =
+        '<div class="scmj-settle-bankrupt-title">已破产</div>' +
+        '<div class="scmj-settle-bankrupt-desc">' + who +
+        ' 积分已跌到 0 或以下，本局结束后牌局终止，不能再开下一局。</div>'
+      card.appendChild(bank)
+      // 最终排名：按累计积分定名次（区别于上面的「本局得失」排名）
+      const secFinalRank = this.makeSection('最终排名（按累计积分）')
+      const finalRanks = [0, 1, 2, 3]
+        .map(seat => ({ seat, score: this.scores[seat] }))
+        .sort((a, b) => b.score - a.score)
+      finalRanks.forEach((p, i) => {
+        const row = document.createElement('div')
+        row.className = 'scmj-settle-rank'
+        const cls = p.score > 0 ? 'pos' : p.score < 0 ? 'neg' : 'zero'
+        const tag = p.score <= 0 ? '<em class="scmj-bankrupt-tag">已破产</em>' : ''
+        row.innerHTML =
+          '<span class="scmj-rank-no">' + (i + 1) + '</span>' +
+          '<span class="scmj-rank-name">' + SEAT_LABELS[p.seat] + tag + '</span>' +
+          '<span class="scmj-rank-delta ' + cls + '">' + p.score + ' 分</span>'
+        secFinalRank.body.appendChild(row)
+      })
+      card.appendChild(secFinalRank.el)
+    }
     // 1. 排名与积分变化（正绿负红；右侧为跨局累计积分）
     const secRank = this.makeSection('本局排名与累计积分')
     const ranks = r.perSeat.slice().sort((a, b) => b.delta - a.delta)
@@ -1805,6 +1845,11 @@ export default class ScmjUI {
     again.type = 'button'
     again.className = 'scmj-btn scmj-btn-primary'
     again.textContent = '再来一局'
+    if (this.bankruptSeats.length) {
+      // 破产即结束：本局打完不再开下一局
+      again.disabled = true
+      again.textContent = '已破产 · 无法再开一局'
+    }
     again.addEventListener('click', () => this.onRestart())
     const home = document.createElement('button')
     home.type = 'button'
