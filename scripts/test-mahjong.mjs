@@ -1234,6 +1234,84 @@ ok('响应窗口：先过不能跳过其他玩家的胡权', () => {
   conservation(s, '响应窗口先过后胡')
 })
 
+/**
+ * 构造「seat2（对家）打 7 万，seat3（左家/上家）与 seat0（我）都能碰」的牌桌。
+ * 幺鸡局：seat0 用「幺鸡 + 7万」碰（较远），seat3 用 2 张真 7万 碰（较近）。
+ * 摸牌顺序自 seat2 起为 3 → 0 → 1，故 seat3 比 seat0 优先叫碰。
+ */
+function twoClaimersForW7(seed) {
+  const s = fastForward(seed, undefined, { yaojiEnabled: true })
+  setupTable(s, {
+    turn: 2,
+    drawnTile: W(7),
+    specs: {
+      0: {
+        tiles: [YAOJI_TILE, W(7), W(1), W(2), W(3), W(4), W(5), W(6), W(8), W(9), I(5), I(6), I(7)],
+        void: 'tong'
+      },
+      1: {
+        tiles: [T(1), T(2), T(3), T(4), T(5), T(6), T(7), T(8), T(9), I(2), I(3), I(4), I(8)],
+        void: 'tong'
+      },
+      2: {
+        tiles: [T(1), T(1), T(2), T(2), T(3), T(3), T(4), T(4), T(5), T(5), T(6), T(6), T(7)],
+        void: 'tiao'
+      },
+      3: {
+        tiles: [W(7), W(7), W(1), W(1), W(2), W(2), W(3), W(3), W(4), W(4), I(8), I(9), I(9)],
+        void: 'tong'
+      }
+    }
+  })
+  const r = dispatch(s, { type: 'discard', seat: 2, tile: W(7), actionId: aid('w7', seed), stateVersion: s.version })
+  assert.ok(r.ok, `出牌失败: ${r.error}`)
+  return r.state
+}
+
+ok('响应顺序：waiting 按摸牌顺序排列，更近的一家没表态前较远者拿不到碰', () => {
+  let s = twoClaimersForW7(21)
+  assert.deepEqual(s.waiting, [3, 0], 'waiting 应按离出牌者的距离排列（左家 3 在前）')
+  assert.ok(legalActions(s, 3).some(o => o.type === 'peng'), '最近的一家应能叫碰')
+  assert.ok(
+    !legalActions(s, 0).some(o => o.type === 'peng'),
+    '更近的一家还没表态时，较远者不应拿到碰选项（他不碰我才有机会）'
+  )
+  // 左家放弃 → 才轮到我思考，这时才出现「碰」
+  let r = dispatch(s, { type: 'pass', seat: 3, actionId: aid('ord', 2), stateVersion: s.version })
+  assert.ok(r.ok, `过牌失败: ${r.error}`)
+  s = r.state
+  assert.ok(
+    legalActions(s, 0).some(o => o.type === 'peng'),
+    '更近的一家放弃后，较远者才获得碰选项'
+  )
+  r = dispatch(s, { type: 'peng', seat: 0, actionId: aid('ord', 3), stateVersion: s.version })
+  assert.ok(r.ok, `碰失败: ${r.error}`)
+  s = r.state
+  assert.equal(s.players[0].melds.length, 1)
+  assert.equal(s.players[0].melds[0].tile, W(7))
+  assert.equal(s.players[0].melds[0].wild, 1, '幺鸡 + 7万 碰成（用赖子补位）')
+  conservation(s, '响应顺序：先叫后碰')
+})
+
+ok('响应顺序：两家都叫碰时，由离出牌者最近的一家碰成（较远者抢不走）', () => {
+  let s = twoClaimersForW7(22)
+  // 较远者（我）抢先叫碰、较近者（左家）后叫 —— 裁决仍应按距离给左家
+  let r = dispatch(s, { type: 'peng', seat: 0, actionId: aid('pri', 2), stateVersion: s.version })
+  assert.ok(r.ok, `碰失败: ${r.error}`)
+  s = r.state
+  assert.equal(s.phase, 'respond', '两家都表态前不应裁决')
+  assert.equal(s.players[0].melds.length, 0, '还未裁决，不应先给自己编入副露')
+  r = dispatch(s, { type: 'peng', seat: 3, actionId: aid('pri', 3), stateVersion: s.version })
+  assert.ok(r.ok, `碰失败: ${r.error}`)
+  s = r.state
+  assert.equal(s.players[3].melds.length, 1, '离出牌者最近的左家碰成')
+  assert.equal(s.players[3].melds[0].tile, W(7))
+  assert.ok(!s.players[3].melds[0].wild, '左家用 2 张真牌碰，不带幺鸡')
+  assert.equal(s.players[0].melds.length, 0, '较远者抢不走碰权')
+  assert.equal(s.turn, 3, '碰者（左家）进入强制出牌回合')
+  conservation(s, '响应顺序：两家同时叫碰')
+})
+
 // ============================================================
 // 7. 血战继续与流局查叫
 // ============================================================

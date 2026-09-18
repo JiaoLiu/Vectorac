@@ -210,7 +210,9 @@ export const DEFAULT_RULES = {
  *        ting:[可胡牌张 id], fan:{fan, names, kind:'hu'|'ting'|'potential'}|null},
  *     // fan = 当前番数：已胡给胡牌番数；听牌取听张最大番；未听但有副露时估番
  *   legal: [ActionOption...],
- *   waiting: [seat...],          // 响应窗口内尚未表态的座位
+ *   waiting: [seat...],          // 响应窗口内尚未表态的座位（按摸牌顺序排列：自出牌者
+ *                                //   下家起逆时针；碰/明杠同级时最近的先叫，更近者没
+ *                                //   表态前较远者拿不到碰/杠选项）
  *   lastEvents: [GameEvent...尾部≤20],
  *   results: Settlement|null
  * }

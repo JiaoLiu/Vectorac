@@ -21,7 +21,9 @@
 // - 出牌暂存 pendingDiscard，无人碰/杠/胡才落进弃牌区；
 //   碰/明杠直接把该牌编入副露，弃牌区不出现。
 // - 响应窗口等所有 waiting 玩家表态（claims）后统一裁决：
-//   胡（可多响）> 碰 > 明杠 > 全过。
+//   胡（可多响）> 碰/明杠（同级）> 全过。waiting 按摸牌顺序排列（自出牌者
+//   下家起逆时针），碰/明杠取离出牌者最近的一家——更近的一家没放弃前，较远
+//   者不会拿到碰/杠选项（等它先叫牌），避免「较远者抢走碰权」的错误优先级。
 // - 杠分即时入账（ledger + players.delta）；胡牌/查叫也在 ledger 留流水。
 // - 杠上胡加番：所有杠（明/暗/补）后都从墙尾补牌，该回合自摸即“杠上花”、
 //   打出的牌被胡即“杠上炮”，都给胡牌者额外加番（抢杠胡不算，杠未成立）。
@@ -367,16 +369,37 @@ export function legalActions(state, seat) {
     }
     if (s.pendingDiscard) {
       const tile = s.pendingDiscard.tile
+      const payer = s.pendingDiscard.seat
       if (canHuOn(s, seat, tile)) {
         out.push({ type: ACTION.HU, how: 'dianpao' })
       }
+      // 响应优先级：胡（可多响）> 碰 / 明杠。碰与明杠同级，按摸牌顺序由离出牌者
+      // 最近的一家先叫：更近的一家还没表态时，本轮先不提供任何动作（等它先叫，别
+      // 把碰权抢过来）；更近的一家已经叫了碰/杠，则自己碰/杠已无机会，只剩胡或过。
+      const nearerUndecided = s.waiting.some(
+        s2 =>
+          s2 !== seat &&
+          respDist(payer, s2) < respDist(payer, seat) &&
+          s.claims[s2] == null
+      )
+      if (nearerUndecided) return out
+      const nearerClaimed = s.waiting.some(
+        s2 =>
+          s2 !== seat &&
+          respDist(payer, s2) < respDist(payer, seat) &&
+          (s.claims[s2] === 'peng' || s.claims[s2] === 'gang')
+      )
       const hand = p.hand
       const opts = []
       // 明杠：3 张真牌，或 2 张真牌 + 1 只幺鸡
-      if (pengWildCount(hand, tile, yaoji) != null && gangMingWildCount(hand, tile, yaoji) != null) {
+      if (
+        !nearerClaimed &&
+        pengWildCount(hand, tile, yaoji) != null &&
+        gangMingWildCount(hand, tile, yaoji) != null
+      ) {
         opts.push({ tile, gangType: 'ming' })
       }
-      if (pengWildCount(hand, tile, yaoji) != null) {
+      if (!nearerClaimed && pengWildCount(hand, tile, yaoji) != null) {
         // 碰与明杠分开成两个动作项，便于 UI 分别渲染
         out.push({ type: ACTION.PENG, tile })
         if (opts.length) {
@@ -430,6 +453,14 @@ function canClaimPeng(s, seat, tile) {
   if (hasVoidTiles(p.hand, p.void, { yaoji })) return false
   if (p.void && tileSuit(tile) === p.void && !(yaoji && tile === YAOJI_TILE)) return false
   return pengWildCount(p.hand, tile, yaoji) != null
+}
+
+/**
+ * 响应优先级距离：自出牌者按摸牌顺序数（下家 1、对家 2、上家 3）。
+ * 数值越小越优先——碰/明杠同级时由最近的一家先叫。
+ */
+function respDist(payer, seat) {
+  return (seat - payer + 4) % 4
 }
 
 // ---------- 动作裁决 ----------
@@ -593,9 +624,12 @@ function doDiscard(s, a) {
 
 /** 打出牌后开响应窗口；无人可响应则直接轮转 */
 function openRespond(s, discarder, tile, push, afterGang) {
+  // waiting 按摸牌顺序排列（自出牌者下家起逆时针）：碰/明杠同级时取最近的一家，
+  // legalActions 也据此判断「更近的一家是否还没表态/已经叫牌」。
   const waiting = []
-  for (const seat of activeSeats(s)) {
-    if (seat === discarder) continue
+  for (let k = 1; k <= 3; k++) {
+    const seat = (discarder + k) % 4
+    if (s.players[seat].hu) continue
     const can = canHuOn(s, seat, tile) || canClaimPeng(s, seat, tile)
     if (can) waiting.push(seat)
   }
@@ -1083,10 +1117,13 @@ function resolveRespond(s, push) {
     }
     return
   }
-  const pengSeat = s.waiting.find(seat => s.claims[seat] === 'peng')
-  if (pengSeat != null) {
+  // 碰 / 明杠：同级，取离出牌者最近的一家（waiting 已按摸牌顺序排列）
+  const claimSeat = s.waiting.find(
+    seat => s.claims[seat] === 'peng' || s.claims[seat] === 'gang'
+  )
+  if (claimSeat != null && s.claims[claimSeat] === 'peng') {
     // 碰：不摸牌直接进入碰者出牌（强制出牌回合：只许打一张，不能胡/杠）
-    const p = s.players[pengSeat]
+    const p = s.players[claimSeat]
     const wild = pengWildCount(p.hand, tile, yaojiOn(s)) || 0
     removeTiles(p.hand, new Array(2 - wild).fill(tile).concat(new Array(wild).fill(YAOJI_TILE)))
     const meld = { kind: 'peng', tile, from: payer }
@@ -1100,19 +1137,18 @@ function resolveRespond(s, push) {
     s.waiting = []
     s.claims = {}
     s.phase = PHASE_DISCARD
-    s.turn = pengSeat
+    s.turn = claimSeat
     s.drawnTile = null
     s.mustDiscard = true
     // 上一回合的杠分风险随出牌结束而解除（该回合已无杠上炮可能）
     s.gangTurn = null
-    push('peng', { tile, from: payer, wild }, pengSeat)
-    push('turn', { turn: pengSeat })
+    push('peng', { tile, from: payer, wild }, claimSeat)
+    push('turn', { turn: claimSeat })
     return
   }
-  const gangSeat = s.waiting.find(seat => s.claims[seat] === 'gang')
-  if (gangSeat != null) {
+  if (claimSeat != null) {
     // 明杠：出牌者付分（幺鸡局带幺鸡 1 / 不带幺鸡 2），杠者墙尾摸牌继续
-    const p = s.players[gangSeat]
+    const p = s.players[claimSeat]
     const wild = gangMingWildCount(p.hand, tile, yaojiOn(s)) || 0
     removeTiles(p.hand, new Array(3 - wild).fill(tile).concat(new Array(wild).fill(YAOJI_TILE)))
     const meld = { kind: 'gang', gangType: 'ming', tile, from: payer }
@@ -1121,9 +1157,9 @@ function resolveRespond(s, push) {
     s.pendingDiscard = null
     s.waiting = []
     s.claims = {}
-    push('gang', { tile, gangType: 'ming', from: payer, wild }, gangSeat)
-    payGangMing(s, gangSeat, payer, wild, push)
-    drawFromTail(s, gangSeat, push)
+    push('gang', { tile, gangType: 'ming', from: payer, wild }, claimSeat)
+    payGangMing(s, claimSeat, payer, wild, push)
+    drawFromTail(s, claimSeat, push)
     return
   }
   // 全部过：牌落弃牌区，下一位活跃玩家摸牌
