@@ -1652,8 +1652,11 @@ body.scmj-lock #cw-panel { display: none !important; }
   #scmjGame .scmj-die { width: 42px; height: 42px; padding: 5px; border-radius: 9px; }
   #scmjGame .scmj-dice-msg { font-size: 12px; }
   /* 横屏矮屏：结算收起态（标题+积分排名+按钮）一屏放完，不用再滚 */
-  #scmjGame .scmj-settle { padding: 8px; align-items: center; }
-  #scmjGame .scmj-settle-card { padding: 12px 16px; }
+  /* 注意：容器保持 align-items: flex-start，靠卡片的上下 auto 外边距做垂直居中。
+     若容器用 align-items: center，内容高出屏幕时会被上下同时裁掉，
+     顶部溢出部分落在滚动起点之上，永远滚不到（“滚动不上去”）。 */
+  #scmjGame .scmj-settle { padding: 8px; align-items: flex-start; }
+  #scmjGame .scmj-settle-card { padding: 12px 16px; margin-top: auto; margin-bottom: auto; }
   #scmjGame .scmj-settle-title { font-size: 17px; margin-bottom: 8px; }
   #scmjGame .scmj-settle-section { margin-bottom: 8px; }
   #scmjGame .scmj-settle-section-title { font-size: 12.5px; margin-bottom: 4px; padding-bottom: 2px; }
