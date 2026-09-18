@@ -1018,15 +1018,17 @@ meta:
   pointer-events: none;
   -webkit-user-drag: none;
 }
-/* 手牌：占最大交互面积，触控友好 */
+/* 手牌：占最大交互面积，触控友好。尺寸由 ui.js fitHand 按可用空间自适应写入
+   --scmj-hand-tile-*（牌面按真实牌张比例铺满），下面的兜底值只在 JS 未跑到时生效。 */
 #scmjGame .scmj-tile-hand {
-  width: clamp(42px, 4.6vw, 54px);
-  height: clamp(56px, 6.4vw, 71px);
+  width: var(--scmj-hand-tile-w, clamp(42px, 4.6vw, 54px));
+  height: var(--scmj-hand-tile-h, clamp(56px, 6.4vw, 71px));
   flex: none;
   transition: transform 0.12s ease;
 }
-/* 新摸的牌与原手牌留小间距 */
-#scmjGame .scmj-tile-drawn { margin-left: 16px; }
+/* 新摸的牌与原手牌留正间距（与 fitHand 里的排布算法用同一个值，
+   保证「按该宽度算出来正好一行放得下」成立） */
+#scmjGame .scmj-hand .scmj-tile.scmj-tile-drawn { margin-left: var(--scmj-hand-gap, 12px); }
 #scmjGame .scmj-tile-hand:active { transform: translateY(2px); }
 /* 选中：上移 + 金色底光（z-index 保证盖住紧贴的邻牌） */
 #scmjGame .scmj-tile-selected {
@@ -1533,8 +1535,7 @@ meta:
   #scmjGame .scmj-seat-score { font-size: 10.5px; }
   #scmjGame .scmj-avatar { width: 26px; height: 26px; font-size: 14px; }
   #scmjGame .scmj-wind-seat { display: none; }
-  #scmjGame .scmj-tile-hand { width: 34px; height: 46px; }
-  #scmjGame .scmj-tile-drawn { margin-left: 10px; }
+  #scmjGame .scmj-tile-hand { width: var(--scmj-hand-tile-w, 34px); height: var(--scmj-hand-tile-h, 46px); }
   #scmjGame .scmj-tile-disc { width: 22px; height: 28px; }
   /* 副露排固定单行（多时横向滚动）：碰 / 杠出现副露时不再顶高手牌区 */
   #scmjGame .scmj-mymelds {
@@ -1545,8 +1546,9 @@ meta:
     justify-content: flex-start;
     -webkit-overflow-scrolling: touch;
   }
-  /* 手牌固定两行高度：13 / 14 张切换、碰杠后手牌变少都不再改变高度 */
-  #scmjGame .scmj-hand { height: 108px; min-height: 0; align-content: flex-start; gap: 4px 0; padding: 6px 4px; overflow-y: auto; }
+  /* 竖屏两行手牌：高度由 ui.js fitHand 按「满手 14 张两行」写入 min-height，
+     13 / 14 张切换、碰杠后手牌变少都不改变高度（牌的大小也不变） */
+  #scmjGame .scmj-hand { align-content: flex-start; gap: 4px 0; padding: 6px 4px; overflow-y: auto; }
   /* 操作栏固定单行高度（按钮多时横向滚动），不再因按钮换行改变高度。
      必须左对齐：按钮溢出时 justify-content:center 会向两侧溢出，
      左侧那截无法通过横向滚动看到（滚动只能向右），最左边的按钮会被永久截断；
@@ -1770,8 +1772,7 @@ body.scmj-lock #cw-panel { display: none !important; }
   #scmjGame .scmj-mymelds { min-height: 26px; margin-bottom: 2px; gap: 6px; }
   #scmjGame .scmj-mymelds .scmj-tile-disc { width: 20px; height: 24px; }
   #scmjGame .scmj-hand { min-height: 42px; padding: 4px 4px 2px; gap: 4px 0; }
-  #scmjGame .scmj-tile-hand { width: 33px; height: 45px; }
-  #scmjGame .scmj-tile-drawn { margin-left: 10px; }
+  #scmjGame .scmj-tile-hand { width: var(--scmj-hand-tile-w, 33px); height: var(--scmj-hand-tile-h, 45px); }
   #scmjGame .scmj-ting { flex: none; flex-wrap: nowrap; }
   #scmjGame .scmj-ting-label,
   #scmjGame .scmj-ting-chip,
@@ -1798,7 +1799,7 @@ body.scmj-lock #cw-panel { display: none !important; }
   #scmjGame .scmj-mymelds { min-height: 22px; margin-bottom: 1px; }
   #scmjGame .scmj-mymelds .scmj-tile-disc { width: 17px; height: 21px; }
   #scmjGame .scmj-hand { min-height: 38px; padding: 2px 4px 0; }
-  #scmjGame .scmj-tile-hand { width: 28px; height: 38px; }
+  #scmjGame .scmj-tile-hand { width: var(--scmj-hand-tile-w, 28px); height: var(--scmj-hand-tile-h, 38px); }
   #scmjGame .scmj-disc-2 { max-height: 36px; }
   #scmjGame .scmj-tile-disc { width: 18px; height: 20px; }
 }

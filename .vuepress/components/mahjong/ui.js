@@ -91,6 +91,20 @@ export const WALL_SIDE_SLOTS = 14 // 牌墙每边牌位（双层 2×7），四�
 // 牌背贴图真实比例（/mahjong/tiles/back.png，158×200 竖版）：
 // 牌墙按真实牌张比例绘制时用「高 = 宽 × TILE_ASPECT」换算，保证牌背不被拉伸。
 const TILE_ASPECT = 200 / 158
+// 手牌尺寸（见 fitHand）：自己的手牌是全桌最该看清的牌，按可用空间自适应取尺寸，
+// 不再按媒体查询写死小常数（矮横屏曾一路压到 28×38，屏幕宽度却只用掉三分之一）。
+const HAND_SLOTS_REF = 14 // 尺寸按满手 14 张定档：张数变化不改变牌的大小，牌桌不抖
+const HAND_DRAWN_GAP = 12 // 新摸的牌与前排之间的正间距（一眼看出刚摸的是哪张）
+const MIN_HAND_TILE_W = 26 // 极窄屏的硬下限，再窄就交给换行
+// 单张手牌的高度上限（宽 = 高 / TILE_ASPECT）。统一给到桌面档，让**宽度**成为
+// 唯一限制：横屏手机横向富余，14 张按可用宽度算出来的牌宽本来就更大，
+// 之前被矮屏分档（54/58）压住，白白空着三分之一屏宽。真正窄屏由 byWidth 兜住。
+const HAND_MAX_TILE_H = 68
+
+/** 每行放几张手牌：竖屏屏窄但屏高富余 → 两行 7 张（牌能大一圈）；横屏/桌面一行 14 张 */
+function handSlotsPerRow() {
+  return window.innerHeight > window.innerWidth ? HAND_SLOTS_REF / 2 : HAND_SLOTS_REF
+}
 
 /**
  * 牌墙环逐牌位占用掩码：掷骰在起点方位墙内开牌，从开牌点起逐张消耗。
@@ -291,8 +305,10 @@ export default class ScmjUI {
     this.bindStatic()
     this.bindOnline()
     // 中央面板与牌墙都是正方形，尺寸依赖中央区实际宽高 → 窗口尺寸变化时重算
-    // （fitCenterBox 先定面板边长，fitWallRing 再按面板内的牌墙盒计算）
+    // （fitHand 先按新宽高定手牌尺寸，fitCenterBox 再定面板边长，fitWallRing 最后
+    // 按面板内的牌墙盒计算）
     this._onResize = () => {
+      this.fitHand()
       this.fitCenterBox()
       this.fitWallRing()
     }
@@ -1201,6 +1217,8 @@ export default class ScmjUI {
     this.renderDiscards(v)
     this.renderMelds(v)
     this.renderHand(v)
+    // 手牌尺寸自适应要在量牌墙之前算：手牌区高度会跟着变
+    this.fitHand()
     this.renderActions(v)
     this.renderHints(v)
     // 弃牌 / 副露 / 手牌 / 操作栏的高度变化都会改变中央行可用高度：
@@ -1494,6 +1512,38 @@ export default class ScmjUI {
     box.style.setProperty('--scmj-wall-tile-h', tileH + 'px')
     box.style.setProperty('--scmj-wall-inset', inset + 'px')
     box.style.setProperty('--scmj-compass-size', compass + 'px')
+  }
+
+  /**
+   * 手牌尺寸自适应（自己的牌是全桌最该看清的牌，不能写死成小常数）。
+   * 宽度取「单行高度上限」与「横向每行放得下」的较小值，牌面按真实牌张比例
+   * TILE_ASPECT 绘制（贴图正好铺满，不留空白边），所以牌面视觉就是写入的尺寸。
+   * 尺寸经 CSS 变量下发（.scmj-tile-hand 用 var() 取，媒体查询只留兜底值），
+   * JS 没跑到时仍是原来的固定尺寸，不会缩成 0。
+   * 手牌区高度按「满手 14 张」的行数钉住：打牌 / 碰杠后张数变化不改变牌的大小，
+   * 牌桌与中央牌墙不会跟着抖（与旧布局写死高度的用意一致）。
+   */
+  fitHand() {
+    const el = this._els.hand
+    if (!el) return
+    if (!el.children.length) return
+    const cs = getComputedStyle(el)
+    const px = k => parseFloat(cs[k]) || 0
+    const avail = el.clientWidth - px('paddingLeft') - px('paddingRight')
+    if (!(avail > 0)) return // 入口 / 大厅里牌桌是隐藏的，量不到宽度
+    const gap = HAND_DRAWN_GAP
+    const slots = handSlotsPerRow() // 每行几张
+    // 横向要留出：新摸牌那道正间距 + 4px 余量（避免临界时折行）
+    const byWidth = (avail - gap - 4) / slots
+    const byHeight = HAND_MAX_TILE_H / TILE_ASPECT
+    const w = Math.max(MIN_HAND_TILE_W, Math.min(byHeight, byWidth))
+    const h = w * TILE_ASPECT
+    const rows = Math.ceil(HAND_SLOTS_REF / slots)
+    el.style.setProperty('--scmj-hand-tile-w', w.toFixed(1) + 'px')
+    el.style.setProperty('--scmj-hand-tile-h', h.toFixed(1) + 'px')
+    el.style.setProperty('--scmj-hand-gap', gap + 'px')
+    const rowGap = px('rowGap') || px('gap')
+    el.style.minHeight = Math.round(rows * h + (rows - 1) * rowGap + px('paddingTop') + px('paddingBottom')) + 'px'
   }
 
   // ---------- 中央牌墙（四方围一圈双层牌背，摸一张少一张） ----------
