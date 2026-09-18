@@ -1090,6 +1090,39 @@ ok('海底炮：牌墙摸空后点炮胡，平胡 0 + 海底 1 = 1 番 = 2 倍',
   assert.ok(!hu.names.includes('自摸'))
 })
 
+ok('海底炮叠加：在原有番数上额外 +1 番（碰碰胡 1 + 海底 1 = 2 番 = 4 倍）', () => {
+  let s = fastForward(43)
+  // 0 号缺万且手里无万，打出摸到的 T9；1 号碰碰胡单吊 T9 点炮胡
+  setupTable(s, {
+    turn: 0,
+    drawnTile: T(9),
+    specs: {
+      0: { tiles: [T(1), T(2), T(3), T(4), T(5), T(6), T(7), T(8), I(2), I(3), I(4), I(5), I(6)], void: 'wan' },
+      1: {
+        tiles: [W(1), W(1), W(1), W(5), W(5), W(5), W(7), W(7), W(7), T(3), T(3), T(3), T(9)],
+        void: 'tiao'
+      }
+    }
+  })
+  // 这张 T9 是牌墙最后一张：打出后牌墙为空 → 点炮即“海底炮”
+  s.wall = []
+  let r = dispatch(s, { type: 'discard', seat: 0, tile: T(9), actionId: 'hd4', stateVersion: s.version })
+  assert.ok(r.ok)
+  s = r.state
+  r = dispatch(s, { type: 'hu', seat: 1, actionId: 'hd5', stateVersion: s.version })
+  assert.ok(r.ok)
+  s = r.state
+  const hu = s.players[1].hu
+  assert.equal(hu.how, 'dianpao')
+  assert.equal(hu.fan, 2, '碰碰胡 1 + 海底 1 = 2 番（海底为叠加项，不是把番数改成 1）')
+  assert.ok(hu.names.includes('碰碰胡'), '番型名应含碰碰胡，实际 ' + hu.names.join('/'))
+  assert.ok(hu.names.includes('海底炮'), '番型名应含海底炮，实际 ' + hu.names.join('/'))
+  assert.ok(!hu.names.includes('自摸'))
+  const pays = s.ledger.filter(e => e.reason === 'dianpao')
+  assert.equal(pays.length, 1)
+  assert.equal(pays[0].amount, 4, '点炮者付 2^2 = 4 分（底番 1 + 海底 1）')
+})
+
 ok('非海底不加番：牌墙未空时同一副牌自摸只有 1 番', () => {
   let s = fastForward(51)
   const ting13 = [W(1), W(2), W(3), W(4), W(5), W(6), W(7), W(8), W(9), T(2), T(3), T(4), T(5)]
