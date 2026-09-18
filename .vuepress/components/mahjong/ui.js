@@ -1652,7 +1652,21 @@ export default class ScmjUI {
       this.sound('click')
     })
     card.appendChild(toggle)
-    // 2. 胡牌顺序（牌型名 / 番数 / 胡牌方式）
+    // 2. 终局牌面（各家手牌 + 副露）：摆出来才能核对番型（七对/清一色…）、杠数、听牌
+    const secFinal = this.makeSection('终局牌面（各家手牌 + 副露）')
+    if (r.seats && r.seats.length) {
+      // 按行动顺序（自己 → 右家 → 对家 → 左家）展示，与牌桌座位一致
+      r.seats.slice().sort((a, b) => a.seat - b.seat).forEach(ps => {
+        secFinal.body.appendChild(this.makeFinalSeatRow(ps))
+      })
+    } else {
+      const row = document.createElement('div')
+      row.className = 'scmj-settle-row scmj-muted'
+      row.textContent = '无牌面信息'
+      secFinal.body.appendChild(row)
+    }
+    detail.appendChild(secFinal.el)
+    // 3. 胡牌顺序（牌型名 / 番数 / 胡牌方式）
     const secHu = this.makeSection('胡牌顺序')
     if (r.huOrder && r.huOrder.length) {
       r.huOrder.forEach((hh, i) => {
@@ -1674,7 +1688,7 @@ export default class ScmjUI {
       secHu.body.appendChild(row)
     }
     detail.appendChild(secHu.el)
-    // 3. 收支明细表（ledger：谁向谁支付、原因中文、金额）
+    // 4. 收支明细表（ledger：谁向谁支付、原因中文、金额）
     const secLedger = this.makeSection('收支明细')
     if (r.ledger && r.ledger.length) {
       r.ledger.forEach(l => {
@@ -1693,7 +1707,7 @@ export default class ScmjUI {
       secLedger.body.appendChild(row)
     }
     detail.appendChild(secLedger.el)
-    // 4. 退杠（流局时未听牌者退还已收杠钱）
+    // 5. 退杠（流局时未听牌者退还已收杠钱）
     if (r.refundItems && r.refundItems.length) {
       const secRefund = this.makeSection('退杠（流局未听牌）')
       r.refundItems.forEach(c => {
@@ -1705,7 +1719,7 @@ export default class ScmjUI {
       })
       detail.appendChild(secRefund.el)
     }
-    // 5. 查花猪 / 查大叫条目
+    // 6. 查花猪 / 查大叫条目
     if (r.chaItems && r.chaItems.length) {
       const secCha = this.makeSection('查花猪 / 查大叫')
       r.chaItems.forEach(c => {
@@ -1719,7 +1733,7 @@ export default class ScmjUI {
       })
       detail.appendChild(secCha.el)
     }
-    // 5.5 幺鸡喜钱（幺鸡局：结算时手上有 3 只 / 4 只幺鸡，每家给喜钱）
+    // 7. 幺鸡喜钱（幺鸡局：结算时手上有 3 只 / 4 只幺鸡，每家给喜钱）
     if (r.xiItems && r.xiItems.length) {
       const secXi = this.makeSection('幺鸡喜钱')
       r.xiItems.forEach(c => {
@@ -1733,7 +1747,7 @@ export default class ScmjUI {
       detail.appendChild(secXi.el)
     }
     card.appendChild(detail)
-    // 6. 按钮：再来一局 / 返回官网
+    // 8. 按钮：再来一局 / 返回官网
     const btns = document.createElement('div')
     btns.className = 'scmj-settle-btns'
     const again = document.createElement('button')
@@ -1764,6 +1778,53 @@ export default class ScmjUI {
     el.appendChild(t)
     el.appendChild(body)
     return { el, body }
+  }
+
+  /**
+   * 结算页：一家的终局牌面（手牌 + 副露 [+ 胡牌张]）。
+   * 手牌按升序摆出，副露整组展示（碰/明杠/暗杠/补杠 + 赖标），
+   * 点炮 / 抢杠胡的胡牌张不在 hand 里（那张牌落在点炮者弃牌区），
+   * 用金框「胡」标补在末尾，凑成完整胡牌型；缺门牌仍标红「缺」，
+   * 便于一眼看出罗列是否正确（七对 / 清一色 / 杠几组 / 花猪）。
+   */
+  makeFinalSeatRow(ps) {
+    const row = document.createElement('div')
+    row.className = 'scmj-final-row'
+    const head = document.createElement('div')
+    head.className = 'scmj-final-head'
+    const gangs = (ps.melds || []).filter(m => m.kind === 'gang').length
+    const tags = []
+    if (ps.void) tags.push('缺' + SUIT_NAMES[ps.void])
+    if (gangs) tags.push('杠 ' + gangs + ' 组')
+    const status = ps.hu
+      ? (HOW_NAMES[ps.hu.how] || ps.hu.how) + ' · ' + (ps.hu.names || []).join(' + ') +
+        ' · ' + ps.hu.fan + ' 番'
+      : ps.ting ? '听牌 · 未胡' : '未听牌'
+    head.innerHTML =
+      '<span class="scmj-final-name">' + SEAT_LABELS[ps.seat] + '</span>' +
+      '<span class="scmj-final-status">' + status + '</span>' +
+      (tags.length ? '<span class="scmj-final-tags">' + tags.join(' · ') + '</span>' : '')
+    row.appendChild(head)
+    const tiles = document.createElement('div')
+    tiles.className = 'scmj-final-tiles'
+    ;(ps.hand || []).slice().sort((a, b) => a - b).forEach(id => {
+      const t = this.makeTile(id, 'disc')
+      t.title = tileName(id)
+      if (ps.void && tileSuit(id) === ps.void) {
+        t.classList.add('scmj-tile-voidsuit')
+        const mark = document.createElement('span')
+        mark.className = 'scmj-tile-voidmark'
+        mark.textContent = '缺'
+        t.appendChild(mark)
+      }
+      tiles.appendChild(t)
+    })
+    ;(ps.melds || []).forEach(m => tiles.appendChild(this.makeMeldGroup(m)))
+    if (ps.hu && ps.hu.winTile != null && ps.hu.how !== 'zimo') {
+      tiles.appendChild(this.makeWinMeld(ps.hu))
+    }
+    row.appendChild(tiles)
+    return row
   }
 
   // ---------- 规则说明（由契约 DEFAULT_RULES + 入口所选封顶番数生成中文清单） ----------

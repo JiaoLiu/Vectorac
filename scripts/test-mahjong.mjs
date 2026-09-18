@@ -1486,6 +1486,50 @@ ok('三人胡满立即结束', () => {
   conservation(s, '三人胡后')
 })
 
+ok('结算牌面：暴露各家终局手牌 + 副露（点炮胡的牌张用 hu.winTile 补全即可复原胡牌型）', () => {
+  let s = fastForward(14)
+  const tingW9 = pair => [pair, pair, W(1), W(2), W(3), W(4), W(5), W(6), W(7), W(8), T(5), T(6), T(7)]
+  setupTable(s, {
+    turn: 0,
+    drawnTile: W(9),
+    specs: {
+      0: { tiles: [T(1), T(2), T(3), T(4), T(5), T(6), T(7), T(8), I(2), I(3), I(4), I(5), I(6)], void: 'wan' },
+      1: { tiles: tingW9(T(4)), void: 'tiao' },
+      2: { tiles: tingW9(T(1)), void: 'tiao' },
+      3: { tiles: tingW9(T(8)), void: 'tiao' }
+    }
+  })
+  let r = dispatch(s, { type: 'discard', seat: 0, tile: W(9), actionId: 'fs0', stateVersion: s.version })
+  assert.ok(r.ok)
+  s = r.state
+  for (const seat of [1, 2, 3]) {
+    r = dispatch(s, { type: 'hu', seat, actionId: `fs${seat}`, stateVersion: s.version })
+    assert.ok(r.ok, `seat${seat} 胡失败: ${r.error}`)
+    s = r.state
+  }
+  const results = settlementOf(s)
+  assert.equal(results.seats.length, 4, '结算应给出 4 家终局牌面')
+  results.seats.forEach(ps => {
+    assert.ok(Array.isArray(ps.hand) && Array.isArray(ps.melds), '每家应含 hand/melds')
+    assert.equal(typeof ps.ting, 'boolean', '未胡者应给出听牌判定')
+  })
+  // 点炮胡：hand 里不含胡牌张（那张牌在点炮者弃牌区），hand + winTile 必须能复原胡牌型，
+  // 结算页正是照此把「胡」那张牌补在牌面末尾，供用户核对番型算得对不对。
+  for (const hh of results.huOrder) {
+    const ps = results.seats.find(x => x.seat === hh.seat)
+    assert.equal(ps.hu.how, hh.how)
+    assert.ok(ps.hu.winTile != null)
+    const full = [...ps.hand, hh.winTile].sort((a, b) => a - b)
+    assert.equal(
+      isWinHand(full, ps.melds.length),
+      true,
+      `seat${hh.seat} 牌面 + 胡牌张应成胡，实际 ${full.map(tileName).join(' ')}`
+    )
+  }
+  // 未胡的 seat0 不是胡牌者，牌面照实展示
+  assert.equal(results.seats[0].hu, null)
+})
+
 ok('胡满结束不退杠：已收杠钱照收（区别于流局）', () => {
   let s = fastForward(15)
   // seat0 先暗杠 W5，收 3×2 = 6 分

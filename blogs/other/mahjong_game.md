@@ -163,7 +163,7 @@
 
 <div class="scmj-intro">
 <h3>游戏介绍</h3>
-<p>四川麻将（血战到底）人机版：四人对局，你坐下方，三家 AI 分别在右、上、左。换三张、定缺后开始摸打，碰、杠、胡全凭手气与取舍；有人胡牌后离场观战，牌桌继续，直到三人胡牌或流局结算（含查花猪 / 查大叫 / 退杠）。</p>
+<p>四川麻将（血战到底）人机版：四人对局，你坐下方，三家 AI 分别在右、上、左。换三张、定缺后开始摸打，碰、杠、胡全凭手气与取舍；有人胡牌后离场观战，牌桌继续，直到三人胡牌或流局结算（含查花猪 / 查大叫 / 退杠）；结算详情里会把四家终局牌面（手牌 + 副露 + 胡牌那张）整组摆出来，番型（七对 / 清一色等）、杠了几组、谁听牌一眼可核对。</p>
 <p>进游戏每人 100 积分，本局输赢在结算时一次性累计到总积分；首局掷骰定庄（庄家起手 14 张先打），之后每局掷骰决定摸排起点，并由上局最先胡牌者坐庄（一炮多响时点炮者坐庄）；同一玩家连庄 2 轮起显示「连庄 xN」，满 3 轮挂 🔥。封顶番数在进游戏前用 − / ＋ 调整（2~6 番）。番型：平胡 0 番（1 倍）、对对胡 1 番、七对 2 番、龙七对 3 番、金钩钓 3 番（四副露碰 / 杠到底、手里单吊将，比对对胡高一档）；清一色固定 +2 番。自摸、海底（捞月 / 炮）、杠上花（杠后补牌自摸）与杠上炮（杠后补牌打出的牌被胡）都会额外加番，补杠被抢（抢杠胡）也加 1 番——被抢则杠不成立、杠钱一分不收，被抢的那张牌算你点炮，用幺鸡补的那张留在副露里顶替被抢走的真牌（只能等摸到真牌再杠了；这只幺鸡结算喜钱时仍算你的）；另外每有一组 4 张相同的牌（明杠 / 暗杠 / 补杠，或碰后手里留一张、手里 4 张没杠）再加 1 番，叫做「根」——不杠就拿不到杠钱，但根番照算。杠钱是预收：流局时没听牌的人不仅赔叫，还要把本局收到的杠钱全部退回去，只有胡走了（三人胡满结束）才真收得进。牌桌中央的四方牌背就是剩余牌墙，每摸一张就少一张。</p>
 <h3>操作方式</h3>
 <ul>
@@ -1118,6 +1118,32 @@
 #scmjGame .scmj-ledger-reason { flex: 1; }
 #scmjGame .scmj-ledger-amt { color: #e9f0e6; }
 #scmjGame .scmj-settle-btns { display: flex; gap: 12px; justify-content: center; margin-top: 6px; flex-wrap: wrap; }
+/* ---- 结算：终局牌面（各家手牌 + 副露，供核对番型 / 杠数 / 听牌） ---- */
+#scmjGame .scmj-final-row {
+  padding: 6px 4px;
+  border-top: 1px solid rgba(159, 191, 168, 0.18);
+}
+#scmjGame .scmj-final-row:first-child { border-top: none; }
+#scmjGame .scmj-final-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 13.5px;
+  color: #e9f0e6;
+}
+#scmjGame .scmj-final-name { font-weight: 700; color: #ffd968; }
+#scmjGame .scmj-final-status { color: #c7f3d6; }
+#scmjGame .scmj-final-tags { font-size: 12.5px; color: #9fbfa8; }
+#scmjGame .scmj-final-tiles {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  row-gap: 6px;
+  margin-top: 4px;
+}
+/* 副露整组（碰 / 杠）与手牌留出间距，一眼分得清哪几张是副露 */
+#scmjGame .scmj-final-tiles .scmj-meld { margin-left: 8px; }
 
 /* ============ 浮层提示 / toast ============ */
 #scmjGame .scmj-float {

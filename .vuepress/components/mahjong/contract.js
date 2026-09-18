@@ -229,6 +229,10 @@ export const DEFAULT_RULES = {
  *     //          'cha-huazhu' 'cha-dajiao' 'gang-refund'
  *     //          'gang-zhuan-yu'（杠上炮转雨） 'yaoji-xi'（幺鸡喜钱）
  *   perSeat: [{seat, delta}],
+ *   seats: [{seat, hand:[tileId], melds:[Meld], void, hu, ting:bool}],
+ *     // 终局牌面（牌局已结束，无隐私问题）：结算页摆出各家手牌 + 副露，供核对
+ *     // 番型（七对/清一色等）、杠数与听牌判定。点炮 / 抢杠胡者的 hand 不含胡牌张
+ *     // （那张牌在点炮者弃牌区），展示时用 hu.winTile 补；ting = 未胡且已打缺且真听牌
  *   chaItems: [{type:'huazhu'|'dajiao', seat, amount, fan?, names?:[]}]
  *     // dajiao 的 fan/names = 该未听牌者按手牌估出的赔付番数（非封顶）
  *   refundItems: [{type:'tuigang', seat, amount, count}]

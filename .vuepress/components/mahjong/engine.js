@@ -1340,11 +1340,30 @@ function transfer(s, from, to, amount, reason) {
 /** 收支流水（对外） */
 export function settlementOf(state) {
   if (state.phase !== PHASE_FINISHED) return null
+  const yaoji = yaojiOn(state)
   return {
     liuju: state.huOrder.length < state.rules.endWhenHuPlayers,
     huOrder: clone(state.huOrder),
     ledger: clone(state.ledger),
     perSeat: state.players.map(p => ({ seat: p.seat, delta: p.delta })),
+    // 终局牌面：各家手牌 + 副露 + 缺门，结算页摆出来供核对
+    // （番型是否算对、杠了几组、是否真听牌）。牌局已结束，公开手牌无隐私问题。
+    // 点炮 / 抢杠胡者手里的 hand 不含胡牌张（那张牌在点炮者弃牌区），
+    // 展示时由 UI 用 hu.winTile 补上，自摸（含天胡）的 hand 已含胡牌张。
+    seats: state.players.map(p => ({
+      seat: p.seat,
+      hand: clone(p.hand),
+      melds: clone(p.melds),
+      void: p.void,
+      hu: clone(p.hu),
+      ting:
+        !p.hu &&
+        p.hand.length % 3 === 1 &&
+        !hasVoidTiles(p.hand, p.void, { yaoji }) &&
+        tingTiles(p.hand, p.melds.length, { yaoji }).some(
+          t => tileSuit(t) !== p.void || (yaoji && t === YAOJI_TILE)
+        )
+    })),
     chaItems: clone(state.chaItems || []),
     refundItems: clone(state.refundItems || []),
     xiItems: clone(state.xiItems || [])
