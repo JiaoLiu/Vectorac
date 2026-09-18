@@ -217,21 +217,24 @@ sudo ADMIN_TOKEN=$(openssl rand -hex 16) bash scripts/install.sh
 安装到 `/home/www/vectorac/mahjong-service`（与 `dist/` 平级）；`.env` 不覆盖、只补缺失字段，
 幂等可重跑 —— **升级和回滚都是同一套流程**（回滚就解压旧 tarball 再跑 install.sh）。
 
-### 3. nginx 反代（必须合并进 vectorac.conf 主 server 块）
+### 3. nginx 反代（在 vectorac.conf 主 server 块里加一行 include）
 
 麻将的三个 location **不能**像短链那样丢到 `conf.d/` 独立文件里：
 `location` 指令不允许出现在 `server` 块之外，会直接报 `location directive is not allowed here`。
+做法是在 `vectorac.com` 的 `server { }`（443/ssl 那个块）里加一行 include，
+反代规则留在安装目录，以后只改那一个文件：
 
-```bash
-sudo vim /etc/nginx/conf.d/vectorac.conf
-# 把 mahjong-service/scripts/mahjong-proxy.conf 里的三段 location 粘进 server { }：
-#   location /api/rooms        房间列表 / 创建 / 加入
-#   location = /api/game-stats 后台统计（需 X-Admin-Token）
-#   location = /mahjong-ws     房间实时同步（WebSocket，含 Upgrade 头 + 600s 超时）
-sudo nginx -t && sudo systemctl reload nginx
+```nginx
+include /home/www/vectorac/mahjong-service/scripts/mahjong-proxy.conf;
 ```
 
+懒得手动定位 server 块，可直接跑 README 里的「插入 + 校验」脚本（自动备份 + 自动选 443 块 +
+`nginx -t` 通过才 reload，幂等可重跑）：`mahjong-service/README.md` → 「部署到 vectorac.com / nginx」。
+手动插入后照旧 `sudo nginx -t && sudo systemctl reload nginx`。
+
 前端走官网同源路径（`https://vectorac.com/api/rooms`、`wss://vectorac.com/mahjong-ws`），不用改 DNS。
+验证：`/api/rooms` 应返回 JSON（返回 HTML 说明没生效）；WS 握手要 `curl --http1.1`，期望 `101`
+（不带 `--http1.1` 会因 HTTP/2 剥掉 `Upgrade` 头而返回 404，是测试姿势问题）。
 
 ### 备份
 

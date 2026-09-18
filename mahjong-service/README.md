@@ -32,7 +32,7 @@ mahjong-service/
 │   ├── bundle.sh        # 本地打包（含 node_modules + 真实引擎）
 │   ├── install.sh       # 服务器一键安装/升级 + 写 systemd unit
 │   ├── mahjong.service  # systemd 模板（占位符由 install.sh 替换）
-│   └── mahjong-proxy.conf  # nginx location 片段（合并进主 server 块）
+│   └── mahjong-proxy.conf  # nginx location 片段（主 server 块里以 include 引用）
 ├── test.js              # 端到端测试（不依赖网络监听）
 └── package.json
 ```
@@ -136,18 +136,69 @@ sudo grep '^ADMIN_TOKEN=' /home/www/vectorac/mahjong-service/.env
 
 ### nginx：把三个路径反代到 3032
 
-**麻将服务的 `location` 块必须合并进 `vectorac.com` 主 `server { }`**，
-不能像短链那样丢到 `conf.d/` 独立文件里 —— `location` 指令不允许出现在 `server` 块之外，
+**麻将服务的 `location` 块必须写在 `vectorac.com` 主 `server { }` 里**，
+不能像短链那样丢到 `conf.d/` 独立文件 —— `location` 指令不允许出现在 `server` 块之外，
 直接放 `conf.d/` 会报 `location directive is not allowed here`。
 
+推荐做法：主配置里只加**一行 `include`**，反代规则留在服务安装目录
+（`scripts/mahjong-proxy.conf`）。以后调整反代只改这一个文件，升级覆盖服务时它也跟着
+tarball 更新，不用再碰主配置：
+
+```nginx
+# /etc/nginx/conf.d/vectorac.conf，写在 vectorac.com 的 server { } 内（443/ssl 那个块）
+include /home/www/vectorac/mahjong-service/scripts/mahjong-proxy.conf;
+```
+
+`mahjong-proxy.conf` 里是三段 location：
+
+| location | 用途 |
+| --- | --- |
+| `location /api/rooms` | 房间列表 / 创建 / 加入（HTTP） |
+| `location = /api/game-stats` | 后台统计（HTTP，需 `X-Admin-Token`） |
+| `location = /mahjong-ws` | 房间实时同步（WebSocket，含 `Upgrade` / `Connection` 头 + 600s 超时） |
+
+懒得手动定位 server 块，就跑下面这段「插入 + 校验」脚本。它会先备份，再把 include 插进
+`server_name` 含 `vectorac.com` 且带 443/ssl 的那个块，`nginx -t` 通过才 reload；
+**幂等，重跑不会重复插入**（已经插过就直接跳过）：
+
 ```bash
-sudo vim /etc/nginx/conf.d/vectorac.conf
-# 把 /home/www/vectorac/mahjong-service/scripts/mahjong-proxy.conf 里的三段 location 粘进 server { }：
-#   location /api/rooms        房间列表 / 创建 / 加入
-#   location = /api/game-stats 后台统计（需 X-Admin-Token）
-#   location = /mahjong-ws     房间实时同步（WebSocket，含 Upgrade 头 + 600s 超时）
+sudo cp -a /etc/nginx/conf.d/vectorac.conf /etc/nginx/conf.d/vectorac.conf.bak-$(date +%Y%m%d-%H%M%S)
+
+sudo python3 - <<'PY'
+import re, sys
+p = '/etc/nginx/conf.d/vectorac.conf'
+src = open(p, encoding='utf-8').read()
+inc = '    include /home/www/vectorac/mahjong-service/scripts/mahjong-proxy.conf;\n'
+if 'mahjong-proxy.conf' in src:
+    print('已包含 mahjong-proxy.conf，无需改动'); sys.exit(0)
+# 按大括号配对切出所有 server { } 块
+blocks = []
+for m in re.finditer(r'\bserver\s*\{', src):
+    ob, depth = m.end() - 1, 0
+    for j in range(ob, len(src)):
+        if src[j] == '{': depth += 1
+        elif src[j] == '}':
+            depth -= 1
+            if depth == 0:
+                blocks.append((ob, j, src[ob:j])); break
+cands = [(2 if ('ssl_certificate' in b or re.search(r'listen[^;]*443', b)) else 1, ob, be, b)
+         for ob, be, b in blocks if 'vectorac.com' in b]
+if not cands:
+    print('没找到 server_name 含 vectorac.com 的块，请手动处理'); sys.exit(1)
+cands.sort(key=lambda x: -x[0])
+score, ob, be, body = cands[0]
+m = re.search(r'\n[ \t]*location\b', body)
+pos = ob + m.start() + 1 if m else ob + 1
+open(p, 'w', encoding='utf-8').write(src[:pos] + inc + src[pos:])
+print('候选 %d 个，已插入到 %s 的 server 块内' % (len(cands), '443/ssl 块' if score == 2 else '首个匹配块'))
+PY
+
 sudo nginx -t && sudo systemctl reload nginx
 ```
+
+> 要看到「已插入到 **443/ssl 块**」才对 —— 80 端口的 server 块只管跳 HTTPS，
+> 插到那里公网仍然连不上。用 `include` 不违反上面那条限制：三段 `location` 依旧处在
+> `server` 块作用域内。
 
 > 用官网同源路径（`https://vectorac.com/api/rooms`、`wss://vectorac.com/mahjong-ws`），
 > 前端代码不需要区分开发/生产，也不用改 DNS（`*.vectorac.com` 通配）。
@@ -156,11 +207,26 @@ sudo nginx -t && sudo systemctl reload nginx
 
 ```bash
 curl -s http://127.0.0.1:3032/api/health
-curl -s https://vectorac.com/api/rooms | head -c 200
+curl -s https://vectorac.com/api/rooms | head -c 200        # 期望 JSON，不是 HTML
 curl -s -H "X-Admin-Token: $(sudo grep '^ADMIN_TOKEN=' /home/www/vectorac/mahjong-service/.env | cut -d= -f2)" \
      https://vectorac.com/api/game-stats
 sudo systemctl status mahjong | head -5
+
+# WebSocket 握手：必须带 --http1.1（期望 101）
+# curl 默认协商 HTTP/2，而 Upgrade 是 hop-by-hop 头、在 HTTP/2 里会被剥掉，
+# 后端只会当成普通 GET 返回 404 —— 看着像没配好，其实是测试姿势问题
+curl -s --http1.1 -o /dev/null -w '%{http_code}\n' \
+  -H 'Connection: Upgrade' -H 'Upgrade: websocket' \
+  -H 'Sec-WebSocket-Version: 13' -H 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==' \
+  https://vectorac.com/mahjong-ws
 ```
+
+两个容易被误判成故障的现象：
+
+- 只测 `http://`（80 端口）会拿到 `301 Moved Permanently` —— 那是跳 HTTPS 的正常响应，
+  不是配置错；用 `https://` 或 `curl -s -H 'Host: vectorac.com' http://127.0.0.1/api/rooms` 才准。
+- `/api/game-stats` 不带 `X-Admin-Token` 返回 `403 application/json` 是**正常的**：
+  这是应用层拒绝，说明反代已经通了（若反代没通会返回静态站的 `200 text/html`）。
 
 浏览器打开 `https://vectorac.com/blogs/other/mahjong_game.html` → 「联机对战 · 好友房」→ 建房，
 第二个浏览器窗口用邀请链接入座，两边都点「开始」验证 WS 心跳与同步。
