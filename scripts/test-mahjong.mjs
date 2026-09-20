@@ -867,7 +867,7 @@ ok('明杠：放杠者付 1 分，杠者墙尾摸牌', () => {
   conservation(s, '明杠后')
 })
 
-ok('明杠后胡牌：杠本身算 1 根（平胡 0 + 根 1 + 自摸 1 + 杠上花 1 = 3 番 = 8 倍）', () => {
+ok('明杠后杠上花：点杠者一人包赔（番型照常 3 番，其他两家不出钱）', () => {
   let s = fastForward(18)
   setupTable(s, {
     turn: 0,
@@ -885,13 +885,74 @@ ok('明杠后胡牌：杠本身算 1 根（平胡 0 + 根 1 + 自摸 1 + 杠上�
   assert.ok(r.ok, '明杠应成功: ' + r.error)
   s = r.state
   assert.equal(s.players[1].melds[0].gangType, 'ming')
-  // 杠后补牌固定为 T9（隔离牌墙随机性）
-  s.drawnTile = T(9)
+  // 明杠后：seat0 付 1 分杠钱
+  assert.equal(s.players[0].delta, -1, '明杠放杠者付 1')
+  assert.equal(s.players[1].delta, +1, '明杠者收 1')
+  // 杠后补牌强制为 T9：与墙中一张 T9 交换（保持牌张守恒），隔离牌墙随机性
+  const wi = s.wall.lastIndexOf(T(9))
+  assert.ok(wi >= 0, '墙中应有 T9')
+  const prevDraw = s.drawnTile
+  s.drawnTile = s.wall[wi]
+  s.wall[wi] = prevDraw
   r = dispatch(s, { type: 'hu', seat: 1, actionId: 'mg2', stateVersion: s.version })
   assert.ok(r.ok, '明杠后自摸胡应成功: ' + r.error)
   const hu = r.state.players[1].hu
+  // 番型照常按自摸计：平胡 0 + 根 1（明杠）+ 自摸 1 + 杠上花 1 = 3 番 = 8 倍
   assert.equal(hu.fan, 3, '平胡 0 + 根 1（明杠）+ 自摸 1 + 杠上花 1')
   assert.ok(hu.names.includes('根') && hu.names.includes('杠上花'), '实际 ' + hu.names.join('/'))
+  assert.ok(hu.names.includes('自摸'), '包牌仍算自摸番：' + hu.names.join('/'))
+  // 点杠包牌：seat0 一人付三家份额（3×8=24），seat2/seat3 一分不出
+  assert.equal(r.state.players[0].delta, -25, '点杠者付：明杠 1 + 包赔 24')
+  assert.equal(r.state.players[1].delta, 25, '胡者收：明杠 1 + 包赔 24')
+  assert.equal(r.state.players[2].delta, 0, '其他两家不出钱')
+  assert.equal(r.state.players[3].delta, 0, '其他两家不出钱')
+  assert.ok(
+    r.state.ledger.some(e => e.reason === 'zimo' && e.from === 0 && e.to === 1 && e.amount === 24),
+    '应有 seat0 一人包赔 24 分的自摸流水'
+  )
+  const ho = r.state.huOrder[0]
+  assert.equal(ho.how, 'zimo', '包牌按自摸口径记')
+  assert.equal(ho.from, 0, 'from 记点杠者，结算页显示“包赔：seat0”')
+  conservation(r.state, '点杠包牌后')
+})
+
+ok('暗杠后杠上花：仍三家分摊（不包牌）', () => {
+  let s = fastForward(19)
+  setupTable(s, {
+    turn: 0,
+    drawnTile: W(5),
+    specs: {
+      // 手牌 13 张：W5×3（配 drawnTile 的 W5 凑成暗杠）；其余 10 张只差一张 T9（筒9）成胡
+      0: { tiles: [W(5), W(5), W(5), W(1), W(2), W(3), T(2), T(3), T(4), T(5), T(6), T(7), T(9)], void: 'tiao' }
+    }
+  })
+  let r = dispatch(s, { type: 'gang', seat: 0, tile: W(5), gangType: 'an', actionId: 'ag1', stateVersion: s.version })
+  assert.ok(r.ok, '暗杠应成功: ' + r.error)
+  s = r.state
+  // 暗杠收 3×2=6
+  assert.equal(s.players[0].delta, 6)
+  assert.equal(s.players[1].delta, -2)
+  assert.equal(s.players[2].delta, -2)
+  assert.equal(s.players[3].delta, -2)
+  // 杠后补牌强制为 T9：与墙中一张 T9 交换（保持牌张守恒）
+  const wi = s.wall.lastIndexOf(T(9))
+  assert.ok(wi >= 0, '墙中应有 T9')
+  const prevDraw = s.drawnTile
+  s.drawnTile = s.wall[wi]
+  s.wall[wi] = prevDraw
+  r = dispatch(s, { type: 'hu', seat: 0, actionId: 'ag2', stateVersion: s.version })
+  assert.ok(r.ok, '暗杠后自摸胡应成功: ' + r.error)
+  const hu = r.state.players[0].hu
+  assert.equal(hu.fan, 3, '平胡 0 + 根 1（暗杠）+ 自摸 1 + 杠上花 1 = 3')
+  assert.ok(hu.names.includes('杠上花'))
+  // 暗杠后的杠上花仍三家分摊：每家再付 2^3=8（非包牌）
+  assert.equal(r.state.players[1].delta, -2 - 8, '暗杠后杠上花三家分摊')
+  assert.equal(r.state.players[2].delta, -2 - 8, '暗杠后杠上花三家分摊')
+  assert.equal(r.state.players[3].delta, -2 - 8, '暗杠后杠上花三家分摊')
+  assert.equal(r.state.players[0].delta, 6 + 24, '胡者收：暗杠 6 + 三家各 8')
+  assert.equal(r.state.huOrder[0].how, 'zimo')
+  assert.equal(r.state.huOrder[0].from, undefined, '非包牌自摸不记付款方')
+  conservation(r.state, '暗杠杠上花后')
 })
 
 ok('暗杠：每位活跃玩家付 2 分', () => {
@@ -1810,6 +1871,22 @@ ok('rules：整手不含幺鸡额外 +1 番（不带幺鸡 2 倍，带幺鸡 1 �
   const f2 = finalFan(withYaoji, [], { yaoji: true, capFan: 6 })
   assert.equal(f2.fan, 0, '带幺鸡平胡 0 番（1 倍）')
   assert.ok(!f2.names.includes('不带幺鸡'))
+})
+
+ok('rules：幺鸡补位取最大番——补成第 4 张碰/杠多算一个「根」（结算不再少一番）', () => {
+  // 杠 6 筒 + 碰 9 筒；手牌「一一万 + 六七八筒 + 七七筒」摸到幺鸡，
+  // 幺鸡可当 9 筒：678 + 78(幺鸡当 9) + 一一万雀头 成胡。
+  // 补成 9 筒后 9 筒凑满 4 张 → 多一个「根」，合计 2 个根（6 筒杠 + 9 筒）。
+  // 旧实现只按真牌数根（9 筒只有碰的 3 张）会少算这一番。
+  const melds = [
+    { kind: 'gang', gangType: 'ming', tile: T(6), from: 1 },
+    { kind: 'peng', tile: T(9), from: 1 }
+  ]
+  const hand = [W(1), W(1), T(6), T(7), T(7), T(8), T(8), YAOJI_TILE]
+  assert.equal(isWinHand(hand, melds.length, { yaoji: true }), true, '带幺鸡应成胡')
+  const f = finalFan(hand, melds, { yaoji: true, capFan: 6, genFan: 1 })
+  assert.equal(f.fan, 2, '幺鸡补成 9 筒应算 2 个根（2 番）')
+  assert.ok(f.names.includes('根×2'), '应有两个根：' + f.names.join('/'))
 })
 
 ok('幺鸡赖子：1 张真牌 + 1 只幺鸡可碰（副露 wild=1）', () => {

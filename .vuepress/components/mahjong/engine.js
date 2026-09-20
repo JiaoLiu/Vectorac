@@ -955,18 +955,23 @@ function payGangSelf(s, seat, kind, wild, push) {
     transfer(s, r, seat, amount, 'gang-an')
     items.push({ from: r, amount })
   }
-  addGangTurn(s, seat, items)
+  addGangTurn(s, seat, items, { kind })
 }
 
 /** 明杠分：放杠者（被碰杠的出牌者）付一份 */
 function payGangMing(s, seat, fromSeat, wild, push) {
   const amount = gangUnit(s, 'ming', wild)
   transfer(s, fromSeat, seat, amount, 'gang-ming')
-  addGangTurn(s, seat, [{ from: fromSeat, amount }])
+  addGangTurn(s, seat, [{ from: fromSeat, amount }], { kind: 'ming', from: fromSeat })
 }
 
-/** 记录本回合杠分（同一回合可多次杠，累加；换人则重置） */
-function addGangTurn(s, seat, items) {
+/**
+ * 记录本回合杠分（同一回合可多次杠，累加；换人则重置）。
+ * meta.kind 记住「最近这一次杠」的类型（'ming' | 'an' | 'bu'）与放杠者（仅明杠有
+ * from，即点杠者）——点杠包牌要判断本回合的杠上花是否由「明杠（点杠）」引发
+ * （见 huSettle）。不能靠 items 的条数去猜：暗杠在只剩一家未胡时也只有 1 个付款人。
+ */
+function addGangTurn(s, seat, items, meta = {}) {
   if (!s.gangTurn || s.gangTurn.seat !== seat) {
     s.gangTurn = { seat, total: 0, items: [] }
   }
@@ -974,6 +979,8 @@ function addGangTurn(s, seat, items) {
     s.gangTurn.total += it.amount
     s.gangTurn.items.push(it)
   }
+  s.gangTurn.lastKind = meta.kind || null
+  s.gangTurn.lastFrom = meta.from != null ? meta.from : null
 }
 
 // ---- 胡 ----
@@ -1027,6 +1034,11 @@ function doHu(s, a) {
 
 /**
  * 胡牌结算：自摸由所有活跃未胡玩家各付，点炮/抢杠由责任者付。
+ * 点杠包牌（川麻「承包制」）：本回合是「明杠（点杠）后补牌自摸成胡（杠上花）」
+ *   时，赢家番型照常按自摸计（自摸番 + 杠上花番 + 根…），但不再三家分摊——
+ *   由点杠者一人包赔全额（把其他未胡玩家的份额一并承担），其他家不出钱。
+ *   依据：本回合最近一次杠是明杠（s.gangTurn.lastKind === 'ming'）。
+ *   暗杠 / 补杠后的杠上花仍三家分摊，不包牌。
  * 物理牌归属：自摸的 drawnTile 并入胡者手牌；点炮的牌落回出牌者
  * 弃牌区（多胡共享展示，展示信息用 hu.winTile，不重复占物理牌）；
  * 抢杠的牌归抢杠者（相当于被抢那家点炮），被抢者副露退回碰——幺鸡补的
@@ -1044,6 +1056,14 @@ function huSettle(s, seat, how, winTile, payerSeat, push, discardTag, afterGang)
   const haidi = s.wall.length === 0 && (how === 'zimo' || how === 'dianpao')
   // 杠上胡：本次胡发生在杠后补牌回合（自摸→杠上花，点炮→杠上炮），额外加番
   const gangshang = afterGang === true && (how === 'zimo' || how === 'dianpao')
+  // 点杠包牌：本回合最近一次杠是明杠（点杠），且杠者就是胡牌者本人。
+  const diangangBao =
+    how === 'zimo' &&
+    afterGang === true &&
+    s.gangTurn != null &&
+    s.gangTurn.seat === seat &&
+    s.gangTurn.lastKind === 'ming' &&
+    s.gangTurn.lastFrom != null
   const fanRes = finalFan(full, p.melds, {
     zimo: how === 'zimo',
     haidi,
@@ -1060,11 +1080,22 @@ function huSettle(s, seat, how, winTile, payerSeat, push, discardTag, afterGang)
   })
   const amount = s.rules.baseScore * Math.pow(2, fanRes.fan)
   let total = 0
+  // 包牌时的付款座位（写入 huOrder.from，结算页据此显示「包赔：谁」）
+  let baoPayer = null
   if (how === 'zimo') {
-    for (const r of activeSeats(s)) {
-      if (r === seat) continue
-      transfer(s, r, seat, amount, 'zimo')
-      total += amount
+    if (diangangBao) {
+      // 点杠者一人包赔：一次付清原本三家各自的份额，其他家不出钱；
+      // 胡者总收益与普通杠上花自摸完全一致（番型、金额都不变，只换付款人）。
+      baoPayer = s.gangTurn.lastFrom
+      const shares = activeSeats(s).filter(r => r !== seat).length
+      total = amount * shares
+      transfer(s, baoPayer, seat, total, 'zimo')
+    } else {
+      for (const r of activeSeats(s)) {
+        if (r === seat) continue
+        transfer(s, r, seat, amount, 'zimo')
+        total += amount
+      }
     }
   } else {
     transfer(s, payerSeat, seat, amount, how)
@@ -1105,7 +1136,8 @@ function huSettle(s, seat, how, winTile, payerSeat, push, discardTag, afterGang)
     fan: fanRes.fan,
     names: fanRes.names,
     scoreDelta: total,
-    from: payerSeat != null ? payerSeat : undefined,
+    // 点杠包牌：from 记点杠者（结算页显示“包赔：X”）；点炮/抢杠记责任者
+    from: baoPayer != null ? baoPayer : payerSeat != null ? payerSeat : undefined,
     // 出牌/补杠批次号：仅点炮、抢杠有；用于判定“一炮多响”（同一张牌多家胡）
     tag: discardTag != null ? discardTag : undefined
   })

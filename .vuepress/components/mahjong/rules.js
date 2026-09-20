@@ -26,7 +26,7 @@
 // 零依赖纯函数，浏览器与 Node 均可运行。
 // ============================================================
 
-import { TILE_KINDS, tileSuit, YAOJI_TILE } from './contract.js'
+import { TILE_KINDS, TILE_COPIES, tileSuit, YAOJI_TILE } from './contract.js'
 
 // ---------- 幺鸡赖子（万能牌）说明 ----------
 // 开启幺鸡局（opts.yaoji === true）后，幺鸡（一条，YAOJI_TILE = 18）可当任意牌
@@ -37,6 +37,8 @@ import { TILE_KINDS, tileSuit, YAOJI_TILE } from './contract.js'
 //   - 七对同理：奇数张真牌用万能张配对，剩余万能张两两成对。
 // 番型「不带幺鸡 +1 番」：整手（手牌 + 副露）不含任何幺鸡时额外 +1 番。
 // 副露（碰/杠）若带了幺鸡，用 meld.wild 记录张数（见 contract.js Meld）。
+// 结算（finalFan）时手牌带幺鸡会枚举它补成的所有真牌、逐种方案算番取最大番，
+// 让「幺鸡补成第 4 张碰/杠多出一个根」这类更大牌型不会被少算（见 bestYaojiFan）。
 
 // ---------- 计数辅助 ----------
 
@@ -493,9 +495,26 @@ export function fanOf(shape, opts = {}) {
 /**
  * 综合副露的最终番型（清一色需副露同色）。
  * melds: [{tile, ...}] 副露数组（契约 Meld 结构）。
- * opts.yaoji 为真时启用幺鸡赖子规则（万能胡牌 + 不带幺鸡加番）。
+ * opts.yaoji 为真时启用幺鸡赖子规则：手牌带幺鸡会枚举其补位方案取最大番
+ * （见 bestYaojiFan），并额外判定「不带幺鸡 +1 番」。
  */
 export function finalFan(hand, melds, opts = {}) {
+  // 幺鸡赖子：幺鸡可当任意真牌。为了结算「尽量往大牌去算组合」，
+  // 手牌带幺鸡时枚举它补成的所有真牌、逐种补位方案按真牌手牌算番，取最大番。
+  // 原实现只按 winShape 的单一分解计番，且 countGen 只数真牌，会出现
+  // 「幺鸡补成第 4 张碰/杠」漏算一个「根」番的情况。
+  if (opts.yaoji === true && countTile(hand, YAOJI_TILE) > 0) {
+    return bestYaojiFan(hand, melds, opts)
+  }
+  return finalFanFromShape(hand, melds, opts)
+}
+
+/**
+ * 按 winShape 的单一（最优基本番型）分解算最终番型。
+ * opts.yaoji 为真时 winShape 走万能张分解（手牌可仍带幺鸡），
+ * 并据此判定「不带幺鸡 +1 番」；幺鸡已补成真牌时调用方传 false。
+ */
+function finalFanFromShape(hand, melds, opts = {}) {
   const shape = winShape(hand, (melds || []).length, opts)
   if (!shape) return null
   const yaoji = opts.yaoji === true
@@ -520,6 +539,53 @@ export function finalFan(hand, melds, opts = {}) {
   // 「不带幺鸡 +1 番」：整手（手牌 + 副露）不含任何幺鸡
   const noYaoji = yaoji && !handHasYaoji(hand, melds)
   return fanOf({ ...shape, qing }, { ...opts, gen, noYaoji })
+}
+
+/**
+ * 手牌带幺鸡（万能牌）时，枚举每只幺鸡补成的真牌（同一张牌最多 4 张），
+ * 逐种补位方案按真牌手牌算番，取番值最大者。
+ *   - 幺鸡补成第 4 张碰/杠时能多出一个「根」番，补成同花色/对对胡等也能上更大番型；
+ *   - 副露里的幺鸡已固定为副露牌面，不参与枚举；
+ *   - 每个补位方案都调用 finalFanFromShape（按真牌口径）算番，返回最大番结果；
+ *   - 若所有补位方案都被「同张牌最多 4 张」挡掉（理论上不该出现），
+ *     退回单一 winShape 分解，保证不会把原本能胡的牌判成不胡。
+ */
+function bestYaojiFan(hand, melds, opts) {
+  const meldArr = melds || []
+  const k = countTile(hand, YAOJI_TILE)
+  // 手牌真牌 + 副露已占用的张数（碰 3 / 杠 4，与 countGen 口径一致）；
+  // DFS 过程中借它累计本方案已补出的张数，保证同一张牌不超过 4 张。
+  const used = new Array(TILE_KINDS).fill(0)
+  const fixed = []
+  for (const t of hand) {
+    if (t === YAOJI_TILE) continue
+    fixed.push(t)
+    used[t]++
+  }
+  for (const m of meldArr) {
+    if (m && m.tile != null) used[m.tile] += m.kind === 'peng' ? 3 : 4
+  }
+
+  let best = null
+  const assign = new Array(k).fill(0)
+  const walk = (pos, from) => {
+    if (pos === k) {
+      const concrete = fixed.concat(assign).sort((a, b) => a - b)
+      const fr = finalFanFromShape(concrete, meldArr, { ...opts, yaoji: false })
+      if (fr && (!best || fr.fan > best.fan)) best = fr
+      return
+    }
+    // 补位牌面按非降序枚举（幺鸡彼此等价，避免重复方案）
+    for (let id = from; id < TILE_KINDS; id++) {
+      if (used[id] >= TILE_COPIES) continue
+      assign[pos] = id
+      used[id]++
+      walk(pos + 1, id)
+      used[id]--
+    }
+  }
+  walk(0, 0)
+  return best || finalFanFromShape(hand, meldArr, opts)
 }
 
 /**
