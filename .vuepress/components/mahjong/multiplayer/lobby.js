@@ -153,20 +153,6 @@ export class Lobby {
     this.open()
   }
 
-  /**
-   * 一局打完回到房间等待室（多局联机）：保留座位、房间与累计积分，
-   * 只把牌桌收起、恢复等待室显示；全员准备后服务端自动开下一局。
-   * 与 returnToList 的区别：不离开房间、不重连、不清凭据。
-   */
-  returnToWaiting() {
-    this.inGame = false
-    this.view = 'waiting'
-    this.lastGameState = null
-    if (this.el) this.el.hidden = false
-    if (this.room) this._renderWaiting()
-    this._startPoll()
-  }
-
   _codeFromUrl() {
     try {
       const q = new URLSearchParams(location.search)
@@ -236,10 +222,13 @@ export class Lobby {
         }
         break
       case 'READY_CHANGED': {
-        // 局间准备状态变化：只更新座位快照并刷新等待室（不整页重渲染牌桌）
+        // 局间准备状态变化：更新座位快照。牌桌上（局间等待）只刷新结算卡的就绪
+        // 按钮与人数提示，不重渲染整张牌桌；否则刷新等待室。
         const p = msg.payload || {}
         if (this.room && Array.isArray(p.seats)) this.room.seats = p.seats
-        if (!this.inGame) this._renderWaiting()
+        if (this.inGame) {
+          if (this.ui && this.ui.updateSettleBtns) this.ui.updateSettleBtns()
+        } else this._renderWaiting()
         break
       }
       case 'PLAYER_JOINED':
@@ -279,6 +268,16 @@ export class Lobby {
         // 存下最近一帧交给牌桌适配层做首帧，避免进桌瞬间白屏
         this.lastGameState = msg.payload
         if (!this.inGame) this._enterGame()
+        // 局间「准备下一局」：牌桌与结算留在原地，服务端开下一局时就地重进牌桌。
+        // 对局进行中（inGame 且未在等下一局）只交给 remote-game 消费，绝不重进。
+        // 只认「非 finished」的帧：局末的结算帧可能被重复推，据此重进会把结算页
+        // 重置掉（进桌即清掉等待态），反而丢掉「等下一局」的状态。
+        else if (
+          msg.payload && msg.payload.phase !== 'finished' &&
+          this.ui && this.ui.isAwaitingNextRound && this.ui.isAwaitingNextRound()
+        ) {
+          this._enterGame(true)
+        }
         break
       case 'ROOM_UPDATED':
         // 局末房间回写：一局打完房间回 WAITING（或有人破产进 FINISHED），
@@ -293,7 +292,10 @@ export class Lobby {
           if (Array.isArray(p.bankruptSeats)) this.room.bankruptSeats = p.bankruptSeats
           this.room.hasPlayed = true
         }
-        if (!this.inGame) this._renderWaiting()
+        // 牌桌上（局末结算页）：只需刷新结算卡按钮/准备人数；不在牌桌则刷新等待室
+        if (this.inGame) {
+          if (this.ui && this.ui.updateSettleBtns) this.ui.updateSettleBtns()
+        } else this._renderWaiting()
         break
       case 'ROOM_DESTROYED':
         clearCredential()
@@ -330,8 +332,13 @@ export class Lobby {
     }
   }
 
-  _enterGame() {
-    if (this.inGame || !this.room) return
+  /**
+   * 进牌桌（首次进桌 / 局间就地重进）。
+   * force=true 用于局间「就地重进」：牌桌上点「准备下一局」后牌桌并未收起，
+   * 但服务端开下一局时会推来新的 GAME_STATE_CHANGED，需要据此重建适配层。
+   */
+  _enterGame(force = false) {
+    if ((this.inGame && !force) || !this.room) return
     this.inGame = true
     this._stopPoll()
     if (this.el) this.el.hidden = true

@@ -1325,6 +1325,15 @@ meta:
 #scmjGame .scmj-ledger-reason { flex: 1; }
 #scmjGame .scmj-ledger-amt { color: #e9f0e6; }
 #scmjGame .scmj-settle-btns { display: flex; gap: 12px; justify-content: center; margin-top: 6px; flex-wrap: wrap; }
+/* 局间等待提示（联机点「准备下一局」后停在结算页）：占满一行放在按钮下方 */
+#scmjGame .scmj-settle-wait {
+  width: 100%;
+  margin-top: 2px;
+  text-align: center;
+  font-size: 12.5px;
+  color: #9fbfa8;
+  line-height: 1.5;
+}
 /* ---- 结算：终局牌面（各家手牌 + 副露，供核对番型 / 杠数 / 听牌） ---- */
 #scmjGame .scmj-final-row {
   padding: 6px 4px;

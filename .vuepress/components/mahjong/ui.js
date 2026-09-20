@@ -189,6 +189,8 @@ export default class ScmjUI {
     // 开牌点在该方位墙内的牌位下标（骰子点数之和 2~12），由 session().dice 提供
     this.wallOpenOff = 2
     this._roundSettled = false
+    // 联机局间：已点「准备下一局」，停在结算页等下一局（牌桌不切走）
+    this._awaitingNextRound = false
     this._toastTimer = null
     this._floatTimer = null
     this._fxTimer = null
@@ -766,6 +768,7 @@ export default class ScmjUI {
     // 这里先给一个首帧兜底值，避免进桌瞬间显示空积分
     this.round = 1
     this._roundSettled = false
+    this._awaitingNextRound = false
     this.bankruptSeats = []
     this.scores = [START_SCORE, START_SCORE, START_SCORE, START_SCORE]
     this.streakSeat = null
@@ -804,34 +807,22 @@ export default class ScmjUI {
   }
 
   /**
-   * 联机多局：本局结束点「准备下一局」。
-   * 先向服务端标记本座位就绪（全员就绪后由服务端自动开下一局），
-   * 再收起牌桌回到房间等待室——不必退出房间，座位与累计积分都保留。
+   * 联机多局：本局结束点「准备下一局」/「取消准备」。
+   * 留在牌桌上等下一局：只向服务端切换本座位就绪状态（全员就绪后服务端自动开
+   * 下一局），牌桌与结算卡原地不动——不再收起牌桌切回房间等待室，避免房间页
+   * 在牌桌后面闪一下、下一局又重新进桌。服务端推来下一局的 GAME_STATE_CHANGED
+   * 时，大厅会就地重进牌桌（见 lobby._enterGame(true)）。
    */
-  onOnlineReady() {
-    if (this.net && this.net.sendAdmin) this.net.sendAdmin('TOGGLE_READY', { ready: true })
-    this.backToRoom()
+  onOnlineReady(ready = true) {
+    this._awaitingNextRound = true
+    this.stopCountdown()
+    if (this.net && this.net.sendAdmin) this.net.sendAdmin('TOGGLE_READY', { ready })
+    this.updateSettleBtns()
   }
 
-  /**
-   * 收起牌桌回到房间等待室（不退出房间）。
-   * 与 leaveOnline 的区别：不发 LEAVE_ROOM、不释放座位、不丢累计积分，只拆掉本地
-   * 牌局适配层；服务端推来下一局的 GAME_STATE_CHANGED 时会自动重新进桌。
-   */
-  backToRoom() {
-    this.stopCountdown()
-    if (this.game && this.game.dispose) this.game.dispose()
-    this.game = null
-    this.view = null
-    this.isOnline = false
-    this.onlineAssist = null
-    this._roundSettled = false
-    this.bankruptSeats = []
-    this.hideOpening()
-    this.exitFullscreen()
-    this.hideTableChrome()
-    if (this.lobby) this.lobby.returnToWaiting()
-    else this.showEntry()
+  /** 是否正停在结算页等下一局（大厅据此判断要不要就地重进牌桌） */
+  isAwaitingNextRound() {
+    return this._awaitingNextRound === true
   }
 
   leaveOnline() {
@@ -841,6 +832,7 @@ export default class ScmjUI {
     this.view = null
     this.isOnline = false
     this.onlineAssist = null
+    this._awaitingNextRound = false
     this.hideOpening()
     this.exitFullscreen()
     this.hideTableChrome()
@@ -861,6 +853,7 @@ export default class ScmjUI {
     this.view = null
     this.isOnline = false
     this.onlineAssist = null
+    this._awaitingNextRound = false
     this.net = null
     this.onlinePlayer = null
     this.onlineRoom = null
@@ -2125,7 +2118,11 @@ export default class ScmjUI {
       r.huOrder.forEach((hh, i) => {
         const row = document.createElement('div')
         row.className = 'scmj-settle-row'
-        const fromText = hh.from != null ? '（放炮：' + this._labels[hh.from] + '）' : ''
+        // from 非空：点炮/抢杠记放炮者；点杠包牌（自摸口径）记点杠者，标注“包赔”
+        const fromText =
+          hh.from != null
+            ? (hh.how === 'zimo' ? '（包赔：' : '（放炮：') + this._labels[hh.from] + '）'
+            : ''
         // 天胡（庄家起手 14 张成胡）没有单独的胡牌张，不展示牌面
         const winText = hh.winTile != null ? '胡「' + tileName(hh.winTile) + '」' : '天胡（起手成胡）'
         row.textContent =
@@ -2200,12 +2197,28 @@ export default class ScmjUI {
       detail.appendChild(secXi.el)
     }
     card.appendChild(detail)
-    // 8. 按钮
-    //    · 单机：再来一局 / 返回官网（破产后禁用再来一局）
-    //    · 联机多局：准备下一局 / 退出房间——点「准备下一局」回房间等待室并标记就绪，
-    //      全员就绪后服务端自动开下一局；破产（房间终态）时没有下一局，只能退出房间
+    // 8. 按钮（内容由 updateSettleBtns 就地重绘：局间点「准备下一局」后只换按钮
+    //    文案与等待提示，不重建整张结算卡，保留「查看详情」展开状态与滚动位置）
     const btns = document.createElement('div')
     btns.className = 'scmj-settle-btns'
+    card.appendChild(btns)
+    el.appendChild(card)
+    el.hidden = false
+    this.updateSettleBtns()
+  }
+
+  /**
+   * 结算卡底部按钮（就地重绘）。三种口径：
+   *   · 单机：再来一局 / 返回官网（破产后禁用再来一局）；
+   *   · 联机：准备下一局 / 退出房间（破产终态禁用准备）；
+   *   · 联机局间等待（已点准备、牌桌不切走）：可「取消准备」，并显示准备人数。
+   * 抽成独立方法是为了服务端每次推 READY_CHANGED 时只重绘按钮区——整卡重建会
+   * 重置「查看详情」的展开状态与滚动位置，且每次有人准备都闪一下。
+   */
+  updateSettleBtns() {
+    const box = this._els.settle && this._els.settle.querySelector('.scmj-settle-btns')
+    if (!box) return
+    box.innerHTML = ''
     const again = document.createElement('button')
     again.type = 'button'
     again.className = 'scmj-btn scmj-btn-primary'
@@ -2217,9 +2230,12 @@ export default class ScmjUI {
         // 房间已进终态（有玩家破产）：不再开下一局
         again.disabled = true
         again.textContent = '已破产 · 本局结束'
+      } else if (this._awaitingNextRound && this.iAmReady()) {
+        again.textContent = '取消准备'
+        again.addEventListener('click', () => this.onOnlineReady(false))
       } else {
         again.textContent = '准备下一局'
-        again.addEventListener('click', () => this.onOnlineReady())
+        again.addEventListener('click', () => this.onOnlineReady(true))
       }
       home.textContent = '退出房间'
       home.addEventListener('click', () => this.onOnlineExit())
@@ -2234,11 +2250,34 @@ export default class ScmjUI {
       home.textContent = '返回官网'
       home.addEventListener('click', () => this.goHome())
     }
-    btns.appendChild(again)
-    btns.appendChild(home)
-    card.appendChild(btns)
-    el.appendChild(card)
-    el.hidden = false
+    box.appendChild(again)
+    box.appendChild(home)
+    if (this.isOnline && this._awaitingNextRound) {
+      const hint = document.createElement('div')
+      hint.className = 'scmj-settle-wait'
+      hint.textContent = this.readyWaitText()
+      box.appendChild(hint)
+    }
+  }
+
+  /** 本座位在房间快照里的准备状态（联机）；无快照时按已准备处理 */
+  iAmReady() {
+    const room = this.lobby && this.lobby.room
+    const seat = this.onlinePlayer
+      ? this.onlinePlayer.seatIndex
+      : (this.lobby ? this.lobby.mySeat : null)
+    const snap = room && Array.isArray(room.seats) && seat != null ? room.seats[seat] : null
+    return snap ? !!snap.ready : true
+  }
+
+  /** 局间等待提示：已准备几家 / 共几家（只统计在线真人，与「全员准备」口径一致） */
+  readyWaitText() {
+    const room = this.lobby && this.lobby.room
+    if (!room || !Array.isArray(room.seats)) return '已准备，等待其他玩家开始下一局…'
+    const humans = room.seats.filter(s => s.occupantType === 'HUMAN' && s.connected !== false)
+    const readyN = humans.filter(s => s.ready).length
+    return '已准备 ' + readyN + ' / ' + humans.length + ' 人 · 全员准备后自动开始第 ' +
+      ((room.round || 1) + 1) + ' 局'
   }
 
   makeSection(title) {
