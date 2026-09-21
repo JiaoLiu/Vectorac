@@ -15,6 +15,8 @@
           <div class="difficulty-item" data-value="hard">困难</div>
         </div>
       </div></span>
+      <span id="game-timer" class="game-timer">时间: 00:00</span>
+      <span id="best-time" class="best-time">最佳: --:--</span>
       <button id="new-game-btn" class="btn-new-game">新游戏</button>
       <button id="hint-btn" class="btn-hint">提示</button>
       <button id="solve-btn" class="btn-solve">解答</button>
@@ -22,6 +24,7 @@
   </div>
   
   <div class="sudoku-board" id="sudoku-board"></div>
+  <div id="victory-banner" class="victory-banner"></div>
   
   <div class="number-selector">
     <h4>选择数字</h4>
@@ -96,6 +99,16 @@
   font-weight: bold;
 }
 
+/* 高亮辅助：同行/同列/同宫 */
+.sudoku-cell.related {
+  background-color: #f0f7ff;
+}
+
+/* 高亮辅助：相同数字 */
+.sudoku-cell.same-number {
+  background-color: #d6e9ff;
+}
+
 .sudoku-cell.error {
   background-color: #ffebee;
   color: #c62828;
@@ -104,6 +117,75 @@
 .sudoku-cell.hint {
   background-color: #e8f5e9;
   color: #2e7d32;
+}
+
+/* 选中格保持最突出（置于其他底色规则之后） */
+.sudoku-cell.selected {
+  background-color: #bbdefb;
+  border: 2px solid #2196F3;
+  box-shadow: inset 0 0 0 1px #2196F3;
+}
+
+/* 生成中占位 */
+.sudoku-board .generating {
+  grid-column: 1 / -1;
+  grid-row: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  color: #888;
+}
+
+/* 计时与最佳成绩 */
+.game-timer, .best-time {
+  font-size: 14px;
+  font-weight: bold;
+  color: #555;
+  white-space: nowrap;
+}
+
+.best-time {
+  color: #FF9800;
+}
+
+/* 胜利横幅 */
+.victory-banner {
+  display: none;
+  max-width: 450px;
+  margin: 0 auto 15px;
+  padding: 14px 20px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #4CAF50, #45a049);
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+}
+
+.victory-banner.show {
+  display: block;
+  animation: bannerPop 0.5s ease;
+}
+
+.victory-banner .banner-record {
+  color: #ffe082;
+}
+
+@keyframes bannerPop {
+  0% {
+    opacity: 0;
+    transform: translateY(-15px) scale(0.95);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(3px) scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 /* 粗边框用于分隔3x3宫格 */
@@ -398,6 +480,10 @@ class SudokuGame {
     this.hintsUsed = 0;
     this.initialBoard = []; // 保存初始棋盘用于区分用户输入
     this.eventsSet = false; // 标记是否已经设置过事件监听器
+    this.timerInterval = null; // 计时器
+    this.elapsedSeconds = 0; // 已用时间（秒）
+    this.solved = false; // 是否使用过解答（使用解答后不计成绩）
+    this.gameOver = false; // 本局是否已结束
     this.init();
   }
 
@@ -418,19 +504,15 @@ class SudokuGame {
     const difficultyBtn = document.getElementById('difficulty-btn');
     const difficultyMenu = document.getElementById('difficulty-menu');
     
-    console.log('设置难度选择按钮事件:', difficultyBtn, difficultyMenu);
-    
     if (difficultyBtn && difficultyMenu) {
       difficultyBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        console.log('难度按钮被点击，当前菜单状态:', difficultyMenu.classList.contains('show'));
         difficultyMenu.classList.toggle('show');
       });
     }
     
     // 难度菜单项
     const difficultyItems = document.querySelectorAll('.difficulty-item');
-    console.log('难度菜单项:', difficultyItems);
     difficultyItems.forEach(item => {
       item.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -442,7 +524,6 @@ class SudokuGame {
         if (difficultyMenu) {
           difficultyMenu.classList.remove('show');
         }
-        console.log('选择难度:', value, '新游戏开始');
         this.newGame();
       });
     });
@@ -507,13 +588,30 @@ class SudokuGame {
   }
 
   newGame() {
-    // 生成新的数独棋盘
-    this.solution = this.generateFullSudoku();
-    this.board = this.removeNumbers(this.solution, this.difficulty);
-    this.initialBoard = this.board.map(row => [...row]); // 保存初始棋盘
-    this.selectedCell = null;
-    this.hintsUsed = 0;
-    this.renderBoard();
+    this.stopTimer();
+    this.hideVictoryBanner();
+    
+    // 生成期间显示占位，避免用户误以为卡死
+    const boardElement = document.getElementById('sudoku-board');
+    if (boardElement) {
+      boardElement.innerHTML = '<div class="generating">生成中...</div>';
+    }
+    
+    // 延迟执行生成逻辑，让"生成中..."先渲染出来
+    setTimeout(() => {
+      // 生成新的数独棋盘
+      this.solution = this.generateFullSudoku();
+      this.board = this.removeNumbers(this.solution, this.difficulty);
+      this.initialBoard = this.board.map(row => [...row]); // 保存初始棋盘
+      this.selectedCell = null;
+      this.hintsUsed = 0;
+      this.solved = false;
+      this.gameOver = false;
+      this.elapsedSeconds = 0;
+      this.renderBoard();
+      this.updateBestTimeDisplay();
+      this.startTimer();
+    }, 50);
   }
 
   // 生成完整的数独棋盘
@@ -572,7 +670,42 @@ class SudokuGame {
     return true;
   }
 
-  // 根据难度移除数字
+  // 统计棋盘的解数量（达到 limit 即提前返回）
+  countSolutions(board, limit = 2) {
+    let count = 0;
+    const solve = () => {
+      if (count >= limit) return;
+      // 找第一个空格
+      let emptyRow = -1;
+      let emptyCol = -1;
+      for (let row = 0; row < 9 && emptyRow === -1; row++) {
+        for (let col = 0; col < 9; col++) {
+          if (board[row][col] === 0) {
+            emptyRow = row;
+            emptyCol = col;
+            break;
+          }
+        }
+      }
+      // 没有空格，找到一个解
+      if (emptyRow === -1) {
+        count++;
+        return;
+      }
+      for (let num = 1; num <= 9; num++) {
+        if (this.isValid(board, emptyRow, emptyCol, num)) {
+          board[emptyRow][emptyCol] = num;
+          solve();
+          board[emptyRow][emptyCol] = 0;
+          if (count >= limit) return;
+        }
+      }
+    };
+    solve();
+    return count;
+  }
+
+  // 根据难度移除数字（保证唯一解）
   removeNumbers(solution, difficulty) {
     const board = solution.map(row => [...row]);
     let cellsToRemove;
@@ -589,12 +722,28 @@ class SudokuGame {
         break;
     }
     
-    while (cellsToRemove > 0) {
-      const row = Math.floor(Math.random() * 9);
-      const col = Math.floor(Math.random() * 9);
-      if (board[row][col] !== 0) {
-        board[row][col] = 0;
-        cellsToRemove--;
+    // 将 81 个格子随机打乱顺序，逐个尝试挖洞
+    const cells = [];
+    for (let i = 0; i < 81; i++) {
+      cells.push(i);
+    }
+    for (let i = cells.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [cells[i], cells[j]] = [cells[j], cells[i]];
+    }
+    
+    let removed = 0;
+    for (const index of cells) {
+      if (removed >= cellsToRemove) break;
+      const row = Math.floor(index / 9);
+      const col = index % 9;
+      const backup = board[row][col];
+      board[row][col] = 0;
+      // 挖掉后仍保持唯一解才保留，否则回填
+      if (this.countSolutions(board, 2) === 1) {
+        removed++;
+      } else {
+        board[row][col] = backup;
       }
     }
     
@@ -605,7 +754,6 @@ class SudokuGame {
   renderBoard() {
     const boardElement = document.getElementById('sudoku-board');
     if (!boardElement) {
-      console.error('棋盘元素未找到，稍后重试');
       return;
     }
     
@@ -630,6 +778,15 @@ class SudokuGame {
         // 如果是用户自己填写的数字，标记为用户输入
         else if (this.board[row][col] !== 0 && this.initialBoard[row][col] === 0) {
           cell.classList.add('user-input');
+          // 渲染时同步校验，保证输入/重绘后错误标记正确刷新
+          if (this.board[row][col] !== this.solution[row][col]) {
+            cell.classList.add('error');
+          }
+        }
+        
+        // 恢复选中状态
+        if (this.selectedCell && this.selectedCell.row === row && this.selectedCell.col === col) {
+          cell.classList.add('selected');
         }
         
         cell.addEventListener('click', () => {
@@ -639,12 +796,43 @@ class SudokuGame {
         boardElement.appendChild(cell);
       }
     }
+    
+    // 渲染后重新应用高亮
+    this.applyHighlights();
+  }
+
+  // 应用高亮：同行/同列/同宫 + 相同数字
+  applyHighlights() {
+    document.querySelectorAll('.sudoku-cell.related, .sudoku-cell.same-number').forEach(cell => {
+      cell.classList.remove('related', 'same-number');
+    });
+    
+    if (!this.selectedCell) return;
+    
+    const { row, col } = this.selectedCell;
+    const selectedValue = this.board[row][col];
+    const boxStartRow = row - row % 3;
+    const boxStartCol = col - col % 3;
+    
+    document.querySelectorAll('.sudoku-cell').forEach(cell => {
+      const r = parseInt(cell.dataset.row);
+      const c = parseInt(cell.dataset.col);
+      if (r === row && c === col) return;
+      
+      const inSameBox = r >= boxStartRow && r < boxStartRow + 3 && c >= boxStartCol && c < boxStartCol + 3;
+      if (r === row || c === col || inSameBox) {
+        cell.classList.add('related');
+      }
+      if (selectedValue !== 0 && this.board[r][c] === selectedValue) {
+        cell.classList.add('same-number');
+      }
+    });
   }
 
   // 选择单元格
   selectCell(row, col) {
-    // 如果是固定单元格，不允许选择
-    if (this.initialBoard[row][col] !== 0) {
+    // 游戏已结束则不再响应选择
+    if (this.gameOver) {
       return;
     }
     
@@ -656,12 +844,18 @@ class SudokuGame {
     // 选择新单元格
     this.selectedCell = { row, col };
     const cellElement = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
-    cellElement.classList.add('selected');
+    if (cellElement) {
+      cellElement.classList.add('selected');
+    }
+    
+    // 刷新高亮
+    this.applyHighlights();
   }
 
   // 输入数字
   inputNumber(number) {
     if (!this.selectedCell) return;
+    if (this.gameOver) return;
     
     const { row, col } = this.selectedCell;
     
@@ -673,8 +867,6 @@ class SudokuGame {
     // 清空或设置数字
     this.board[row][col] = number === 0 ? 0 : number;
     
-    // 验证输入
-    this.validateCell(row, col);
     this.renderBoard();
     
     // 重新选择单元格
@@ -687,6 +879,7 @@ class SudokuGame {
   // 验证单元格
   validateCell(row, col) {
     const cellElement = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+    if (!cellElement) return;
     cellElement.classList.remove('error');
     
     if (this.board[row][col] !== 0 && this.board[row][col] !== this.solution[row][col]) {
@@ -696,16 +889,18 @@ class SudokuGame {
 
   // 给提示
   giveHint() {
+    if (this.gameOver) return;
+    
     if (!this.selectedCell) {
-      alert('请先选择一个空白单元格！');
+      alert('请先点击选择一个空白格子，再使用提示！');
       return;
     }
     
     const { row, col } = this.selectedCell;
     
-    // 如果是固定单元格，跳过
+    // 如果已经填对，无需提示
     if (this.solution[row][col] !== 0 && this.board[row][col] === this.solution[row][col]) {
-      alert('这个单元格是固定的，不需要提示！');
+      alert('这个格子已经是正确答案，无需提示！');
       return;
     }
     
@@ -713,24 +908,34 @@ class SudokuGame {
     this.board[row][col] = this.solution[row][col];
     this.hintsUsed++;
     
-    const cellElement = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
-    cellElement.classList.add('hint');
-    
     this.renderBoard();
+    
+    const cellElement = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+    if (cellElement) {
+      cellElement.classList.add('hint');
+    }
+    
     this.selectCell(row, col);
     this.checkWin();
   }
 
   // 解答游戏
   solveGame() {
-    if (confirm('确定要查看完整答案吗？')) {
+    if (this.gameOver) return;
+    
+    if (confirm('确定要查看完整答案吗？查看后本局将不计入成绩。')) {
       this.board = this.solution.map(row => [...row]);
+      this.solved = true;
+      this.gameOver = true;
+      this.stopTimer();
       this.renderBoard();
     }
   }
 
   // 检查是否完成
   checkWin() {
+    if (this.gameOver) return;
+    
     for (let row = 0; row < 9; row++) {
       for (let col = 0; col < 9; col++) {
         if (this.board[row][col] !== this.solution[row][col]) {
@@ -739,9 +944,86 @@ class SudokuGame {
       }
     }
     
-    setTimeout(() => {
-      alert('恭喜你完成了数独游戏！');
-    }, 500);
+    this.gameOver = true;
+    this.stopTimer();
+    
+    // 使用解答的局不计入成绩
+    let isNewRecord = false;
+    if (!this.solved) {
+      const key = 'sudoku-best-' + this.difficulty;
+      const prevBest = parseInt(localStorage.getItem(key));
+      if (isNaN(prevBest) || this.elapsedSeconds < prevBest) {
+        localStorage.setItem(key, String(this.elapsedSeconds));
+        isNewRecord = true;
+      }
+    }
+    
+    this.updateBestTimeDisplay();
+    this.showVictoryBanner(isNewRecord);
+  }
+
+  // 开始计时
+  startTimer() {
+    this.stopTimer();
+    this.updateTimerDisplay();
+    this.timerInterval = setInterval(() => {
+      this.elapsedSeconds++;
+      this.updateTimerDisplay();
+    }, 1000);
+  }
+
+  // 停止计时
+  stopTimer() {
+    if (this.timerInterval) {
+      clearInterval(this.timerInterval);
+      this.timerInterval = null;
+    }
+  }
+
+  // 格式化时间为 mm:ss
+  formatTime(seconds) {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+  }
+
+  // 更新计时显示
+  updateTimerDisplay() {
+    const timerElement = document.getElementById('game-timer');
+    if (timerElement) {
+      timerElement.textContent = '时间: ' + this.formatTime(this.elapsedSeconds);
+    }
+  }
+
+  // 更新当前难度最佳成绩显示
+  updateBestTimeDisplay() {
+    const bestElement = document.getElementById('best-time');
+    if (bestElement) {
+      const best = parseInt(localStorage.getItem('sudoku-best-' + this.difficulty));
+      bestElement.textContent = '最佳: ' + (isNaN(best) ? '--:--' : this.formatTime(best));
+    }
+  }
+
+  // 显示胜利横幅
+  showVictoryBanner(isNewRecord) {
+    const banner = document.getElementById('victory-banner');
+    if (!banner) return;
+    
+    let html = '🎉 恭喜完成数独！用时 ' + this.formatTime(this.elapsedSeconds) + ' · 提示 ' + this.hintsUsed + ' 次';
+    if (isNewRecord) {
+      html += ' · <span class="banner-record">🏆 新纪录！</span>';
+    }
+    banner.innerHTML = html;
+    banner.classList.add('show');
+  }
+
+  // 隐藏胜利横幅
+  hideVictoryBanner() {
+    const banner = document.getElementById('victory-banner');
+    if (banner) {
+      banner.classList.remove('show');
+      banner.innerHTML = '';
+    }
   }
 }
 
@@ -750,11 +1032,8 @@ let sudokuGameInstance = null;
 
 // 初始化游戏函数
 function initSudokuGame() {
-  console.log('尝试初始化数独游戏...');
-  
   // 检查是否已经初始化过
   if (sudokuGameInstance) {
-    console.log('数独游戏已经初始化，跳过重复初始化');
     return true;
   }
   
@@ -764,17 +1043,13 @@ function initSudokuGame() {
   const difficultyBtn = document.getElementById('difficulty-btn');
   
   if (!gameContainer || !boardElement || !difficultyBtn) {
-    console.error('关键游戏元素不存在！');
     return false;
   }
   
   try {
-    console.log('创建数独游戏实例...');
     sudokuGameInstance = new SudokuGame();
-    console.log('数独游戏初始化成功！');
     return true;
   } catch (error) {
-    console.error('数独游戏初始化失败:', error);
     return false;
   }
 }
@@ -785,16 +1060,12 @@ function checkAndInitGame(observer) {
   const boardElement = document.getElementById('sudoku-board');
   const difficultyBtn = document.getElementById('difficulty-btn');
   
-  console.log('[数独游戏] 检查游戏容器元素:', {gameContainer: !!gameContainer, boardElement: !!boardElement, difficultyBtn: !!difficultyBtn});
-  
   if (gameContainer && boardElement && difficultyBtn) {
-    console.log('[数独游戏] 检测到游戏容器，初始化游戏...');
     // 初始化游戏
     initSudokuGame();
     
     // 如果观察器存在，停止观察
     if (observer) {
-      console.log('[数独游戏] 停止 DOM 观察器...');
       observer.disconnect();
     }
     return true;
@@ -804,15 +1075,12 @@ function checkAndInitGame(observer) {
 
 // 使用 MutationObserver 监听 DOM 变化，用于单页应用场景（如 VuePress）
 function setupDOMObserver() {
-  console.log('[数独游戏] 设置 DOM 观察器...');
-  
   let observer;
   
   // 首先尝试立即初始化
   if (!checkAndInitGame(observer)) {
     // 创建 MutationObserver 实例
     observer = new MutationObserver(function(mutationsList) {
-      console.log('[数独游戏] DOM 变化观察到:', mutationsList.length, '个变化');
       checkAndInitGame(observer);
     });
     
@@ -823,8 +1091,6 @@ function setupDOMObserver() {
       attributes: false,
       characterData: false
     });
-    
-    console.log('[数独游戏] DOM 观察器已启动，正在监听 body 元素变化...');
   }
   
   return observer;
@@ -835,11 +1101,8 @@ let globalObserver = null;
 
 // 设置路由变化监听器，用于 VuePress 单页应用
 function setupRouteListeners() {
-  console.log('[数独游戏] 设置路由变化监听器...');
-  
   // 路由变化时的处理函数
   const handleRouteChange = function() {
-    console.log('[数独游戏] 路由变化被检测到，重新设置监听器...');
     // 延迟检查，确保 VuePress 有足够时间渲染页面
     setTimeout(function() {
       // 重新设置 DOM 观察器
@@ -850,8 +1113,6 @@ function setupRouteListeners() {
   // 添加路由变化事件监听器
   window.addEventListener('hashchange', handleRouteChange);
   window.addEventListener('popstate', handleRouteChange);
-  
-  console.log('[数独游戏] 路由变化监听器已设置完成');
 }
 
 // 检查是否在浏览器环境中
@@ -862,7 +1123,6 @@ function isBrowser() {
 // 在多种情况下尝试初始化游戏
 if (isBrowser()) {
   // 1. 立即尝试
-  console.log('立即尝试初始化数独游戏...');
   setTimeout(function() {
     if (!checkAndInitGame()) {
       // 如果立即初始化失败，设置 DOM 观察器
@@ -872,7 +1132,6 @@ if (isBrowser()) {
   
   // 2. DOMContentLoaded事件
   document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOMContentLoaded事件触发，初始化数独游戏...');
     setTimeout(function() {
       if (!checkAndInitGame()) {
         globalObserver = setupDOMObserver();
@@ -882,7 +1141,6 @@ if (isBrowser()) {
   
   // 3. window.load事件
   window.addEventListener('load', function() {
-    console.log('window.load事件触发，初始化数独游戏...');
     setTimeout(function() {
       if (!checkAndInitGame()) {
         globalObserver = setupDOMObserver();
@@ -892,7 +1150,6 @@ if (isBrowser()) {
   
   // 4. 2秒后再次尝试（作为备用）
   setTimeout(function() {
-    console.log('2秒后备用尝试初始化...');
     const gameElements = document.querySelectorAll('.sudoku-cell');
     if (gameElements.length === 0) {
       if (!checkAndInitGame()) {
@@ -903,10 +1160,8 @@ if (isBrowser()) {
   
   // 5. 5秒后最后尝试
   setTimeout(function() {
-    console.log('5秒后最后尝试初始化数独游戏...');
     const gameElements = document.querySelectorAll('.sudoku-cell');
     if (gameElements.length === 0) {
-      console.log('强制初始化数独游戏...');
       initSudokuGame();
     }
   }, 5000);
@@ -915,6 +1170,4 @@ if (isBrowser()) {
   globalObserver = setupDOMObserver();
   setupRouteListeners();
 }
-
-console.log('[数独游戏] 游戏初始化设置完成');
 </script>

@@ -116,22 +116,17 @@ function createBalloon() {
 
 // 创建弓箭
 function createArrow(key) {
-  console.log('检查气球是否存在，键:', key);
   // 找到对应按键的气球位置（只需要存在气球，不需要指定具体哪个）
   const hasBalloon = gameState.balloons.some(b => {
     const match = b.key === key;
-    console.log('比较气球键:', b.key, '与按键:', key, '匹配结果:', match);
     return match;
   });
   if (!hasBalloon) {
-    console.log('未找到对应键的气球:', key);
     return null;
   }
   
   // 找到第一个对应按键的气球位置作为目标
   const balloon = gameState.balloons.find(b => b.key === key);
-  
-  console.log('找到对应气球:', balloon);
   
   return {
     x: GAME_CONFIG.canvasWidth / 2,
@@ -405,7 +400,6 @@ function gameOver(ctx) {
   // 自动获取昵称并保存分数（不弹窗）
   const nicknameInput = document.getElementById('nickname');
   const nickname = nicknameInput ? nicknameInput.value.trim() : '';
-  console.log('准备保存分数:', { score: gameState.score, nickname: nickname || '游客' });
   saveScore(nickname || '游客');
   
   // 绘制游戏结束画面
@@ -427,16 +421,12 @@ function gameOver(ctx) {
 // 保存分数
 function saveScore(nickname) {
   if (typeof localStorage === 'undefined') {
-    console.log('localStorage不支持');
     return;
   }
   
   try {
-    console.log('saveScore被调用:', { nickname, score: gameState.score });
-    
     // 获取历史分数
     let scoreHistory = JSON.parse(localStorage.getItem('keyboardGameScores') || '[]');
-    console.log('当前历史记录:', scoreHistory);
     
     // 添加新分数记录
     const newScore = {
@@ -445,7 +435,6 @@ function saveScore(nickname) {
       nickname: nickname || '游客'
     };
     
-    console.log('新分数记录:', newScore);
     scoreHistory.push(newScore);
     
     // 只保存最近20条记录
@@ -455,16 +444,13 @@ function saveScore(nickname) {
     
     // 保存更新后的历史记录
     localStorage.setItem('keyboardGameScores', JSON.stringify(scoreHistory));
-    console.log('分数已保存到localStorage, 更新后的历史记录:', scoreHistory);
   } catch (error) {
-    console.error('保存分数失败:', error);
+    // 静默失败
   }
 }
 
 // 显示历史记录
 function showHistory() {
-  console.log('showHistory函数被调用');
-  
   if (typeof localStorage === 'undefined') {
     alert('您的浏览器不支持本地存储功能');
     return;
@@ -472,18 +458,14 @@ function showHistory() {
   
   const historyList = document.getElementById('historyList');
   if (!historyList) {
-    console.log('historyList元素未找到');
     return;
   }
-  console.log('historyList元素:', historyList);
   
   try {
     // 获取历史分数
     const scoreHistory = JSON.parse(localStorage.getItem('keyboardGameScores') || '[]');
-    console.log('从localStorage读取的历史记录:', scoreHistory);
     
     if (scoreHistory.length === 0) {
-      console.log('历史记录为空');
       historyList.innerHTML = '<p style="text-align: center; color: #666;">暂无历史记录</p>';
       return;
     }
@@ -518,7 +500,6 @@ function showHistory() {
     
     historyList.innerHTML = historyHTML;
   } catch (error) {
-    console.error('读取历史记录失败:', error);
     historyList.innerHTML = '<p style="text-align: center; color: #ff0000;">读取历史记录失败</p>';
   }
 }
@@ -542,21 +523,17 @@ function resetGame() {
 // 创建虚拟键盘
 function createVirtualKeyboard() {
   try {
-    console.log('开始创建虚拟键盘...');
     const keyboardElement = document.getElementById('virtual-keyboard');
     
     if (!keyboardElement) {
-      console.error('未找到虚拟键盘容器元素');
       return false;
     }
     
     // 清空容器，防止重复创建
     keyboardElement.innerHTML = '';
-    console.log('虚拟键盘容器已清空');
     
     // 检测是否为移动设备
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    console.log('设备类型检测:', isMobile ? '移动设备' : '桌面设备');
     
     // 键盘布局
     let keyboardLayout;
@@ -589,14 +566,10 @@ function createVirtualKeyboard() {
       ];
     }
     
-    console.log('键盘布局已确定，行数:', keyboardLayout.length);
-    
     // 为每行创建一个容器
     keyboardLayout.forEach((rowKeys, rowIndex) => {
       const rowElement = document.createElement('div');
       rowElement.className = 'keyboard-row';
-      
-      console.log(`正在创建第${rowIndex + 1}行，包含${rowKeys.length}个按键`);
       
       rowKeys.forEach(key => {
         const keyElement = document.createElement('button');
@@ -681,7 +654,6 @@ function createVirtualKeyboard() {
           if (key.length === 1 && /[a-zA-Z]/.test(key)) {
             key = key.toUpperCase();
           }
-          console.log('虚拟键盘点击:', key);
           handleKeyPress(key);
         });
         
@@ -691,10 +663,8 @@ function createVirtualKeyboard() {
       keyboardElement.appendChild(rowElement);
     });
     
-    console.log('虚拟键盘创建完成');
     return true;
   } catch (error) {
-    console.error('创建虚拟键盘失败:', error);
     return false;
   }
 }
@@ -703,7 +673,6 @@ function createVirtualKeyboard() {
 function handleKeyPress(key) {
   // 检查游戏是否正在进行
   if (!gameControlState.isPlaying || gameControlState.isPaused) {
-    console.log('游戏未进行，忽略按键:', key);
     return;
   }
   
@@ -712,23 +681,16 @@ function handleKeyPress(key) {
     key = key.toUpperCase();
   }
   
-  console.log('处理按键:', key);
-  console.log('当前气球:', gameState.balloons.map(b => ({key: b.key, radius: b.radius})));
-  
   // 创建弓箭
   const arrow = createArrow(key);
   if (arrow) {
-    console.log('创建弓箭:', arrow);
     gameState.arrows.push(arrow);
-  } else {
-    console.log('未找到对应气球，不发射弓箭:', key);
   }
   
   // 暂时添加到已按下键集合，然后自动释放（允许连续发射）
   gameState.keysPressed.add(key);
   setTimeout(() => {
     gameState.keysPressed.delete(key);
-    console.log('自动释放按键:', key);
   }, 100);
 }
 
@@ -768,8 +730,6 @@ function resetGameState() {
 
 // 强制初始化游戏（用于解决VuePress路由问题）
 function forceInitializeGame() {
-  console.log('[键盘游戏] 强制初始化游戏...');
-  
   // 重置游戏状态
   resetGameState();
   
@@ -782,7 +742,6 @@ function forceInitializeGame() {
     keyboardElement.style.display = 'block';
     keyboardElement.style.visibility = 'visible';
     keyboardElement.style.opacity = '1';
-    console.log('[键盘游戏] 虚拟键盘样式设置为显示');
   }
 }
 
@@ -796,12 +755,7 @@ function initGame() {
   // 创建虚拟键盘 - 确保每次都重新创建
   const keyboardElement = document.getElementById('virtual-keyboard');
   if (keyboardElement) {
-    console.log('创建虚拟键盘...');
-    const success = createVirtualKeyboard();
-    console.log('虚拟键盘创建结果:', success);
-    console.log('虚拟键盘子元素数量:', keyboardElement.children.length);
-  } else {
-    console.error('未找到虚拟键盘容器');
+    createVirtualKeyboard();
   }
   
   // 每次都重新绑定按钮事件（因为在VuePress路由切换时DOM元素会重新渲染）
@@ -905,7 +859,6 @@ function initGame() {
     });
     
     eventListenersBound = true;
-    console.log('游戏事件监听器绑定完成');
 }
 
 // 开始游戏
@@ -937,9 +890,6 @@ function startGame() {
     // 先点击再聚焦，解决某些移动设备上的兼容性问题
     mobileInput.click();
     mobileInput.focus();
-    console.log('游戏开始，已聚焦到隐藏输入字段');
-    console.log('移动设备检测:', isMobile);
-    console.log('mobileInput元素:', mobileInput);
   }
   
   // 开始游戏循环
@@ -968,13 +918,11 @@ function togglePauseGame() {
     // 暂停时失去焦点，关闭键盘
     if (mobileInput && isMobile) {
       mobileInput.blur();
-      console.log('游戏暂停，已从隐藏输入字段失去焦点');
     }
   } else {
     // 继续时重新聚焦到隐藏输入字段
     if (mobileInput && isMobile) {
       mobileInput.focus();
-      console.log('游戏继续，已重新聚焦到隐藏输入字段');
     }
     // 重新开始游戏循环
     gameLoop(0);
@@ -1015,25 +963,11 @@ function restartGame() {
 // 简化的游戏初始化函数
 function initializeGame() {
   try {
-    console.log('--- 开始初始化游戏 ---');
-    console.log('DOM状态:', {
-      document: !!document,
-      getElementById: !!document && !!document.getElementById
-    });
-    
     // 延迟1秒加载键盘，确保DOM元素已经准备好
-    console.log('延迟1秒初始化游戏，等待DOM元素准备...');
-    
     setTimeout(function() {
       // 检查关键元素是否存在
       const gameContainer = document.getElementById('game-container');
       const keyboardContainer = document.getElementById('virtual-keyboard');
-      console.log('1秒后关键元素状态:', {
-        gameContainer: !!gameContainer,
-        keyboardContainer: !!keyboardContainer,
-        gameContainerChildren: gameContainer ? gameContainer.children.length : 0,
-        keyboardContainerChildren: keyboardContainer ? keyboardContainer.children.length : 0
-      });
       
       // 尝试初始化游戏
       initGame();
@@ -1042,19 +976,13 @@ function initializeGame() {
       const showHistoryButton = document.getElementById('showHistory');
       if (showHistoryButton) {
         showHistoryButton.addEventListener('click', function() {
-          console.log('历史记录按钮被点击');
           showHistory();
         });
-        console.log('历史记录按钮事件绑定完成');
       }
-      
-      console.log('--- 延迟1秒后游戏初始化完成 ---');
     }, 1000);
     
-    console.log('--- 游戏初始化设置完成 (等待1秒后实际初始化) ---');
     return true;
   } catch (error) {
-    console.error('--- 初始化游戏失败 ---', error);
     return false;
   }
 }
@@ -1086,15 +1014,11 @@ function initMobileKeyboardSupport() {
         e.preventDefault();
       }
     });
-    
-    console.log('移动端键盘支持已初始化');
   }
 }
 
 // 在客户端环境中初始化游戏
 if (typeof window !== 'undefined' && typeof document !== 'undefined') {
-  console.log('[键盘游戏] 客户端环境检测到，准备初始化...');
-  
   // 防止重复初始化的标志
   let gameInitialized = false;
   
@@ -1102,11 +1026,9 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
   function initGameOnPage() {
     // 检查是否已经初始化过
     if (gameInitialized) {
-      console.log('[键盘游戏] 游戏已经初始化过，跳过本次调用');
       return;
     }
     
-    console.log('[键盘游戏] initGameOnPage 被调用');
     // 使用带循环检测的初始化方法
     initGameWithRetry();
     initMobileKeyboardSupport();
@@ -1117,12 +1039,10 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
   
   // 绑定DOMContentLoaded事件监听器
   document.addEventListener('DOMContentLoaded', function() {
-    console.log('[键盘游戏] DOMContentLoaded 事件触发');
     initGameOnPage();
   });
   
   // 立即调用初始化
-  console.log('[键盘游戏] 立即调用初始化...');
   initGameOnPage();
   
   // 游戏容器检查和初始化函数
@@ -1130,16 +1050,12 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
     const gameContainer = document.getElementById('game-container');
     const keyboardContainer = document.getElementById('virtual-keyboard');
     
-    console.log('[键盘游戏] 检查游戏容器元素:', {gameContainer: !!gameContainer, keyboardContainer: !!keyboardContainer});
-    
     if (gameContainer || keyboardContainer) {
-      console.log('[键盘游戏] 检测到游戏容器，初始化游戏...');
       // 初始化游戏
       initGameOnPage();
       
       // 如果观察器存在，停止观察
       if (observer) {
-        console.log('[键盘游戏] 停止 DOM 观察器...');
         observer.disconnect();
       }
       return true;
@@ -1149,11 +1065,8 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
 
   // 带循环检测的DOM初始化函数
   function initGameWithRetry() {
-    console.log('[键盘游戏] 开始带重试机制的游戏初始化...');
-    
     // 立即尝试一次
     if (tryInitGame()) {
-      console.log('[键盘游戏] 游戏初始化成功');
       return;
     }
     
@@ -1163,10 +1076,8 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
     
     window.gameInitializationTimer = setInterval(() => {
       retryCount++;
-      console.log(`[键盘游戏] 第${retryCount}次初始化尝试...`);
       
       if (tryInitGame()) {
-        console.log('[键盘游戏] 游戏初始化成功');
         clearInterval(window.gameInitializationTimer);
         window.gameInitializationTimer = null;
         return;
@@ -1176,7 +1087,6 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
       if (retryCount >= maxRetries) {
         clearInterval(window.gameInitializationTimer);
         window.gameInitializationTimer = null;
-        console.error('[键盘游戏] 游戏初始化超时，未能在10秒内检测到游戏容器');
       }
     }, 200);
   }
@@ -1185,10 +1095,7 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
   function tryInitGame() {
     const gameContainer = document.getElementById('game-container');
     
-    console.log('[键盘游戏] 检查游戏容器元素:', {gameContainer: !!gameContainer});
-    
     if (gameContainer) {
-      console.log('[键盘游戏] 检测到游戏容器，执行实际初始化...');
       // 直接初始化游戏，不调用 initGameOnPage() 避免循环
       initGame();
       return true;
@@ -1198,15 +1105,12 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
   
   // 使用 MutationObserver 监听 DOM 变化，用于单页应用场景（如 VuePress）
   function setupDOMObserver() {
-    console.log('[键盘游戏] 设置 DOM 变化监听器...');
-    
     let observer;
     
     // 立即检查一次
     if (!checkAndInitGame(observer)) {
       // 创建 MutationObserver 实例
       observer = new MutationObserver(function(mutationsList) {
-        console.log('[键盘游戏] DOM 变化被检测到，检查游戏容器...');
         checkAndInitGame(observer);
       });
       
@@ -1215,8 +1119,6 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
         childList: true,
         subtree: true
       });
-      
-      console.log('[键盘游戏] DOM 观察器已启动，等待游戏容器出现...');
     }
     
     return observer;
@@ -1227,11 +1129,8 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
   
   // 设置路由变化监听器，用于 VuePress 单页应用
   function setupRouteListeners() {
-    console.log('[键盘游戏] 设置路由变化监听器...');
-    
     // 路由变化时的处理函数
     const handleRouteChange = function() {
-      console.log('[键盘游戏] 路由变化被检测到，重新设置监听器...');
       // 重置初始化标志，允许重新初始化
       gameInitialized = false;
       // 延迟检查，确保 VuePress 有足够时间渲染页面
@@ -1248,7 +1147,6 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
     // 对于现代单页应用，也可以监听 visibilitychange 事件
     window.addEventListener('visibilitychange', function() {
       if (!document.hidden) {
-        console.log('[键盘游戏] 页面变为可见，重新设置监听器...');
         // 重置初始化标志，允许重新初始化
         gameInitialized = false;
         setTimeout(function() {
@@ -1257,15 +1155,11 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
         }, 500);
       }
     });
-    
-    console.log('[键盘游戏] 路由变化监听器已设置完成');
   }
   
   // 初始化所有监听器
   globalObserver = setupDOMObserver();
   setupRouteListeners();
-  
-  console.log('[键盘游戏] 游戏初始化设置完成');
 }
 </script>
 

@@ -50,6 +50,7 @@
 <div id="gameContainer" style="margin-top: 20px; padding: 15px; border: 2px solid #ddd; border-radius: 10px; background-color: #f9f9f9; max-width: 100%; box-sizing: border-box; min-height: 200px;">
   <div id="scoreDisplay" style="font-size: 20px; font-weight: bold; color: #333; margin-bottom: 10px;">得分: <span id="score">0</span></div>
   <div id="timeDisplay" style="font-size: 18px; color: #666; margin-bottom: 15px;">时间: <span id="time">60</span>秒</div>
+  <div id="statsDisplay" style="font-size: 16px; color: #666; margin-bottom: 10px;">准确率: <span id="accuracy">100%</span> | 连击: <span id="combo">x0</span> | WPM: <span id="wpm">0</span></div>
   <div id="wordDisplay" style="font-size: 32px; font-weight: bold; text-align: center; margin-bottom: 15px; color: #4CAF50; height: 45px; word-break: break-word;">点击开始按钮</div>
   <div id="inputDisplay" style="font-size: 20px; text-align: center; margin-bottom: 15px; color: #2196F3; height: 25px;"></div>
   <div id="gameStatus" style="font-size: 16px; text-align: center; color: #666;"></div>
@@ -127,7 +128,16 @@
     gameRunning: false,
     gamePaused: false,
     timer: null,
-    wordQueue: [] // 用于存储当前游戏会话的单词队列
+    wordQueue: [], // 用于存储当前游戏会话的单词队列
+    // 打字统计
+    totalKeys: 0,
+    correctKeys: 0,
+    errorKeys: 0,
+    combo: 0,
+    maxCombo: 0,
+    wordsCompleted: 0,
+    wordHadError: false,
+    errorLetters: {}
   };
   }
 
@@ -155,6 +165,105 @@
     
     // 从队列中取出第一个单词
     return config.wordQueue.shift();
+  }
+
+  // 逐字母渲染目标单词：已打且正确=绿色，已打但错误=红色，未打=默认色，当前待输入位置带下划线光标
+  function renderWordDisplay() {
+    if (typeof window === 'undefined') return;
+    const wordDisplay = document.getElementById('wordDisplay');
+    if (!wordDisplay) return;
+    const config = window.gameConfig;
+    const word = config.currentWord || '';
+    const input = config.userInput || '';
+    wordDisplay.innerHTML = '';
+    for (let i = 0; i < word.length; i++) {
+      const span = document.createElement('span');
+      span.textContent = word[i];
+      if (i < input.length) {
+        if (input[i] === word[i]) {
+          span.style.color = '#4CAF50';
+        } else {
+          span.style.color = '#f44336';
+          span.style.backgroundColor = '#ffebee';
+          span.style.borderRadius = '3px';
+        }
+      } else {
+        span.style.color = '#333';
+      }
+      if (i === input.length) {
+        span.style.borderBottom = '3px solid #2196F3';
+      }
+      wordDisplay.appendChild(span);
+    }
+  }
+
+  // 计算 WPM：标准算法 = (正确输入字符数 / 5) / 已用分钟数
+  function calculateWPM() {
+    if (typeof window === 'undefined') return 0;
+    const config = window.gameConfig;
+    const timeUsed = config.timeLimit - config.timeLeft;
+    if (timeUsed <= 0 || config.correctKeys <= 0) return 0;
+    return Math.round((config.correctKeys / 5) / (timeUsed / 60));
+  }
+
+  // 计算准确率百分比
+  function calculateAccuracy() {
+    if (typeof window === 'undefined') return 100;
+    const config = window.gameConfig;
+    const total = config.correctKeys + config.errorKeys;
+    if (total <= 0) return 100;
+    return Math.round((config.correctKeys / total) * 100);
+  }
+
+  // 实时刷新准确率 / 连击 / WPM 显示
+  function updateStatsDisplay() {
+    if (typeof window === 'undefined') return;
+    const config = window.gameConfig;
+    const accuracyEl = document.getElementById('accuracy');
+    const comboEl = document.getElementById('combo');
+    const wpmEl = document.getElementById('wpm');
+    if (accuracyEl) accuracyEl.textContent = calculateAccuracy() + '%';
+    if (comboEl) {
+      comboEl.textContent = 'x' + config.combo;
+      if (config.combo >= 5) {
+        comboEl.style.color = '#ff5722';
+        comboEl.style.fontWeight = 'bold';
+      } else {
+        comboEl.style.color = '';
+        comboEl.style.fontWeight = '';
+      }
+    }
+    if (wpmEl) wpmEl.textContent = calculateWPM();
+  }
+
+  // 生成游戏结束结算卡片 HTML
+  function getGameResultHTML() {
+    if (typeof window === 'undefined') return '';
+    const config = window.gameConfig;
+    const wpm = calculateWPM();
+    const accuracy = calculateAccuracy();
+    const topErrors = Object.keys(config.errorLetters)
+      .map(function(letter) { return { letter: letter, count: config.errorLetters[letter] }; })
+      .sort(function(a, b) { return b.count - a.count; })
+      .slice(0, 3);
+    const errorLettersText = topErrors.length > 0
+      ? topErrors.map(function(item) { return item.letter + '（' + item.count + '次）'; }).join('、')
+      : '无';
+    const itemStyle = 'display: inline-block; margin: 5px 12px; text-align: center;';
+    const numStyle = 'display: block; font-size: 26px; font-weight: bold; color: #4CAF50;';
+    const labelStyle = 'font-size: 13px; color: #888;';
+    return '<div style="padding: 20px 15px; background-color: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.12); display: inline-block; min-width: 280px;">'
+      + '<div style="font-size: 20px; font-weight: bold; color: #333; margin-bottom: 5px;">🎉 游戏结束</div>'
+      + '<div style="font-size: 14px; color: #888; margin-bottom: 12px;">最终得分 <span style="font-size: 34px; font-weight: bold; color: #4CAF50;">' + config.score + '</span> 分</div>'
+      + '<div>'
+      + '<span style="' + itemStyle + '"><span style="' + numStyle + '">' + config.wordsCompleted + '</span><span style="' + labelStyle + '">完成单词</span></span>'
+      + '<span style="' + itemStyle + '"><span style="' + numStyle + '">' + wpm + '</span><span style="' + labelStyle + '">WPM</span></span>'
+      + '<span style="' + itemStyle + '"><span style="' + numStyle + '">' + accuracy + '%</span><span style="' + labelStyle + '">准确率</span></span>'
+      + '<span style="' + itemStyle + '"><span style="' + numStyle + '">x' + config.maxCombo + '</span><span style="' + labelStyle + '">最高连击</span></span>'
+      + '</div>'
+      + '<div style="margin-top: 10px; font-size: 14px; color: #666;">易错字母 Top3：<span style="color: #f44336; font-weight: bold;">' + errorLettersText + '</span></div>'
+      + '<div style="margin-top: 6px; font-size: 12px; color: #aaa;">按键统计：正确 ' + config.correctKeys + ' / 错误 ' + config.errorKeys + '</div>'
+      + '</div>';
   }
 
   // 辅助函数：禁用游戏控件（难度选择器和昵称输入框）
@@ -192,8 +301,7 @@
     window.startGame = function() {
     // 只在浏览器环境中执行
     if (typeof window === 'undefined') return;
-    console.log('开始游戏函数被调用');
-    
+
     // 直接获取元素，不依赖initGameElements
     const startButton = document.getElementById('startGame');
     const scoreDisplay = document.getElementById('score');
@@ -201,73 +309,80 @@
     const wordDisplay = document.getElementById('wordDisplay');
     const inputDisplay = document.getElementById('inputDisplay');
     const gameStatus = document.getElementById('gameStatus');
-    
-    console.log('获取到的元素:', { startButton, scoreDisplay, timeDisplay, wordDisplay, inputDisplay, gameStatus });
-    
+
     // 确保所有必要元素都存在
     if (!startButton || !scoreDisplay || !timeDisplay || !wordDisplay || !inputDisplay || !gameStatus) {
-      console.error('游戏元素未找到');
       alert('游戏元素未找到，请刷新页面重试');
       return;
     }
-    
+
     const config = window.gameConfig;
-    
+
     // 获取用户选择的难度级别
     const selectedDifficulty = document.querySelector('input[name="difficulty"]:checked');
     if (selectedDifficulty) {
       config.selectedDifficulty = selectedDifficulty.value;
-      console.log('选择的难度:', config.selectedDifficulty);
-      
+
       // 清空单词队列，确保使用新难度的单词列表
       config.wordQueue = [];
-      
+
       // 更新时间限制
       const difficultySettings = config.difficultySettings[config.selectedDifficulty];
       if (difficultySettings) {
         config.timeLimit = difficultySettings.timeLimit;
       }
     }
-    
+
     // 获取用户输入的昵称
     const nicknameInput = document.getElementById('nickname');
     if (nicknameInput) {
       config.nickname = nicknameInput.value.trim() || '';
-      console.log('用户昵称:', config.nickname);
     }
-    
+
     if (config.gameRunning) {
-      console.log('游戏已经在运行中');
       return;
     }
-    
+
     config.gameRunning = true;
     config.gamePaused = false;
     config.score = 0;
     config.timeLeft = config.timeLimit;
     config.userInput = '';
-    
+
+    // 重置打字统计
+    config.totalKeys = 0;
+    config.correctKeys = 0;
+    config.errorKeys = 0;
+    config.combo = 0;
+    config.maxCombo = 0;
+    config.wordsCompleted = 0;
+    config.wordHadError = false;
+    config.errorLetters = {};
+
     // 显示暂停和停止按钮，隐藏开始按钮
     const pauseButton = document.getElementById('pauseGame');
     const stopButton = document.getElementById('stopGame');
     if (pauseButton) pauseButton.style.display = 'inline-block';
     if (stopButton) stopButton.style.display = 'inline-block';
     startButton.style.display = 'none';
-    
+
     scoreDisplay.textContent = '0';
     timeDisplay.textContent = config.timeLimit;
     gameStatus.textContent = '游戏进行中...';
-    
+
     // 显示第一个单词
     config.currentWord = getRandomWord();
-    wordDisplay.textContent = config.currentWord;
     wordDisplay.style.color = '#4CAF50';
-    
+    renderWordDisplay();
+
     inputDisplay.textContent = '';
-    
+
+    // 初始化统计显示
+    updateStatsDisplay();
+
     // 检测是否为移动设备
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    
+
     // 聚焦到隐藏的输入字段，仅在移动端触发键盘
     const mobileInput = document.getElementById('mobileInput');
     if (mobileInput && isMobile) {
@@ -275,35 +390,30 @@
       // 先点击再聚焦，解决某些移动设备上的兼容性问题
       mobileInput.click();
       mobileInput.focus();
-      console.log('游戏开始，已聚焦到隐藏输入字段');
-      console.log('移动设备检测:', isMobile);
-      console.log('mobileInput元素:', mobileInput);
-      
+
       // 键盘弹出后，确保游戏区域保持在可视范围内
       handleKeyboardScroll();
     }
-    
+
     // 清除之前的定时器
     if (config.timer) {
       clearInterval(config.timer);
     }
-    
+
     // 禁用游戏控件
     disableGameControls();
-    
+
     // 开始计时
     config.timer = setInterval(() => {
       config.timeLeft--;
       timeDisplay.textContent = config.timeLeft;
-      
+      updateStatsDisplay();
+
       if (config.timeLeft <= 0) {
         endGame();
       }
     }, 1000);
-    
-    console.log('游戏已开始');
-    console.log('游戏控件已禁用');
-    
+
   };
   }
 
@@ -322,53 +432,48 @@
     if (config.gamePaused) {
       // 继续游戏
       config.gamePaused = false;
-      
+
       // 重启定时器
       config.timer = setInterval(() => {
         config.timeLeft--;
         if (timeDisplay) timeDisplay.textContent = config.timeLeft;
-        
+        updateStatsDisplay();
+
         if (config.timeLeft <= 0) {
           endGame();
         }
       }, 1000);
-      
+
       if (pauseButton) pauseButton.textContent = '暂停游戏';
       if (gameStatus) gameStatus.textContent = '游戏进行中...';
-      
+
       // 检测是否为移动设备
       const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      
+
       // 重新聚焦到隐藏输入字段，仅在移动端执行
       const mobileInput = document.getElementById('mobileInput');
       if (mobileInput && isMobile) {
         mobileInput.focus();
-        console.log('游戏继续，已重新聚焦到隐藏输入字段');
-        
+
         // 键盘弹出后，确保游戏区域保持在可视范围内
         handleKeyboardScroll();
       }
-      
-      console.log('游戏已继续');
     } else {
       // 暂停游戏
       config.gamePaused = true;
       clearInterval(config.timer);
-      
+
       if (pauseButton) pauseButton.textContent = '继续游戏';
       if (gameStatus) gameStatus.textContent = '游戏已暂停...';
-      
+
       // 检测是否为移动设备
       const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      
+
       // 暂停时失去焦点，关闭键盘，仅在移动端执行
       const mobileInput = document.getElementById('mobileInput');
       if (mobileInput && isMobile) {
         mobileInput.blur();
-        console.log('游戏暂停，已从隐藏输入字段失去焦点');
       }
-      
-      console.log('游戏已暂停');
     }
   };
   }
@@ -400,33 +505,29 @@
     if (stopButton) stopButton.style.display = 'none';
     
     if (gameStatus) {
-      gameStatus.textContent = `游戏结束！最终得分: ${config.score}`;
+      gameStatus.innerHTML = getGameResultHTML();
     }
-    
+
     if (wordDisplay) {
       wordDisplay.textContent = '点击开始按钮';
     }
-    
+
     if (inputDisplay) {
       inputDisplay.textContent = '';
     }
-    
+
     // 检测是否为移动设备
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    
+
     // 停止时失去焦点，关闭键盘，仅在移动端执行
     const mobileInput = document.getElementById('mobileInput');
     if (mobileInput && isMobile) {
       mobileInput.blur();
-      console.log('游戏停止，已从隐藏输入字段失去焦点');
     }
-    
+
     // 启用游戏控件
     enableGameControls();
-    
-    console.log('游戏已停止，得分:', config.score);
-    console.log('游戏控件已启用');
-    
+
   };
   }
 
@@ -441,28 +542,29 @@
       try {
         // 获取历史分数
         let scoreHistory = JSON.parse(localStorage.getItem('typingGameScores') || '[]');
-        
+
         // 添加新分数记录
         const newScore = {
           score: config.score,
           difficulty: config.selectedDifficulty,
           timestamp: new Date().toISOString(),
           timeUsed: config.timeLimit - config.timeLeft,
-          nickname: config.nickname || '游客'
+          nickname: config.nickname || '游客',
+          wpm: calculateWPM(),
+          accuracy: calculateAccuracy()
         };
-        
+
         scoreHistory.push(newScore);
-        
+
         // 只保存最近20条记录
         if (scoreHistory.length > 20) {
           scoreHistory = scoreHistory.slice(-20);
         }
-        
+
         // 保存更新后的历史记录
         localStorage.setItem('typingGameScores', JSON.stringify(scoreHistory));
-        console.log('分数已保存到localStorage');
       } catch (error) {
-        console.error('保存分数失败:', error);
+        // 保存失败时静默处理，不影响游戏流程
       }
     }
     
@@ -493,35 +595,40 @@
     
     // 创建历史记录HTML
     let historyHTML = '<table style="width: 100%; border-collapse: collapse;">';
-    historyHTML += '<thead><tr style="background-color: #f2f2f2;"><th style="padding: 8px; text-align: left; border-bottom: 2px solid #ddd;">排名</th><th style="padding: 8px; text-align: left; border-bottom: 2px solid #ddd;">得分</th><th style="padding: 8px; text-align: left; border-bottom: 2px solid #ddd;">昵称</th><th style="padding: 8px; text-align: left; border-bottom: 2px solid #ddd;">难度</th><th style="padding: 8px; text-align: left; border-bottom: 2px solid #ddd;">用时</th><th style="padding: 8px; text-align: left; border-bottom: 2px solid #ddd;">时间</th></tr></thead>';
+    historyHTML += '<thead><tr style="background-color: #f2f2f2;"><th style="padding: 8px; text-align: left; border-bottom: 2px solid #ddd;">排名</th><th style="padding: 8px; text-align: left; border-bottom: 2px solid #ddd;">得分</th><th style="padding: 8px; text-align: left; border-bottom: 2px solid #ddd;">WPM</th><th style="padding: 8px; text-align: left; border-bottom: 2px solid #ddd;">准确率</th><th style="padding: 8px; text-align: left; border-bottom: 2px solid #ddd;">昵称</th><th style="padding: 8px; text-align: left; border-bottom: 2px solid #ddd;">难度</th><th style="padding: 8px; text-align: left; border-bottom: 2px solid #ddd;">用时</th><th style="padding: 8px; text-align: left; border-bottom: 2px solid #ddd;">时间</th></tr></thead>';
     historyHTML += '<tbody>';
-    
+
     scoreHistory.forEach((record, index) => {
       const difficultyNames = { easy: '简单', medium: '中等', hard: '困难' };
       const date = new Date(record.timestamp);
       const timeString = date.toLocaleString();
-      
+
       // 为前三名添加奖牌图标
       let medal = '';
       if (index === 0) medal = '🏅';
       else if (index === 1) medal = '🥈';
       else if (index === 2) medal = '🥉';
-      
+
+      // 旧记录没有 wpm / accuracy 字段时显示 -
+      const wpmText = record.wpm !== undefined ? record.wpm : '-';
+      const accuracyText = record.accuracy !== undefined ? record.accuracy + '%' : '-';
+
       historyHTML += '<tr>';
       historyHTML += `<td style="padding: 8px; border-bottom: 1px solid #ddd;">${medal}</td>`;
       historyHTML += `<td style="padding: 8px; border-bottom: 1px solid #ddd;">${record.score}</td>`;
+      historyHTML += `<td style="padding: 8px; border-bottom: 1px solid #ddd;">${wpmText}</td>`;
+      historyHTML += `<td style="padding: 8px; border-bottom: 1px solid #ddd;">${accuracyText}</td>`;
       historyHTML += `<td style="padding: 8px; border-bottom: 1px solid #ddd;">${record.nickname || '游客'}</td>`;
       historyHTML += `<td style="padding: 8px; border-bottom: 1px solid #ddd;">${difficultyNames[record.difficulty] || record.difficulty}</td>`;
       historyHTML += `<td style="padding: 8px; border-bottom: 1px solid #ddd;">${record.timeUsed}秒</td>`;
       historyHTML += `<td style="padding: 8px; border-bottom: 1px solid #ddd;">${timeString}</td>`;
       historyHTML += '</tr>';
     });
-      
+
       historyHTML += '</tbody></table>';
-      
+
       historyList.innerHTML = historyHTML;
     } catch (error) {
-      console.error('读取历史记录失败:', error);
       historyList.innerHTML = '<p style="text-align: center; color: #ff0000;">读取历史记录失败</p>';
     }
   }
@@ -532,14 +639,13 @@
     if (typeof window === 'undefined') return;
     const config = window.gameConfig;
     if (!config.gameRunning || config.gamePaused) return;
-    
+
     const scoreDisplay = document.getElementById('score');
-    const wordDisplay = document.getElementById('wordDisplay');
     const inputDisplay = document.getElementById('inputDisplay');
-    
+
     // 处理移动设备和桌面设备的键盘事件差异
     let key = event.key;
-    
+
     // 移动设备兼容性处理
     if (!key && event.keyCode) {
       // 根据keyCode获取字符
@@ -551,14 +657,12 @@
         key = 'Backspace';
       }
     }
-    
+
     // 忽略特殊键
     if (event.ctrlKey || event.altKey || event.metaKey) {
       return;
     }
-    
-    console.log('键盘事件:', key);
-    
+
     if (key === 'Enter') {
       // 检查输入是否为空
       if (config.userInput === '') {
@@ -566,54 +670,67 @@
         event.preventDefault();
         return;
       }
-      
-      // 检查输入是否正确
-      if (config.userInput === config.currentWord) {
-        // 输入正确，处理逻辑（实时检查已经处理了大部分情况，但这里保留作为备用）
-        // 由于实时检查已经更新了分数和单词，这里不需要重复处理
-        console.log('Enter键确认正确输入');
-      } else {
-        // 输入错误，高亮显示
-        if (wordDisplay) {
-          wordDisplay.style.color = '#ff0000';
-          setTimeout(() => {
-            wordDisplay.style.color = '#4CAF50';
-          }, 500);
-        }
-        // 清空输入，让用户重新开始
+
+      if (config.userInput !== config.currentWord) {
+        // 输入错误，清空输入让用户重新开始（字母高亮已提供错误反馈）
         config.userInput = '';
         if (inputDisplay) inputDisplay.textContent = '';
+        renderWordDisplay();
       }
       event.preventDefault();
     } else if (key === 'Backspace') {
-      // 删除最后一个字符
+      // 删除最后一个字符（不计入按键统计）
       config.userInput = config.userInput.slice(0, -1);
       if (inputDisplay) inputDisplay.textContent = config.userInput;
+      renderWordDisplay();
       event.preventDefault();
     } else if (key && key.length === 1 && /^[a-zA-Z]$/.test(key)) {
       // 添加字符（仅字母）
-      config.userInput += key.toLowerCase();
+      const typedChar = key.toLowerCase();
+      const position = config.userInput.length;
+
+      // 按键统计：与目标位置字母一致计正确，否则计错误
+      config.totalKeys++;
+      if (position < config.currentWord.length && typedChar === config.currentWord[position]) {
+        config.correctKeys++;
+      } else {
+        config.errorKeys++;
+        config.wordHadError = true;
+        // 统计每个目标字母的错误次数（超出单词长度的输入无目标字母，不计）
+        if (position < config.currentWord.length) {
+          const targetLetter = config.currentWord[position];
+          config.errorLetters[targetLetter] = (config.errorLetters[targetLetter] || 0) + 1;
+        }
+      }
+
+      config.userInput += typedChar;
       if (inputDisplay) inputDisplay.textContent = config.userInput;
-      
+      renderWordDisplay();
+      updateStatsDisplay();
+
       // 实时检查输入
       if (config.userInput === config.currentWord) {
         // 立即处理正确输入，不延迟
         config.score++;
+        config.wordsCompleted++;
         if (scoreDisplay) scoreDisplay.textContent = config.score;
-        
-        config.currentWord = getRandomWord();
-        if (wordDisplay) wordDisplay.textContent = config.currentWord;
-        
-        config.userInput = '';
-        if (inputDisplay) inputDisplay.textContent = '';
-      } else if (!config.currentWord.startsWith(config.userInput)) {
-        // 输入错误，高亮显示
-        if (inputDisplay) {
-          inputDisplay.style.color = '#ff0000';
-          setTimeout(() => {
-            inputDisplay.style.color = '#2196F3';
-          }, 500);
+
+        // 连击：整个单词无错误完成则 combo+1，否则清零
+        if (!config.wordHadError) {
+          config.combo++;
+          if (config.combo > config.maxCombo) {
+            config.maxCombo = config.combo;
+          }
+        } else {
+          config.combo = 0;
         }
+
+        config.currentWord = getRandomWord();
+        config.userInput = '';
+        config.wordHadError = false;
+        if (inputDisplay) inputDisplay.textContent = '';
+        renderWordDisplay();
+        updateStatsDisplay();
       }
     }
   }
@@ -622,8 +739,6 @@
   if (typeof window !== 'undefined') {
     // 使用立即执行函数确保代码在浏览器环境中运行
     (function() {
-      console.log('打字游戏脚本已加载');
-      
       // 移动设备检测函数
       function isMobileDevice() {
         return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -638,20 +753,17 @@
         const gameContainer = document.getElementById('gameContainer');
         if (gameContainer) {
           // 将游戏区域滚动到可视范围内
-          gameContainer.scrollIntoView({ 
-            behavior: 'auto', 
-            block: 'center', 
-            inline: 'center' 
+          gameContainer.scrollIntoView({
+            behavior: 'auto',
+            block: 'center',
+            inline: 'center'
           });
-          console.log('键盘弹出，已滚动到游戏区域');
         }
       }, 300);
       }
       
       // 安全初始化游戏
       function initializeGameSafely() {
-        console.log('尝试初始化游戏...');
-        
         // 直接获取所有需要的元素
         const startButton = document.getElementById('startGame');
         const scoreDisplay = document.getElementById('score');
@@ -662,9 +774,7 @@
         const gameContainer = document.getElementById('gameContainer');
         const mobileInput = document.getElementById('mobileInput');
         const showHistoryButton = document.getElementById('showHistory');
-        
-        console.log('初始化时获取到的元素:', { startButton, scoreDisplay, timeDisplay, wordDisplay, inputDisplay, gameStatus, gameContainer, mobileInput, showHistoryButton });
-        
+
         // 确保所有关键元素都存在
         if (startButton && scoreDisplay && timeDisplay && wordDisplay && inputDisplay && gameStatus && gameContainer && mobileInput && showHistoryButton) {
           // 设置初始状态
@@ -682,7 +792,6 @@
           
           // 按钮点击事件监听
           startButton.addEventListener('click', function() {
-            console.log('按钮点击事件被触发');
             window.startGame();
           });
           
@@ -699,10 +808,6 @@
               // 无论游戏是否运行，这样用户可以在开始前就准备好输入
               mobileInput.click();
               mobileInput.focus();
-              console.log('游戏区域被点击，已聚焦到隐藏输入字段');
-              console.log('移动设备检测:', isMobile);
-              console.log('游戏运行状态:', window.gameConfig ? window.gameConfig.gameRunning : '未初始化');
-              console.log('游戏暂停状态:', window.gameConfig ? window.gameConfig.gamePaused : '未初始化');
             });
           }
           
@@ -753,9 +858,7 @@
             });
           }
           
-          console.log('游戏初始化完成');
         } else {
-          console.log('等待DOM元素渲染...');
           setTimeout(initializeGameSafely, 100);
         }
       }
