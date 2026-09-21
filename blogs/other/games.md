@@ -4,132 +4,231 @@
 
 :::
 
-### 1. 键盘学习游戏
-- **游戏类型**：教育类
-- **游戏目标**：通过射击带有键盘按键的气球，帮助你熟悉键盘布局
-- **操作方式**：使用键盘输入对应的按键，即可发射弓箭射落气球
-- **支持按键**：A-Z、0-9、空格、回车等常用按键
-- **移动端**：支持触屏输入
+<div class="games-wrap">
 
-<router-link to="/blogs/other/keyboard_game" class="game-link">开始游戏</router-link>
+<!-- ========== 棋牌对战 ========== -->
+<div class="game-cat">
+  <span class="game-cat-icon">🀄</span>
+  <span class="game-cat-name">棋牌对战</span>
+</div>
 
-### 2. 经典打字游戏
-- **游戏类型**：竞速类
-- **游戏目标**：在规定时间内尽可能多地输入正确的字符
-- **操作方式**：使用键盘输入屏幕上显示的字符
-- **支持按键**：所有常用字符
+<div class="game-grid">
 
-<router-link to="/blogs/other/typing_game" class="game-link">开始游戏</router-link>
+  <!-- 麻将必须用普通 a 标签整页跳转，不能用 router-link：
+       iOS 只在「HTML 解析阶段」就见到 viewport-fit=cover 时才注入 env(safe-area-inset-*)，
+       动态插入/改写 viewport 无效。router-link 是 SPA 跳转，页面 head 由 JS 之后改写，
+       安全区变量恒为 0，横屏时刘海会盖住牌桌左侧。整页跳转才能让目标页 frontmatter 里
+       带 viewport-fit=cover 的 viewport 在解析时就生效。
+       href 必须带 .html（`/blogs/other/mahjong_game.html`）：项目所有 vue 路由都是
+       `<name>.html` 形式，nginx 对无扩展名路径返回首页兜底；写无扩展名会先加载首页再由
+       JS 路由重定向，真机上这次重定向常渲染不出来，且 viewport 又变回「JS 之后才写」。 -->
+  <a href="/blogs/other/mahjong_game.html" class="game-card">
+    <div class="game-card-cover"><img src="/img/games/mahjong.png" alt="四川麻将" loading="lazy"></div>
+    <div class="game-card-body">
+      <div class="game-card-title">四川麻将</div>
+      <div class="game-card-desc">血战到底 · 1 对 3 AI · 换三张 / 定缺 / 碰杠胡</div>
+      <span class="game-card-btn">开始游戏</span>
+    </div>
+  </a>
 
-### 3. 华容道游戏
-- **游戏类型**：益智类
-- **游戏目标**：通过移动方块，帮助曹操从棋盘底部的出口逃脱
-- **操作方式**：使用键盘方向键或WASD键移动方块；在电脑和移动设备上，均可通过点击选中方块，再点击目标位置移动
-- **游戏特色**：经典中国传统益智游戏，锻炼逻辑思维能力
+</div>
 
-<router-link to="/blogs/other/hua_rong_dao" class="game-link">开始游戏</router-link>
+<!-- ========== 键盘练习 ========== -->
+<div class="game-cat">
+  <span class="game-cat-icon">⌨️</span>
+  <span class="game-cat-name">键盘练习</span>
+</div>
 
-### 4. 数独游戏
-- **游戏类型**：逻辑推理类
-- **游戏目标**：填充9x9网格，使每行、每列和每个3x3小宫格内的数字1-9都不重复
-- **操作方式**：点击空白格子选择位置，使用数字键盘或点击数字按钮输入数字
-- **游戏特色**：经典逻辑游戏，锻炼推理能力和专注力，支持多个难度级别
+<div class="game-grid">
 
-<router-link to="/blogs/other/sudoku" class="game-link">开始游戏</router-link>
+  <a href="/blogs/other/keyboard_game.html" class="game-card">
+    <div class="game-card-cover"><img src="/img/games/keyboard.png" alt="键盘学习" loading="lazy"></div>
+    <div class="game-card-body">
+      <div class="game-card-title">键盘学习</div>
+      <div class="game-card-desc">射落带字母的气球，熟悉键盘布局，支持触屏</div>
+      <span class="game-card-btn">开始游戏</span>
+    </div>
+  </a>
 
-### 5. 2048 游戏
-- **游戏类型**：益智类
-- **游戏目标**：通过合并相同数字的方块，获得2048或更高分数
-- **操作方式**：使用键盘方向键或WASD键移动方块；支持触屏滑动操作
-- **游戏特色**：简单易懂的规则，富有挑战性的玩法，合并时有炫酷的碰撞特效
+  <a href="/blogs/other/typing_game.html" class="game-card">
+    <div class="game-card-cover"><img src="/img/games/typing.png" alt="经典打字" loading="lazy"></div>
+    <div class="game-card-body">
+      <div class="game-card-title">经典打字</div>
+      <div class="game-card-desc">限时竞速，实时统计 WPM / 准确率 / 连击</div>
+      <span class="game-card-btn">开始游戏</span>
+    </div>
+  </a>
 
-<router-link to="/blogs/other/2048" class="game-link">开始游戏</router-link>
+</div>
 
-### 6. 史莱姆模拟解压游戏
-- **游戏类型**：解压类
-- **游戏目标**：通过与电子史莱姆互动来放松心情，缓解压力
-- **核心玩法**：触摸按压拖动史莱姆，改变其形状，添加颜色混合创造新颜色
-- **特色功能**：点按凹陷、拖动起泡、按压戳破等真实物理效果
-- **操作方式**：电脑端用鼠标，移动端用手指触摸滑动
+<!-- ========== 益智烧脑 ========== -->
+<div class="game-cat">
+  <span class="game-cat-icon">🧩</span>
+  <span class="game-cat-name">益智烧脑</span>
+</div>
 
-<router-link to="/blogs/other/slime_game" class="game-link">开始游戏</router-link>
+<div class="game-grid">
 
-### 7. 四川麻将（血战到底）
-- **游戏类型**：棋牌类
-- **游戏目标**：1 名玩家对战 3 名 AI，血战到底，看谁笑到最后
-- **核心玩法**：换三张、定缺、碰杠胡，有人胡牌后牌局继续，直至三人胡牌或流局
-- **规则特色**：支持碰、明杠、暗杠、补杠、抢杠胡、一炮多响、查花猪、查大叫
-- **特色功能**：合法操作智能提示、困难档 AI 陪打（听牌避铳、番型偏好）、策略建议助手、完整结算明细、刷新后可继续上局
-- **操作方式**：点击手牌选中，再次点击或点"出牌"确认；电脑端鼠标、移动端触屏均可
-- **积分说明**：仅娱乐积分，不涉及充值兑换
+  <a href="/blogs/other/hua_rong_dao.html" class="game-card">
+    <div class="game-card-cover"><img src="/img/games/hrd.png" alt="华容道" loading="lazy"></div>
+    <div class="game-card-body">
+      <div class="game-card-title">华容道</div>
+      <div class="game-card-desc">经典滑块解谜，5 大 BFS 验证关卡，Q 版三国立绘</div>
+      <span class="game-card-btn">开始游戏</span>
+    </div>
+  </a>
 
-<!-- 必须用普通 a 标签整页跳转，不能用 router-link：
-     iOS 只在「HTML 解析阶段」就见到 viewport-fit=cover 时才注入 env(safe-area-inset-*)，
-     动态插入/改写 viewport 无效。router-link 是 SPA 跳转，页面 head 由 JS 之后改写，
-     安全区变量恒为 0，横屏时刘海会盖住牌桌左侧。整页跳转才能让本页 frontmatter 里
-     带 viewport-fit=cover 的 viewport 在解析时就生效。
-     另外两处细节必须保持：
-     1. href 必须带 .html（`/blogs/other/mahjong_game.html`）。项目所有 vue 路由都是
-        `<name>.html` 形式，nginx 对无扩展名路径返回的是首页兜底；写 `...mahjong_game`
-        会先加载首页再由 JS 路由重定向到 .html，真机上这次重定向常常渲染不出来，
-        要刷新后才正常，而且这一跳是客户端渲染，viewport 又变回「JS 之后才写」，刘海照旧。
-     2. 外面必须套一个块级标签（下面的 div）。裸 <a> 是行内元素，markdown 会把它包进
-        <p>，按钮继承 <p> 的行高/外边距，看起来比其它游戏（router-link 渲染出的裸 <a>）
-        的按钮高；套 div 后与其它按钮结构一致，高度就对上了。 -->
-<div><a href="/blogs/other/mahjong_game.html" class="game-link">开始游戏</a></div>
+  <a href="/blogs/other/sudoku.html" class="game-card">
+    <div class="game-card-cover"><img src="/img/games/sudoku.png" alt="数独" loading="lazy"></div>
+    <div class="game-card-body">
+      <div class="game-card-title">数独</div>
+      <div class="game-card-desc">保证唯一解，三档难度，高亮辅助与计时</div>
+      <span class="game-card-btn">开始游戏</span>
+    </div>
+  </a>
 
-## 游戏说明
+  <a href="/blogs/other/2048.html" class="game-card">
+    <div class="game-card-cover"><img src="/img/games/2048.png" alt="2048" loading="lazy"></div>
+    <div class="game-card-body">
+      <div class="game-card-title">2048</div>
+      <div class="game-card-desc">合并数字方块冲击高分，滑动动画 + 撤销</div>
+      <span class="game-card-btn">开始游戏</span>
+    </div>
+  </a>
 
-- 所有游戏都支持键盘和触屏操作
-- 游戏会自动保存你的最高分数
-- 建议在电脑上使用键盘操作，获得更好的游戏体验
-- 在移动设备上，可以使用屏幕键盘进行操作
+</div>
+
+<!-- ========== 解压放松 ========== -->
+<div class="game-cat">
+  <span class="game-cat-icon">🫧</span>
+  <span class="game-cat-name">解压放松</span>
+</div>
+
+<div class="game-grid">
+
+  <a href="/blogs/other/slime_game.html" class="game-card">
+    <div class="game-card-cover"><img src="/img/games/slime.png" alt="史莱姆" loading="lazy"></div>
+    <div class="game-card-body">
+      <div class="game-card-title">史莱姆模拟</div>
+      <div class="game-card-desc">戳一戳、拉一拉电子史莱姆，真实物理超解压</div>
+      <span class="game-card-btn">开始游戏</span>
+    </div>
+  </a>
+
+</div>
+
+</div>
 
 <style>
-.game-link {
-  display: inline-block;
-  padding: 12px 24px;
-  margin: 10px 0;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+.games-wrap {
+  margin: 8px 0;
+}
+
+/* 分类标题 */
+.game-cat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 26px 0 14px;
+  font-size: 19px;
+  font-weight: 700;
+  color: #2c3e50;
+}
+.game-cat:first-child {
+  margin-top: 10px;
+}
+.game-cat-icon {
+  font-size: 22px;
+}
+.game-cat-name {
+  letter-spacing: 1px;
+}
+
+/* 卡片网格：桌面 3 列，平板 2 列，手机 1 列 */
+.game-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+}
+@media (max-width: 960px) {
+  .game-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 600px) {
+  .game-grid { grid-template-columns: 1fr; gap: 14px; }
+}
+
+/* 卡片（整卡可点） */
+.game-card {
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 14px;
+  overflow: hidden;
   text-decoration: none;
-  border-radius: 25px;
-  font-size: 16px;
-  font-weight: bold;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+  color: inherit;
+  box-shadow: 0 3px 14px rgba(0, 0, 0, 0.08);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  border: 1px solid #eef0f3;
 }
-
-.game-link:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
-}
-
-.game-link:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 10px rgba(102, 126, 234, 0.3);
-}
-
-/* 游戏卡片样式 */
-div[class*="game-card"] {
-  background: white;
-  border-radius: 10px;
-  padding: 20px;
-  margin: 15px 0;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
-}
-
 .game-card:hover {
-  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+  transform: translateY(-4px);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.14);
+  text-decoration: none;
 }
 
-/* 响应式设计 */
-@media (max-width: 768px) {
-  .game-link {
-    display: block;
-    text-align: center;
-    margin: 10px auto;
-  }
+/* 封面图 */
+.game-card-cover {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: #f0f2f5;
+}
+.game-card-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.35s ease;
+}
+.game-card:hover .game-card-cover img {
+  transform: scale(1.05);
+}
+
+/* 卡片文字区 */
+.game-card-body {
+  padding: 14px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+.game-card-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: #2c3e50;
+  margin-bottom: 6px;
+}
+.game-card-desc {
+  font-size: 13px;
+  line-height: 1.6;
+  color: #8492a6;
+  margin-bottom: 12px;
+  flex: 1;
+}
+
+/* 按钮 */
+.game-card-btn {
+  display: inline-block;
+  align-self: flex-start;
+  padding: 8px 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: 0 3px 10px rgba(102, 126, 234, 0.35);
+  transition: all 0.25s ease;
+}
+.game-card:hover .game-card-btn {
+  box-shadow: 0 5px 16px rgba(102, 126, 234, 0.5);
 }
 </style>
