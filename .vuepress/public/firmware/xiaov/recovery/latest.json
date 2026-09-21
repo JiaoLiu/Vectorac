@@ -1,12 +1,12 @@
 {
-  "version": "0.0.4-alpha",
-  "url": "https://vectorac.com/firmware/xiaov/recovery/xiaov-0.0.4-alpha-full.bin",
+  "version": "0.0.5-alpha",
+  "url": "https://vectorac.com/firmware/xiaov/recovery/xiaov-0.0.5-alpha-full.bin",
   "address": "0x0",
   "size": 9150635,
-  "checksum": "sha256:81046994d0dd37f81ac4a94eea4a29a3e7387878ec319e5d836d3eeb8360d89b",
+  "checksum": "sha256:93ba6b4efbbe788eb6ce84a53a83267a8de3c7520730cf6606ba968096cd951c",
   "flashMode": "dio",
   "flashFreq": "80m",
   "flashSize": "16MB",
-  "date": "2026-08-21",
-  "release_notes": "0.0.4-alpha：RTC 会话稳定性重构——分级看门狗（欢迎语/TTS 断流/播放卡死/ASR 无进展），失败后不自动重建、播离线报错并等待再唤醒，SDK 销毁看门狗防卡死，透传音频发送返回值。"
+  "date": "2026-09-21",
+  "release_notes": "0.0.5-alpha：平台化 SN 切换与设备中心联调——凭证快照加锁、会话/凭证互斥、WiFi 事件驱动重连、provider 失败 60s 重试；统一设备控制核心 + 本地控制页 + Realtime 常驻 worker + OTA 加固。"
 }

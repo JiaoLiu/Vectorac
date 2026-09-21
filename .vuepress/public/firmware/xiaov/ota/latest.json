@@ -1,13 +1,13 @@
 {
-  "version": "0.0.4-alpha",
-  "date": "2026-08-21",
-  "release_notes": "RTC 会话稳定性重构：用分级看门狗替换笼统超时（欢迎语 30s / TTS 断流 15s / 播放卡死 15s / ASR 后 30s 无进展），弱网长回复不再被截断；失败后不再自动重建会话，先播离线错误提示并等待再次唤醒；新增 SDK 销毁看门狗防止 fini 卡死；透传音频发送返回值按 RTCLite 契约判失败。",
+  "version": "0.0.5-alpha",
+  "date": "2026-09-21",
+  "release_notes": "平台化 SN 切换与设备中心联调：凭证快照加锁（s_credMutex 原子读写）；会话与凭证更新互斥（beginSession/endSession + s_opMutex 防重叠）；联网重连改为 ARDUINO_EVENT_WIFI_STA_GOT_IP 事件触发，去掉轮询；provider_renew_status=failed 时回落 PROVIDER_PENDING 并 60s 重试。统一设备控制核心 + 本地控制页 + Realtime 常驻 worker + OTA 加固。",
   "parts": [
     {
       "type": "app",
-      "url": "https://vectorac.com/firmware/xiaov/ota/xiaov-0.0.4-alpha-app.bin",
-      "size": 3083776,
-      "checksum": "sha256:6b9e04fd4a664f8415a92302d3a5e9464d4235ad0a298f2fabede6a4f0bfaa6e"
+      "url": "https://vectorac.com/firmware/xiaov/ota/xiaov-0.0.5-alpha-app.bin",
+      "size": 4160608,
+      "checksum": "sha256:99412e18b421bf6ed43d39f8bda6af25427f558567f0994af151e48c561f8469"
     }
   ]
 }
