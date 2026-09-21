@@ -251,6 +251,82 @@ sudo journalctl -u mahjong -f
 curl http://127.0.0.1:3032/api/health
 ```
 
+## OCR 文字识别服务
+
+官网「产品 → 文字识别」演示页的后端。**独立部署在服务器 `/home/ocr/`，不在本仓库内**，与其它 Node 服务无依赖关系，是唯一的 Python 服务。
+
+### 访问链路
+
+```
+浏览器
+  └─ https://vectorac.com/blogs/other/ch_ocr   (VuePress 页，iframe 嵌入下面这个)
+       └─ iframe https://vectorac.com/ch_ocr
+            └─ nginx location /ch_ocr → http://127.0.0.1:5001/
+                 └─ Flask 服务 /home/ocr/server.py（渲染前端 + 识别）
+```
+
+- `nginx`：`/etc/nginx/conf.d/vectorac.conf` 里 `location /ch_ocr { proxy_pass http://127.0.0.1:5001/; }`（注意带尾斜杠，去掉前缀）。
+- 前端页面（上传图 → 调 `/ocr` → 显示结果）是 Flask 模板 `/home/ocr/templates/index.html`，**不在本仓库**，改 UI 直接改这个文件，保存即生效（Flask 每次渲染重读模板，无需重启）。
+- 前端流程：选图 → canvas 压缩（`MAX_WH` 最长边、JPEG 质量）→ POST `/ch_ocr/upload` 存到 `/home/ocr/images/` → GET `/ch_ocr/ocr?img=<文件名>` 返回识别文本 JSON。
+
+### 迁移前架构（EasyOCR，已废弃）
+
+- 引擎：**EasyOCR 1.2.4**（2020 老版），`easyocr.Reader(['ch_sim'], gpu=False)`，PyTorch CPU 推理。
+- 运行时：**系统 Python 3.6.8**（`/usr/bin/python3`）。
+- 识别效果差的原因（实测确认）：
+  1. EasyOCR 1.2.4 中文模型本身精度一般，复杂背景/手写/卡证小字弱；
+  2. 只 `readtext(..., detail=0)` 返回纯文本流，无坐标、无置信度、**无法做卡证结构化**；
+  3. PyTorch 进程常驻 ~750MB，长期不重启内存碎片化 + 触发 swap，慢且不稳。
+  - 曾把前端 `MAX_WH` 1000→2200、JPEG 0.8→0.92 验证，**识别效果几乎无变化**，证明瓶颈在引擎而非图片清晰度。
+- 旧启动方式：`ocr_run.sh`（`while [ 1 ]; do python3 server.py; done` 死循环守护）。
+
+### 迁移后架构（RapidOCR）
+
+- 引擎：**RapidOCR（ONNX Runtime）**，检测+识别模型走 ONNX，**不依赖 PyTorch**。
+- 运行时：**独立 venv `/home/ocr/venv38`（Python 3.8.8）**，不碰系统 3.6（EasyOCR 残留依赖仍在 3.6，互不干扰）。
+  - 系统已有 `/usr/bin/python3.8`；CentOS 8 / glibc 2.28 满足 onnxruntime 要求。
+  - 建环境：`/usr/bin/python3.8 -m venv /home/ocr/venv38`，再 `pip install rapidocr-onnxruntime flask`。
+- 优势：中文精度代差提升（PaddleOCR 同源权重）、内存从 ~750MB 降到 ~350MB、返回文字框坐标/置信度、支持卡证票据场景。
+- `server.py` 改动：仅替换识别调用（`easyocr.Reader(...).readtext(...)` → RapidOCR），**接口路径 `/upload` `/ocr` 与前端模板完全不动**，用户无感。
+
+### 启动 / 停止
+
+```bash
+cd /home/ocr
+
+# 启动（后台 + 日志）
+nohup /home/ocr/venv38/bin/python server.py > /home/ocr/ocr_output.log 2>&1 &
+
+# 确认起来了（应看到 venv38/bin/python server.py，端口 5001 在监听）
+ps aux | grep 'server.py' | grep -v grep
+ss -tlnp | grep 5001
+
+# 停止
+pkill -f 'venv38/bin/python server.py'
+```
+
+> 旧的 `ocr_run.sh` 守护循环只适用于老的 3.6 EasyOCR；切到 venv38 后若要崩溃自拉起，建议改成 systemd 服务（参照 mahjong/shorturl 的 `Restart=on-failure` 写法），比 `while [1]` 更可控。
+
+### 排查问题
+
+| 现象 | 排查 |
+| --- | --- |
+| 页面打不开 / 502 | `curl -s http://127.0.0.1:5001/ocr?img=x.jpg` 看是否有响应；`ps aux \| grep server.py` 看进程在不在 |
+| 识别接口 500 | 看日志 `tail -50 /home/ocr/ocr_output.log`；常见是图片路径不存在（`/ocr?img=` 的文件没在 `images/` 里） |
+| 识别慢、内存高 | `free -h` 看是否进 swap；`ps aux \| grep server.py` 看 RSS；超 1G 就重启服务释放 |
+| 识别全错/乱码 | 确认用的是 venv38 的 RapidOCR（`ps` 输出应含 `venv38`），不是又跑回了 3.6 EasyOCR |
+| 识别质量差 | 先确认前端没把图压太狠（模板里 `MAX_WH` / JPEG 质量）；再确认模型是 RapidOCR |
+| 改了前端 UI 没生效 | 用户端强刷（Cmd/Ctrl+Shift+R）清 `index.html` 缓存；服务端模板保存即生效不用重启 |
+
+### 关键文件
+
+- `/home/ocr/server.py` — Flask 服务（识别 + 前端）
+- `/home/ocr/templates/index.html` — 演示页 UI（压缩参数 `MAX_WH`、JPEG 质量在这改）
+- `/home/ocr/ocr_run.sh` — 旧 3.6 启动脚本（废弃）
+- `/home/ocr/venv38/` — RapidOCR 独立 Python 3.8 环境
+- `/home/ocr/images/` — 上传图片暂存（前端每次覆盖同名 `temp.jpg`，不会无限堆积）
+- `/home/ocr/ocr_output.log` — 运行日志
+
 ## 部署配置
 
 ### 1. 核心配置文件
