@@ -117,29 +117,9 @@ curl "https://vectorac.com/ch_ocr/ocr?img=idcard.jpg"
  width=100% 
  src="https://vectorac.com/ch_ocr"  
  frameborder=0  
- scrolling="no"
- allowfullscreen style="background-color:#f4f6fb;border-radius:12px;height:720px;overflow:hidden;">
+ scrolling="auto"
+ allowfullscreen style="background-color:#f4f6fb;border-radius:12px;">
  </iframe>
-
-<script>
-// 接收演示页 postMessage 发来的内容高度，自适应调整 iframe 高度
-// 注意：VuePress SSR 构建阶段无 document，需守卫仅在浏览器执行
-if (typeof window !== 'undefined' && typeof document !== 'undefined') {
-  window.addEventListener('load', function () {
-    var frame = document.getElementById('ocrDemoFrame');
-    if (!frame) return;
-    window.addEventListener('message', function (e) {
-      // 同源校验：只接受本站演示页发来的高度消息
-      if (e.origin !== location.origin) return;
-      var d = e.data;
-      if (d && d.type === 'ocr-demo-height' && d.height) {
-        var h = Math.max(520, Math.min(2200, Math.ceil(d.height) + 8));
-        frame.style.height = h + 'px';
-      }
-    });
-  });
-}
-</script>
 
 ## 联系我们
 
@@ -225,6 +205,9 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
 }
 .ocr-contact p { color: #c3d2ee; font-size: 14.5px; line-height: 1.7; margin: 0 0 18px; }
 
+/* 演示 iframe：可滚动，固定高度（桌面 900 / 移动 700） */
+.ocr-demo-iframe { height: 900px; }
+
 /* 响应式 */
 @media (max-width: 960px) {
   .ocr-grid { grid-template-columns: repeat(2, 1fr); }
@@ -244,5 +227,6 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
   .ocr-card-desc { min-height: 0; }
   .ocr-proof { flex-direction: column; padding: 16px; }
   .ocr-access { flex-direction: column; gap: 14px; }
+  .ocr-demo-iframe { height: 700px; }
 }
 </style>
