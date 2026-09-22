@@ -319,6 +319,9 @@ const dependencies = {
   "./slime-sculpt": moduleURL(sculptSource),
   "./slime-fusion": moduleURL(fusionSource),
   "./slime-volume": volumeURL,
+  "./slime-worker-url.generated": moduleURL(
+    'export default "/js/slime-rebuild.test.js";'
+  ),
   "./SlimeSprinkles": moduleURL(
     sprinklesSource.replace('"three"', JSON.stringify(threeURL))
   ),

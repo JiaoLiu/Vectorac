@@ -3,14 +3,17 @@
   "version": "1.0.0",
   "author": "reco_luan",
   "scripts": {
+    "build:slime-worker": "node scripts/build-slime-worker.js",
+    "predev": "npm run build:slime-worker",
     "dev": "NODE_OPTIONS=--openssl-legacy-provider vuepress dev . --open --host \"localhost\"",
-    "build": "NODE_OPTIONS=--openssl-legacy-provider vuepress build ."
+    "prebuild": "npm run build:slime-worker",
+    "build": "NODE_OPTIONS=--openssl-legacy-provider vuepress build .",
+    "postbuild": "node scripts/check-slime-worker.js"
   },
   "devDependencies": {
     "esbuild": "^0.28.2",
     "vuepress": "1.5.4",
-    "vuepress-theme-reco": "1.5.7",
-    "worker-loader": "^3.0.8"
+    "vuepress-theme-reco": "1.5.7"
   },
   "dependencies": {
     "three": "0.134.0",

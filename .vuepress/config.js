@@ -35,17 +35,6 @@ module.exports = {
     }
   },
   chainWebpack(config, isServer) {
-    // *.worker.js 由 worker-loader 打包成独立 worker（webpack 4 不支持
-    // new Worker(new URL(...)) 语法；enforce 'pre' 确保在 VuePress 默认
-    // babel rule 之前匹配，globalObject 'this' 让包体在 worker 里也能跑）
-    config.module
-      .rule('worker')
-      .enforce('pre')
-      .test(/\.worker\.js$/)
-      .use('worker-loader')
-      .loader('worker-loader')
-      .options({ esModule: true });
-    if (!isServer) config.output.globalObject('this');
   },
   head: [
     // defer：不阻塞 HTML 解析（三个脚本内部都处理了 readyState，DOM 未就绪时会等 DOMContentLoaded）

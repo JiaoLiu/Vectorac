@@ -16,6 +16,7 @@ import {
 import SlimeSprinkles from "./SlimeSprinkles";
 import { validSurface } from "./slime-safety";
 import { meshVolume, preserveVolume } from "./slime-volume";
+import slimeWorkerUrl from "./slime-worker-url.generated";
 
 export default class SlimeStudio {
   constructor(canvas) {
@@ -806,7 +807,7 @@ export default class SlimeStudio {
         // The worker is prebundled by esbuild into .vuepress/public/js/ and
         // copied to the site root, so plain-URL construction works in both
         // dev and production without webpack's worker-loader.
-        worker = new Worker("/js/slime-rebuild.worker.js");
+        worker = new Worker(slimeWorkerUrl);
         if (!worker) throw new Error("no worker");
       } catch (error) {
         // No worker support (tests/SSR): the caller uses the sync path.
