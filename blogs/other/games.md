@@ -40,6 +40,15 @@
     </div>
   </a>
 
+  <a href="/blogs/other/cardforge.html" class="game-card">
+    <div class="game-card-cover game-card-cover-cf"><span>✦</span><b>星牌工坊</b><i>♠ ♥ ♣ ♦</i></div>
+    <div class="game-card-body">
+      <div class="game-card-title">星牌工坊</div>
+      <div class="game-card-desc">牌型构筑 · 遗物连锁 · 逐轮目标 · 原创单机挑战</div>
+      <span class="game-card-btn">开始游戏</span>
+    </div>
+  </a>
+
 </div>
 
 <!-- ========== 键盘练习 ========== -->
@@ -199,6 +208,7 @@
   display: block;
   transition: transform 0.35s ease;
 }
+.game-card-cover-cf{display:grid;place-items:center;background:radial-gradient(circle,#31516b,#101827);color:#70f0cd}.game-card-cover-cf span{font-size:58px;line-height:.8}.game-card-cover-cf b{font-size:22px;letter-spacing:3px}.game-card-cover-cf i{color:#ffcf70;font-style:normal}
 .game-card:hover .game-card-cover img {
   transform: scale(1.05);
 }
