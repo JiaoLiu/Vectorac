@@ -266,7 +266,7 @@ curl http://127.0.0.1:3032/api/health
 ```
 
 - `nginx`：`/etc/nginx/conf.d/vectorac.conf` 里 `location /ch_ocr { proxy_pass http://127.0.0.1:5001/; }`（注意带尾斜杠，去掉前缀）。
-- 前端页面（上传图 → 调 `/ocr` → 显示结果）是 Flask 模板 `/home/ocr/templates/index.html`，**不在本仓库**，改 UI 直接改这个文件，保存即生效（Flask 每次渲染重读模板，无需重启）。
+- 前端页面（上传图 → 调 `/ocr` → 显示结果）是 Flask 模板 `/home/ocr/templates/index.html`，**不在本仓库**，改 UI 直接改这个文件；**改完必须重启服务才生效**（生产模式 Jinja2 会缓存编译后的模板，`curl -s http://127.0.0.1:5001/ | grep 新特征串` 可验证服务端是否已吐新页面）。
 - 前端流程：选图 → canvas 压缩（`MAX_WH` 最长边、JPEG 质量）→ POST `/ch_ocr/upload` 存到 `/home/ocr/images/` → GET `/ch_ocr/ocr?img=<文件名>` 返回识别文本 JSON。
 
 ### 迁移前架构（EasyOCR，已废弃）
@@ -301,8 +301,15 @@ nohup /home/ocr/venv38/bin/python server.py > /home/ocr/ocr_output.log 2>&1 &
 ps aux | grep 'server.py' | grep -v grep
 ss -tlnp | grep 5001
 
-# 停止
-pkill -f 'venv38/bin/python server.py'
+# 停止（按端口杀，最可靠；pkill 模式匹配经常因启动时用全路径 /home/ocr/server.py 而静默失败）
+PID=$(ss -tlnp | grep ':5001' | grep -oE 'pid=[0-9]+' | head -1 | cut -d= -f2)
+[ -n "$PID" ] && kill -9 $PID
+
+# 重启一条龙：杀老进程 → 启动 → 验证端口和新页面特征
+PID=$(ss -tlnp | grep ':5001' | grep -oE 'pid=[0-9]+' | head -1 | cut -d= -f2)
+[ -n "$PID" ] && kill -9 $PID; sleep 1
+cd /home/ocr && nohup /home/ocr/venv38/bin/python /home/ocr/server.py > /home/ocr/ocr_output.log 2>&1 &
+sleep 2; ss -tlnp | grep ':5001'
 ```
 
 > 旧的 `ocr_run.sh` 守护循环只适用于老的 3.6 EasyOCR；切到 venv38 后若要崩溃自拉起，建议改成 systemd 服务（参照 mahjong/shorturl 的 `Restart=on-failure` 写法），比 `while [1]` 更可控。
@@ -316,7 +323,7 @@ pkill -f 'venv38/bin/python server.py'
 | 识别慢、内存高 | `free -h` 看是否进 swap；`ps aux \| grep server.py` 看 RSS；超 1G 就重启服务释放 |
 | 识别全错/乱码 | 确认用的是 venv38 的 RapidOCR（`ps` 输出应含 `venv38`），不是又跑回了 3.6 EasyOCR |
 | 识别质量差 | 先确认前端没把图压太狠（模板里 `MAX_WH` / JPEG 质量）；再确认模型是 RapidOCR |
-| 改了前端 UI 没生效 | 用户端强刷（Cmd/Ctrl+Shift+R）清 `index.html` 缓存；服务端模板保存即生效不用重启 |
+| 改了前端 UI 没生效 | 先 `curl -s http://127.0.0.1:5001/ \| grep 新特征串`：没有 → 重启服务（Jinja2 模板缓存）；有 → 用户端强刷（Cmd/Ctrl+Shift+R）清缓存 |
 
 ### 关键文件
 
