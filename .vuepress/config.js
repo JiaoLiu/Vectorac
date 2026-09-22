@@ -11,6 +11,10 @@ module.exports = {
     '!.private/**',
     '!**/node_modules/**'
   ],
+  // 关闭 prefetch：VuePress 默认给每页 SSR HTML 注入 44+ 个 <link rel="prefetch">
+  // 预取全部页面 chunk（约 1.7MB JS），冷缓存时严重抢占首屏关键资源带宽。
+  // @vuepress/core/lib/node/build/index.js 读取 siteConfig.shouldPrefetch
+  shouldPrefetch: () => false,
   // 注意：devServer 只能写在顶层。VuePress 1.x 只读 siteConfig.devServer
   // （@vuepress/core/lib/node/dev/index.js 里 Object.assign(默认值, siteConfig.devServer)），
   // 在 chainWebpack 里 config.devServer.set(...) 不会被消费，写了等于没写。
@@ -44,9 +48,10 @@ module.exports = {
     if (!isServer) config.output.globalObject('this');
   },
   head: [
-    ['script', { type: 'text/javascript', src: '/js/bdPush.js' }],
-    ['script', { type: 'text/javascript', src: '/js/shorturl-demo.js' }],
-    ['script', { type: 'text/javascript', src: '/js/flasher.js' }],
+    // defer：不阻塞 HTML 解析（三个脚本内部都处理了 readyState，DOM 未就绪时会等 DOMContentLoaded）
+    ['script', { type: 'text/javascript', src: '/js/bdPush.js', defer: true }],
+    ['script', { type: 'text/javascript', src: '/js/shorturl-demo.js', defer: true }],
+    ['script', { type: 'text/javascript', src: '/js/flasher.js', defer: true }],
     [
       'meta',
       {
@@ -233,6 +238,18 @@ module.exports = {
     startYear: '2020'
   },
   markdown: {
-    lineNumbers: true
+    lineNumbers: true,
+    // 全局给 markdown 语法渲染的图片加 lazy/async，避免首屏外大图阻塞加载
+    extendMarkdown(md) {
+      const defaultRender =
+        md.renderer.rules.image ||
+        ((tokens, idx, options, env, self) => self.renderToken(tokens, idx, options))
+      md.renderer.rules.image = (tokens, idx, options, env, self) => {
+        const token = tokens[idx]
+        token.attrSet('loading', 'lazy')
+        token.attrSet('decoding', 'async')
+        return defaultRender(tokens, idx, options, env, self)
+      }
+    }
   }
 }

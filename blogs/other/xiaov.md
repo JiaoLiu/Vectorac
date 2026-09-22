@@ -11,7 +11,7 @@
     </div>
   </div>
   <div class="xiaov-hero-image">
-    <img src="/img/xiaov/xiaov-hero.png" alt="小V 桌面 AI 陪伴机器人" />
+    <img src="/img/xiaov/xiaov-hero.webp" alt="小V 桌面 AI 陪伴机器人" width="1024" height="683" fetchpriority="high" decoding="async" />
   </div>
 </div>
 
@@ -49,7 +49,7 @@
 
 <div class="xiaov-appearance">
   <div class="xiaov-appearance-image">
-    <img src="/img/xiaov/evolution-v5.png" alt="小V V5 精雕外壳" />
+    <img src="/img/xiaov/evolution-v5.webp" alt="小V V5 精雕外壳" width="800" height="911" loading="lazy" decoding="async" />
   </div>
   <div class="xiaov-appearance-text">
     <p>小V 采用 3D 打印外壳，整机 110 × 128 × 78 mm，ESP32-S3 主控、40×40 PCB、1.54 寸 ST7789 屏、USB-C 供电、内置锂电池。</p>
@@ -61,22 +61,22 @@
 
 <div class="xiaov-evolution">
   <div class="xiaov-evolution-item">
-    <div class="xiaov-evolution-image"><img src="/img/xiaov/evolution-v1.png" alt="小V V1 概念图" /></div>
+    <div class="xiaov-evolution-image"><img src="/img/xiaov/evolution-v1.webp" alt="小V V1 概念图" width="720" height="720" loading="lazy" decoding="async" /></div>
     <div class="xiaov-evolution-tag">V1</div>
     <div class="xiaov-evolution-desc">卡通猫耳，最小可用结构</div>
   </div>
   <div class="xiaov-evolution-item">
-    <div class="xiaov-evolution-image"><img src="/img/xiaov/evolution-v2.png" alt="小V V2 坐姿小猫" /></div>
+    <div class="xiaov-evolution-image"><img src="/img/xiaov/evolution-v2.webp" alt="小V V2 坐姿小猫" width="800" height="534" loading="lazy" decoding="async" /></div>
     <div class="xiaov-evolution-tag">V2</div>
     <div class="xiaov-evolution-desc">坐姿小猫，整体更圆润</div>
   </div>
   <div class="xiaov-evolution-item">
-    <div class="xiaov-evolution-image"><img src="/img/xiaov/evolution-v3.png" alt="小V V3 女孩造型" /></div>
+    <div class="xiaov-evolution-image"><img src="/img/xiaov/evolution-v3.webp" alt="小V V3 女孩造型" width="800" height="534" loading="lazy" decoding="async" /></div>
     <div class="xiaov-evolution-tag">V3</div>
     <div class="xiaov-evolution-desc">蒸汽朋克女孩，更有性格</div>
   </div>
   <div class="xiaov-evolution-item">
-    <div class="xiaov-evolution-image"><img src="/img/xiaov/evolution-v5.png" alt="小V V5 精雕版" /></div>
+    <div class="xiaov-evolution-image"><img src="/img/xiaov/evolution-v5.webp" alt="小V V5 精雕版" width="800" height="911" loading="lazy" decoding="async" /></div>
     <div class="xiaov-evolution-tag">V5</div>
     <div class="xiaov-evolution-desc">精雕双马尾，最终定版</div>
   </div>
