@@ -31,6 +31,15 @@
     </div>
   </a>
 
+  <a href="/blogs/other/gomoku.html" class="game-card">
+    <div class="game-card-cover"><img src="/img/games/gomoku.png" alt="五子棋" loading="lazy"></div>
+    <div class="game-card-body">
+      <div class="game-card-title">五子棋</div>
+      <div class="game-card-desc">人机对战 · 三档难度 AI · 悔棋 / 先后手切换 / 战绩统计</div>
+      <span class="game-card-btn">开始游戏</span>
+    </div>
+  </a>
+
 </div>
 
 <!-- ========== 键盘练习 ========== -->
