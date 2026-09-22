@@ -229,4 +229,27 @@ curl "https://vectorac.com/ch_ocr/ocr?img=idcard.jpg"
   .ocr-access { flex-direction: column; gap: 14px; }
   .ocr-demo-iframe { height: 700px; }
 }
+
+/* 暗夜模式：卡片等浅色面板改用深色，避免刺眼
+   reco 主题由 applyMode.js 给 <html> 加 .dark 类切换暗色，故用 html.dark 而非媒体查询 */
+html.dark .ocr-card,
+html.dark .ocr-proof,
+html.dark .ocr-access-col {
+  background: #202020;
+  border-color: rgba(255, 255, 255, .1);
+  box-shadow: 0 3px 12px rgba(0, 0, 0, .35);
+}
+html.dark .ocr-card:hover { box-shadow: 0 8px 22px rgba(0, 0, 0, .45); }
+html.dark .ocr-card-title,
+html.dark .ocr-access-col .ocr-access-title { color: rgba(255, 255, 255, .88); }
+html.dark .ocr-card-desc,
+html.dark .ocr-access-col p,
+html.dark .ocr-proof-note { color: #8b8b8b; }
+html.dark .ocr-card-tags span { color: #9db2ff; background: rgba(74, 108, 247, .18); }
+html.dark .ocr-proof-img img { border-color: rgba(255, 255, 255, .1); }
+html.dark .ocr-proof-cap { color: #8b8b8b; }
+html.dark .ocr-line { background: rgba(255, 255, 255, .05); color: rgba(255, 255, 255, .75); }
+html.dark .ocr-line.hl { background: rgba(255, 181, 60, .12); border-color: rgba(255, 181, 60, .35); }
+html.dark .ocr-line b { color: rgba(255, 255, 255, .9); }
+html.dark .ocr-access-col ul { color: #a8a8a8; }
 </style>
