@@ -262,6 +262,30 @@
 #balatro-game .bp-effect-pop { animation: bp-effect-pop .25s ease-out; }
 @keyframes bp-effect-pop { from { opacity: 0; transform: translate(-50%, -12px) scale(.94); } to { opacity: 1; transform: translate(-50%, 0) scale(1); } }
 #balatro-game.bp-short .bp-effect-notice { padding: 5px 10px; font-size: 10px; }
+#balatro-game .bp-playing.bp-fx-shake,
+#balatro-game .bp-playing.bp-fx-seal-pending { animation: bp-card-shake .55s ease-in-out both; }
+#balatro-game .bp-playing.bp-fx-mark { animation: bp-card-mark .7s ease-in-out both; }
+#balatro-game .bp-playing.bp-fx-destroy { z-index: 8; pointer-events: none; animation: bp-card-destroy .36s ease-in var(--fx-delay,0ms) both; }
+#balatro-game .bp-playing.bp-fx-reveal > svg { transform-origin: center; animation: bp-card-reveal .62s cubic-bezier(.22,.75,.24,1) both; }
+#balatro-game .bp-playing.bp-fx-gather { z-index: 8; pointer-events: none; animation: bp-card-gather .36s cubic-bezier(.55,.05,.9,.45) var(--fx-delay,0ms) both; }
+#balatro-game .bp-playing.bp-fx-deal { z-index: 8; animation: bp-card-deal .42s cubic-bezier(.18,.75,.25,1) var(--fx-delay,0ms) both; }
+#balatro-game .bp-seal-stamp { position: absolute; z-index: 4; top: 3px; right: 3px; display: grid; place-items: center; width: 22px; height: 22px; border: 1px solid #f8e9b8; border-radius: 50%; color: #6f4b19; background: radial-gradient(circle at 35% 28%,#fff4c5 0 15%,#e8c86c 20%,#bd8225 68%,#805119 100%); box-shadow: 0 2px 5px #161b26a8, inset 0 0 0 2px #f4dfa0; font-size: 13px; line-height: 1; text-shadow: 0 1px #fff8; pointer-events: none; animation: bp-stamp-in .5s cubic-bezier(.16,1.55,.42,1) both; }
+#balatro-game .bp-seal-stamp.bp-seal-red { background: radial-gradient(circle at 35% 28%,#ffd8c1,#cf5b48 62%,#772d2a); color: #fff0d2; }
+#balatro-game .bp-seal-stamp.bp-seal-blue { background: radial-gradient(circle at 35% 28%,#d9efff,#5798c8 62%,#244c78); color: #eff9ff; }
+#balatro-game .bp-seal-stamp.bp-seal-purple { background: radial-gradient(circle at 35% 28%,#f4ddff,#a974bd 62%,#5e3a77); color: #fff2ff; }
+@keyframes bp-card-shake { 0%,100% { transform: translateY(0) rotate(0); filter: none; } 18% { transform: translateY(-5px) rotate(-2deg); filter: brightness(1.2); } 38% { transform: translateY(0) rotate(2deg); } 58% { transform: translateY(-3px) rotate(-1.4deg); filter: brightness(1.1); } 78% { transform: translateY(0) rotate(.8deg); } }
+@keyframes bp-card-mark { 0%,100% { transform: translateY(0) rotate(0); opacity: 1; filter: none; } 25% { transform: translateY(-5px) rotate(-3deg); filter: sepia(.8) saturate(2); } 70% { transform: translateY(0) rotate(2deg); opacity: .85; } }
+@keyframes bp-card-destroy { 0% { transform: translateY(0) rotate(0) scale(1); opacity: 1; filter: none; } 25% { transform: translateY(-7px) rotate(-4deg) scale(1.03); filter: sepia(.8) saturate(2); } 100% { transform: translateY(24px) rotate(9deg) scale(.28); opacity: 0; filter: grayscale(1) sepia(1); } }
+@keyframes bp-card-reveal { 0% { transform: perspective(500px) rotateY(0) scale(1); filter: brightness(1); } 42% { transform: perspective(500px) rotateY(78deg) scale(.96); filter: brightness(.72); } 72% { transform: perspective(500px) rotateY(-12deg) scale(1.04); filter: brightness(1.22) drop-shadow(0 0 8px #f4d47b); } 100% { transform: perspective(500px) rotateY(0) scale(1); filter: none; } }
+@keyframes bp-card-gather { to { transform: translate(var(--fx-x,0px),var(--fx-y,0px)) scale(.06) rotate(14deg); opacity: 0; filter: brightness(1.5); } }
+@keyframes bp-card-deal { from { transform: translate(var(--fx-from-x,0px),var(--fx-from-y,0px)) scale(.08) rotate(-10deg); opacity: 0; filter: brightness(1.5); } to { transform: translate(0,0) scale(1) rotate(0); opacity: 1; filter: none; } }
+@keyframes bp-stamp-in { 0% { opacity: 0; transform: translate(4px,-5px) scale(2.5) rotate(-28deg); } 65% { opacity: 1; transform: translate(0,0) scale(.78) rotate(5deg); } 100% { opacity: 1; transform: scale(1) rotate(0); } }
+@media (prefers-reduced-motion: reduce) {
+  #balatro-game .bp-playing.bp-fx-shake, #balatro-game .bp-playing.bp-fx-seal-pending,
+  #balatro-game .bp-playing.bp-fx-mark, #balatro-game .bp-playing.bp-fx-destroy, #balatro-game .bp-playing.bp-fx-reveal > svg,
+  #balatro-game .bp-playing.bp-fx-gather, #balatro-game .bp-playing.bp-fx-deal,
+  #balatro-game .bp-seal-stamp { animation-duration: 1ms !important; }
+}
 #balatro-game .bp-trigger { animation: bp-score-pop .19s ease-out; }
 @keyframes bp-score-pop { 0% { transform: translateY(0); } 45% { transform: translateY(-9px) rotate(-3deg); filter: brightness(1.3); } 100% { transform: translateY(0); } }
 

@@ -52,7 +52,7 @@ export default class PokerTable {
   constructor(root){
     this.root=root;this.state=null;this.saved=E.restore(safeRead(SAVE));this.settings={sound:true,music:false,fast:false}
     try{Object.assign(this.settings,JSON.parse(safeRead(SETTINGS)||'{}'))}catch(_){}
-    this.audio=new Sound(this.settings);this.modal=null;this.busy=false;this.immersive=false;this.destroyed=false;this.timers=new Set();this.seed='';this.deckType='red';this.sort='rank';this.toast='';this.effect='';this.anim=null
+    this.audio=new Sound(this.settings);this.modal=null;this.busy=false;this.immersive=false;this.destroyed=false;this.timers=new Set();this.seed='';this.deckType='red';this.sort='rank';this.toast='';this.effect='';this.anim=null;this.actionFx=null
     this.stake=0;this.marker=document.createComment('balatro-position');root.parentNode.insertBefore(this.marker,root)
     this.onClick=this.click.bind(this);this.onKey=this.key.bind(this);this.onDouble=e=>e.preventDefault()
     this.pendingPlanet=null
@@ -149,7 +149,8 @@ export default class PokerTable {
       if(action==='play'){this.animatePlay();return}
       const ops={blind:E.startBlind,skip:E.skipBlind,discard:E.discard,cash:E.cashOut,next:E.nextBlind,reroll:E.rerollShop,boss:E.rerollBoss,endless:E.continueEndless,'pack-skip':E.closePack,buy:s=>E.buy(s,uid),'pack-choose':s=>E.choosePack(s,uid),use:s=>E.use(s,uid),sell:s=>E.sell(s,uid),left:s=>E.reorder(s,uid,-1),right:s=>E.reorder(s,uid,1)}
       if(!ops[action])return
-      const used=action==='use'?this.state.consumables.find(c=>c.uid===uid):null
+      const used=action==='use'?this.state.consumables.find(c=>c.uid===uid):action==='pack-choose'?this.state.pack?.cards.find(c=>c.uid===uid):null
+      if(used&&(action==='use'&&used.kind!=='planet'||action==='pack-choose'&&['tarot','spectral'].includes(used.kind))){this.animateConsumable(ops[action],used);return}
       this.transact(ops[action]);this.modal=null;this.audio.fx(action==='use'?used?.kind==='planet'?'planet':'magic':['buy','cash','sell'].includes(action)?'coin':'deal')
       if(this.state.notice){this.toast=this.state.notice;delete this.state.notice}
       this.render()
@@ -160,6 +161,53 @@ export default class PokerTable {
         }else this.showEffect(`${this.itemName(used)} 已生效 · ${this.itemDesc(used)}`)
       }
     }catch(error){this.busy=false;this.notify(error.message||'操作失败，请重试')}
+  }
+  animateConsumable(operation,used){
+    const before=E.clone(this.state),preview=E.clone(this.state)
+    const sort=this.sort==='rank'?(a,b)=>b.rank-a.rank||a.suit-b.suit:(a,b)=>a.suit-b.suit||b.rank-a.rank
+    before.hand.sort(sort);preview.hand.sort(sort);operation(preview)
+    const original=new Map(before.deck.map(c=>[c.uid,c])),finalCards=new Map(preview.deck.map(c=>[c.uid,c]))
+    const changedUIDs=before.hand.filter(c=>{const next=finalCards.get(c.uid);return next&&['rank','suit','enh','edition','seal'].some(k=>c[k]!==next[k])}).map(c=>c.uid)
+    const removedUIDs=before.hand.filter(c=>!finalCards.has(c.uid)).map(c=>c.uid)
+    const addedUIDs=preview.deck.filter(c=>!original.has(c.uid)).map(c=>c.uid)
+    const gatherUIDs=Array.from(new Set(changedUIDs))
+    const sealUID=changedUIDs.find(id=>!original.get(id)?.seal&&finalCards.get(id)?.seal)||null
+    const fx={phase:'cast',beforeHand:before.hand,preview,finalCards,changedUIDs,removedUIDs,addedUIDs,gatherUIDs,sealUID,token:Symbol('card-effect')}
+    this.actionFx=fx;this.busy=true;this.modal=null
+    this.effect=used.id==='sigil'?`${this.itemName(used)} · 正在重铸所有手牌花色`:sealUID?`${this.itemName(used)} · 正在压印封蜡`:removedUIDs.length?`${this.itemName(used)} · 目标牌即将销毁`:`${this.itemName(used)} · 效果正在显现`
+    this.audio.fx('magic');this.render()
+    const reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    const finish=()=>{
+      if(this.destroyed||this.actionFx!==fx)return
+      this.state=preview;this.persist()
+      const dealUIDs=Array.from(new Set(changedUIDs.concat(addedUIDs))).filter(id=>preview.hand.some(c=>c.uid===id))
+      this.busy=dealUIDs.length>0;this.actionFx=dealUIDs.length?{phase:'deal',dealUIDs,token:fx.token}:null
+      this.render();this.audio.fx('coin')
+      this.showEffect(`${this.itemName(used)} 已生效 · ${this.itemDesc(used)}`)
+      if(this.actionFx){const duration=420+Math.max(0,dealUIDs.length-1)*65;this.later(()=>{if(this.actionFx?.token===fx.token){this.actionFx=null;this.busy=false;this.render()}},duration)}
+    }
+    this.later(()=>{
+      if(this.destroyed||this.actionFx!==fx)return
+      fx.phase='reveal';this.render();this.audio.fx('magic')
+      this.later(()=>{
+        if(this.destroyed||this.actionFx!==fx)return
+        const shouldGather=gatherUIDs.length>1||removedUIDs.length>0||addedUIDs.length>0
+        if(!shouldGather){finish();return}
+        fx.phase='gather';this.render();this.audio.fx('deal')
+        const duration=(reduced?50:390)+Math.max(0,Math.max(gatherUIDs.length,removedUIDs.length)-1)*(reduced?15:65)
+        this.later(finish,duration)
+      },reduced?90:1000)
+    },reduced?60:420)
+  }
+  positionEffectCards(){
+    const pile=this.root.querySelector('[data-deck-pile]')?.getBoundingClientRect()
+    if(!pile)return
+    const fx=this.actionFx,ids=fx?.phase==='gather'?fx.gatherUIDs:fx?.phase==='deal'?fx.dealUIDs:[]
+    ids.forEach((uid,index)=>{
+      const el=this.root.querySelector(`.bp-hand [data-uid="${uid}"]`);if(!el)return
+      const card=el.getBoundingClientRect(),x=pile.left+pile.width/2-(card.left+card.width/2),y=pile.top+pile.height/2-(card.top+card.height/2)
+      el.style.setProperty('--fx-x',`${x}px`);el.style.setProperty('--fx-y',`${y}px`);el.style.setProperty('--fx-from-x',`${-x}px`);el.style.setProperty('--fx-from-y',`${-y}px`);el.style.setProperty('--fx-delay',`${index*65}ms`)
+    })
   }
   animatePlay(){
     if(this.busy)return
@@ -181,9 +229,9 @@ export default class PokerTable {
     if(event.uid){const el=this.root.querySelector(`[data-visual="${event.uid}"]`);if(el){void el.offsetWidth;el.classList.add('bp-trigger')}}
   }
   orderedHand(){return this.state.hand.slice().sort(this.sort==='rank'?(a,b)=>b.rank-a.rank||a.suit-b.suit:(a,b)=>a.suit-b.suit||b.rank-a.rank)}
-  cardButton(c,{selected=false,disabled=false,hidden=false,scoring=false}={}){
+  cardButton(c,{selected=false,disabled=false,hidden=false,scoring=false,fxClass='',sealFx=false,sealKind='gold',fxDelay='0ms'}={}){
     const detail=[c.enh?ENHANCEMENTS[c.enh]:'',c.edition?EDITIONS[c.edition]:'',c.seal?`${{red:'红',blue:'蓝',gold:'金',purple:'紫'}[c.seal]}色蜡封`:''].filter(Boolean).join(' · ')
-    return `<button type="button" class="bp-playing ${selected?'bp-selected':''} ${c.edition?'bp-ed-'+c.edition:''} ${!hidden&&this.state&&E.debuffed(this.state,c)?'bp-debuff':''}" data-action="select" data-uid="${c.uid}" data-visual="${c.uid}" ${disabled?'disabled':''} aria-pressed="${selected}" aria-label="${esc(hidden?'背面朝上的牌':cardName(c)+(detail?'，'+detail:''))}" title="${esc(hidden?'背面朝上':cardName(c)+(detail?' · '+detail:''))}">${playingCard(c,hidden)}${!hidden&&detail?`<span class="bp-card-mod">${esc(c.enh?ENHANCEMENTS[c.enh].split(' ')[0]:c.edition?EDITIONS[c.edition].split(' ')[0]:'蜡封')}</span>`:''}${this.state&&this.state.forced===c.uid?'<span class="bp-forced">必须选择</span>':''}</button>`
+    return `<button type="button" class="bp-playing ${selected?'bp-selected':''} ${c.edition?'bp-ed-'+c.edition:''} ${fxClass} ${!hidden&&this.state&&E.debuffed(this.state,c)?'bp-debuff':''}" style="--fx-delay:${fxDelay}" data-action="select" data-uid="${c.uid}" data-visual="${c.uid}" ${disabled?'disabled':''} aria-pressed="${selected}" aria-label="${esc(hidden?'背面朝上的牌':cardName(c)+(detail?'，'+detail:''))}" title="${esc(hidden?'背面朝上':cardName(c)+(detail?' · '+detail:''))}">${playingCard(c,hidden)}${sealFx?`<span class="bp-seal-stamp bp-seal-${sealKind}" aria-hidden="true">✦</span>`:''}${!hidden&&detail?`<span class="bp-card-mod">${esc(c.enh?ENHANCEMENTS[c.enh].split(' ')[0]:c.edition?EDITIONS[c.edition].split(' ')[0]:'蜡封')}</span>`:''}${this.state&&this.state.forced===c.uid?'<span class="bp-forced">必须选择</span>':''}</button>`
   }
   itemName(card){return card.kind==='joker'?byId(JOKERS,card.id).name:card.kind==='planet'?byId(HANDS,card.id).planet:card.kind==='voucher'?byId(VOUCHERS,card.id).name:card.kind==='pack'?packNames[card.id]:card.kind==='card'?cardName(card):byId(card.kind==='spectral'?SPECTRALS:TAROTS,card.id).name}
   itemDesc(card){
@@ -231,8 +279,13 @@ export default class PokerTable {
     }).join('')}</div>${s.tags.length?`<div class="bp-tags">${s.tags.map(t=>`<span>${tagNames[t]}</span>`).join('')}</div>`:''}${s.vouchers.includes('director')?button('boss','更换 Boss · $10','bp-quiet',!E.canPay(s,10)):''}</div>`
   }
   hand(s){
-    const list=this.orderedHand(),cards=this.anim?this.anim.before.hand.filter(c=>!this.anim.result.cards.some(p=>p.uid===c.uid)):list
-    return `<div class="bp-hand-area"><div class="bp-hand-caption"><span>${this.busy?'结算中':s.pack?'选择手牌作为消耗牌目标':`手牌 ${s.hand.length}/${E.handSize(s)} · 已选 ${s.selected.length}/5`}</span><div>${button('sort-rank','点数',this.sort==='rank'?'bp-sort-active':'',this.busy)}${button('sort-suit','花色',this.sort==='suit'?'bp-sort-active':'',this.busy)}</div></div><div class="bp-hand ${cards.length>12?'bp-overfull':''}" style="--hand-count:${Math.max(1,cards.length)}">${cards.map(c=>this.cardButton(c,{selected:s.selected.includes(c.uid),disabled:this.busy||s.phase!=='play'&&!s.pack,hidden:c.hidden})).join('')}</div><div class="bp-play-controls">${button('play','出牌','bp-blue',this.busy||s.phase!=='play'||!s.selected.length||!!s.pack)}<span>${this.busy?'正在计分':s.pack?'先选目标，再点击包中的「使用」':'最多选择 5 张牌'}</span>${button('discard','弃牌','bp-red',this.busy||s.phase!=='play'||!s.selected.length||s.discards<=0||!!s.pack)}</div></div>`
+    const fx=this.actionFx,list=this.orderedHand(),cards=this.anim?this.anim.before.hand.filter(c=>!this.anim.result.cards.some(p=>p.uid===c.uid)):fx&&fx.phase!=='deal'?fx.beforeHand:list
+    return `<div class="bp-hand-area"><div class="bp-hand-caption"><span>${this.busy?'结算中':s.pack?'选择手牌作为消耗牌目标':`手牌 ${s.hand.length}/${E.handSize(s)} · 已选 ${s.selected.length}/5`}</span><div>${button('sort-rank','点数',this.sort==='rank'?'bp-sort-active':'',this.busy)}${button('sort-suit','花色',this.sort==='suit'?'bp-sort-active':'',this.busy)}</div></div><div class="bp-hand ${cards.length>12?'bp-overfull':''}" style="--hand-count:${Math.max(1,cards.length)}">${cards.map((c,index)=>{
+      const next=fx?.phase==='reveal'?fx.finalCards.get(c.uid):null,display=next||c,changed=fx?.changedUIDs.includes(c.uid),removed=fx?.removedUIDs.includes(c.uid),gather=fx?.phase==='gather'&&fx.gatherUIDs.includes(c.uid),destroy=fx?.phase==='gather'&&removed,deal=fx?.phase==='deal'&&fx.dealUIDs.includes(c.uid)
+      const sealTarget=fx?.sealUID===c.uid,fxClass=gather?'bp-fx-gather':deal?'bp-fx-deal':destroy?'bp-fx-destroy':removed?'bp-fx-mark':sealTarget&&fx.phase==='cast'?'bp-fx-seal-pending':changed?fx.phase==='reveal'?'bp-fx-reveal':fx.phase==='cast'?'bp-fx-shake':'' :''
+      const sealFx=sealTarget&&fx.phase==='reveal',sealKind=fx?.finalCards.get(c.uid)?.seal||'gold'
+      return this.cardButton(display,{selected:s.selected.includes(c.uid),disabled:this.busy||s.phase!=='play'&&!s.pack,hidden:c.hidden,fxClass,sealFx,sealKind,fxDelay:`${index*65}ms`})
+    }).join('')}</div><div class="bp-play-controls">${button('play','出牌','bp-blue',this.busy||s.phase!=='play'||!s.selected.length||!!s.pack)}<span>${this.busy?'正在结算效果…':s.pack?'先选目标，再点击包中的「使用」':'最多选择 5 张牌'}</span>${button('discard','弃牌','bp-red',this.busy||s.phase!=='play'||!s.selected.length||s.discards<=0||!!s.pack)}</div></div>`
   }
   playStage(s){
     if(this.anim)return `<div class="bp-play-stage"><div class="bp-score-label" data-score-event>${this.anim.result.name}</div><div class="bp-scoring-cards">${this.anim.result.cards.map(c=>this.cardButton(c,{disabled:true})).join('')}</div><span class="bp-stage-hint">扑克牌 → 留手效果 → 小丑牌</span></div>`
@@ -247,7 +300,7 @@ export default class PokerTable {
   game(){
     const s=this.state,withHand=(s.phase==='play'||s.pack&&['tarot','spectral'].includes(s.pack.kind)||this.busy)
     const stage=this.busy?this.playStage(s):s.phase==='select'?this.blindSelection(s):s.phase==='play'?this.playStage(s):s.phase==='reward'?this.reward(s):s.phase==='shop'?this.shop(s):this.end(s)
-    return `<div class="bp-game"><div class="bp-topbar"><span>♠ <b>小丑牌</b> <small>${esc(byId(DECKS,s.deckType).name)}</small></span><div>${button('menu','≡','bp-icon',false,'aria-label="游戏选项"')}${button('help','?','bp-icon',false,'aria-label="玩法帮助"')}${button('sound',this.settings.sound?'音效 开':'音效 关','bp-quiet')}${button('music',this.settings.music?'♫ 开':'♫ 关','bp-quiet',false,'aria-label="切换音乐"')}${button('fullscreen',this.immersive?'退出全屏':'进入全屏','bp-quiet')}</div></div><div class="bp-table">${this.sidebar(s)}<main class="bp-main">${this.inventory(s)}${this.cueStrip(s)}<div class="bp-stage ${withHand?'bp-has-hand':''}">${stage}</div>${withHand?this.hand(s):''}<footer class="bp-table-footer"><span>${s.phase==='play'?`牌库 ${s.draw.length} · 已出 ${s.spent.length}`:`种子 ${esc(s.seed)}`}<small> · 自动保存</small></span>${button('deck',`查看牌组 ${s.deck.length} 张`,'bp-quiet')}</footer></main></div></div>`
+    return `<div class="bp-game"><div class="bp-topbar"><span>♠ <b>小丑牌</b> <small>${esc(byId(DECKS,s.deckType).name)}</small></span><div>${button('menu','≡','bp-icon',false,'aria-label="游戏选项"')}${button('help','?','bp-icon',false,'aria-label="玩法帮助"')}${button('sound',this.settings.sound?'音效 开':'音效 关','bp-quiet')}${button('music',this.settings.music?'♫ 开':'♫ 关','bp-quiet',false,'aria-label="切换音乐"')}${button('fullscreen',this.immersive?'退出全屏':'进入全屏','bp-quiet')}</div></div><div class="bp-table">${this.sidebar(s)}<main class="bp-main">${this.inventory(s)}${this.cueStrip(s)}<div class="bp-stage ${withHand?'bp-has-hand':''}">${stage}</div>${withHand?this.hand(s):''}<footer class="bp-table-footer"><span data-deck-pile>${s.phase==='play'?`牌库 ${s.draw.length} · 已出 ${s.spent.length}`:`种子 ${esc(s.seed)}`}<small> · 自动保存</small></span>${button('deck',`查看牌组 ${s.deck.length} 张`,'bp-quiet')}</footer></main></div></div>`
   }
   findItem(uid){const s=this.state;if(!s)return null;return s.jokers.concat(s.consumables,s.shop?s.shop.cards.concat(s.shop.packs,s.shop.voucher?[s.shop.voucher]:[]):[],s.pack?s.pack.cards:[]).find(c=>c.uid===uid)}
   dialog(){
@@ -284,6 +337,7 @@ export default class PokerTable {
     this.updateLayout()
     this.root.innerHTML=(this.state?this.game():this.entry())+this.dialog()+`<div class="bp-effect-notice ${this.effect?'':'bp-effect-hidden'}" data-effect-notice role="status" aria-live="polite">${esc(this.effect)}</div>`+(this.toast?`<div class="bp-toast" role="status">${esc(this.toast)}</div>`:'')
     this.root.classList.toggle('bp-is-playing',!!this.state);this.root.classList.toggle('bp-is-busy',this.busy)
+    this.positionEffectCards()
   }
   destroy(){
     this.destroyed=true;this.persist();this.timers.forEach(t=>clearTimeout(t));this.timers.clear();this.audio.destroy()
