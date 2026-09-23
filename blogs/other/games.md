@@ -41,10 +41,10 @@
   </a>
 
   <a href="/blogs/other/cardforge.html" class="game-card">
-    <div class="game-card-cover game-card-cover-cf"><span>✦</span><b>星牌工坊</b><i>♠ ♥ ♣ ♦</i></div>
+    <div class="game-card-cover game-card-cover-cf"><span>🃏</span><b>小丑牌</b><i>♠ ♥ ♣ ♦</i></div>
     <div class="game-card-body">
-      <div class="game-card-title">星牌工坊</div>
-      <div class="game-card-desc">牌型构筑 · 遗物连锁 · 逐轮目标 · 原创单机挑战</div>
+      <div class="game-card-title">小丑牌</div>
+      <div class="game-card-desc">扑克 Roguelike · 小丑组合 · 盲注挑战 · 塔罗与星球</div>
       <span class="game-card-btn">开始游戏</span>
     </div>
   </a>

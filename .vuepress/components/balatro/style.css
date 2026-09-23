@@ -1,0 +1,538 @@
+#balatro-game {
+  --ink: #f2edda; --muted: #b3c2b4; --red: #c64b45; --blue: #357da4;
+  --gold: #d2a755; --panel: #2c4240; --edge: #8b9980;
+  position: relative; isolation: isolate; margin: 24px 0; width: 100%; height: 780px;
+  min-height: 420px; overflow: hidden; border-radius: 12px;
+  color: var(--ink); background: #1e5045; font-family: "Trebuchet MS", "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-size: 14px; line-height: 1.4; font-weight: 600;
+  box-shadow: 0 16px 45px #102a3b38; touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none;
+}
+#balatro-game::before {
+  content: ""; position: absolute; z-index: -1; inset: 0; pointer-events: none;
+  background: radial-gradient(ellipse at 68% 20%, #5b8d6c5c, transparent 55%), repeating-linear-gradient(0deg, #00000008 0 1px, transparent 1px 4px), repeating-linear-gradient(90deg, #c4d6a103 0 2px, transparent 2px 5px);
+}
+#balatro-game.bp-fullscreen, #balatro-game:fullscreen {
+  position: fixed; inset: 0; z-index: 2147483000; width: 100%; height: 100vh; height: 100dvh;
+  min-height: 0; max-width: none; margin: 0; border-radius: 0; box-shadow: none;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+#balatro-game *, #balatro-game *::before, #balatro-game *::after { box-sizing: border-box; }
+#balatro-game h1, #balatro-game h2, #balatro-game h3, #balatro-game p { margin: 0; padding: 0; border: 0; color: inherit; }
+#balatro-game h2 { font-size: 28px; letter-spacing: 2px; font-weight: 800; }
+#balatro-game h1::before, #balatro-game h2::before, #balatro-game h3::before { display: none; content: none; }
+#balatro-game .bp-start-stake { display: flex; align-items: center; justify-content: space-between; gap: 4px; }
+#balatro-game .bp-start-stake .bp-quiet { font-size: 10px; color: #e3ca8e; padding: 3px 6px; min-height: 22px; border: 1px solid #cebb8240; }
+#balatro-game small { font-size: 11px; font-weight: 500; }
+#balatro-game button, #balatro-game input { font: inherit; }
+#balatro-game button { color: inherit; cursor: pointer; -webkit-touch-callout: none; touch-action: manipulation; }
+#balatro-game button:disabled { cursor: default; }
+#balatro-game button:focus-visible, #balatro-game input:focus-visible { outline: 3px solid #f7d372; outline-offset: 3px; }
+#balatro-game svg { width: 100%; height: 100%; display: block; pointer-events: none; }
+#balatro-game .bp-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 16px;
+  min-height: 40px; border: 1px solid #ffffff13; border-radius: 7px; background: #435a52;
+  box-shadow: 0 4px 0 #132d2ac9, inset 0 1px #ffffff20; text-shadow: 0 1px 2px #0005;
+  font-weight: 800; line-height: 1.15; transition: filter .12s, transform .12s; white-space: nowrap;
+}
+#balatro-game .bp-btn:hover:not(:disabled) { filter: brightness(1.12); transform: translateY(-1px); }
+#balatro-game .bp-btn:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 #132d2ac9; }
+#balatro-game .bp-btn:disabled { opacity: .42; filter: saturate(.4); }
+#balatro-game .bp-blue { background: var(--blue); }
+#balatro-game .bp-red { background: var(--red); }
+#balatro-game .bp-gold { background: var(--gold); color: #342f24; text-shadow: none; }
+#balatro-game .bp-green { background: #4a8b6e; }
+#balatro-game .bp-quiet { background: transparent; box-shadow: none; border-color: transparent; min-height: 30px; padding: 5px 9px; font-size: 12px; color: #d6dfd0; }
+#balatro-game .bp-icon { width: 30px; min-height: 30px; padding: 0; background: #ffffff10; box-shadow: none; }
+#balatro-game .bp-blue-text { color: #76b9df; }
+#balatro-game .bp-red-text { color: #f48478; }
+#balatro-game .bp-loading { display: grid; place-items: center; height: 100%; }
+#balatro-game .bp-eyebrow { font-size: 11px; letter-spacing: 2px; color: #d8be83; }
+
+/* Landing table: static layered art, no continuous animation or rendering loop. */
+#balatro-game .bp-entry { display: flex; flex-direction: column; justify-content: center; height: 100%; max-width: 1100px; margin: auto; padding: 24px 40px; gap: 18px; }
+#balatro-game .bp-entry-top, #balatro-game .bp-entry-bottom { display: flex; align-items: center; justify-content: space-between; color: #b7c6b4; font-size: 10px; letter-spacing: 2px; }
+#balatro-game .bp-entry-top { margin-bottom: auto; }
+#balatro-game .bp-entry-bottom { margin-top: auto; letter-spacing: 1px; gap: 10px; }
+#balatro-game .bp-entry-bottom > span:first-child { font-size: 22px; }
+#balatro-game .bp-title-art { height: 285px; position: relative; display: flex; align-items: center; justify-content: center; }
+#balatro-game .bp-title-card, #balatro-game .bp-title-joker { position: absolute; width: 112px; height: 157px; filter: drop-shadow(5px 12px 7px #102d2980); }
+#balatro-game .bp-title-left { left: calc(50% - 253px); top: 58px; transform: rotate(-20deg); }
+#balatro-game .bp-title-right { right: calc(50% - 253px); top: 62px; transform: rotate(20deg); }
+#balatro-game .bp-title-joker { top: 0; left: calc(50% - 56px); transform: rotate(-7deg); }
+#balatro-game .bp-title-word { position: relative; z-index: 1; text-align: center; padding-top: 99px; }
+#balatro-game .bp-title-word > span { display: block; color: #f2e4bb; font: 900 58px/1 Georgia, serif; letter-spacing: 10px; text-shadow: 3px 4px 0 #173f38, 0 0 30px #112f28; }
+#balatro-game .bp-title-word h1 { display: block; font-size: 39px; letter-spacing: 14px; padding-left: 14px; font-weight: 900; color: #f3dfb4; text-shadow: 2px 3px #153e33; }
+#balatro-game .bp-title-word p { font-size: 12px; letter-spacing: 3px; margin-top: 12px; color: #bfd1bd; }
+#balatro-game .bp-start-panel { display: grid; grid-template-columns: 150px 1fr; gap: 25px; max-width: 590px; width: 100%; margin: 0 auto; padding: 20px 25px; background: #142f2dc7; border: 1px solid #b4c5a435; border-radius: 12px; box-shadow: 0 8px 0 #122e2966; }
+#balatro-game .bp-deck-preview { display: grid; justify-items: center; text-align: center; gap: 5px; border-right: 1px solid #cedcba25; padding-right: 20px; }
+#balatro-game .bp-deck-preview svg { height: 95px; width: 69px; transform: rotate(-7deg); box-shadow: 4px 5px 0 var(--deck-color); border-radius: 5px; }
+#balatro-game .bp-deck-preview b { font-size: 14px; margin-top: 8px; }
+#balatro-game .bp-deck-preview span { font-size: 11px; font-weight: 500; color: #bdcdbb; }
+#balatro-game .bp-start-options { display: flex; flex-direction: column; justify-content: space-between; gap: 11px; min-width: 0; }
+#balatro-game .bp-deck-choices { display: flex; gap: 4px; flex-wrap: wrap; }
+#balatro-game .bp-deck-choices button { width: 30px; height: 34px; background: transparent; padding: 4px; border: 1px solid transparent; border-radius: 4px; }
+#balatro-game .bp-deck-choices button i { display: block; width: 100%; height: 100%; background: var(--deck-color); border: 2px solid #e7dfc8b3; border-radius: 2px; box-shadow: 0 2px 0 #0005; }
+#balatro-game .bp-deck-choices button.active { border-color: #f4d07b; transform: translateY(-3px); }
+#balatro-game .bp-seed-label { display: flex; gap: 12px; align-items: center; font-size: 12px; color: #afc1af; }
+#balatro-game .bp-seed-label input { min-width: 0; width: 100%; color: #eee6ce; background: #101f23; border: 1px solid #a7c29435; border-radius: 5px; padding: 7px 10px; font-size: 14px; user-select: text; }
+#balatro-game .bp-start-buttons { display: flex; gap: 10px; }
+#balatro-game .bp-start-buttons button { flex: 1; flex-direction: column; padding: 12px; }
+#balatro-game .bp-entry-note { color: #a8baa7; text-align: center; font-size: 10px; }
+
+/* Every game selector is scoped: the site's navbar and other games are untouched. */
+#balatro-game .bp-game { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+#balatro-game .bp-topbar { display: flex; align-items: center; justify-content: space-between; height: 43px; min-height: 43px; padding: 5px 16px; border-bottom: 1px solid #cfddbd1a; background: #173f3866; gap: 8px; }
+#balatro-game .bp-topbar > span { display: flex; align-items: center; gap: 10px; white-space: nowrap; }
+#balatro-game .bp-topbar > span > small { color: var(--muted); }
+#balatro-game .bp-topbar > div { display: flex; align-items: center; gap: 6px; }
+#balatro-game .bp-table { display: grid; grid-template-columns: clamp(180px, 20vw, 248px) minmax(0,1fr); gap: 24px; flex: 1; min-height: 0; padding: 18px 28px 14px 20px; max-width: 1700px; width: 100%; align-self: center; }
+#balatro-game .bp-sidebar { display: flex; flex-direction: column; gap: 11px; border: 1px solid #acbaa158; border-radius: 10px; background: #324844; padding: 14px; box-shadow: 0 6px 0 #112d2b80, inset 0 0 0 3px #526257; min-height: 0; overflow-y: auto; scrollbar-width: thin; }
+#balatro-game .bp-brand { display: flex; align-items: baseline; justify-content: space-between; border-bottom: 1px solid #c9d5b52a; padding: 0 2px 8px; }
+#balatro-game .bp-brand b { font-size: 22px; letter-spacing: 3px; }
+#balatro-game .bp-brand span { font: 10px Georgia,serif; letter-spacing: 1px; color: #b7c7ad; }
+#balatro-game .bp-blind-panel { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px; background: #182e2d; border-radius: 6px; border: 1px solid #a8bfa433; text-align: center; }
+#balatro-game .bp-blind-label { display: flex; align-items: center; justify-content: center; gap: 10px; background: #395863; border-radius: 5px; width: 100%; padding: 6px; margin-bottom: 3px; }
+#balatro-game .bp-chip-icon { display: inline-grid; place-items: center; width: 29px; height: 29px; border-radius: 50%; background: #8eaaa2; color: #253c3b; outline: 2px dashed #e0d2a5; outline-offset: -4px; }
+#balatro-game .bp-target { color: #f18677; font: 800 clamp(24px,3vw,35px)/1.15 "Trebuchet MS",monospace; }
+#balatro-game .bp-boss-rule { font-size: 11px; padding: 5px 0; color: #e4c7a6; }
+#balatro-game .bp-round-score { display: flex; justify-content: space-between; align-items: center; background: #182e2d; padding: 12px 9px; border-radius: 5px; gap: 8px; }
+#balatro-game .bp-round-score span { font-size: 11px; color: #c3cebd; }
+#balatro-game .bp-round-score b { font-size: 24px; }
+#balatro-game .bp-calculator { text-align: center; padding: 12px 5px; background: #263b37; border-radius: 6px; }
+#balatro-game .bp-hand-name { min-height: 25px; font-size: 18px; }
+#balatro-game .bp-hand-name small { color: #c8bf87; }
+#balatro-game .bp-equation { display: flex; align-items: center; gap: 4px; margin: 7px 0 6px; }
+#balatro-game .bp-equation strong { flex: 1; min-width: 0; padding: 10px 4px; border-radius: 5px; background: #3789ba; box-shadow: 0 3px 0 #16364a; font-size: clamp(19px,2.3vw,30px); line-height: 1; }
+#balatro-game .bp-equation strong:last-child { background: #d7544d; box-shadow: 0 3px 0 #752c2e; }
+#balatro-game .bp-equation > span { font-size: 25px; }
+#balatro-game .bp-calculator > small { font-size: 9px; color: #afbcab; }
+#balatro-game .bp-counters, #balatro-game .bp-progress { display: flex; gap: 8px; }
+#balatro-game .bp-counters > div, #balatro-game .bp-progress > div { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #1f3432; border-radius: 6px; padding: 7px 4px; }
+#balatro-game .bp-counters span, #balatro-game .bp-progress span { font-size: 12px; }
+#balatro-game .bp-counters b { font-size: 32px; line-height: 1.2; }
+#balatro-game .bp-money { font-size: 35px; color: #edc973; background: #203633; padding: 7px 0; border-radius: 6px; text-align: center; }
+#balatro-game .bp-progress b { font-size: 25px; color: #dda963; }
+#balatro-game .bp-progress small { font-size: 15px; color: #c6ccb9; margin-left: 3px; }
+#balatro-game .bp-side-actions { display: flex; gap: 8px; margin-top: auto; padding-bottom: 3px; }
+#balatro-game .bp-side-actions > button { flex: 1; padding: 10px 5px; }
+#balatro-game .bp-main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+#balatro-game .bp-inventory { display: grid; grid-template-columns: minmax(0,1fr) minmax(140px,.38fr); gap: 24px; flex-shrink: 0; padding-bottom: 13px; border-bottom: 1px solid #d2dfbb25; }
+#balatro-game .bp-rack-label { display: flex; align-items: center; justify-content: space-between; gap: 6px; font-size: 11px; color: #bccfb6; margin-bottom: 8px; }
+#balatro-game .bp-rack-label b { color: #e9dfba; margin-left: 5px; }
+#balatro-game .bp-rack-label small { font-size: 9px; color: #a3baa3; }
+#balatro-game .bp-rack-cards { display: flex; align-items: flex-start; gap: 9px; min-height: 115px; overflow-x: auto; padding: 4px 3px 8px; scrollbar-width: thin; scrollbar-color: #85978155 transparent; }
+#balatro-game .bp-rack-cards > .bp-item { flex: 0 0 clamp(58px,6.5vw,84px); width: clamp(58px,6.5vw,84px); }
+#balatro-game .bp-empty-slot { flex: 0 0 clamp(58px,6.5vw,84px); height: clamp(80px,9.1vw,118px); border-radius: 6px; border: 1px dashed #c5d2ad40; display: grid; place-items: center; background: #143a3526; }
+#balatro-game .bp-empty-slot span { font: italic 40px Georgia,serif; color: #d2ddb624; }
+#balatro-game .bp-item { position: relative; min-width: 0; text-align: center; }
+#balatro-game .bp-item-art { display: block; background: transparent; padding: 0; border: 0; width: 100%; aspect-ratio: 120/168; border-radius: 5px; filter: drop-shadow(2px 4px 2px #102c2860); transition: transform .15s; }
+#balatro-game .bp-item-art:hover { transform: translateY(-4px) rotate(2deg); }
+#balatro-game .bp-item-name { display: block; margin-top: 6px; font-size: 10px; line-height: 1.15; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#balatro-game .bp-item-desc { font-size: 11px; line-height: 1.5; font-weight: 500; color: #bdcbbb; min-height: 34px; margin: 5px 0 9px; }
+#balatro-game .bp-disabled-joker { opacity: .4; filter: grayscale(1); }
+#balatro-game .bp-ed-poly > .bp-item-art, #balatro-game .bp-playing.bp-ed-poly { filter: drop-shadow(0 0 4px #ea86b7); outline: 1px solid #d9a6ed; }
+#balatro-game .bp-ed-foil > .bp-item-art { filter: drop-shadow(0 0 4px #8adee4); }
+#balatro-game .bp-ed-holo > .bp-item-art { filter: drop-shadow(0 0 5px #c4a1dc); }
+#balatro-game .bp-ed-negative > .bp-item-art { filter: invert(.85) hue-rotate(150deg); }
+#balatro-game .bp-stage { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; scrollbar-color: #bccca94d transparent; display: flex; flex-direction: column; }
+#balatro-game .bp-stage-heading { text-align: center; margin: 16px 0 20px; }
+#balatro-game .bp-stage-heading > span, #balatro-game .bp-shop-heading > div > span { font-size: 10px; color: #cbb481; letter-spacing: 3px; }
+#balatro-game .bp-stage-heading p { color: #b2c7b0; font-size: 11px; margin-top: 6px; }
+#balatro-game .bp-select-stage { width: 100%; max-width: 860px; margin: auto; padding: 0 4px 14px; }
+#balatro-game .bp-blind-choices { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 17px; align-items: stretch; }
+#balatro-game .bp-blind-choice { display: flex; flex-direction: column; align-items: center; background: #1d3533cf; border: 1px solid #b6c3a637; box-shadow: 0 5px 0 #15372e; border-radius: 9px; padding: 10px 13px 13px; gap: 7px; opacity: .66; }
+#balatro-game .bp-blind-choice.active { border-color: #d9c391; background: #345348; box-shadow: 0 0 0 2px #bba87523, 0 6px 0 #142e29; opacity: 1; }
+#balatro-game .bp-blind-choice.complete { opacity: .4; }
+#balatro-game .bp-blind-choice-head { width: 100%; text-align: center; background: #547b87; padding: 8px 4px; border-radius: 5px; font-size: 17px; }
+#balatro-game .bp-blind-1 .bp-blind-choice-head { background: #b78b40; }
+#balatro-game .bp-blind-2 .bp-blind-choice-head { background: #956286; }
+#balatro-game .bp-blind-token { width: 65px; height: 65px; border-radius: 50%; outline: 4px dashed #d1c8a5; outline-offset: -8px; border: 3px solid #a5bfb4; box-shadow: 0 4px 0 #101f21; display: grid; place-items: center; background: #476775; margin: 6px 0; font: bold 28px Georgia,serif; }
+#balatro-game .bp-blind-1 .bp-blind-token { background: #a28040; }
+#balatro-game .bp-blind-2 .bp-blind-token { background: #7b5678; }
+#balatro-game .bp-blind-choice > strong { font: bold 30px/1 "Trebuchet MS",monospace; color: #ecbca0; }
+#balatro-game .bp-blind-choice > span { color: #dcc68d; font-size: 11px; }
+#balatro-game .bp-blind-choice > p { font-size: 11px; color: #bcc6b1; text-align: center; flex: 1; min-height: 31px; }
+#balatro-game .bp-blind-choice > button { width: 100%; min-height: 34px; padding: 7px 4px; }
+#balatro-game .bp-tags { display: flex; gap: 5px; justify-content: center; margin-top: 13px; font-size: 10px; flex-wrap: wrap; }
+#balatro-game .bp-tags span { padding: 4px 8px; background: #8f784844; border: 1px solid #c4b5744d; border-radius: 4px; }
+#balatro-game .bp-play-stage { position: relative; flex: 1; min-height: 85px; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 12px 0; gap: 10px; }
+#balatro-game .bp-table-emblem { color: #cdd8b51a; font: 80px/1 Georgia,serif; text-align: center; }
+#balatro-game .bp-table-emblem span { display: block; font: 10px/1.2 Georgia,serif; letter-spacing: 5px; margin: 7px 0; }
+#balatro-game .bp-stage-hint { font-size: 11px; line-height: 1.7; text-align: center; color: #9db69c; }
+#balatro-game .bp-live-boss { font-size: 11px; text-align: center; padding: 6px 12px; border-radius: 5px; color: #ecd0af; background: #66475b40; }
+#balatro-game .bp-last-hand { text-align: center; }
+#balatro-game .bp-last-hand span { font-size: 11px; color: #b2c3ad; }
+#balatro-game .bp-last-hand b { display: block; font-size: 30px; color: #edcc88; }
+#balatro-game .bp-score-label { color: #f1d28e; font-size: 22px; min-height: 30px; text-align: center; }
+#balatro-game .bp-scoring-cards { display: flex; justify-content: center; gap: 9px; max-width: 95%; }
+#balatro-game .bp-scoring-cards > .bp-playing { width: clamp(45px,6vw,90px); min-width: 0; }
+#balatro-game .bp-hand-area { flex-shrink: 0; padding: 10px 0 4px; }
+#balatro-game .bp-hand-caption { display: flex; align-items: center; justify-content: space-between; padding: 0 4px 13px; gap: 8px; font-size: 11px; color: #b8cdb0; }
+#balatro-game .bp-hand-caption > div { display: flex; gap: 4px; }
+#balatro-game .bp-hand-caption .bp-btn { min-height: 24px; padding: 4px 9px; font-size: 10px; box-shadow: none; background: #224c42; border-color: #bfd0a629; }
+#balatro-game .bp-hand-caption .bp-sort-active { background: #ab8d49; color: #fff1c6; }
+#balatro-game .bp-hand { display: flex; justify-content: center; align-items: end; gap: clamp(2px,.5vw,8px); padding: 12px 4px 9px; min-height: 116px; }
+#balatro-game .bp-hand > .bp-playing { flex: 0 1 108px; width: min(108px, calc((100% - (var(--hand-count) - 1) * 6px) / var(--hand-count))); min-width: 0; }
+#balatro-game .bp-playing { display: block; position: relative; padding: 0; border: 0; border-radius: 6px; background: transparent; aspect-ratio: 120/168; box-shadow: 1px 5px 2px #102d2b80; transition: transform .12s, box-shadow .12s; }
+#balatro-game .bp-playing:not(:disabled):hover { transform: translateY(-7px); }
+#balatro-game .bp-playing.bp-selected { transform: translateY(-18px); box-shadow: 0 0 0 2px #edc771, 2px 9px 4px #102d2b60; }
+#balatro-game .bp-playing.bp-selected:hover { transform: translateY(-19px); }
+#balatro-game .bp-card-mod { position: absolute; bottom: 3px; left: 3px; right: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 8px; color: #223f37; background: #eddfb6ee; border-radius: 2px; }
+#balatro-game .bp-forced { position: absolute; top: -16px; left: 0; right: 0; font-size: 8px; color: #f3dc8c; text-shadow: 0 1px 2px #000; white-space: nowrap; }
+#balatro-game .bp-debuff { filter: grayscale(.8) brightness(.75); }
+#balatro-game .bp-debuff::after { content: "×"; position: absolute; inset: 0; display: grid; place-items: center; font-size: 50px; color: #91383b88; pointer-events: none; }
+#balatro-game .bp-play-controls { display: flex; justify-content: center; align-items: center; gap: 20px; padding: 13px 0 5px; }
+#balatro-game .bp-play-controls > button { min-width: 116px; font-size: 17px; letter-spacing: 3px; }
+#balatro-game .bp-play-controls > span { font-size: 10px; color: #aac1a6; text-align: center; }
+#balatro-game .bp-table-footer { flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; color: #8caa90; font-size: 10px; min-height: 29px; padding-top: 4px; gap: 10px; }
+#balatro-game .bp-table-footer .bp-quiet { color: #b7ccb1; font-size: 10px; }
+#balatro-game .bp-table-footer small { font-size: 9px; }
+
+#balatro-game .bp-result { margin: auto; width: min(390px,95%); text-align: center; padding: 20px 12px; display: flex; flex-direction: column; align-items: stretch; gap: 15px; }
+#balatro-game .bp-result-score { font-size: 36px; color: #edcc86; }
+#balatro-game .bp-result-score small { display: block; font-size: 11px; color: #abc3aa; }
+#balatro-game .bp-result > p { font-size: 12px; color: #c2cfb7; }
+#balatro-game .bp-result > small { color: #9cb295; font-size: 10px; }
+#balatro-game .bp-receipt { padding: 10px 20px; border: 1px solid #d6cea44a; background: #233e35; border-radius: 7px; }
+#balatro-game .bp-receipt > div { display: flex; justify-content: space-between; gap: 15px; padding: 7px 0; font-size: 13px; }
+#balatro-game .bp-receipt b { color: #e8c47d; }
+#balatro-game .bp-receipt-total { border-top: 1px dashed #bcb38355; margin-top: 5px; font-size: 17px; }
+#balatro-game .bp-shop-stage { padding: 16px 2px 12px; }
+#balatro-game .bp-shop-heading { display: flex; gap: 15px; align-items: center; margin-bottom: 20px; }
+#balatro-game .bp-shop-heading > div { flex: 1; }
+#balatro-game .bp-shop-heading h2 { font-size: 27px; }
+#balatro-game .bp-shop-shelves { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.2fr); gap: 15px; }
+#balatro-game .bp-shop-shelves > section { background: #1838317d; border: 1px solid #b7c6a431; border-radius: 8px; padding: 12px; }
+#balatro-game .bp-shop-shelves label { color: #b8c7af; font-size: 10px; display: block; margin-bottom: 13px; letter-spacing: 2px; }
+#balatro-game .bp-shop-cards { display: flex; justify-content: center; align-items: stretch; gap: 16px; }
+#balatro-game .bp-shop-cards > .bp-item { flex: 1 1 0; max-width: 132px; display: flex; flex-direction: column; align-items: center; }
+#balatro-game .bp-shop-cards .bp-item-art { max-width: 112px; }
+#balatro-game .bp-shop-cards .bp-item-name { white-space: normal; overflow: visible; margin-top: 10px; font-size: 13px; }
+#balatro-game .bp-shop-cards .bp-item-desc { flex: 1; }
+#balatro-game .bp-shop-cards .bp-btn { width: 100%; min-height: 33px; padding: 8px 5px; font-size: 12px; }
+#balatro-game .bp-voucher-art { width: 100%; height: 100%; background: #dbc291; border: 5px double #786443; color: #5b4932; display: flex; flex-direction: column; justify-content: center; gap: 4px; border-radius: 8px; outline: 2px dashed #dbc291; outline-offset: 1px; }
+#balatro-game .bp-voucher-art span { font-size: 10px; letter-spacing: 1px; }
+#balatro-game .bp-voucher-art b { font: bold 44px Georgia,serif; }
+#balatro-game .bp-voucher-art small { font-size: 9px; }
+#balatro-game .bp-shop-tip { font-size: 11px; text-align: center; color: #adc1a4; margin-top: 19px; }
+#balatro-game .bp-sold-out { color: #849e85; font-size: 12px; padding: 60px 5px; }
+#balatro-game .bp-pack-stage { text-align: center; }
+#balatro-game .bp-pack-stage .bp-shop-cards { max-width: 580px; margin: auto; }
+#balatro-game .bp-pack-stage .bp-item { max-width: 125px; }
+#balatro-game .bp-pack-stage > .bp-quiet { margin-top: 10px; }
+
+/* Dialogs scroll inside the game, never the whole browser. */
+#balatro-game .bp-modal-backdrop { position: absolute; z-index: 50; inset: 0; background: #0a1c20ce; display: grid; place-items: center; padding: 24px; }
+#balatro-game .bp-dialog { width: min(690px,100%); max-height: 100%; display: flex; flex-direction: column; background: #2b4540; border: 2px solid #b7b99a; border-radius: 12px; box-shadow: 0 12px 0 #132a28, 0 25px 60px #0007; overflow: hidden; }
+#balatro-game .bp-dialog-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 22px; gap: 10px; border-bottom: 1px solid #cad2aa35; flex-shrink: 0; }
+#balatro-game .bp-dialog-header h2 { font-size: 21px; letter-spacing: 1px; }
+#balatro-game .bp-dialog-content { padding: 22px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+#balatro-game .bp-dialog-content p { font-size: 13px; color: #c4d0bb; line-height: 1.8; }
+#balatro-game .bp-help-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+#balatro-game .bp-help-grid b { display: block; color: #e5c485; margin-bottom: 8px; font-size: 15px; }
+#balatro-game .bp-help-note { padding: 15px; background: #182f2c; border-radius: 6px; margin-top: 20px; }
+#balatro-game .bp-help-note > b { color: #d9bd83; }
+#balatro-game .bp-help-note > p { margin-top: 8px; font-size: 12px; }
+#balatro-game .bp-hands-table > div { display: grid; grid-template-columns: 1.1fr 50px 1fr 15px 1fr 60px; align-items: center; text-align: center; padding: 9px 6px; border-bottom: 1px solid #b9c5a620; font-size: 13px; }
+#balatro-game .bp-hands-table > div > b { text-align: left; }
+#balatro-game .bp-hands-table strong { font-size: 19px; }
+#balatro-game .bp-hands-table small { font-size: 10px; color: #abbf9e; }
+#balatro-game .bp-menu-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 22px; }
+#balatro-game .bp-info { display: grid; grid-template-columns: 145px 1fr; gap: 25px; align-items: center; }
+#balatro-game .bp-info-art { aspect-ratio: 120/168; }
+#balatro-game .bp-info p { margin: 0 0 13px; }
+#balatro-game .bp-info small { color: #d6bb83; }
+#balatro-game .bp-info .bp-btn { margin: 8px 6px 0 0; }
+#balatro-game .bp-reorder { display: flex; flex-wrap: wrap; }
+#balatro-game .bp-edition-label { color: #d9b8f0 !important; }
+#balatro-game .bp-wide-dialog { width: min(950px,100%); }
+#balatro-game .bp-deck-summary { display: flex; justify-content: center; gap: 18px; margin-bottom: 20px; font-size: 20px; }
+#balatro-game .bp-deck-grid { display: grid; grid-template-columns: repeat(13,minmax(0,1fr)); gap: 8px; }
+#balatro-game .bp-deck-card { aspect-ratio: 120/168; }
+#balatro-game .bp-collection { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 24px; margin-top: 20px; }
+#balatro-game .bp-collection > div > div { height: 130px; margin-bottom: 10px; }
+#balatro-game .bp-collection b { display: block; text-align: center; font-size: 12px; }
+#balatro-game .bp-collection p { font-size: 11px; margin-top: 6px; }
+#balatro-game .bp-toast { position: absolute; z-index: 80; bottom: 22px; left: 50%; transform: translateX(-50%); max-width: 90%; border: 1px solid #dfbc78; border-radius: 7px; background: #3f322af5; box-shadow: 0 5px 20px #0006; padding: 12px 18px; color: #f5e2b8; font-size: 13px; text-align: center; pointer-events: none; }
+#balatro-game .bp-trigger { animation: bp-score-pop .19s ease-out; }
+@keyframes bp-score-pop { 0% { transform: translateY(0); } 45% { transform: translateY(-9px) rotate(-3deg); filter: brightness(1.3); } 100% { transform: translateY(0); } }
+
+@media (min-width: 1400px) and (min-height: 800px) {
+  #balatro-game .bp-table { padding-top: 26px; gap: 35px; }
+  #balatro-game .bp-inventory { padding-bottom: 18px; }
+  #balatro-game .bp-rack-cards > .bp-item, #balatro-game .bp-empty-slot { flex-basis: 95px; width: 95px; }
+  #balatro-game .bp-empty-slot { height: 133px; }
+  #balatro-game .bp-hand > .bp-playing { flex-basis: 117px; max-width: 117px; }
+}
+@media (max-width: 1000px) {
+  #balatro-game .bp-table { gap: 15px; padding: 12px; grid-template-columns: 180px minmax(0,1fr); }
+  #balatro-game .bp-sidebar { padding: 10px; gap: 8px; }
+  #balatro-game .bp-inventory { gap: 12px; grid-template-columns: minmax(0,1fr) 130px; }
+  #balatro-game .bp-rack-cards { gap: 6px; }
+  #balatro-game .bp-rack-label small { display: none; }
+  #balatro-game .bp-shop-shelves { grid-template-columns: 1fr; }
+  #balatro-game .bp-shop-shelves > section { padding: 10px; }
+  #balatro-game .bp-shop-cards .bp-item-art { max-width: 83px; }
+  #balatro-game .bp-shop-cards > .bp-item { max-width: 125px; }
+  #balatro-game .bp-blind-choices { gap: 9px; }
+  #balatro-game .bp-blind-choice { padding: 8px; }
+  #balatro-game .bp-blind-choice-head { font-size: 14px; }
+}
+
+/* Portrait: compact dashboard, independently scrollable centre, hand stays reachable. */
+@media (max-width: 640px) and (min-height: 501px) {
+  #balatro-game { height: 800px; min-height: 0; font-size: 12px; }
+  #balatro-game .bp-topbar { height: 36px; min-height: 36px; padding: 3px 8px; }
+  #balatro-game .bp-topbar > span { gap: 4px; }
+  #balatro-game .bp-topbar > span > small { display: none; }
+  #balatro-game .bp-topbar > div { gap: 2px; }
+  #balatro-game .bp-topbar .bp-btn { font-size: 10px; padding: 4px 6px; min-height: 28px; }
+  #balatro-game .bp-topbar .bp-icon { width: 24px; }
+  #balatro-game .bp-table { display: flex; flex-direction: column; padding: 8px; gap: 9px; }
+  #balatro-game .bp-sidebar { flex-shrink: 0; display: grid; grid-template-columns: 1.15fr 1.1fr .8fr; grid-template-rows: 55px 55px; gap: 5px; padding: 7px; border-radius: 7px; overflow: visible; }
+  #balatro-game .bp-brand, #balatro-game .bp-progress, #balatro-game .bp-sidebar .bp-side-actions { display: none; }
+  #balatro-game .bp-blind-panel { grid-column: 1; grid-row: 1/3; padding: 4px; gap: 1px; }
+  #balatro-game .bp-blind-label { font-size: 11px; padding: 4px; gap: 4px; margin-bottom: 2px; }
+  #balatro-game .bp-chip-icon { height: 19px; width: 19px; outline-width: 1px; outline-offset: -3px; }
+  #balatro-game .bp-blind-panel > small { font-size: 8px; }
+  #balatro-game .bp-target { font-size: 23px; }
+  #balatro-game .bp-boss-rule { font-size: 8px; line-height: 1.25; padding: 2px 0; }
+  #balatro-game .bp-round-score { grid-column: 2; grid-row: 1; flex-direction: column; justify-content: center; padding: 3px; gap: 1px; }
+  #balatro-game .bp-round-score span { font-size: 9px; }
+  #balatro-game .bp-round-score b { font-size: 22px; }
+  #balatro-game .bp-calculator { grid-column: 2; grid-row: 2; padding: 2px 3px; }
+  #balatro-game .bp-hand-name { min-height: 13px; font-size: 10px; }
+  #balatro-game .bp-hand-name small { font-size: 8px; }
+  #balatro-game .bp-equation { gap: 2px; margin: 3px 0 0; }
+  #balatro-game .bp-equation strong { font-size: 17px; padding: 6px 1px; border-radius: 3px; }
+  #balatro-game .bp-equation > span { font-size: 14px; }
+  #balatro-game .bp-calculator > small { display: none; }
+  #balatro-game .bp-counters { grid-column: 3; grid-row: 1; gap: 3px; }
+  #balatro-game .bp-counters > div { padding: 3px 1px; }
+  #balatro-game .bp-counters span { font-size: 9px; }
+  #balatro-game .bp-counters b { font-size: 26px; }
+  #balatro-game .bp-money { grid-column: 3; grid-row: 2; font-size: 27px; display: grid; place-items: center; padding: 2px; }
+  #balatro-game .bp-main { flex: 1; }
+  #balatro-game .bp-inventory { grid-template-columns: minmax(0,1fr) 92px; gap: 7px; padding-bottom: 4px; }
+  #balatro-game .bp-rack-label { font-size: 9px; margin-bottom: 2px; }
+  #balatro-game .bp-rack-label b { margin-left: 2px; }
+  #balatro-game .bp-rack-cards { gap: 4px; min-height: 77px; padding: 3px 1px 5px; }
+  #balatro-game .bp-rack-cards > .bp-item { flex: 0 0 43px; width: 43px; }
+  #balatro-game .bp-empty-slot { flex-basis: 43px; height: 60px; }
+  #balatro-game .bp-empty-slot span { font-size: 27px; }
+  #balatro-game .bp-item-name { font-size: 8px; margin-top: 3px; }
+  #balatro-game .bp-stage-heading { margin: 12px 0; }
+  #balatro-game h2 { font-size: 22px; }
+  #balatro-game .bp-stage-heading p { font-size: 9px; }
+  #balatro-game .bp-stage-heading > span { font-size: 9px; }
+  #balatro-game .bp-blind-choices { gap: 6px; }
+  #balatro-game .bp-blind-choice { padding: 5px; gap: 5px; }
+  #balatro-game .bp-blind-choice-head { font-size: 12px; padding: 5px 2px; }
+  #balatro-game .bp-blind-token { height: 42px; width: 42px; outline-width: 2px; outline-offset: -5px; font-size: 20px; margin: 3px 0; }
+  #balatro-game .bp-blind-choice > strong { font-size: 22px; }
+  #balatro-game .bp-blind-choice small, #balatro-game .bp-blind-choice > span { font-size: 9px; }
+  #balatro-game .bp-blind-choice > p { font-size: 9px; min-height: 38px; }
+  #balatro-game .bp-blind-choice > button { min-height: 33px; font-size: 11px; padding: 7px 2px; }
+  #balatro-game .bp-hand-area { padding-top: 4px; }
+  #balatro-game .bp-hand-caption { font-size: 9px; padding-bottom: 10px; }
+  #balatro-game .bp-hand-caption .bp-btn { font-size: 9px; padding: 5px 8px; min-height: 27px; }
+  #balatro-game .bp-hand { --cw: clamp(52px, 16.5vw, 68px); gap: 0; padding: 10px 2px 6px; min-height: 100px; }
+  #balatro-game .bp-hand > .bp-playing { flex: 0 0 var(--cw); width: var(--cw); }
+  #balatro-game .bp-hand > .bp-playing + .bp-playing { margin-left: min(3px, calc((100% - var(--hand-count) * var(--cw) - 4px) / (var(--hand-count) - 1))); }
+  #balatro-game .bp-hand.bp-overfull { overflow-x: auto; justify-content: flex-start; }
+  #balatro-game .bp-hand.bp-overfull > .bp-playing + .bp-playing { margin-left: -20px; }
+  #balatro-game .bp-playing.bp-selected { transform: translateY(-12px); }
+  #balatro-game .bp-play-controls { gap: 8px; padding-top: 12px; }
+  #balatro-game .bp-play-controls > button { flex: 1; min-width: 0; min-height: 43px; font-size: 15px; }
+  #balatro-game .bp-play-controls > span { font-size: 9px; max-width: 105px; }
+  #balatro-game .bp-table-footer { font-size: 8px; padding-top: 2px; min-height: 23px; }
+  #balatro-game .bp-table-footer small { display: none; }
+  #balatro-game .bp-table-footer .bp-quiet { min-height: 25px; font-size: 9px; }
+  #balatro-game .bp-table-emblem { font-size: 60px; }
+  #balatro-game .bp-stage-hint { font-size: 10px; }
+  #balatro-game .bp-play-stage { padding: 6px 0; gap: 7px; }
+  #balatro-game .bp-live-boss { font-size: 10px; }
+  #balatro-game .bp-scoring-cards { gap: 5px; }
+  #balatro-game .bp-scoring-cards > .bp-playing { width: 48px; }
+  #balatro-game .bp-score-label { font-size: 19px; min-height: 26px; }
+  #balatro-game .bp-shop-stage { padding-top: 9px; }
+  #balatro-game .bp-shop-heading { gap: 8px; margin-bottom: 12px; }
+  #balatro-game .bp-shop-heading h2 { font-size: 22px; }
+  #balatro-game .bp-shop-heading .bp-btn { min-height: 36px; font-size: 11px; padding: 8px 11px; }
+  #balatro-game .bp-shop-cards { gap: 13px; }
+  #balatro-game .bp-shop-cards .bp-item-art { max-width: 71px; }
+  #balatro-game .bp-shop-cards .bp-item-name { font-size: 11px; }
+  #balatro-game .bp-shop-cards .bp-item-desc { font-size: 10px; min-height: 25px; }
+  #balatro-game .bp-shop-shelves { gap: 9px; }
+  #balatro-game .bp-shop-shelves label { font-size: 9px; margin-bottom: 8px; }
+  #balatro-game .bp-shop-tip { font-size: 9px; margin-top: 10px; }
+  #balatro-game .bp-pack-stage .bp-shop-cards .bp-item-art { max-width: 68px; }
+  #balatro-game .bp-pack-stage .bp-stage-heading { margin: 3px 0 10px; }
+  #balatro-game .bp-pack-stage .bp-stage-heading h2 { font-size: 19px; }
+  #balatro-game .bp-pack-stage .bp-item-desc { font-size: 9px; margin-bottom: 4px; }
+  #balatro-game .bp-pack-stage .bp-item-name { font-size: 10px; margin-top: 5px; }
+  #balatro-game .bp-pack-stage .bp-shop-cards .bp-btn { min-height: 30px; }
+  #balatro-game .bp-result { padding: 15px 8px; gap: 12px; }
+  #balatro-game .bp-result h2 { font-size: 25px; }
+  #balatro-game .bp-result-score { font-size: 33px; }
+  #balatro-game .bp-modal-backdrop { padding: 12px; }
+  #balatro-game .bp-dialog-header { padding: 11px 14px; }
+  #balatro-game .bp-dialog-header h2 { font-size: 18px; }
+  #balatro-game .bp-dialog-content { padding: 16px; }
+  #balatro-game .bp-help-grid { grid-template-columns: 1fr; gap: 16px; }
+  #balatro-game .bp-hands-table > div { grid-template-columns: 1.1fr 35px .9fr 12px .9fr; font-size: 11px; padding: 8px 2px; }
+  #balatro-game .bp-hands-table small { display: none; }
+  #balatro-game .bp-hands-table strong { font-size: 17px; }
+  #balatro-game .bp-info { grid-template-columns: 85px 1fr; gap: 18px; align-items: start; }
+  #balatro-game .bp-info p { font-size: 12px; }
+  #balatro-game .bp-info .bp-btn { font-size: 11px; min-height: 35px; padding: 8px 10px; }
+  #balatro-game .bp-collection { grid-template-columns: repeat(3,minmax(0,1fr)); gap: 18px; }
+  #balatro-game .bp-collection > div > div { height: 110px; }
+  #balatro-game .bp-collection p { font-size: 10px; }
+  #balatro-game .bp-deck-grid { grid-template-columns: repeat(7,minmax(0,1fr)); gap: 5px; }
+  #balatro-game .bp-deck-summary { font-size: 16px; gap: 10px; }
+  #balatro-game .bp-entry { padding: 16px; gap: 16px; }
+  #balatro-game .bp-title-art { height: 255px; }
+  #balatro-game .bp-title-word > span { font-size: 37px; letter-spacing: 5px; }
+  #balatro-game .bp-title-word h1 { font-size: 36px; letter-spacing: 10px; }
+  #balatro-game .bp-title-card { width: 80px; height: 112px; }
+  #balatro-game .bp-title-left { left: calc(50% - 154px); top: 58px; }
+  #balatro-game .bp-title-right { right: calc(50% - 154px); top: 58px; }
+  #balatro-game .bp-title-word p { font-size: 10px; letter-spacing: 2px; }
+  #balatro-game .bp-start-panel { grid-template-columns: 85px 1fr; padding: 16px 13px; gap: 14px; }
+  #balatro-game .bp-deck-preview { padding-right: 12px; }
+  #balatro-game .bp-deck-preview svg { width: 52px; height: 74px; }
+  #balatro-game .bp-deck-preview b { font-size: 11px; }
+  #balatro-game .bp-deck-preview span { font-size: 10px; }
+  #balatro-game .bp-deck-choices button { width: 25px; height: 29px; padding: 3px; }
+  #balatro-game .bp-deck-choices { gap: 2px; }
+  #balatro-game .bp-start-buttons { flex-direction: column; gap: 9px; }
+  #balatro-game .bp-start-buttons .bp-btn { min-height: 41px; flex-direction: row; font-size: 12px; }
+  #balatro-game .bp-start-buttons small { font-size: 9px; }
+  #balatro-game .bp-eyebrow { font-size: 9px; letter-spacing: 1px; }
+  #balatro-game .bp-entry-bottom { font-size: 8px; letter-spacing: 0; }
+  #balatro-game .bp-entry-bottom > span:first-child { display: none; }
+}
+
+/* Landscape phones: full-height side dashboard, cards scaled by viewport height. */
+@media (max-height: 500px) and (min-width: 550px) {
+  #balatro-game .bp-topbar { height: 29px; min-height: 29px; padding: 1px 9px; }
+  #balatro-game .bp-topbar .bp-btn { min-height: 24px; padding: 3px 7px; font-size: 10px; }
+  #balatro-game .bp-table { grid-template-columns: 143px minmax(0,1fr); gap: 10px; padding: 7px 11px; }
+  #balatro-game .bp-sidebar { gap: 5px; padding: 7px; }
+  #balatro-game .bp-brand { display: none; }
+  #balatro-game .bp-blind-panel { padding: 4px; gap: 1px; }
+  #balatro-game .bp-blind-label { padding: 3px; font-size: 11px; margin: 0; }
+  #balatro-game .bp-chip-icon { width: 19px; height: 19px; font-size: 12px; outline-width: 1px; outline-offset: -3px; }
+  #balatro-game .bp-target { font-size: 22px; }
+  #balatro-game .bp-blind-panel > small { font-size: 8px; }
+  #balatro-game .bp-boss-rule { font-size: 8px; padding: 2px 0; }
+  #balatro-game .bp-round-score { padding: 5px; }
+  #balatro-game .bp-round-score span { font-size: 9px; }
+  #balatro-game .bp-round-score b { font-size: 18px; }
+  #balatro-game .bp-calculator { padding: 4px; }
+  #balatro-game .bp-hand-name { min-height: 12px; font-size: 11px; }
+  #balatro-game .bp-equation { margin: 3px 0 0; }
+  #balatro-game .bp-equation strong { font-size: 19px; padding: 6px 2px; }
+  #balatro-game .bp-equation > span { font-size: 17px; }
+  #balatro-game .bp-calculator > small { display: none; }
+  #balatro-game .bp-counters > div { padding: 2px; flex-direction: row; gap: 9px; }
+  #balatro-game .bp-counters span { font-size: 10px; }
+  #balatro-game .bp-counters b { font-size: 23px; }
+  #balatro-game .bp-money { font-size: 22px; padding: 2px; }
+  #balatro-game .bp-progress > div { padding: 2px; flex-direction: row; gap: 8px; }
+  #balatro-game .bp-progress span { font-size: 9px; }
+  #balatro-game .bp-progress b { font-size: 17px; }
+  #balatro-game .bp-progress small { font-size: 10px; }
+  #balatro-game .bp-side-actions { gap: 6px; padding: 0; }
+  #balatro-game .bp-side-actions .bp-btn { min-height: 27px; font-size: 11px; padding: 6px 4px; }
+  #balatro-game .bp-inventory { grid-template-columns: minmax(0,1fr) 110px; gap: 12px; padding-bottom: 3px; }
+  #balatro-game .bp-rack-label { font-size: 9px; margin-bottom: 2px; }
+  #balatro-game .bp-rack-cards { min-height: 70px; padding: 2px 2px 3px; gap: 7px; }
+  #balatro-game .bp-rack-cards > .bp-item { flex-basis: 43px; width: 43px; }
+  #balatro-game .bp-empty-slot { flex-basis: 43px; height: 60px; }
+  #balatro-game .bp-empty-slot span { font-size: 25px; }
+  #balatro-game .bp-item-name { font-size: 8px; margin-top: 2px; }
+  #balatro-game .bp-hand-area { padding: 2px 0; }
+  #balatro-game .bp-hand-caption { padding: 0 3px 2px; font-size: 9px; }
+  #balatro-game .bp-hand-caption .bp-btn { font-size: 9px; padding: 2px 7px; min-height: 20px; }
+  #balatro-game .bp-hand { min-height: 65px; gap: 5px; padding: 10px 4px 3px; }
+  #balatro-game .bp-hand > .bp-playing { flex: 0 1 55px; max-width: calc((100dvh - 240px)*.60); }
+  #balatro-game .bp-playing.bp-selected { transform: translateY(-9px); }
+  #balatro-game .bp-play-controls { padding: 5px 0 2px; gap: 15px; }
+  #balatro-game .bp-play-controls > button { min-height: 31px; min-width: 102px; font-size: 13px; padding: 6px 12px; }
+  #balatro-game .bp-play-controls > span { font-size: 9px; }
+  #balatro-game .bp-table-footer { min-height: 19px; padding: 0; font-size: 8px; }
+  #balatro-game .bp-table-footer .bp-btn { min-height: 19px; padding: 2px 6px; font-size: 9px; }
+  #balatro-game .bp-play-stage { min-height: 45px; gap: 3px; padding: 3px 0; }
+  #balatro-game .bp-table-emblem { font-size: 30px; }
+  #balatro-game .bp-table-emblem span, #balatro-game .bp-play-stage > .bp-stage-hint { display: none; }
+  #balatro-game .bp-last-hand { display: flex; align-items: center; gap: 15px; }
+  #balatro-game .bp-last-hand b { font-size: 22px; }
+  #balatro-game .bp-last-hand span { font-size: 10px; }
+  #balatro-game .bp-live-boss { font-size: 9px; padding: 2px 8px; }
+  #balatro-game .bp-score-label { font-size: 14px; min-height: 18px; }
+  #balatro-game .bp-scoring-cards > .bp-playing { width: 28px; }
+  #balatro-game .bp-stage-heading { margin: 5px 0 9px; }
+  #balatro-game .bp-stage-heading h2 { font-size: 18px; }
+  #balatro-game .bp-stage-heading > span { display: none; }
+  #balatro-game .bp-stage-heading p { font-size: 9px; margin: 2px 0; }
+  #balatro-game .bp-blind-choices { gap: 12px; }
+  #balatro-game .bp-blind-choice { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 6px; text-align: center; }
+  #balatro-game .bp-blind-choice-head { grid-column: 1/3; font-size: 12px; padding: 5px; }
+  #balatro-game .bp-blind-token { width: 36px; height: 36px; font-size: 16px; grid-row: 2/4; grid-column: 1; margin: 3px auto; outline-width: 2px; outline-offset: -5px; }
+  #balatro-game .bp-blind-choice > strong { font-size: 19px; grid-column: 2; }
+  #balatro-game .bp-blind-choice > small { font-size: 8px; grid-column: 2; }
+  #balatro-game .bp-blind-choice > span { display: none; }
+  #balatro-game .bp-blind-choice > p { grid-column: 1/3; font-size: 9px; min-height: 25px; }
+  #balatro-game .bp-blind-choice > button { grid-column: 1/3; min-height: 26px; font-size: 10px; padding: 5px; }
+  #balatro-game .bp-blind-choice > .bp-quiet { min-height: 20px; }
+  #balatro-game .bp-shop-stage { padding: 6px 0; }
+  #balatro-game .bp-shop-heading { margin-bottom: 10px; }
+  #balatro-game .bp-shop-heading h2 { font-size: 19px; }
+  #balatro-game .bp-shop-heading > div > span { display: none; }
+  #balatro-game .bp-shop-heading .bp-btn { min-height: 28px; font-size: 11px; padding: 6px 12px; }
+  #balatro-game .bp-shop-shelves { grid-template-columns: 1fr 1.2fr; gap: 10px; }
+  #balatro-game .bp-shop-shelves > section { padding: 8px; }
+  #balatro-game .bp-shop-shelves label { margin-bottom: 6px; font-size: 8px; }
+  #balatro-game .bp-shop-cards { gap: 10px; }
+  #balatro-game .bp-shop-cards .bp-item-art { max-width: 52px; }
+  #balatro-game .bp-shop-cards .bp-item-name { font-size: 10px; margin-top: 6px; }
+  #balatro-game .bp-shop-cards .bp-item-desc { font-size: 9px; margin: 4px 0 7px; min-height: 25px; }
+  #balatro-game .bp-shop-cards .bp-btn { min-height: 26px; font-size: 10px; padding: 5px; }
+  #balatro-game .bp-shop-tip { font-size: 9px; margin-top: 10px; }
+  #balatro-game .bp-pack-stage .bp-shop-cards { gap: 18px; }
+  #balatro-game .bp-pack-stage .bp-item-art { max-width: 35px; }
+  #balatro-game .bp-pack-stage .bp-item-desc { font-size: 8px; min-height: 0; }
+  #balatro-game .bp-pack-stage > .bp-quiet { margin-top: 4px; padding: 3px; min-height: 22px; font-size: 10px; }
+  #balatro-game .bp-result { padding: 12px; gap: 9px; max-width: 330px; }
+  #balatro-game .bp-result h2 { font-size: 23px; }
+  #balatro-game .bp-result-score { font-size: 25px; }
+  #balatro-game .bp-result .bp-receipt > div { font-size: 11px; padding: 4px 0; }
+  #balatro-game .bp-entry { padding: 12px 30px; gap: 8px; display: grid; grid-template-columns: .85fr 1fr; grid-template-rows: 25px 1fr 25px; }
+  #balatro-game .bp-entry-top { grid-column: 1/3; margin: 0; }
+  #balatro-game .bp-title-art { height: 230px; }
+  #balatro-game .bp-title-word > span { font-size: 31px; letter-spacing: 5px; }
+  #balatro-game .bp-title-word h1 { font-size: 31px; }
+  #balatro-game .bp-title-word p { font-size: 9px; letter-spacing: 1px; }
+  #balatro-game .bp-title-joker { width: 70px; height: 98px; left: calc(50% - 35px); top: 5px; }
+  #balatro-game .bp-title-card { width: 60px; height: 84px; top: 70px; }
+  #balatro-game .bp-title-left { left: calc(50% - 133px); }
+  #balatro-game .bp-title-right { right: calc(50% - 133px); }
+  #balatro-game .bp-title-word { padding-top: 76px; }
+  #balatro-game .bp-start-panel { padding: 12px; grid-template-columns: 70px 1fr; gap: 12px; }
+  #balatro-game .bp-deck-preview { padding-right: 9px; }
+  #balatro-game .bp-deck-preview svg { height: 75px; width: 54px; }
+  #balatro-game .bp-deck-preview b { font-size: 11px; }
+  #balatro-game .bp-deck-preview span { font-size: 9px; }
+  #balatro-game .bp-start-options { gap: 7px; }
+  #balatro-game .bp-deck-choices { gap: 1px; }
+  #balatro-game .bp-deck-choices button { width: 22px; height: 25px; padding: 3px; }
+  #balatro-game .bp-start-buttons button { font-size: 11px; padding: 8px; min-height: 35px; }
+  #balatro-game .bp-eyebrow { font-size: 9px; }
+  #balatro-game .bp-entry-bottom { grid-column: 1/3; margin: 0; font-size: 8px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #balatro-game *, #balatro-game *::before, #balatro-game *::after { animation: none !important; transition: none !important; }
+}
