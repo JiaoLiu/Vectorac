@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import {createRequire} from 'node:module'
+import {readFileSync} from 'node:fs'
 import {mkdtempSync} from 'node:fs'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
@@ -64,6 +65,15 @@ try{
  // Targeted UI fixtures, separate from the unmodified playthrough above.
  const fixture=E.newRun('TOUCH','yellow');fixture.jokers=[E.makeJoker(fixture,'joker'),E.makeJoker(fixture,'duo')];E.startBlind(fixture)
  fixture.consumables=[{uid:++fixture.uid,kind:'planet',id:'pair'},{uid:++fixture.uid,kind:'tarot',id:'strength'}]
+ const legacyFixture=JSON.parse(readFileSync(new URL('./fixtures/balatro-v3-midblind-pre-blindplayed.json',import.meta.url),'utf8'))
+ await seedPage(page,legacyFixture);const migrated=await read(page)
+ assert.equal(migrated.phase,'play');assert.ok(migrated.plays>0);assert.deepEqual(migrated.antePlayed,[]);assert.deepEqual(migrated.blindPlayed,[])
+ assert.match(await page.locator('.bp-toast').innerText(),/支柱记录已重置/,'legacy migration explains why old Pillar history was cleared')
+ const backFixture=E.clone(fixture),backUid=backFixture.hand[0].uid;backFixture.hand[0].hidden=true;backFixture.hand[0].edition='poly'
+ await seedPage(page,backFixture);const back=page.locator(`.bp-hand .bp-playing[data-uid="${backUid}"]`)
+ assert.equal(await back.getAttribute('aria-label'),'背面朝上的牌');assert.equal(await back.getAttribute('title'),'背面朝上')
+ assert.ok(!(await back.getAttribute('class')).split(/\s+/).includes('bp-ed-poly'),'face-down cards do not expose the edition class')
+ assert.deepEqual(await back.evaluate(el=>{const style=getComputedStyle(el);return [style.outlineStyle,style.filter,getComputedStyle(el,'::after').backgroundImage]}),['none','none','none'],'face-down cards do not show Poly outline, glow, or sheen')
  await seedPage(page,fixture);const planet=fixture.consumables[0];await page.locator(`[data-action=info][data-uid="${planet.uid}"]`).click();await page.locator('[data-action=use]').click();assert.equal((await read(page)).levels.pair,2)
  const target=(await read(page)).hand[0];await selected(page,[target.uid]);const tarot=fixture.consumables[1];await page.locator(`[data-action=info][data-uid="${tarot.uid}"]`).click();await page.locator('[data-action=use]').click();assert.equal((await read(page)).deck.find(c=>c.uid===target.uid).rank,target.rank===14?2:target.rank+1)
  await page.locator(`[data-action=info][data-uid="${fixture.jokers[0].uid}"]`).click();await page.locator('[data-action=right]').click();assert.equal((await read(page)).jokers[1].id,'joker')

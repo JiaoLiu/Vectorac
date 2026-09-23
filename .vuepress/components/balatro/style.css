@@ -54,6 +54,7 @@
 #balatro-game .bp-entry-top, #balatro-game .bp-entry-bottom { display: flex; align-items: center; justify-content: space-between; color: #b7c6b4; font-size: 10px; letter-spacing: 2px; }
 #balatro-game .bp-entry-top { margin-bottom: auto; }
 #balatro-game .bp-entry-bottom { margin-top: auto; letter-spacing: 1px; gap: 10px; }
+#balatro-game .bp-lobby-link { text-decoration: none; }
 #balatro-game .bp-entry-bottom > span:first-child { font-size: 22px; }
 #balatro-game .bp-title-art { height: 285px; position: relative; display: flex; align-items: center; justify-content: center; }
 #balatro-game .bp-title-card, #balatro-game .bp-title-joker { position: absolute; width: 112px; height: 157px; filter: drop-shadow(5px 12px 7px #102d2980); }
@@ -123,6 +124,14 @@
 #balatro-game .bp-rack-label small { font-size: 9px; color: #a3baa3; }
 #balatro-game .bp-rack-cards { display: flex; align-items: flex-start; gap: 9px; min-height: 115px; overflow-x: auto; padding: 4px 3px 8px; scrollbar-width: thin; scrollbar-color: #85978155 transparent; }
 #balatro-game .bp-rack-cards > .bp-item { flex: 0 0 clamp(58px,6.5vw,84px); width: clamp(58px,6.5vw,84px); }
+#balatro-game .bp-joker-rack .bp-rack-cards > .bp-item[data-visual] > .bp-item-art { touch-action: none; cursor: grab; -webkit-user-drag: none; }
+#balatro-game .bp-joker-dragging { position: relative; z-index: 12; opacity: .92; pointer-events: none; transform: translate3d(var(--joker-drag-x,0),var(--joker-drag-y,0),0) scale(1.06); transition: none !important; }
+#balatro-game .bp-joker-dragging > .bp-item-art { transform: none !important; transition: none !important; cursor: grabbing; }
+#balatro-game .bp-joker-returning { position: relative; z-index: 12; transform: translate3d(var(--joker-drag-x,0),var(--joker-drag-y,0),0); transition: transform .18s cubic-bezier(.2,.75,.25,1); }
+#balatro-game .bp-joker-drop-before::before,
+#balatro-game .bp-joker-drop-after::after { content: ""; position: absolute; z-index: 10; top: 2px; bottom: 18px; width: 3px; border-radius: 3px; background: #f5d275; box-shadow: 0 0 8px #f5d275a8; pointer-events: none; }
+#balatro-game .bp-joker-drop-before::before { left: -6px; }
+#balatro-game .bp-joker-drop-after::after { right: -6px; }
 #balatro-game .bp-empty-slot { flex: 0 0 clamp(58px,6.5vw,84px); height: clamp(80px,9.1vw,118px); border-radius: 6px; border: 1px dashed #c5d2ad40; display: grid; place-items: center; background: #143a3526; }
 #balatro-game .bp-empty-slot span { font: italic 40px Georgia,serif; color: #d2ddb624; }
 #balatro-game .bp-item { position: relative; min-width: 0; text-align: center; }
@@ -176,21 +185,27 @@
 #balatro-game .bp-hand-caption .bp-btn { min-height: 24px; padding: 4px 9px; font-size: 10px; box-shadow: none; background: #224c42; border-color: #bfd0a629; }
 #balatro-game .bp-hand-caption .bp-sort-active { background: #ab8d49; color: #fff1c6; }
 #balatro-game .bp-hand { display: flex; justify-content: center; align-items: end; gap: clamp(2px,.5vw,8px); padding: 12px 4px 9px; min-height: 116px; }
-#balatro-game .bp-hand > .bp-playing { flex: 0 1 108px; width: min(108px, calc((100% - (var(--hand-count) - 1) * 6px) / var(--hand-count))); min-width: 0; }
+#balatro-game .bp-hand-card { position: relative; flex: 0 1 108px; width: min(108px, calc((100% - (var(--hand-count) - 1) * 6px) / var(--hand-count))); min-width: 0; }
+#balatro-game .bp-hand-card > .bp-playing { width: 100%; }
+#balatro-game .bp-card-detail-button { position: absolute; z-index: 12; top: -8px; right: -3px; display: grid; place-items: center; width: 23px; height: 23px; padding: 0; border: 1px solid #f1e4c4a8; border-radius: 50%; color: #243a35; background: #f0e6cf; box-shadow: 0 2px 5px #0a1c1b8c; font: 800 13px/1 Arial,sans-serif; cursor: pointer; }
+#balatro-game .bp-hand-card > .bp-playing.bp-selected + .bp-card-detail-button { transform: translateY(-18px); }
+#balatro-game .bp-card-detail-button:disabled { opacity: .45; }
 #balatro-game .bp-playing { display: block; position: relative; padding: 0; border: 0; border-radius: 6px; background: transparent; aspect-ratio: 120/168; box-shadow: 1px 5px 2px #102d2b80; transition: transform .12s, box-shadow .12s; }
 #balatro-game .bp-playing.bp-selected { transform: translateY(-18px); box-shadow: 0 0 0 2px #edc771, 2px 9px 4px #102d2b60; }
 @media (hover: hover) and (pointer: fine) {
   #balatro-game .bp-playing:not(:disabled):hover { transform: translateY(-7px); }
   #balatro-game .bp-playing.bp-selected:hover { transform: translateY(-19px); }
   #balatro-game .bp-item-art:hover { transform: translateY(-4px) rotate(2deg); }
+  #balatro-game .bp-item-art.bp-voucher-frame:hover { transform: none; }
 }
-#balatro-game .bp-card-mod { position: absolute; bottom: 3px; left: 3px; right: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 8px; color: #223f37; background: #eddfb6ee; border-radius: 2px; }
+#balatro-game .bp-card-mod { position: absolute; bottom: 3px; left: 3px; right: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 7px; line-height: 1.2; padding: 1px 2px; color: #223f37; background: #eddfb6ee; border-radius: 2px; }
 #balatro-game .bp-forced { position: absolute; top: -16px; left: 0; right: 0; font-size: 8px; color: #f3dc8c; text-shadow: 0 1px 2px #000; white-space: nowrap; }
 #balatro-game .bp-debuff { filter: grayscale(.8) brightness(.75); }
 #balatro-game .bp-debuff::after { content: "×"; position: absolute; inset: 0; display: grid; place-items: center; font-size: 50px; color: #91383b88; pointer-events: none; }
 #balatro-game .bp-play-controls { display: flex; justify-content: center; align-items: center; gap: 20px; padding: 13px 0 5px; }
 #balatro-game .bp-play-controls > button { min-width: 116px; font-size: 17px; letter-spacing: 3px; }
 #balatro-game .bp-play-controls > span { font-size: 10px; color: #aac1a6; text-align: center; }
+#balatro-game .bp-play-stage > .bp-btn { align-self: center; min-height: 38px; margin-top: 3px; border-color: #dbc17b80; color: #f3dda0; background: #183e37; font-size: 12px; }
 #balatro-game .bp-table-footer { flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; color: #8caa90; font-size: 10px; min-height: 29px; padding-top: 4px; gap: 10px; }
 #balatro-game .bp-table-footer .bp-quiet { color: #b7ccb1; font-size: 10px; }
 #balatro-game .bp-table-footer small { font-size: 9px; }
@@ -217,9 +232,9 @@
 #balatro-game .bp-shop-cards .bp-item-name { white-space: normal; overflow: visible; margin-top: 10px; font-size: 13px; }
 #balatro-game .bp-shop-cards .bp-item-desc { flex: 1; }
 #balatro-game .bp-shop-cards .bp-btn { width: 100%; min-height: 33px; padding: 8px 5px; font-size: 12px; }
-#balatro-game .bp-voucher-art { width: 100%; height: 100%; background: #dbc291; border: 5px double #786443; color: #5b4932; display: flex; flex-direction: column; justify-content: center; gap: 4px; border-radius: 8px; outline: 2px dashed #dbc291; outline-offset: 1px; }
+#balatro-game .bp-voucher-art { width: 100%; height: 100%; min-width: 0; overflow: hidden; background: #dbc291; border: 5px double #786443; color: #5b4932; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border-radius: 8px; outline: 0; box-shadow: inset 0 0 0 1px #f1dfb5, 0 0 0 1px #927448; text-align: center; }
 #balatro-game .bp-voucher-art span { font-size: 10px; letter-spacing: 1px; }
-#balatro-game .bp-voucher-art b { font: bold 44px Georgia,serif; }
+#balatro-game .bp-voucher-art b { display: block; font: bold 44px/1 Georgia,serif; }
 #balatro-game .bp-voucher-art small { font-size: 9px; }
 #balatro-game .bp-shop-tip { font-size: 11px; text-align: center; color: #adc1a4; margin-top: 19px; }
 #balatro-game .bp-sold-out { color: #849e85; font-size: 12px; padding: 60px 5px; }
@@ -248,6 +263,10 @@
 #balatro-game .bp-stake-footnote { margin: 12px 0 0 !important; font-size: 10px !important; color: #91aa98 !important; }
 #balatro-game .bp-help-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
 #balatro-game .bp-help-grid b { display: block; color: #e5c485; margin-bottom: 8px; font-size: 15px; }
+#balatro-game .bp-help-seals { grid-column: 1 / -1; padding: 12px 14px; border: 1px solid #c3a15d38; border-radius: 6px; background: #1b3932; }
+#balatro-game .bp-seal-legend { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 7px 18px; }
+#balatro-game .bp-seal-legend p { margin: 0; font-size: 12px; line-height: 1.5; }
+#balatro-game .bp-seal-legend strong { color: #e5c485; }
 #balatro-game .bp-help-note { padding: 15px; background: #182f2c; border-radius: 6px; margin-top: 20px; }
 #balatro-game .bp-help-note > b { color: #d9bd83; }
 #balatro-game .bp-help-note > p { margin-top: 8px; font-size: 12px; }
@@ -267,6 +286,14 @@
 #balatro-game .bp-deck-summary { display: flex; justify-content: center; gap: 18px; margin-bottom: 20px; font-size: 20px; }
 #balatro-game .bp-deck-grid { display: grid; grid-template-columns: repeat(13,minmax(0,1fr)); gap: 8px; }
 #balatro-game .bp-deck-card { aspect-ratio: 120/168; }
+#balatro-game button.bp-deck-card { display: block; width: 100%; padding: 0; overflow: hidden; border: 1px solid #e8dfc0; border-radius: 5px; background: #f5f0dc; box-shadow: 1px 3px 5px #071b1b73; }
+#balatro-game button.bp-deck-card:active { transform: translateY(-2px); }
+#balatro-game .bp-card-facts { display: grid; gap: 10px; }
+#balatro-game .bp-card-facts section { padding: 9px 11px; border: 1px solid #d8d5aa24; border-radius: 6px; background: #193b35; }
+#balatro-game .bp-card-facts section > b { display: block; margin-bottom: 3px; color: #e2c783; font-size: 12px; }
+#balatro-game .bp-card-facts section > p { margin: 0; color: #e4e5d4; font-size: 13px; line-height: 1.5; }
+#balatro-game .bp-card-info-dialog { width: min(660px,100%); }
+#balatro-game .bp-card-info-dialog .bp-info { grid-template-columns: minmax(100px,150px) minmax(0,1fr); align-items: start; }
 #balatro-game .bp-collection { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 24px; margin-top: 20px; }
 #balatro-game .bp-collection > div > div { height: 130px; margin-bottom: 10px; }
 #balatro-game .bp-collection b { display: block; text-align: center; font-size: 12px; }
@@ -281,7 +308,18 @@
 #balatro-game .bp-playing.bp-fx-shake,
 #balatro-game .bp-playing.bp-fx-seal-pending { animation: bp-card-shake .55s ease-in-out both; }
 #balatro-game .bp-playing.bp-fx-mark { animation: bp-card-mark .7s ease-in-out both; }
-#balatro-game .bp-playing.bp-fx-destroy { z-index: 8; pointer-events: none; animation: bp-card-destroy .36s ease-in var(--fx-delay,0ms) both; }
+#balatro-game .bp-playing.bp-fx-destroy { z-index: 8; pointer-events: none; transition: none; }
+#balatro-game .bp-fx-destroy > svg { animation: bp-card-shred-base .82s ease-in var(--fx-delay,0ms) both; }
+#balatro-game .bp-destroy-shards { position: absolute; z-index: 3; inset: 0; pointer-events: none; }
+#balatro-game .bp-destroy-shard { position: absolute; inset: 0; pointer-events: none; transform-origin: center; animation: bp-card-shred-piece .82s cubic-bezier(.18,.65,.28,1) calc(var(--fx-delay,0ms) + var(--shard-delay,0ms)) both; }
+#balatro-game .bp-destroy-shard svg { display: block; width: 100%; height: 100%; }
+#balatro-game .bp-shard-1 { clip-path: polygon(0 0,100% 0,100% 18%,79% 23%,58% 18%,37% 22%,0 17%); --shard-x:-25px; --shard-y:-46px; --shard-r:-22deg; --shard-delay:0ms; }
+#balatro-game .bp-shard-2 { clip-path: polygon(0 17%,37% 22%,58% 18%,79% 23%,100% 18%,96% 39%,72% 43%,48% 38%,25% 42%,0 37%); --shard-x:33px; --shard-y:-28px; --shard-r:18deg; --shard-delay:32ms; }
+#balatro-game .bp-shard-3 { clip-path: polygon(0 37%,25% 42%,48% 38%,72% 43%,96% 39%,100% 60%,75% 63%,51% 58%,27% 62%,0 58%); --shard-x:-36px; --shard-y:8px; --shard-r:-17deg; --shard-delay:64ms; }
+#balatro-game .bp-shard-4 { clip-path: polygon(0 58%,27% 62%,51% 58%,75% 63%,100% 60%,93% 80%,68% 84%,44% 79%,20% 83%,0 78%); --shard-x:29px; --shard-y:35px; --shard-r:20deg; --shard-delay:96ms; }
+#balatro-game .bp-shard-5 { clip-path: polygon(0 78%,20% 83%,44% 79%,68% 84%,93% 80%,100% 100%,0 100%); --shard-x:-18px; --shard-y:52px; --shard-r:-14deg; --shard-delay:128ms; }
+#balatro-game.bp-fast .bp-fx-destroy > svg,
+#balatro-game.bp-fast .bp-destroy-shard { animation-duration: .62s; }
 #balatro-game .bp-playing.bp-fx-reveal > svg { transform-origin: center; animation: bp-card-reveal .62s cubic-bezier(.22,.75,.24,1) both; }
 #balatro-game .bp-playing.bp-fx-gather { z-index: 8; pointer-events: none; animation: bp-card-gather .36s cubic-bezier(.55,.05,.9,.45) var(--fx-delay,0ms) both; }
 #balatro-game .bp-playing.bp-fx-deal { z-index: 8; animation: bp-card-deal .42s cubic-bezier(.18,.75,.25,1) var(--fx-delay,0ms) both; }
@@ -291,16 +329,18 @@
 #balatro-game .bp-seal-stamp.bp-seal-purple { background: radial-gradient(circle at 35% 28%,#f4ddff,#a974bd 62%,#5e3a77); color: #fff2ff; }
 @keyframes bp-card-shake { 0%,100% { transform: translateY(0) rotate(0); filter: none; } 18% { transform: translateY(-5px) rotate(-2deg); filter: brightness(1.2); } 38% { transform: translateY(0) rotate(2deg); } 58% { transform: translateY(-3px) rotate(-1.4deg); filter: brightness(1.1); } 78% { transform: translateY(0) rotate(.8deg); } }
 @keyframes bp-card-mark { 0%,100% { transform: translateY(0) rotate(0); opacity: 1; filter: none; } 25% { transform: translateY(-5px) rotate(-3deg); filter: sepia(.8) saturate(2); } 70% { transform: translateY(0) rotate(2deg); opacity: .85; } }
-@keyframes bp-card-destroy { 0% { transform: translateY(0) rotate(0) scale(1); opacity: 1; filter: none; } 25% { transform: translateY(-7px) rotate(-4deg) scale(1.03); filter: sepia(.8) saturate(2); } 100% { transform: translateY(24px) rotate(9deg) scale(.28); opacity: 0; filter: grayscale(1) sepia(1); } }
+@keyframes bp-card-shred-base { 0%,16% { opacity: 1; filter: none; } 34% { opacity: .7; filter: brightness(1.25) sepia(.4); } 58%,100% { opacity: 0; filter: grayscale(1) brightness(.8); } }
+@keyframes bp-card-shred-piece { 0%,15% { opacity: 1; transform: translate(0,0) rotate(0) scale(1); filter: none; } 100% { opacity: 0; transform: translate(var(--shard-x),var(--shard-y)) rotate(var(--shard-r)) scale(.82); filter: brightness(.9) saturate(.8); } }
 @keyframes bp-card-reveal { 0% { transform: perspective(500px) rotateY(0) scale(1); filter: brightness(1); } 42% { transform: perspective(500px) rotateY(78deg) scale(.96); filter: brightness(.72); } 72% { transform: perspective(500px) rotateY(-12deg) scale(1.04); filter: brightness(1.22) drop-shadow(0 0 8px #f4d47b); } 100% { transform: perspective(500px) rotateY(0) scale(1); filter: none; } }
 @keyframes bp-card-gather { to { transform: translate(var(--fx-x,0px),var(--fx-y,0px)) scale(.06) rotate(14deg); opacity: 0; filter: brightness(1.5); } }
 @keyframes bp-card-deal { from { transform: translate(var(--fx-from-x,0px),var(--fx-from-y,0px)) scale(.08) rotate(-10deg); opacity: 0; filter: brightness(1.5); } to { transform: translate(0,0) scale(1) rotate(0); opacity: 1; filter: none; } }
 @keyframes bp-stamp-in { 0% { opacity: 0; transform: translate(4px,-5px) scale(2.5) rotate(-28deg); } 65% { opacity: 1; transform: translate(0,0) scale(.78) rotate(5deg); } 100% { opacity: 1; transform: scale(1) rotate(0); } }
 @media (prefers-reduced-motion: reduce) {
   #balatro-game .bp-playing.bp-fx-shake, #balatro-game .bp-playing.bp-fx-seal-pending,
-  #balatro-game .bp-playing.bp-fx-mark, #balatro-game .bp-playing.bp-fx-destroy, #balatro-game .bp-playing.bp-fx-reveal > svg,
+  #balatro-game .bp-playing.bp-fx-mark, #balatro-game .bp-playing.bp-fx-destroy > svg, #balatro-game .bp-destroy-shard, #balatro-game .bp-playing.bp-fx-reveal > svg,
   #balatro-game .bp-playing.bp-fx-gather, #balatro-game .bp-playing.bp-fx-deal,
   #balatro-game .bp-seal-stamp { animation-duration: 1ms !important; }
+  #balatro-game .bp-playing.bp-fx-destroy > svg, #balatro-game .bp-destroy-shard { animation-delay: 0ms !important; }
 }
 #balatro-game.bp-pack-open .bp-table { display: flex; gap: 0; max-width: 1480px; padding: 8px clamp(10px,3vw,36px); }
 #balatro-game.bp-pack-open .bp-sidebar,
@@ -317,18 +357,18 @@
 #balatro-game.bp-pack-open .bp-pack-stage > .bp-quiet { align-self: center; margin-top: 5px; }
 #balatro-game.bp-short.bp-pack-open .bp-table { display: flex; gap: 0; padding: 4px 10px; }
 #balatro-game.bp-short.bp-pack-open .bp-main { flex: 1; min-height: 0; }
-#balatro-game.bp-short.bp-pack-open .bp-stage { overflow: hidden; }
+#balatro-game.bp-short.bp-pack-open .bp-stage { overflow-y: auto; overflow-x: hidden; }
 #balatro-game.bp-short.bp-pack-open .bp-pack-stage { padding: 0; }
 #balatro-game.bp-short.bp-pack-open .bp-pack-stage .bp-stage-heading { margin: 0 0 3px; }
 #balatro-game.bp-short.bp-pack-open .bp-pack-stage .bp-stage-heading h2 { font-size: 16px; }
-#balatro-game.bp-short.bp-pack-open .bp-pack-stage .bp-stage-heading p { max-width: 780px; margin-top: 2px; font-size: 8px; line-height: 1.25; }
+#balatro-game.bp-short.bp-pack-open .bp-pack-stage .bp-stage-heading p { max-width: 780px; margin-top: 2px; font-size: 10px; line-height: 1.35; }
 #balatro-game.bp-short.bp-pack-open .bp-pack-stage .bp-shop-cards { gap: clamp(12px,4vw,42px); }
 #balatro-game.bp-short.bp-pack-open .bp-pack-stage .bp-item { max-width: 100px; }
 #balatro-game.bp-short.bp-pack-open .bp-pack-stage .bp-shop-cards .bp-item-art { max-width: 64px; }
-#balatro-game.bp-short.bp-pack-open .bp-pack-stage .bp-item-name { margin-top: 2px; font-size: 9px; line-height: 1.1; }
-#balatro-game.bp-short.bp-pack-open .bp-pack-stage .bp-item-desc { display: -webkit-box; overflow: hidden; max-height: 22px; margin: 2px 0; font-size: 7px; line-height: 1.25; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
-#balatro-game.bp-short.bp-pack-open .bp-pack-stage .bp-shop-cards .bp-btn { min-height: 23px; padding: 3px 5px; font-size: 9px; }
-#balatro-game.bp-short.bp-pack-open .bp-pack-stage > .bp-quiet { min-height: 20px; margin-top: 2px; padding: 2px 8px; font-size: 9px; }
+#balatro-game.bp-short.bp-pack-open .bp-pack-stage .bp-item-name { margin-top: 3px; font-size: 10px; line-height: 1.2; }
+#balatro-game.bp-short.bp-pack-open .bp-pack-stage .bp-item-desc { display: -webkit-box; overflow: hidden; max-height: 30px; margin: 3px 0; font-size: 10px; line-height: 1.35; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+#balatro-game.bp-short.bp-pack-open .bp-pack-stage .bp-shop-cards .bp-btn { min-height: 36px; padding: 6px 8px; font-size: 11px; }
+#balatro-game.bp-short.bp-pack-open .bp-pack-stage > .bp-quiet { min-height: 36px; margin-top: 4px; padding: 6px 10px; font-size: 11px; }
 #balatro-game .bp-joker-ghost { transform-origin: center; }
 #balatro-game .bp-joker-ghost.bp-fx-joker-destroy { z-index: 5; pointer-events: none; animation: bp-joker-destroy .72s cubic-bezier(.25,.62,.35,1) var(--fx-delay,0ms) both; }
 #balatro-game .bp-fx-joker-upgrade .bp-item-art { animation: bp-joker-upgrade .85s ease-out both; }
@@ -349,7 +389,7 @@
   #balatro-game .bp-inventory { padding-bottom: 18px; }
   #balatro-game .bp-rack-cards > .bp-item, #balatro-game .bp-empty-slot { flex-basis: 95px; width: 95px; }
   #balatro-game .bp-empty-slot { height: 133px; }
-  #balatro-game .bp-hand > .bp-playing { flex-basis: 117px; max-width: 117px; }
+  #balatro-game .bp-hand > .bp-hand-card { flex-basis: 117px; max-width: 117px; }
 }
 @media (max-width: 1000px) {
   #balatro-game .bp-table { gap: 15px; padding: 12px; grid-template-columns: 180px minmax(0,1fr); }
@@ -381,15 +421,15 @@
   #balatro-game.bp-compact .bp-blind-panel { grid-column: 1; grid-row: 1/3; padding: 4px; gap: 1px; }
   #balatro-game.bp-compact .bp-blind-label { font-size: 11px; padding: 4px; gap: 4px; margin-bottom: 2px; }
   #balatro-game.bp-compact .bp-chip-icon { height: 19px; width: 19px; outline-width: 1px; outline-offset: -3px; }
-  #balatro-game.bp-compact .bp-blind-panel > small { font-size: 8px; }
+  #balatro-game.bp-compact .bp-blind-panel > small { font-size: 10px; }
   #balatro-game.bp-compact .bp-target { font-size: 23px; }
-  #balatro-game.bp-compact .bp-boss-rule { font-size: 8px; line-height: 1.25; padding: 2px 0; }
+  #balatro-game.bp-compact .bp-boss-rule { font-size: 10px; line-height: 1.3; padding: 2px 0; }
   #balatro-game.bp-compact .bp-round-score { grid-column: 2; grid-row: 1; flex-direction: column; justify-content: center; padding: 3px; gap: 1px; }
   #balatro-game.bp-compact .bp-round-score span { font-size: 9px; }
   #balatro-game.bp-compact .bp-round-score b { font-size: 22px; }
   #balatro-game.bp-compact .bp-calculator { grid-column: 2; grid-row: 2; padding: 2px 3px; }
   #balatro-game.bp-compact .bp-hand-name { min-height: 13px; font-size: 10px; }
-  #balatro-game.bp-compact .bp-hand-name small { font-size: 8px; }
+  #balatro-game.bp-compact .bp-hand-name small { font-size: 10px; }
   #balatro-game.bp-compact .bp-equation { gap: 2px; margin: 3px 0 0; }
   #balatro-game.bp-compact .bp-equation strong { font-size: 17px; padding: 6px 1px; border-radius: 3px; }
   #balatro-game.bp-compact .bp-equation > span { font-size: 14px; }
@@ -401,37 +441,38 @@
   #balatro-game.bp-compact .bp-money { grid-column: 3; grid-row: 2; font-size: 27px; display: grid; place-items: center; padding: 2px; }
   #balatro-game.bp-compact .bp-main { flex: 1; }
   #balatro-game.bp-compact .bp-inventory { grid-template-columns: minmax(0,1fr) 92px; gap: 7px; padding-bottom: 4px; }
-  #balatro-game.bp-compact .bp-rack-label { font-size: 9px; margin-bottom: 2px; }
+  #balatro-game.bp-compact .bp-rack-label { font-size: 10px; margin-bottom: 2px; }
   #balatro-game.bp-compact .bp-rack-label b { margin-left: 2px; }
   #balatro-game.bp-compact .bp-rack-cards { gap: 4px; min-height: 77px; padding: 3px 1px 5px; }
   #balatro-game.bp-compact .bp-rack-cards > .bp-item { flex: 0 0 43px; width: 43px; }
   #balatro-game.bp-compact .bp-empty-slot { flex-basis: 43px; height: 60px; }
   #balatro-game.bp-compact .bp-empty-slot span { font-size: 27px; }
-  #balatro-game.bp-compact .bp-item-name { font-size: 8px; margin-top: 3px; }
+  #balatro-game.bp-compact .bp-item-name { font-size: 10px; margin-top: 3px; }
   #balatro-game.bp-compact .bp-stage-heading { margin: 12px 0; }
   #balatro-game.bp-compact h2 { font-size: 22px; }
-  #balatro-game.bp-compact .bp-stage-heading p { font-size: 9px; }
-  #balatro-game.bp-compact .bp-stage-heading > span { font-size: 9px; }
+  #balatro-game.bp-compact .bp-stage-heading p { font-size: 11px; }
+  #balatro-game.bp-compact .bp-stage-heading > span { font-size: 10px; }
   #balatro-game.bp-compact .bp-blind-choices { gap: 6px; }
   #balatro-game.bp-compact .bp-blind-choice { padding: 5px; gap: 5px; }
   #balatro-game.bp-compact .bp-blind-choice-head { font-size: 12px; padding: 5px 2px; }
   #balatro-game.bp-compact .bp-blind-token { height: 42px; width: 42px; outline-width: 2px; outline-offset: -5px; font-size: 20px; margin: 3px 0; }
   #balatro-game.bp-compact .bp-blind-choice > strong { font-size: 22px; }
-  #balatro-game.bp-compact .bp-blind-choice small, #balatro-game.bp-compact .bp-blind-choice > span { font-size: 9px; }
-  #balatro-game.bp-compact .bp-blind-choice > p { font-size: 9px; min-height: 38px; }
+  #balatro-game.bp-compact .bp-blind-choice small, #balatro-game.bp-compact .bp-blind-choice > span { font-size: 10px; }
+  #balatro-game.bp-compact .bp-blind-choice > p { font-size: 10px; min-height: 38px; }
   #balatro-game.bp-compact .bp-blind-choice > button { min-height: 33px; font-size: 11px; padding: 7px 2px; }
   #balatro-game.bp-compact .bp-hand-area { padding-top: 4px; }
-  #balatro-game.bp-compact .bp-hand-caption { font-size: 9px; padding-bottom: 10px; }
-  #balatro-game.bp-compact .bp-hand-caption .bp-btn { font-size: 9px; padding: 5px 8px; min-height: 27px; }
+  #balatro-game.bp-compact .bp-hand-caption { font-size: 10px; padding-bottom: 10px; }
+  #balatro-game.bp-compact .bp-hand-caption .bp-btn { font-size: 10px; padding: 5px 8px; min-height: 30px; }
   #balatro-game.bp-compact .bp-hand { --cw: clamp(52px, 16.5vw, 68px); gap: 0; padding: 10px 2px 6px; min-height: 100px; }
-  #balatro-game.bp-compact .bp-hand > .bp-playing { flex: 0 0 var(--cw); width: var(--cw); }
-  #balatro-game.bp-compact .bp-hand > .bp-playing + .bp-playing { margin-left: min(3px, calc((100% - var(--hand-count) * var(--cw) - 4px) / (var(--hand-count) - 1))); }
+  #balatro-game.bp-compact .bp-hand > .bp-hand-card { flex: 0 0 var(--cw); width: var(--cw); }
+  #balatro-game.bp-compact .bp-hand > .bp-hand-card + .bp-hand-card { margin-left: min(3px, calc((100% - var(--hand-count) * var(--cw) - 4px) / (var(--hand-count) - 1))); }
   #balatro-game.bp-compact .bp-hand.bp-overfull { overflow-x: auto; justify-content: flex-start; }
-  #balatro-game.bp-compact .bp-hand.bp-overfull > .bp-playing + .bp-playing { margin-left: -20px; }
+  #balatro-game.bp-compact .bp-hand.bp-overfull > .bp-hand-card + .bp-hand-card { margin-left: -20px; }
   #balatro-game.bp-compact .bp-playing.bp-selected { transform: translateY(-12px); }
+  #balatro-game.bp-compact .bp-hand-card > .bp-playing.bp-selected + .bp-card-detail-button { transform: translateY(-12px); }
   #balatro-game.bp-compact .bp-play-controls { gap: 8px; padding-top: 12px; }
   #balatro-game.bp-compact .bp-play-controls > button { flex: 1; min-width: 0; min-height: 43px; font-size: 15px; }
-  #balatro-game.bp-compact .bp-play-controls > span { font-size: 9px; max-width: 105px; }
+  #balatro-game.bp-compact .bp-play-controls > span { font-size: 10px; max-width: 105px; }
   #balatro-game.bp-compact .bp-table-footer { font-size: 8px; padding-top: 2px; min-height: 23px; }
   #balatro-game.bp-compact .bp-table-footer small { display: none; }
   #balatro-game.bp-compact .bp-table-footer .bp-quiet { min-height: 25px; font-size: 9px; }
@@ -480,8 +521,13 @@
   #balatro-game.bp-compact .bp-hands-table > div { grid-template-columns: 1.1fr 35px .9fr 12px .9fr; font-size: 11px; padding: 8px 2px; }
   #balatro-game.bp-compact .bp-hands-table small { display: none; }
   #balatro-game.bp-compact .bp-hands-table strong { font-size: 17px; }
-  #balatro-game.bp-compact .bp-info { grid-template-columns: 85px 1fr; gap: 18px; align-items: start; }
+  #balatro-game.bp-compact .bp-info { grid-template-columns: 85px minmax(0,1fr); gap: 18px; align-items: start; }
   #balatro-game.bp-compact .bp-info p { font-size: 12px; }
+  #balatro-game.bp-compact .bp-card-info-dialog .bp-info { grid-template-columns: 75px minmax(0,1fr); gap: 12px; }
+  #balatro-game.bp-compact .bp-card-facts { gap: 7px; }
+  #balatro-game.bp-compact .bp-card-facts section { padding: 7px 8px; }
+  #balatro-game.bp-compact .bp-card-facts section > b { font-size: 11px; }
+  #balatro-game.bp-compact .bp-card-facts section > p { font-size: 12px; }
   #balatro-game.bp-compact .bp-info .bp-btn { font-size: 11px; min-height: 35px; padding: 8px 10px; }
   #balatro-game.bp-compact .bp-collection { grid-template-columns: repeat(3,minmax(0,1fr)); gap: 18px; }
   #balatro-game.bp-compact .bp-collection > div > div { height: 110px; }
@@ -508,7 +554,9 @@
   #balatro-game.bp-compact .bp-start-buttons small { font-size: 9px; }
   #balatro-game.bp-compact .bp-eyebrow { font-size: 9px; letter-spacing: 1px; }
   #balatro-game.bp-compact .bp-entry-bottom { font-size: 8px; letter-spacing: 0; }
+  #balatro-game.bp-compact .bp-entry-bottom { flex-wrap: wrap; justify-content: center; row-gap: 4px; }
   #balatro-game.bp-compact .bp-entry-bottom > span:first-child { display: none; }
+  #balatro-game.bp-compact .bp-entry-bottom .bp-btn { min-height: 32px; padding: 5px 8px; font-size: 10px; }
 }
 
 /* Landscape phones: full-height side dashboard, cards scaled by viewport height. */
@@ -549,16 +597,17 @@
   #balatro-game.bp-short .bp-rack-cards > .bp-item { flex-basis: 43px; width: 43px; }
   #balatro-game.bp-short .bp-empty-slot { flex-basis: 43px; height: 60px; }
   #balatro-game.bp-short .bp-empty-slot span { font-size: 25px; }
-  #balatro-game.bp-short .bp-item-name { font-size: 8px; margin-top: 2px; }
+  #balatro-game.bp-short .bp-item-name { font-size: 10px; margin-top: 3px; }
   #balatro-game.bp-short .bp-hand-area { padding: 2px 0; }
-  #balatro-game.bp-short .bp-hand-caption { padding: 0 3px 2px; font-size: 9px; }
-  #balatro-game.bp-short .bp-hand-caption .bp-btn { font-size: 9px; padding: 2px 7px; min-height: 20px; }
+  #balatro-game.bp-short .bp-hand-caption { padding: 0 3px 4px; font-size: 10px; }
+  #balatro-game.bp-short .bp-hand-caption .bp-btn { font-size: 10px; padding: 5px 8px; min-height: 30px; }
   #balatro-game.bp-short .bp-hand { min-height: 65px; gap: 5px; padding: 10px 4px 3px; }
-  #balatro-game.bp-short .bp-hand > .bp-playing { flex: 0 1 55px; max-width: calc((100dvh - 240px)*.60); }
+  #balatro-game.bp-short .bp-hand > .bp-hand-card { flex: 0 1 55px; max-width: calc((100dvh - 240px)*.60); }
   #balatro-game.bp-short .bp-playing.bp-selected { transform: translateY(-9px); }
+  #balatro-game.bp-short .bp-hand-card > .bp-playing.bp-selected + .bp-card-detail-button { transform: translateY(-9px); }
   #balatro-game.bp-short .bp-play-controls { padding: 5px 0 2px; gap: 15px; }
   #balatro-game.bp-short .bp-play-controls > button { min-height: 31px; min-width: 102px; font-size: 13px; padding: 6px 12px; }
-  #balatro-game.bp-short .bp-play-controls > span { font-size: 9px; }
+  #balatro-game.bp-short .bp-play-controls > span { font-size: 10px; }
   #balatro-game.bp-short .bp-table-footer { min-height: 19px; padding: 0; font-size: 8px; }
   #balatro-game.bp-short .bp-table-footer .bp-btn { min-height: 19px; padding: 2px 6px; font-size: 9px; }
   #balatro-game.bp-short .bp-play-stage { min-height: 45px; gap: 3px; padding: 3px 0; }
@@ -582,8 +631,8 @@
   #balatro-game.bp-short .bp-blind-choice > small { font-size: 8px; grid-column: 2; }
   #balatro-game.bp-short .bp-blind-choice > span { display: none; }
   #balatro-game.bp-short .bp-blind-choice > p { grid-column: 1/3; font-size: 9px; min-height: 25px; }
-  #balatro-game.bp-short .bp-blind-choice > button { grid-column: 1/3; min-height: 26px; font-size: 10px; padding: 5px; }
-  #balatro-game.bp-short .bp-blind-choice > .bp-quiet { min-height: 20px; }
+  #balatro-game.bp-short .bp-blind-choice > button { grid-column: 1/3; min-height: 36px; font-size: 11px; padding: 7px 5px; }
+  #balatro-game.bp-short .bp-blind-choice > .bp-quiet { min-height: 34px; }
   #balatro-game.bp-short .bp-shop-stage { padding: 6px 0; }
   #balatro-game.bp-short .bp-shop-heading { margin-bottom: 10px; }
   #balatro-game.bp-short .bp-shop-heading h2 { font-size: 19px; }
@@ -594,13 +643,17 @@
   #balatro-game.bp-short .bp-shop-shelves label { margin-bottom: 6px; font-size: 8px; }
   #balatro-game.bp-short .bp-shop-cards { gap: 10px; }
   #balatro-game.bp-short .bp-shop-cards .bp-item-art { max-width: 52px; }
+  #balatro-game.bp-short .bp-shop-cards .bp-voucher-art { gap: 2px; border-width: 3px; }
+  #balatro-game.bp-short .bp-shop-cards .bp-voucher-art span { font-size: 7px; letter-spacing: .4px; }
+  #balatro-game.bp-short .bp-shop-cards .bp-voucher-art b { font-size: clamp(18px,6vh,30px); line-height: 1; }
+  #balatro-game.bp-short .bp-shop-cards .bp-voucher-art small { font-size: 6px; line-height: 1.1; }
   #balatro-game.bp-short .bp-shop-cards .bp-item-name { font-size: 10px; margin-top: 6px; }
   #balatro-game.bp-short .bp-shop-cards .bp-item-desc { font-size: 9px; margin: 4px 0 7px; min-height: 25px; }
   #balatro-game.bp-short .bp-shop-cards .bp-btn { min-height: 26px; font-size: 10px; padding: 5px; }
   #balatro-game.bp-short .bp-shop-tip { font-size: 9px; margin-top: 10px; }
   #balatro-game.bp-short .bp-pack-stage .bp-shop-cards { gap: 18px; }
   #balatro-game.bp-short .bp-pack-stage .bp-item-art { max-width: 35px; }
-  #balatro-game.bp-short .bp-pack-stage .bp-item-desc { font-size: 8px; min-height: 0; }
+  #balatro-game.bp-short .bp-pack-stage .bp-item-desc { font-size: 10px; line-height: 1.3; min-height: 26px; }
   #balatro-game.bp-short .bp-pack-stage > .bp-quiet { margin-top: 4px; padding: 3px; min-height: 22px; font-size: 10px; }
   #balatro-game.bp-short .bp-result { padding: 12px; gap: 9px; max-width: 330px; }
   #balatro-game.bp-short .bp-result h2 { font-size: 23px; }
@@ -628,6 +681,8 @@
   #balatro-game.bp-short .bp-start-buttons button { font-size: 11px; padding: 8px; min-height: 35px; }
   #balatro-game.bp-short .bp-eyebrow { font-size: 9px; }
   #balatro-game.bp-short .bp-entry-bottom { grid-column: 1/3; margin: 0; font-size: 8px; }
+  #balatro-game.bp-short .bp-entry-bottom { display: flex; flex-wrap: wrap; justify-content: center; row-gap: 3px; }
+  #balatro-game.bp-short .bp-entry-bottom > span:nth-child(2) { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   #balatro-game *, #balatro-game *::before, #balatro-game *::after { animation: none !important; transition: none !important; }
@@ -697,6 +752,21 @@
 #balatro-game .bp-card-flight { position: absolute; z-index: 95; left: var(--flight-left); top: var(--flight-top); width: var(--flight-width); height: var(--flight-height); aspect-ratio: 120/168; pointer-events: none; transform-origin: center; filter: drop-shadow(2px 7px 9px #0009); }
 #balatro-game .bp-card-flight-lift { animation: bp-pack-choice-lift .22s cubic-bezier(.2,.8,.25,1) both; }
 #balatro-game .bp-card-flight-fly { animation: bp-pack-choice-fly .62s cubic-bezier(.2,.8,.25,1) both; }
+#balatro-game .bp-added-reveal { position: absolute; z-index: 100; inset: 0; display: grid; place-items: center; padding: 18px; background: #071815dc; backdrop-filter: blur(4px); pointer-events: auto; touch-action: none; }
+#balatro-game .bp-added-panel { width: min(520px,100%); max-height: 100%; overflow-y: auto; overscroll-behavior: contain; padding: clamp(16px,4vw,28px); border: 1px solid #e5ce8c; border-radius: 16px; background: linear-gradient(145deg,#284b40f7,#17352ef7); box-shadow: 0 18px 70px #0009,inset 0 1px #fff4; text-align: center; animation: bp-added-panel-in .32s ease-out both; }
+#balatro-game .bp-added-panel h2 { margin: 6px 0 18px; color: #f3d88d; font-size: clamp(20px,4vw,28px); }
+#balatro-game .bp-added-cards { display: flex; align-items: flex-start; justify-content: center; gap: 12px; }
+#balatro-game .bp-added-card { flex: 0 0 var(--added-width,80px); width: var(--added-width,80px); min-width: 0; animation: bp-added-card-in .48s cubic-bezier(.18,.8,.25,1) var(--added-delay,0ms) both; }
+#balatro-game .bp-added-card > div { overflow: hidden; border: 3px solid #eadba7; border-radius: 8px; background: #f6f1df; box-shadow: 0 7px 18px #0008; }
+#balatro-game .bp-added-card svg { display: block; width: 100%; height: auto; }
+#balatro-game .bp-added-card b { display: block; margin-top: 8px; color: #f7e9c0; font-size: 14px; }
+#balatro-game .bp-added-card small { display: block; margin-top: 3px; color: #bdcdb7; font-size: 10px; line-height: 1.35; }
+#balatro-game .bp-added-panel > p { margin: 18px 0 0; color: #c0d0bd; font-size: 12px; }
+@keyframes bp-added-panel-in { from { opacity: 0; transform: translateY(8px) scale(.97); } to { opacity: 1; transform: none; } }
+@keyframes bp-added-card-in { from { opacity: 0; transform: translateY(30px) scale(.78) rotate(-4deg); } 68% { opacity: 1; transform: translateY(-5px) scale(1.04) rotate(1deg); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  #balatro-game .bp-added-panel, #balatro-game .bp-added-card { animation-duration: 1ms !important; animation-delay: 0ms !important; }
+}
 @keyframes bp-pack-choice-lift { 0% { transform: translateY(0) scale(1); } 55% { transform: translateY(-12px) scale(1.08) rotate(-3deg); filter: brightness(1.25) drop-shadow(0 0 9px #f4d47b); } 100% { transform: translateY(-3px) scale(1.04); } }
 @keyframes bp-pack-choice-fly { 0% { transform: translate(0,0) scale(1) rotate(0); opacity: 1; } 18% { transform: translate(0,-10px) scale(1.08) rotate(-4deg); opacity: 1; } 100% { transform: translate(var(--flight-x,0),var(--flight-y,0)) scale(.12) rotate(14deg); opacity: .18; filter: brightness(1.5); } }
 
@@ -756,6 +826,13 @@ body.bp-body-immersive { background: #1e5045; }
 #balatro-game .bp-pack-info-copy section > b { display: block; margin-bottom: 3px; color: #d8be83; font-size: 11px; }
 #balatro-game .bp-pack-info-copy section > p { font-size: 12px; }
 #balatro-game .bp-pack-info-copy > .bp-btn { margin-top: 15px; }
+@media (max-width:560px) {
+  #balatro-game .bp-pack-stage .bp-shop-cards { width: 100%; max-width: 100%; justify-content: flex-start; gap: 10px; overflow-x: auto; overflow-y: visible; padding: 10px 8px 14px; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; }
+  #balatro-game .bp-pack-stage .bp-shop-cards > .bp-item { flex: 0 0 clamp(70px,20vw,92px); width: clamp(70px,20vw,92px); max-width: none; scroll-snap-align: center; }
+  #balatro-game .bp-pack-stage .bp-shop-cards .bp-item-art { max-width: 100%; }
+  #balatro-game .bp-pack-stage .bp-shop-cards .bp-item-desc { display: -webkit-box; max-height: 36px; overflow: hidden; margin: 3px 0; font-size: 10px; line-height: 1.35; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+  #balatro-game .bp-pack-stage .bp-shop-cards .bp-item-name { font-size: 10px; line-height: 1.15; }
+}
 #balatro-game .bp-pack-info-dialog .bp-dialog-content { padding: 18px 22px; }
 #balatro-game.bp-compact .bp-pack-info { grid-template-columns: 64px minmax(0,1fr); align-items: start; gap: 12px; }
 #balatro-game.bp-compact .bp-pack-info-cover { width: 64px; }

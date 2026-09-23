@@ -1,8 +1,11 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import {readFileSync} from 'node:fs'
 import * as E from '../.vuepress/components/balatro/engine.mjs'
-import { HANDS,JOKERS,TAROTS,SPECTRALS,VOUCHERS,BOSSES,DECKS } from '../.vuepress/components/balatro/catalog.mjs'
+import { HANDS,JOKERS,TAROTS,SPECTRALS,VOUCHERS,BOSSES,DECKS,BOOSTER_PACKS } from '../.vuepress/components/balatro/catalog.mjs'
 import { cardCue } from '../.vuepress/components/balatro/cues.mjs'
+import { playingCardDetails } from '../.vuepress/components/balatro/card-details.mjs'
+import PokerTable from '../.vuepress/components/balatro/ui.js'
 
 const cards=(ranks,suits=[])=>ranks.map((rank,i)=>({uid:i+1,rank,suit:suits[i]===undefined?i%4:suits[i],enh:null,edition:null,seal:null}))
 const state=(ranks=[14,14,13,12,10,8,4,2],suits=[])=>{
@@ -14,7 +17,7 @@ const add=(s,id,edition)=>{const j=E.makeJoker(s,id,edition);s.jokers.push(j);re
 const play=(s,ids)=>{s.selected=ids;return E.play(s)}
 
 test('all catalog identifiers are unique, full core card sets are present',()=>{
- assert.equal(JOKERS.length,150);assert.equal(TAROTS.length,22);assert.equal(SPECTRALS.length,18);assert.equal(VOUCHERS.length,32);assert.equal(DECKS.length,15)
+ assert.equal(JOKERS.length,150);assert.equal(TAROTS.length,22);assert.equal(SPECTRALS.length,18);assert.equal(VOUCHERS.length,32);assert.equal(DECKS.length,15);assert.equal(Object.keys(BOOSTER_PACKS).length,15)
  for(const list of [JOKERS,TAROTS,SPECTRALS,VOUCHERS,BOSSES,DECKS,HANDS])assert.equal(new Set(list.map(c=>c.id)).size,list.length)
 })
 const examples=[['high',[14,11,9,5,2]],['pair',[8,8,13,5,2]],['two',[8,8,4,4,2]],['three',[8,8,8,5,2]],['straight',[14,2,3,4,5]],['flush',[14,11,9,5,2],[1,1,1,1,1]],['full',[8,8,8,5,5]],['four',[8,8,8,8,2]],['sf',[5,6,7,8,9],[2,2,2,2,2]],['five',[8,8,8,8,8]],['ffull',[8,8,8,5,5],[1,1,1,1,1]],['ffive',[8,8,8,8,8],[0,0,0,0,0]]]
@@ -38,6 +41,108 @@ test('joker order changes score; Blueprint copies effects without recursion',()=
  const c=state();add(c,'blueprint');add(c,'joker');assert.equal(play(c,[1,2]).mult,10)
  const d=state();add(d,'blueprint');add(d,'brainstorm');assert.equal(play(d,[1,2]).mult,2)
 })
+test('Blueprint copies supported abilities at scoring, blind entry, discard and blind reward triggers',()=>{
+ const scoring=state();add(scoring,'blueprint');add(scoring,'joker');assert.equal(play(scoring,[1,2]).mult,10)
+ const entry=E.newRun('BLUEPRINT-ENTRY'),bp=E.makeJoker(entry,'blueprint'),marble=E.makeJoker(entry,'marble');entry.jokers.push(bp,marble);E.startBlind(entry)
+ assert.equal(entry.deck.filter(c=>c.enh==='stone').length,2,'Marble effect runs once on itself and once through Blueprint')
+ const discarded=state([14,13,12,10,8,6,4,2]);add(discarded,'blueprint');const mail=add(discarded,'mail');mail.rank=discarded.hand[0].rank;discarded.money=0;discarded.selected=[discarded.hand[0].uid];E.discard(discarded)
+ assert.equal(discarded.money,10,'Mail pays once directly and once through Blueprint')
+ const round=state();add(round,'blueprint');add(round,'golden');round.score=E.target(round)-1;round.selected=[round.hand[0].uid];E.play(round)
+ assert.equal(round.phase,'reward');assert.equal(round.roundReward.extra,8,'Golden Joker reward is copied for this game')
+ assert.equal(E.blueprintCanCopy('golden','roundReward'),true);assert.equal(E.blueprintCanCopy('trading','scoring'),false);assert.equal(E.blueprintCanCopy('trading','discard'),false)
+})
+test('Trading stays native-only for discard while retaining its native $3 trigger',()=>{
+ const s=state(),removed=s.hand[0].uid;add(s,'blueprint');add(s,'trading');s.money=0;s.selected=[removed];E.discard(s)
+ assert.equal(s.money,3,'Trading pays its native single-card discard reward exactly once')
+ assert.equal(s.deck.some(c=>c.uid===removed),false,'Trading still destroys the discarded card natively')
+})
+test('skipping score stays final and disabled after fullscreen re-render',()=>{
+ const skipButton={disabled:false},chips={textContent:''},mult={textContent:''},label={textContent:''}
+ const table=Object.create(PokerTable.prototype)
+ table.root={contains:()=>true,querySelector:selector=>({'[data-action="skip-score"]':skipButton,'[data-chips]':chips,'[data-mult]':mult,'[data-score-event]':label}[selector]||null),querySelectorAll:()=>[]}
+ table.anim={token:9,skipped:false,event:{chips:5,mult:2,source:'旧计分事件'},result:{name:'对子',cards:[],chips:1324,mult:4,total:5296}}
+ table.busy=true;table.immersive=false;table.scoreTimer=null;table.timers=new Set();table.audio={fx:()=>{}}
+ table.clearScoreTimer=()=>{table.scoreTimer=null};table.later=(fn,ms)=>({fn,ms});table.showEffect=()=>{}
+ table.fullscreen=()=>{table.immersive=true};table.render=()=>{table.renderedStage=table.playStage({})}
+
+ table.skipScoreAnimation()
+ assert.equal(table.anim.skipped,true)
+ assert.deepEqual(table.anim.event,{chips:1324,mult:4,source:'+5,296'})
+ table.click({target:{closest:()=>({dataset:{action:'fullscreen'},disabled:false})}})
+
+ assert.match(table.renderedStage,/data-action="skip-score"[^>]*disabled/,'fullscreen re-render keeps skip unavailable')
+ assert.equal(chips.textContent,'1,324');assert.equal(mult.textContent,'4');assert.equal(label.textContent,'+5,296','fullscreen re-render reapplies the final score instead of the last animation tick')
+})
+const copiedRepeatScore=(jokerId,rank,configure=()=>{})=>{
+ const s=state([rank,8,6,4,2]);add(s,'blueprint');add(s,jokerId);configure(s);s.selected=[s.hand[0].uid]
+ return E.play(s)
+}
+test('Blueprint copies Sock and Buskin face-card retriggers',()=>{
+ assert.equal(E.blueprintCanCopy('sock','scoring'),true)
+ assert.equal(copiedRepeatScore('sock',13).chips,35)
+})
+test('Blueprint copies Hack retriggers for scoring 2 through 5',()=>{
+ assert.equal(E.blueprintCanCopy('hack','scoring'),true)
+ assert.equal(copiedRepeatScore('hack',2).chips,11)
+})
+test('Blueprint copies Dusk retriggers on the final hand',()=>{
+ assert.equal(E.blueprintCanCopy('dusk','scoring'),true)
+ assert.equal(copiedRepeatScore('dusk',13,s=>{s.hands=1}).chips,35)
+})
+test('Blueprint copies Seltzer retriggers before it expires',()=>{
+ assert.equal(E.blueprintCanCopy('seltzer','scoring'),true)
+ assert.equal(copiedRepeatScore('seltzer',8).chips,29)
+})
+test('Blueprint copies Hanging Joker double retriggers on first-hand face cards',()=>{
+ assert.equal(E.blueprintCanCopy('hanging','scoring'),true)
+ assert.equal(copiedRepeatScore('hanging',13).chips,55)
+})
+test('Blueprint repeats compatible stateful Madness and Square triggers',()=>{
+ assert.equal(E.blueprintCanCopy('madness','blindStart'),true)
+ const entry=E.newRun('BLUEPRINT-MADNESS'),bp=E.makeJoker(entry,'blueprint'),madness=E.makeJoker(entry,'madness')
+ // Keep Blueprint out of Madness's eligible destruction pool so both victims prove
+ // that the copied and native triggers each resolve exactly once.
+ bp.eternal=true;entry.jokers.push(bp,madness,E.makeJoker(entry,'joker'),E.makeJoker(entry,'duo'));E.startBlind(entry)
+ assert.equal(madness.value,2,'Madness gains +0.5 twice: once through Blueprint and once natively')
+ assert.deepEqual(entry.jokers.map(j=>j.id),['blueprint','madness'],'each trigger destroys one eligible victim')
+
+ const squareState=state([14,13,12,11,10,8,4,2]),square=add(squareState,'square')
+ squareState.jokers.unshift(E.makeJoker(squareState,'blueprint'))
+ squareState.selected=squareState.hand.slice(0,4).map(c=>c.uid);E.play(squareState)
+ assert.equal(square.value,8,'a four-card hand applies Square’s +4 state change for each compatible trigger')
+})
+test('Blueprint only copies Golden Joker among blind-end reward effects',()=>{
+ const cases=[['rocket',1],['cloud',1],['satellite',2],['delayed',8]]
+ for(const [id,expected] of cases){
+  assert.equal(E.blueprintCanCopy(id,'roundReward'),false,`${id} is not Blueprint compatible`)
+  const s=state([14,13,12,11,9,8,4,2]);add(s,'blueprint');add(s,id)
+  if(id==='satellite')s.planets=[{},{}]
+  s.score=E.target(s)-1;s.selected=[s.hand[0].uid];E.play(s)
+  assert.equal(s.phase,'reward');assert.equal(s.roundReward.extra,expected,`${id} keeps its native single-trigger reward`)
+ }
+})
+test('blind reward display value comes from the same stake-aware engine rule as payout',()=>{
+ const white=E.newRun('REWARD-WHITE','red',0),red=E.newRun('REWARD-RED','red',1)
+ assert.equal(E.blindReward(white,0),3);assert.equal(E.blindReward(white,1),4);assert.equal(E.blindReward(white,2),5)
+ assert.equal(E.blindReward(red,0),0);assert.equal(E.blindReward(red,1),4);assert.equal(E.blindReward(red,2),5)
+})
+test('a selected face-down card conceals preview details without changing visible previews',()=>{
+ const hidden=state([14,13,12,11,10]);hidden.hand[0].hidden=true;hidden.selected=hidden.hand.slice(0,5).map(c=>c.uid)
+ const concealed=E.preview(hidden)
+ assert.deepEqual(concealed,{unknown:true,name:'暗牌 · 牌型未知'})
+ for(const key of ['id','chips','mult','scoring','contains'])assert.equal(Object.hasOwn(concealed,key),false,`concealed preview omits ${key}`)
+ const visible=state([8,8,13,5,2]);visible.selected=visible.hand.slice(0,2).map(c=>c.uid)
+ const known=E.preview(visible);assert.equal(known.id,'pair');assert.equal(known.chips,10);assert.equal(known.mult,2)
+})
+test('playing-card details share complete face, enhancement, edition and seal trigger copy',()=>{
+ const expected={red:'本牌计分',blue:'击败盲注时',gold:'每次触发获得 $3',purple:'弃掉本牌时'}
+ for(const [seal,phrase] of Object.entries(expected)){
+  const details=playingCardDetails({rank:14,suit:2,enh:'mult',edition:'foil',seal})
+  assert.deepEqual(details.map(d=>d.label),['牌面','增强','版本','封蜡'])
+  assert.equal(details[0].value,'梅花 A');assert.match(details[1].value,/计分时/);assert.match(details[2].value,/参与计分时/);assert.ok(details[3].value.includes(phrase),seal)
+ }
+ assert.deepEqual(playingCardDetails({rank:14,suit:0,hidden:true}),[],'face-down cards reveal no card facts')
+})
 test('held steel and Baron precede joker additions',()=>{
  const s=state();s.hand[2].enh=s.deck[2].enh='steel';add(s,'baron');add(s,'joker');assert.equal(play(s,[1,2]).mult,8.5)
 })
@@ -55,6 +160,63 @@ test('blind payout records played cards, then clears the table for the next scre
  const s=state([14,14,13,12,10,8,4,2]);const played=s.hand.slice(0,5).map(c=>c.uid);s.score=E.target(s)-1;s.selected=played;E.play(s)
  assert.equal(s.phase,'reward');assert.ok(played.every(uid=>s.antePlayed.includes(uid)))
  assert.deepEqual(s.hand,[]);assert.deepEqual(s.draw,[]);assert.deepEqual(s.spent,[]);assert.deepEqual(s.selected,[]);assert.equal(s.forced,null)
+})
+test('Pillar tracks only actually played cards across blinds',()=>{
+ const s=state([14,13,12,10,8,6,4,2]),discarded=s.hand[0].uid,firstPlayed=s.hand[1].uid
+ s.selected=[discarded];E.discard(s)
+ s.score=E.target(s)-1;play(s,[firstPlayed])
+ assert.ok(s.antePlayed.includes(firstPlayed));assert.equal(s.antePlayed.includes(discarded),false)
+ s.phase='select';s.blind=1;E.startBlind(s)
+ s.phase='select';s.blind=2;s.boss='pillar';E.startBlind(s)
+ const priorPlay=s.deck.find(c=>c.uid===firstPlayed),priorDiscard=s.deck.find(c=>c.uid===discarded)
+ assert.equal(E.debuffed(s,priorPlay),true);assert.equal(E.debuffed(s,priorDiscard),false)
+ const currentPlay=s.hand.find(c=>!s.antePlayed.includes(c.uid));assert.ok(currentPlay);assert.equal(E.debuffed(s,currentPlay),false)
+ s.score=0;play(s,[currentPlay.uid]);assert.equal(E.debuffed(s,currentPlay),false,'this blind’s own play is not debuffed retroactively before it ends')
+})
+test('actual pre-tracking v3 save resets contaminated Pillar history and resumes tracking',()=>{
+ const legacy=JSON.parse(readFileSync(new URL('./fixtures/balatro-v3-pre-blindplayed.json',import.meta.url),'utf8'))
+ assert.equal(legacy.version,3);assert.equal(legacy.blindPlayed,undefined)
+ assert.deepEqual(legacy.antePlayed,[26,16],'the original v3 engine recorded both the discarded uid 26 and played uid 16')
+ const restored=E.restore(legacy)
+ assert.ok(restored,'original v3 save remains loadable');assert.deepEqual(restored.antePlayed,[]);assert.deepEqual(restored.blindPlayed,[])
+ assert.match(restored.notice,/支柱记录已重置/)
+ E.cashOut(restored);E.nextBlind(restored);E.startBlind(restored)
+ const played=restored.hand[0].uid;restored.score=E.target(restored)-1;restored.selected=[played];E.play(restored)
+ assert.deepEqual(restored.antePlayed,[played],'only plays after migration are tracked for Pillar')
+})
+test('actual pre-tracking v3 mid-blind save warns even before antePlayed was populated',()=>{
+ const legacy=JSON.parse(readFileSync(new URL('./fixtures/balatro-v3-midblind-pre-blindplayed.json',import.meta.url),'utf8'))
+ assert.equal(legacy.version,3);assert.equal(legacy.blindPlayed,undefined);assert.equal(legacy.phase,'play')
+ assert.equal(legacy.ante,1);assert.equal(legacy.blind,0);assert.ok(legacy.plays>0);assert.deepEqual(legacy.antePlayed,[])
+ const restored=E.restore(legacy)
+ assert.ok(restored,'original v3 mid-blind save remains loadable');assert.deepEqual(restored.antePlayed,[]);assert.deepEqual(restored.blindPlayed,[])
+ assert.match(restored.notice,/支柱记录已重置/,'played cards before the first blind payout are missing from antePlayed but still need a migration notice')
+})
+test('Hook-discarded cards are not recorded as played for Pillar',()=>{
+ const s=state([14,13,12,10,8,6,4,2]);s.blind=2;s.boss='hook'
+ const actuallyPlayed=s.hand[0].uid;play(s,[actuallyPlayed])
+ const hookDiscarded=s.spent.map(c=>c.uid).filter(uid=>uid!==actuallyPlayed)
+ assert.equal(hookDiscarded.length,2);assert.deepEqual(s.blindPlayed,[actuallyPlayed])
+ s.score=E.target(s)-1;const nextPlayed=s.hand[0].uid;play(s,[nextPlayed])
+ assert.ok(s.antePlayed.includes(actuallyPlayed));assert.ok(s.antePlayed.includes(nextPlayed))
+ assert.ok(hookDiscarded.every(uid=>!s.antePlayed.includes(uid)))
+})
+test('finisher Boss blinds pay $8 at every eighth Ante; regular Boss remains $5',()=>{
+ for(const [ante,stake,reward] of [[7,0,5],[8,0,8],[16,2,8]]){
+  const s=state();s.ante=ante;s.blind=2;s.stake=stake;s.disabledBoss=true
+  assert.equal(E.blindReward(s,2),reward,`sidebar and blind-choice helper: ante ${ante}, stake ${stake}`)
+  s.score=E.target(s)-1;play(s,[s.hand[0].uid])
+  assert.equal(s.phase,'reward');assert.equal(s.roundReward.reward,reward,`actual payout: ante ${ante}, stake ${stake}`)
+ }
+})
+test('Fish hides post-play replacements but not post-discard replacements',()=>{
+ const s=state([14,13,12,11,10,9,8,7]);s.blind=2;s.boss='fish'
+ s.draw=cards([6,5]);s.draw.forEach((c,i)=>{c.uid=200+i});s.deck=s.hand.concat(s.draw);s.uid=201
+ play(s,[s.hand[0].uid])
+ const fishReplacement=s.hand.find(c=>c.uid===201);assert.ok(fishReplacement);assert.equal(fishReplacement.hidden,true,'Fish hides a replacement drawn after playing')
+ const priorHand=new Set(s.hand.map(c=>c.uid)),discarded=s.hand.find(c=>!c.hidden);assert.ok(discarded)
+ s.selected=[discarded.uid];E.discard(s)
+ const discardReplacement=s.hand.find(c=>!priorHand.has(c.uid));assert.ok(discardReplacement);assert.equal(discardReplacement.hidden,false,'Fish does not hide a replacement drawn after discarding')
 })
 test('skip cannot bypass Boss and tags are single use',()=>{const s=E.newRun('SKIP');E.skipBlind(s);assert.equal(s.money,19);E.skipBlind(s);assert.equal(s.blind,2);assert.throws(()=>E.skipBlind(s))})
 test('Psychic invalid hand consumes a play but scores zero',()=>{const s=state();s.blind=2;s.boss='psychic';const r=play(s,[1]);assert.equal(r.total,0);assert.equal(s.hands,3)})
@@ -109,6 +271,46 @@ test('all tarots, spectrals execute with valid target fixtures',()=>{
 test('Soul in a spectral pack grants a legendary joker and closes the pack',()=>{
  const s=E.newRun('SOUL');E.startBlind(s);s.phase='shop';s.hand=[];s.pack={kind:'spectral',cards:[{uid:900,kind:'spectral',id:'soul'}],handBefore:[]};E.choosePack(s,900)
  assert.equal(s.phase,'shop');assert.equal(s.pack,null);assert.equal(s.jokers.length,1);assert.equal(JOKERS.find(j=>j.id===s.jokers[0].id).rarity,4)
+})
+test('booster variants use Balatro size, pick, cost and shop weight data',()=>{
+ const expectedWeights={joker:1.2,'joker-jumbo':.6,'joker-mega':.15,planet:4,'planet-jumbo':2,'planet-mega':.5,tarot:4,'tarot-jumbo':2,'tarot-mega':.5,standard:4,'standard-jumbo':2,'standard-mega':.5,spectral:.6,'spectral-jumbo':.3,'spectral-mega':.07}
+ assert.deepEqual(Object.fromEntries(Object.entries(BOOSTER_PACKS).map(([id,p])=>[id,p.weight])),expectedWeights)
+ for(const pack of Object.values(BOOSTER_PACKS)){
+  const s=E.newRun('OPEN-'+pack.id);s.phase='shop';s.money=100;s.shop={cards:[],packs:[{uid:900,kind:'pack',id:pack.id}],voucher:null,rerolls:0,freeUsed:false}
+  assert.equal(E.itemCost(s,s.shop.packs[0]),pack.cost)
+  E.buy(s,900);assert.equal(s.pack.id,pack.id);assert.equal(s.pack.kind,pack.family);assert.equal(s.pack.cards.length,pack.options);assert.equal(s.pack.picksLeft,pack.choose)
+ }
+ const first=E.newRun('FIRST-BOOSTER');E.startBlind(first);first.phase='reward';E.cashOut(first)
+ assert.ok(first.shop.packs.some(pack=>pack.id==='joker'),'first shop guarantees a normal Buffoon/Joker pack')
+})
+test('booster offer choices do not repeat the same card identity',()=>{
+ for(const pack of Object.values(BOOSTER_PACKS))for(let seed=0;seed<24;seed++){
+  const s=E.newRun(`${pack.id}-${seed}`);s.phase='shop';s.money=100
+  if(pack.family==='tarot'&&seed%2===0)s.vouchers.push('omen')
+  s.shop={cards:[],packs:[{uid:1000,kind:'pack',id:pack.id}],voucher:null,rerolls:0,freeUsed:false}
+  E.buy(s,1000)
+  const keys=s.pack.cards.map(c=>c.kind==='card'?`card:${c.rank}:${c.suit}:${c.enh||''}:${c.edition||''}:${c.seal||''}`:`${c.kind}:${c.id}`)
+  assert.equal(new Set(keys).size,keys.length,`${pack.id}, seed ${seed}`)
+ }
+})
+test('Mega booster packs allow two sequential picks across all five pack families',()=>{
+ const fixtures={
+  joker:[{uid:910,kind:'joker',id:'joker'},{uid:911,kind:'joker',id:'jolly'}],
+  planet:[{uid:901,kind:'planet',id:'high'},{uid:902,kind:'planet',id:'pair'}],
+  tarot:[{uid:903,kind:'tarot',id:'hermit'},{uid:904,kind:'tarot',id:'hermit'}],
+  standard:[{uid:905,kind:'card',rank:14,suit:0},{uid:906,kind:'card',rank:13,suit:1}],
+  spectral:[{uid:907,kind:'spectral',id:'blackhole'},{uid:908,kind:'spectral',id:'blackhole'}]
+ }
+ for(const [family,choices] of Object.entries(fixtures)){
+  const s=E.newRun('MEGA-'+family);s.phase='shop';s.pack={id:`${family}-mega`,kind:family,size:'mega',choose:2,picksLeft:2,picksMade:0,cards:choices,handBefore:[]}
+  E.choosePack(s,choices[0].uid);assert.equal(s.pack.picksLeft,1,`${family} remains open after first pick`);assert.equal(s.pack.cards.length,1);assert.equal(s.pack.picksMade,1)
+  E.choosePack(s,choices[1].uid);assert.equal(s.pack,null,`${family} closes after second pick`)
+ }
+})
+test('Grim in a spectral pack destroys one card and adds two enhanced Aces before pack close',()=>{
+ const s=E.newRun('GRIM');E.startBlind(s);const before=s.deck.map(c=>c.uid);s.pack={kind:'spectral',cards:[{uid:900,kind:'spectral',id:'grim'}],handBefore:[]};s.hand=s.deck.slice(0,8).map(c=>({...c}));E.choosePack(s,900)
+ const added=s.deck.filter(c=>!before.includes(c.uid)),removed=before.filter(uid=>!s.deck.some(c=>c.uid===uid))
+ assert.equal(s.pack,null);assert.equal(s.hand.length,0);assert.equal(removed.length,1);assert.equal(added.length,2);assert.ok(added.every(c=>c.rank===14&&['bonus','mult','wild','glass','steel','gold','lucky'].includes(c.enh)))
 })
 test('all 32 vouchers buy without breaking stage and save',()=>{
  for(const v of VOUCHERS){const s=state([10,11,12,13,14],[1,1,1,1,1]);play(s,[1,2,3,4,5]);E.cashOut(s);s.money=100;s.shop.voucher={uid:900,kind:'voucher',id:v.id};E.buy(s,900);assert.ok(s.vouchers.includes(v.id));assert.ok(E.restore(s),v.id)}

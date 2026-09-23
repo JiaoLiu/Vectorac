@@ -258,5 +258,19 @@ export const SPECTRALS = [
 
 export const ENHANCEMENTS = {bonus:'奖励 +30 筹码',mult:'倍率 +4',wild:'万能花色',glass:'玻璃 ×2 倍率',steel:'钢铁：留手 ×1.5',stone:'石头 +50 筹码',gold:'黄金：留手 $3',lucky:'幸运：1/5 +20 倍率，1/15 +$20'}
 export const EDITIONS = {foil:'闪箔 +50 筹码',holo:'镭射 +10 倍率',poly:'多彩 ×1.5 倍率',negative:'负片 +1 槽位'}
+export const SEALS = {red:'红色蜡封：触发时使这张牌的效果额外触发一次',blue:'蓝色蜡封：击败盲注时，若留在手牌中，生成上一手牌型对应的星球牌',gold:'金色蜡封：打出计分时获得 $3',purple:'紫色蜡封：弃掉这张牌时生成一张塔罗牌'}
+const boosterFamilies=[
+  {id:'joker',baseName:'小丑包',content:'小丑牌',description:'小丑会持续提供计分、倍率或经济效果。',normalOptions:2,largeOptions:4,weights:[1.2,.6,.15],action:'加入小丑牌架'},
+  {id:'planet',baseName:'天体包',content:'星球牌',description:'星球牌会提升对应扑克牌型的等级，增加基础筹码与倍率。',normalOptions:3,largeOptions:5,weights:[4,2,.5],action:'立即使用并升级牌型'},
+  {id:'tarot',baseName:'秘术包',content:'秘术牌',description:'秘术牌可以强化、复制或改变扑克牌，也有经济类效果；部分牌需要先选择手牌目标。',normalOptions:3,largeOptions:5,weights:[4,2,.5],action:'立即使用'},
+  {id:'standard',baseName:'标准包',content:'扑克牌',description:'扑克牌可能带有强化、闪箔版本或蜡封。',normalOptions:3,largeOptions:5,weights:[4,2,.5],action:'加入牌组'},
+  {id:'spectral',baseName:'幻灵包',content:'幻灵牌',description:'幻灵牌是强力的一次性效果，可以改造或销毁扑克牌、小丑，也可能带来代价。',normalOptions:2,largeOptions:4,weights:[.6,.3,.07],action:'立即使用'}
+]
+export const BOOSTER_PACKS=Object.fromEntries(boosterFamilies.flatMap(family=>[
+  {id:family.id,family:family.id,size:'normal',name:family.baseName,content:family.content,description:family.description,options:family.normalOptions,choose:1,cost:4,weight:family.weights[0],action:family.action},
+  {id:`${family.id}-jumbo`,family:family.id,size:'jumbo',name:`巨型${family.baseName}`,content:family.content,description:family.description,options:family.largeOptions,choose:1,cost:6,weight:family.weights[1],action:family.action},
+  {id:`${family.id}-mega`,family:family.id,size:'mega',name:`超级${family.baseName}`,content:family.content,description:family.description,options:family.largeOptions,choose:2,cost:8,weight:family.weights[2],action:family.action}
+]).map(pack=>[pack.id,pack]))
+export const boosterPack=id=>BOOSTER_PACKS[id]||BOOSTER_PACKS.standard
 export const STAKES = ['白色赌注','红色赌注','绿色赌注','黑色赌注','蓝色赌注','紫色赌注','橙色赌注','金色赌注']
 export const byId = (list, id) => list.find(item => item.id === id)

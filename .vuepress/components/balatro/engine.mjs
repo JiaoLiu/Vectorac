@@ -1,4 +1,4 @@
-import { HANDS, JOKERS, TAROTS, SPECTRALS, VOUCHERS, BOSSES, DECKS, byId } from './catalog.mjs'
+import { HANDS, JOKERS, TAROTS, SPECTRALS, VOUCHERS, BOSSES, DECKS, BOOSTER_PACKS, boosterPack, byId } from './catalog.mjs'
 
 export const VERSION = 3
 export const clone = value => JSON.parse(JSON.stringify(value))
@@ -45,7 +45,7 @@ export function newRun(seed = String(Date.now()), deckType = 'red', stake = 0) {
   let hash = 2166136261
   for (const char of String(seed).slice(0,32)) hash = Math.imul(hash ^ char.charCodeAt(0), 16777619) >>> 0
   const s = {version:VERSION, seed:String(seed).slice(0,32), rng:hash, uid:0, phase:'select', deckType, stake:Math.max(0,Math.min(7,Number(stake)||0)), ante:1, blind:0, round:0, money:4,
-    deck:[], hand:[], draw:[], spent:[], selected:[], jokers:[], consumables:[], vouchers:[], tags:[], levels:{}, played:{}, roundPlayed:{}, antePlayed:[],
+    deck:[], hand:[], draw:[], spent:[], selected:[], jokers:[], consumables:[], vouchers:[], tags:[], levels:{}, played:{}, roundPlayed:{}, antePlayed:[], blindPlayed:[],
     score:0, hands:4, discards:3, plays:0, discarded:0, totalHands:0, skips:0, handDelta:0, ectoplasm:0, planets:[], tarotUsed:0, lastUsed:null,
     best:0, earned:0, boss:'', forced:null, disabledBoss:false, shop:null, pack:null, lastResult:null, roundReward:null, won:false, endless:false, grosGone:false}
   HANDS.forEach(h=>{s.levels[h.id]=1;s.played[h.id]=0})
@@ -111,7 +111,10 @@ export function debuffed(s,c) {
 }
 export function preview(s) {
   if(!s.selected.length) return null
-  const e=evaluate(s.selected.map(id=>s.hand.find(c=>c.uid===id)).filter(Boolean),s)
+  const cards=s.selected.map(id=>s.hand.find(c=>c.uid===id)).filter(Boolean)
+  if(!cards.length)return null
+  if(cards.some(c=>c.hidden))return {unknown:true,name:'暗牌 · 牌型未知'}
+  const e=evaluate(cards,s)
   return Object.assign(e,handBase(s,e.id),{name:byId(HANDS,e.id).name})
 }
 function item(s,kind,id) { return {uid:++s.uid,kind,id} }
@@ -138,6 +141,17 @@ function planet(s, excluded = new Set()) {
 }
 function tarot(s) { const pool=TAROTS.filter(t=>has(s,'showman')||!s.consumables.some(c=>c.kind==='tarot'&&c.id===t.id));return item(s,'tarot',pick(s,pool.length?pool:TAROTS).id) }
 function spectral(s) { return item(s,'spectral',pick(s,SPECTRALS.filter(x=>!['soul','blackhole'].includes(x.id))).id) }
+function packCardKey(c) {
+  if(c.kind==='card')return `card:${c.rank}:${c.suit}:${c.enh||''}:${c.edition||''}:${c.seal||''}`
+  return `${c.kind}:${c.id}`
+}
+function distinctPackDraw(s,used,draw) {
+  if(has(s,'showman'))return draw()
+  let card
+  do { card=draw() } while(used.has(packCardKey(card)))
+  used.add(packCardKey(card))
+  return card
+}
 function addConsumable(s,card) { if(s.consumables.length<consumableSlots(s)) {s.consumables.push(card);return true} return false }
 function addCard(s,c) {
   const card=Object.assign({},c,{uid:++s.uid});delete card.hidden
@@ -157,10 +171,10 @@ function syncCards(s) {
   const map=new Map(s.deck.map(c=>[c.uid,c]))
   for(const field of ['hand','draw','spent']) s[field]=s[field].filter(c=>map.has(c.uid)).map(c=>Object.assign({},map.get(c.uid),{hidden:!!c.hidden}))
 }
-function drawCards(s,n,initial=false) {
+function drawCards(s,n,cause) {
   for(let i=0;i<n&&s.draw.length;i++) {
     const c=s.draw.pop()
-    c.hidden=bossActive(s,'house')&&initial || bossActive(s,'mark')&&face(s,c) || bossActive(s,'wheel')&&chance(s,7) || bossActive(s,'fish')&&s.plays>0
+    c.hidden=bossActive(s,'house')&&cause==='initial' || bossActive(s,'mark')&&face(s,c) || bossActive(s,'wheel')&&chance(s,7) || bossActive(s,'fish')&&cause==='play'
     s.hand.push(c)
   }
   if(bossActive(s,'bell') && (!s.forced||!s.hand.some(c=>c.uid===s.forced))) s.forced=s.hand.length?pick(s,s.hand).uid:null
@@ -174,16 +188,16 @@ export function selectCard(s,uid) {
 }
 export function startBlind(s) {
   assert(s.phase==='select','请先完成当前盲注')
-  s.phase='play';s.round++;s.plays=0;s.discarded=0;s.score=0;s.roundPlayed={};s.selected=[];s.spent=[];s.forced=null;s.disabledBoss=false;s.lastResult=null
+  s.phase='play';s.round++;s.plays=0;s.discarded=0;s.score=0;s.roundPlayed={};s.selected=[];s.spent=[];s.blindPlayed=[];s.forced=null;s.disabledBoss=false;s.lastResult=null
   s.jokers.forEach(j=>{j.disabled=false;if(!['yorick','loyalty'].includes(j.id))j.counter=0})
   for(const j of s.jokers.slice()) if(j.id==='ceremonial') {
     const index=s.jokers.indexOf(j), victim=s.jokers[index+1]
     if(victim&&!victim.eternal) {j.value+=sellValue(victim)*2;s.jokers.splice(index+1,1)}
   }
   if(bossActive(s,'acorn')) s.jokers=shuffle(s,s.jokers)
-  const certificates=[]
-  for(const j of s.jokers.slice()) {
-    if(j.perished)continue
+  const certificates=[],startEffects=jokerTriggers(s,'blindStart')
+  for(const {slot,j} of startEffects) {
+    if(!s.jokers.includes(slot)||!s.jokers.includes(j)||j.perished)continue
     if(j.id==='marble')addCard(s,{rank:2+Math.floor(random(s)*13),suit:Math.floor(random(s)*4),enh:'stone',edition:null,seal:null})
     if(j.id==='riff')for(let i=0;i<2&&s.jokers.length<slots(s);i++)s.jokers.push(randomJoker(s,1))
     if(j.id==='cartomancer')addConsumable(s,tarot(s))
@@ -196,7 +210,7 @@ export function startBlind(s) {
   if(bossActive(s,'needle'))s.hands=1
   if(bossActive(s,'water'))s.discards=0
   s.oxHand=HANDS.reduce((a,b)=>(s.played[b.id]||0)>(s.played[a.id]||0)?b:a).id
-  s.hand=certificates.map(c=>Object.assign({},c));s.draw=shuffle(s,s.deck.filter(c=>!certificates.some(x=>x.uid===c.uid)).map(c=>Object.assign({},c)));drawCards(s,Math.max(0,handSize(s)-s.hand.length),true)
+  s.hand=certificates.map(c=>Object.assign({},c));s.draw=shuffle(s,s.deck.filter(c=>!certificates.some(x=>x.uid===c.uid)).map(c=>Object.assign({},c)));drawCards(s,Math.max(0,handSize(s)-s.hand.length),'initial')
   if(s.tags.includes('hands')){s.hands+=3;s.tags.splice(s.tags.indexOf('hands'),1)}
   if(s.tags.includes('discards')){s.discards+=3;s.tags.splice(s.tags.indexOf('discards'),1)}
 }
@@ -222,15 +236,29 @@ function effective(s,index,seen=[]) {
   if(j.id==='brainstorm')return effective(s,0,seen.concat(index))
   return j
 }
+// Copyable triggers are deliberately phase-scoped. Passive slot/hand-size rules,
+// card editions, and stickers stay on their own card. Stateful effects marked
+// compatible by the original (including Madness and Square) run once per trigger;
+// incompatible destructive one-offs are excluded. Golden Joker is an explicit
+// exception requested for this game's Blueprint behavior.
+const BLUEPRINT_COPYABLE = {
+  scoring: new Set(('greedy lusty wrath glutton fibonacci scary even odd scholar business photograph smiley ticket triboulet bloodstone arrowhead onyx rough walkie ancient idol wee eightball hiker mime baron shoot reserved jolly zany mad crazy droll sly wily clever devious crafty duo trio family order tribe joker half banner summit misprint fist blackboard steel abstract supernova green bus trousers popcorn redcard flash ceremonial runner square ice castle constellation hologram ramen banana vampire glass luckycat madness obelisk campfire hitroad canio yorick fortune acrobat loyalty stencil bull boot seeing cardsharp flower stone throwback gros blue erosion swash stuntman drivers superposition seance vagabond toDo DNA baseball sock hack dusk seltzer hanging').split(' ')),
+  blindStart: new Set(['marble','riff','cartomancer','madness','certificate']),
+  discard: new Set(['green','ramen','burnt','castle','mail','faceless','hitroad','yorick']),
+  roundReward: new Set(['golden'])
+}
+export function blueprintCanCopy(id,phase) { return !!(BLUEPRINT_COPYABLE[phase]&&BLUEPRINT_COPYABLE[phase].has(id)) }
+function jokerTriggers(s,phase) {
+  return s.jokers.map((slot,index)=>({slot,j:effective(s,index)})).filter(({slot,j})=>j&&(slot===j||blueprintCanCopy(j.id,phase)))
+}
 function scoring(s,cards,e) {
   let {chips,mult}=handBase(s,e.id), events=[],destroy=[]
   if(bossActive(s,'flint')){chips=Math.max(1,Math.round(chips/2));mult=Math.max(1,Math.round(mult/2))}
   const add=(source,c=0,m=0,x=1,uid=null)=>{chips+=c;mult=(mult+m)*x;if(c||m||x!==1)events.push({source,chips,mult,c,m,x,uid})}
   events.push({source:byId(HANDS,e.id).name,chips,mult,c:chips,m:mult,x:1})
-  const effects=s.jokers.map((j,i)=>({j:effective(s,i),slot:j})).filter(x=>x.j)
+  const effects=jokerTriggers(s,'scoring')
   const scoringCards=e.scoring, held=s.hand.filter(c=>!cards.some(p=>p.uid===c.uid))
-  for(const j of s.jokers) {
-    if(j.disabled||j.perished)continue
+  for(const {j} of effects) {
     if(j.id==='green')j.value++
     if(j.id==='bus')j.value=scoringCards.some(c=>face(s,c)&&!debuffed(s,c))?0:j.value+1
     if(j.id==='square'&&cards.length===4)j.value+=4
@@ -299,9 +327,7 @@ function scoring(s,cards,e) {
       if(j.id==='reserved'&&face(s,c)&&chance(s,2))s.money++
     }
   }
-  for(let index=0;index<s.jokers.length;index++) {
-    const slot=s.jokers[index],j=effective(s,index)
-    if(slot.disabled||slot.perished)continue
+  for(const {slot,j} of effects) {
     if(slot.edition==='foil')add('闪箔',50,0,1,slot.uid)
     if(slot.edition==='holo')add('镭射',0,10,1,slot.uid)
     if(j) {
@@ -366,7 +392,7 @@ export function play(s) {
   if(blocked){s.money+=8*count(s,'matador');result={id:e.id,name:e.id==='high'?'牌型被限制':byId(HANDS,e.id).name,chips:0,mult:0,total:0,events:[{source:'Boss 限制：本手不计分',chips:0,mult:0}],destroy:[],cards:clone(cards)}}
   else result=scoring(s,cards,e)
   s.hands--;s.plays++;s.totalHands++;s.played[e.id]++;s.roundPlayed[e.id]=(s.roundPlayed[e.id]||0)+1;s.score+=result.total;s.best=Math.max(s.best,result.total)
-  s.spent.push(...cards);s.hand=s.hand.filter(c=>!cards.some(p=>p.uid===c.uid));s.selected=[];s.forced=null
+  s.spent.push(...cards);s.blindPlayed=Array.from(new Set(s.blindPlayed.concat(cards.map(c=>c.uid))));s.hand=s.hand.filter(c=>!cards.some(p=>p.uid===c.uid));s.selected=[];s.forced=null
   s.jokers.forEach(j=>{if(j.id==='ice')j.value-=5;if(j.id==='seltzer')j.value--;if(j.id==='loyalty')j.counter++})
   s.jokers=s.jokers.filter(j=>!(['ice','seltzer'].includes(j.id)&&j.value<=0))
   removeCards(s,result.destroy)
@@ -374,15 +400,14 @@ export function play(s) {
   if(s.score>=target(s)){finishBlind(s);return result}
   if(s.hands<=0||!s.hand.length&&!s.draw.length){if(has(s,'mrbones')&&s.score>=target(s)*.25){s.jokers.splice(s.jokers.findIndex(j=>j.id==='mrbones'),1);finishBlind(s)}else s.phase='lost';return result}
   if(bossActive(s,'hook')){const discard=shuffle(s,s.hand).slice(0,2);s.spent.push(...discard);s.hand=s.hand.filter(c=>!discard.includes(c))}
-  drawCards(s,bossActive(s,'serpent')?3:Math.max(0,handSize(s)-s.hand.length))
+  drawCards(s,bossActive(s,'serpent')?3:Math.max(0,handSize(s)-s.hand.length),'play')
   return result
 }
 export function discard(s) {
   assert(s.phase==='play'&&s.discards>0,'没有剩余弃牌次数')
   const cards=s.hand.filter(c=>s.selected.includes(c.uid));assert(cards.length>0,'请选择要弃掉的牌')
   const e=evaluate(cards,s)
-  for(const j of s.jokers) {
-    if(j.disabled||j.perished)continue
+  for(const {j} of jokerTriggers(s,'discard')) {
     if(j.id==='green')j.value=Math.max(0,j.value-1)
     if(j.id==='ramen')j.value=Math.max(1,j.value-.01*cards.length)
     if(j.id==='burnt'&&s.discarded===0)s.levels[e.id]++
@@ -393,15 +418,16 @@ export function discard(s) {
     if(j.id==='yorick'){j.counter+=cards.length;while(j.counter>=23){j.value++;j.counter-=23}}
   }
   cards.forEach(c=>{if(c.seal==='purple')addConsumable(s,tarot(s))})
-  const destroy=has(s,'trading')&&s.discarded===0&&cards.length===1
+  const destroy=jokerTriggers(s,'discard').some(({j})=>j.id==='trading')&&s.discarded===0&&cards.length===1
   if(destroy)s.money+=3
   s.discards--;s.discarded++;s.hand=s.hand.filter(c=>!cards.includes(c));s.spent.push(...cards);s.selected=[];s.forced=null
   if(destroy)removeCards(s,cards.map(c=>c.uid))
-  drawCards(s,bossActive(s,'serpent')?3:Math.max(0,handSize(s)-s.hand.length))
+  drawCards(s,bossActive(s,'serpent')?3:Math.max(0,handSize(s)-s.hand.length),'discard')
   if(!s.hand.length&&!s.draw.length)s.phase='lost'
 }
+export const blindReward = (s,blind=s.blind) => s.stake>=1&&blind===0?0:blind===2&&s.ante%8===0?8:([3,4,5][blind]||0)
 function finishBlind(s) {
-  const reward=s.stake>=1&&s.blind===0?0:[3,4,5][s.blind], hands=s.hands*(s.deckType==='green'?2:1),discardMoney=s.deckType==='green'?s.discards:0
+  const reward=blindReward(s), hands=s.hands*(s.deckType==='green'?2:1),discardMoney=s.deckType==='green'?s.discards:0
   const interest=s.deckType==='green'?0:Math.min(owns(s,'tree')?20:owns(s,'seed')?10:5,Math.max(0,Math.floor(s.money/5))*(1+count(s,'tomoon')))
   let extra=0
   for(const c of s.hand) if(!debuffed(s,c)) {
@@ -409,14 +435,18 @@ function finishBlind(s) {
     if(c.enh==='gold')extra+=3*repeat
     if(c.seal==='blue')for(let i=0;i<repeat;i++)addConsumable(s,item(s,'planet',s.lastResult.id))
   }
-  for(const j of s.jokers) {
-    if(j.rental)extra-=3
-    if(j.perished)continue
+  const rocketProgressed=new Set()
+  for(const {slot,j} of jokerTriggers(s,'roundReward')) {
+    if(!s.jokers.includes(slot)||!s.jokers.includes(j)||j.perished)continue
     if(j.id==='golden')extra+=4
-    if(j.id==='rocket'){if(s.blind===2)j.value+=2;extra+=j.value}
+    if(j.id==='rocket'){if(s.blind===2&&!rocketProgressed.has(j.uid)){j.value+=2;rocketProgressed.add(j.uid)}extra+=j.value}
     if(j.id==='cloud')extra+=s.deck.filter(c=>c.rank===9&&c.enh!=='stone').length
     if(j.id==='satellite')extra+=s.planets.length
     if(j.id==='delayed'&&s.discarded===0)extra+=s.discards*2
+  }
+  for(const j of s.jokers) {
+    if(j.rental)extra-=3
+    if(j.perished)continue
     if(j.id==='egg')j.value+=3
     if(j.id==='popcorn')j.value-=4
     if(j.id==='turtle')j.value--
@@ -431,7 +461,7 @@ function finishBlind(s) {
   s.jokers=s.jokers.filter(j=>!j.expired&&!(['popcorn','turtle','banana'].includes(j.id)&&j.value<=0))
   const total=reward+hands+interest+extra+discardMoney
   s.money+=total;s.earned+=total;s.roundReward={reward,hands,interest,extra:extra+discardMoney,total}
-  s.antePlayed=Array.from(new Set(s.antePlayed.concat(s.spent.map(c=>c.uid))))
+  s.antePlayed=Array.from(new Set(s.antePlayed.concat(s.blindPlayed)))
   if(s.blind===2&&s.deckType==='anaglyph')s.tags.push('double')
   // The hand, draw pile, and played cards are returned to the deck between blinds.
   // Clear the table only after rewards and per-card effects have been calculated.
@@ -447,7 +477,7 @@ export function continueEndless(s) {assert(s.phase==='won','尚未通关');s.end
 function cost(s,n) {return Math.max(1,Math.floor(n*(owns(s,'liquidation')?.5:owns(s,'clearance')?.75:1)))}
 export const canPay = (s,n) => s.money-n >= (has(s,'credit')?-20:0)
 function pay(s,n) {assert(canPay(s,n),'金钱不足');s.money-=n}
-export const itemCost = (s,card) => card.free||has(s,'astronomer')&&(card.kind==='planet'||card.kind==='pack'&&card.id==='planet')?0:card.rental?1:cost(s,card.kind==='joker'?byId(JOKERS,card.id).cost+(card.edition?2:0):card.kind==='voucher'?10:card.kind==='pack'?4:3)
+export const itemCost = (s,card) => card.free||has(s,'astronomer')&&(card.kind==='planet'||card.kind==='pack'&&boosterPack(card.id).family==='planet')?0:card.rental?1:cost(s,card.kind==='joker'?byId(JOKERS,card.id).cost+(card.edition?2:0):card.kind==='voucher'?10:card.kind==='pack'?boosterPack(card.id).cost:3)
 function shopCards(s) {
   const result=[]
   for(let i=0;i<2+Number(owns(s,'overstock'))+Number(owns(s,'plus'));i++) {
@@ -473,7 +503,13 @@ function openShop(s) {
   s.phase='shop';s.selected=[]
   const pool=VOUCHERS.filter(v=>!owns(s,v.id)&&(!v.requires||owns(s,v.requires)))
   const voucher=pool.length?item(s,'voucher',pick(s,pool).id):null
-  s.shop={cards:shopCards(s),packs:[item(s,'pack',s.round===1?'joker':pick(s,['joker','planet','tarot','standard','spectral'])),item(s,'pack',pick(s,['planet','tarot','standard','spectral']))],voucher,rerolls:0,freeUsed:false}
+  s.shop={cards:shopCards(s),packs:[s.round===1?item(s,'pack','joker'):randomBoosterPack(s),randomBoosterPack(s)],voucher,rerolls:0,freeUsed:false}
+}
+function randomBoosterPack(s) {
+  const packs=Object.values(BOOSTER_PACKS),total=packs.reduce((sum,pack)=>sum+pack.weight,0)
+  let roll=random(s)*total
+  for(const pack of packs){roll-=pack.weight;if(roll<0)return item(s,'pack',pack.id)}
+  return item(s,'pack',packs[packs.length-1].id)
 }
 export const rerollCost = s => has(s,'chaos')&&!s.shop.freeUsed?0:Math.max(1,5-2*Number(owns(s,'reroll'))-2*Number(owns(s,'glut')))+s.shop.rerolls
 export function rerollShop(s) {
@@ -502,25 +538,27 @@ export function buy(s,uid) {
   s.shop.cards=s.shop.cards.filter(c=>c.uid!==uid);s.shop.packs=s.shop.packs.filter(c=>c.uid!==uid)
   if(s.shop.voucher&&s.shop.voucher.uid===uid)s.shop.voucher=null
 }
-function openPack(s,kind) {
+function openPack(s,id) {
+  const def=boosterPack(id),kind=def.family
   for(const j of s.jokers)if(j.id==='hallucination'&&!j.perished&&chance(s,2))addConsumable(s,tarot(s))
-  const cards=[]
+  const cards=[],offered=new Set()
   const planetIds=new Set()
   if(kind==='planet'&&owns(s,'telescope')) {
     const mostPlayed=HANDS.reduce((a,b)=>s.played[b.id]>s.played[a.id]?b:a)
     cards.push(item(s,'planet',mostPlayed.id));planetIds.add(mostPlayed.id)
   }
-  for(let i=cards.length;i<(kind==='joker'?2:3);i++) {
-    let c
-    if(kind==='joker')c=randomJoker(s)
-    else if(kind==='planet')c=planet(s,planetIds)
-    else if(kind==='tarot')c=owns(s,'omen')&&random(s)<.2?spectral(s):tarot(s)
-    else if(kind==='spectral')c=random(s)<.006?item(s,'spectral',pick(s,['soul','blackhole'])):spectral(s)
-    else c={uid:++s.uid,kind:'card',rank:2+Math.floor(random(s)*13),suit:Math.floor(random(s)*4),enh:random(s)<.4?pick(s,['bonus','mult','wild','glass','steel','stone','gold','lucky']):null,edition:edition(s),seal:random(s)<.2?pick(s,['red','blue','gold','purple']):null}
+  for(let i=cards.length;i<def.options;i++) {
+    const c=distinctPackDraw(s,offered,()=>{
+      if(kind==='joker')return randomJoker(s)
+      if(kind==='planet')return planet(s,planetIds)
+      if(kind==='tarot')return owns(s,'omen')&&random(s)<.2?spectral(s):tarot(s)
+      if(kind==='spectral')return random(s)<.006?item(s,'spectral',pick(s,['soul','blackhole'])):spectral(s)
+      return {uid:++s.uid,kind:'card',rank:2+Math.floor(random(s)*13),suit:Math.floor(random(s)*4),enh:random(s)<.4?pick(s,['bonus','mult','wild','glass','steel','stone','gold','lucky']):null,edition:edition(s),seal:random(s)<.2?pick(s,['red','blue','gold','purple']):null}
+    })
     if(c.edition==='negative'&&c.kind==='card')c.edition=null
     cards.push(c)
   }
-  s.pack={kind,cards,handBefore:clone(s.hand)}
+  s.pack={id:def.id,kind,size:def.size,cards,choose:def.choose,picksLeft:def.choose,picksMade:0,handBefore:clone(s.hand)}
   if(['tarot','spectral'].includes(kind)){s.hand=shuffle(s,s.deck).slice(0,handSize(s)).map(c=>Object.assign({},c));s.selected=[]}
 }
 export function choosePack(s,uid) {
@@ -529,6 +567,8 @@ export function choosePack(s,uid) {
   if(c.kind==='joker'){assert(s.jokers.length<slots(s)+(c.edition==='negative'?1:0),'小丑槽位已满');s.jokers.push(c)}
   else if(c.kind==='card')addCard(s,c)
   else useEffect(s,c)
+  const picksLeft=s.pack.picksLeft||s.pack.choose||boosterPack(s.pack.id||s.pack.kind).choose||1
+  if(picksLeft>1){s.pack.cards=s.pack.cards.filter(x=>x.uid!==c.uid);s.pack.picksLeft=picksLeft-1;s.pack.picksMade=(s.pack.picksMade||0)+1;s.selected=[];return}
   closePack(s,false)
 }
 export function closePack(s,skip=true) {
@@ -617,9 +657,20 @@ export function restore(raw) {
   try {
     const s=typeof raw==='string'?JSON.parse(raw):clone(raw)
     if(!s||s.version!==VERSION||!byId(DECKS,s.deckType)||!['select','play','reward','shop','lost','won'].includes(s.phase))return null
+    // Older v3 saves mixed played and discarded cards in antePlayed. Plays during
+    // the current blind were not added there yet, so `plays` also detects lost
+    // history. Blind-boundary cleanup destroyed the source data; reset this ante
+    // and track again from here instead of guessing which cards were played.
+    const legacyPillarHistory=s.blindPlayed===undefined
+    if(legacyPillarHistory)s.blindPlayed=[]
     if(!Number.isInteger(s.ante)||s.ante<1||s.ante>30||![0,1,2].includes(s.blind)||!byId(BOSSES,s.boss))return null
     if(!Number.isFinite(s.money)||!Number.isFinite(s.score)||!Number.isInteger(s.rng)||!Number.isInteger(s.uid))return null
-    if(!['deck','hand','draw','spent','jokers','consumables','vouchers','tags','selected','planets','antePlayed'].every(k=>Array.isArray(s[k])))return null
+    if(!['deck','hand','draw','spent','jokers','consumables','vouchers','tags','selected','planets','antePlayed','blindPlayed'].every(k=>Array.isArray(s[k])))return null
+    if(legacyPillarHistory){
+      const lostPillarHistory=s.antePlayed.length>0||(s.phase==='play'&&s.plays>0)
+      if(lostPillarHistory)s.notice='旧版存档无法区分本底注的出牌与弃牌，支柱记录已重置；从现在开始重新累计。'
+      s.antePlayed=[]
+    }
     if(!s.deck.length||s.deck.length>1000||s.jokers.length>30||s.consumables.length>30)return null
     if(!s.deck.every(c=>Number.isInteger(c.uid)&&Number.isInteger(c.rank)&&c.rank>=2&&c.rank<=14&&[0,1,2,3].includes(c.suit)))return null
     if(!s.jokers.every(j=>byId(JOKERS,j.id)&&Number.isFinite(j.value)))return null
