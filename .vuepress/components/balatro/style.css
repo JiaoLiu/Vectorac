@@ -275,6 +275,7 @@
 #balatro-game .bp-effect-notice { position: absolute; z-index: 70; top: 36%; left: 50%; transform: translateX(-50%); max-width: min(90%, 600px); padding: 9px 16px; border: 1px solid #f4ce7e; border-radius: 8px; background: #253e37f5; color: #ffe4a4; box-shadow: 0 8px 26px #102b25aa, inset 0 1px #fff4; font-size: 14px; font-weight: 800; text-align: center; line-height: 1.35; pointer-events: none; }
 #balatro-game .bp-effect-hidden { display: none; }
 #balatro-game .bp-effect-pop { animation: bp-effect-pop .25s ease-out; }
+#balatro-game.bp-fast .bp-effect-pop { animation-duration: .12s; }
 @keyframes bp-effect-pop { from { opacity: 0; transform: translate(-50%, -12px) scale(.94); } to { opacity: 1; transform: translate(-50%, 0) scale(1); } }
 #balatro-game.bp-short .bp-effect-notice { padding: 5px 10px; font-size: 10px; }
 #balatro-game .bp-playing.bp-fx-shake,
@@ -336,6 +337,7 @@
 @media (prefers-reduced-motion: reduce) {
   #balatro-game .bp-joker-ghost.bp-fx-joker-destroy,
   #balatro-game .bp-fx-joker-upgrade .bp-item-art { animation-duration: 1ms !important; }
+  #balatro-game .bp-trigger, #balatro-game .bp-effect-pop { animation: none !important; }
   #balatro-game .bp-ed-poly > .bp-item-art::after, #balatro-game .bp-playing.bp-ed-poly::after { animation: none; }
 }
 #balatro-game .bp-trigger { animation: bp-score-pop .19s ease-out; }

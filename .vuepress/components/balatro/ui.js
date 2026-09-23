@@ -298,7 +298,7 @@ export default class PokerTable {
     this.busy=true;this.anim={before,result,event:result.events[0],index:0};this.render()
     const events=result.events.length>22?result.events.filter((_,i)=>i===0||i===result.events.length-1||i%Math.ceil(result.events.length/20)===0):result.events
     const reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-    const tickDelay=reduced?95:this.settings.fast?125:220
+    const tickDelay=reduced?95:this.settings.fast?145:280
     let index=0
     const tick=()=>{
       if(index<events.length){this.anim.event=events[index];this.anim.index=index;this.updateScore(events[index]);this.audio.fx('score',index++);this.later(tick,tickDelay)}
