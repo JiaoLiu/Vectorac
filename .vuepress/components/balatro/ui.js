@@ -170,9 +170,11 @@ export default class PokerTable {
     const changedUIDs=before.hand.filter(c=>{const next=finalCards.get(c.uid);return next&&['rank','suit','enh','edition','seal'].some(k=>c[k]!==next[k])}).map(c=>c.uid)
     const removedUIDs=before.hand.filter(c=>!finalCards.has(c.uid)).map(c=>c.uid)
     const addedUIDs=preview.deck.filter(c=>!original.has(c.uid)).map(c=>c.uid)
+    const previewJokers=new Map(preview.jokers.map(j=>[j.uid,j])),beforeJokers=new Map(before.jokers.map(j=>[j.uid,j]))
+    const removedJokers=before.jokers.filter(j=>!previewJokers.has(j.uid)),addedJokerUIDs=preview.jokers.filter(j=>!beforeJokers.has(j.uid)).map(j=>j.uid),changedJokerUIDs=before.jokers.filter(j=>{const next=previewJokers.get(j.uid);return next&&['edition','value','perished','disabled'].some(k=>j[k]!==next[k])}).map(j=>j.uid)
     const gatherUIDs=Array.from(new Set(changedUIDs))
     const sealUID=changedUIDs.find(id=>!original.get(id)?.seal&&finalCards.get(id)?.seal)||null
-    const fx={phase:'cast',beforeHand:before.hand,preview,finalCards,changedUIDs,removedUIDs,addedUIDs,gatherUIDs,sealUID,token:Symbol('card-effect')}
+    const fx={phase:'cast',beforeHand:before.hand,preview,finalCards,changedUIDs,removedUIDs,addedUIDs,gatherUIDs,sealUID,removedJokers,changedJokerUIDs,addedJokerUIDs,token:Symbol('card-effect')}
     this.actionFx=fx;this.busy=true;this.modal=null
     this.effect=used.id==='sigil'?`${this.itemName(used)} · 正在重铸所有手牌花色`:sealUID?`${this.itemName(used)} · 正在压印封蜡`:removedUIDs.length?`${this.itemName(used)} · 目标牌即将销毁`:`${this.itemName(used)} · 效果正在显现`
     this.audio.fx('magic');this.render()
@@ -181,17 +183,18 @@ export default class PokerTable {
       if(this.destroyed||this.actionFx!==fx)return
       this.state=preview;this.persist()
       const dealUIDs=Array.from(new Set(changedUIDs.concat(addedUIDs))).filter(id=>preview.hand.some(c=>c.uid===id))
-      this.busy=dealUIDs.length>0;this.actionFx=dealUIDs.length?{phase:'deal',dealUIDs,token:fx.token}:null
+      const hasExitFX=dealUIDs.length>0||removedJokers.length>0||changedJokerUIDs.length>0||addedJokerUIDs.length>0
+      this.busy=hasExitFX;this.actionFx=hasExitFX?{phase:'after',dealUIDs,removedJokers,changedJokerUIDs,addedJokerUIDs,token:fx.token}:null
       this.render();this.audio.fx('coin')
       this.showEffect(`${this.itemName(used)} 已生效 · ${this.itemDesc(used)}`)
-      if(this.actionFx){const duration=420+Math.max(0,dealUIDs.length-1)*65;this.later(()=>{if(this.actionFx?.token===fx.token){this.actionFx=null;this.busy=false;this.render()}},duration)}
+      if(this.actionFx){const handDuration=420+Math.max(0,dealUIDs.length-1)*65,jokerDuration=changedJokerUIDs.length||addedJokerUIDs.length?900:removedJokers.length?780+Math.max(0,removedJokers.length-1)*90:0;this.later(()=>{if(this.actionFx?.token===fx.token){this.actionFx=null;this.busy=false;this.render()}},Math.max(handDuration,jokerDuration))}
     }
     this.later(()=>{
       if(this.destroyed||this.actionFx!==fx)return
       fx.phase='reveal';this.render();this.audio.fx('magic')
       this.later(()=>{
         if(this.destroyed||this.actionFx!==fx)return
-        const shouldGather=gatherUIDs.length>1||removedUIDs.length>0||addedUIDs.length>0
+        const shouldGather=gatherUIDs.length>1||removedUIDs.length>0||addedUIDs.length>0||removedJokers.length>0||changedJokerUIDs.length>0||addedJokerUIDs.length>0
         if(!shouldGather){finish();return}
         fx.phase='gather';this.render();this.audio.fx('deal')
         const duration=(reduced?50:390)+Math.max(0,Math.max(gatherUIDs.length,removedUIDs.length)-1)*(reduced?15:65)
@@ -202,7 +205,7 @@ export default class PokerTable {
   positionEffectCards(){
     const pile=this.root.querySelector('[data-deck-pile]')?.getBoundingClientRect()
     if(!pile)return
-    const fx=this.actionFx,ids=fx?.phase==='gather'?fx.gatherUIDs:fx?.phase==='deal'?fx.dealUIDs:[]
+    const fx=this.actionFx,ids=fx?.phase==='gather'?fx.gatherUIDs:fx?.phase==='after'?fx.dealUIDs:[]
     ids.forEach((uid,index)=>{
       const el=this.root.querySelector(`.bp-hand [data-uid="${uid}"]`);if(!el)return
       const card=el.getBoundingClientRect(),x=pile.left+pile.width/2-(card.left+card.width/2),y=pile.top+pile.height/2-(card.top+card.height/2)
@@ -238,7 +241,16 @@ export default class PokerTable {
     if(card.kind==='joker')return byId(JOKERS,card.id).desc
     if(card.kind==='planet'){const h=byId(HANDS,card.id);return `${h.name}升 1 级：+${h.dc} 筹码，+${h.dm} 倍率`}
     if(card.kind==='voucher')return byId(VOUCHERS,card.id).desc
-    if(card.kind==='pack')return `${card.id==='joker'?'2':'3'} 张选 1 张${['tarot','planet','spectral'].includes(card.id)?'，立即使用':''}`
+    if(card.kind==='pack'){
+      const details={
+        joker:'含 2 张小丑牌，选择 1 张加入牌组。小丑会持续提供计分、倍率或经济效果。',
+        planet:'含 3 张星球牌，选择 1 张立即使用。星球会提升对应扑克牌型的等级，增加该牌型的基础筹码与倍率。',
+        tarot:'含 3 张塔罗牌，选择 1 张立即施放。塔罗可以强化、复制或改变扑克牌，也有经济类效果；部分牌需要先选手牌目标。',
+        spectral:'含 3 张幻灵牌，选择 1 张立即施放。幻灵是强力的一次性效果，可重铸手牌、强化牌或影响小丑；部分效果会销毁卡牌或带来代价。',
+        standard:'含 3 张扑克牌，选择 1 张加入牌组。新牌可能带有强化、闪箔版本或蜡封。'
+      }
+      return details[card.id]||'选择一张卡牌加入牌组或立即使用。'
+    }
     if(card.kind==='card')return [card.enh?ENHANCEMENTS[card.enh]:'标准扑克牌',card.edition?EDITIONS[card.edition]:'',card.seal?'附带蜡封':''].filter(Boolean).join(' · ')
     return byId(card.kind==='spectral'?SPECTRALS:TAROTS,card.id).desc
   }
@@ -247,7 +259,8 @@ export default class PokerTable {
     const s=this.state,hidden=mode==='owned'&&s&&s.phase==='play'&&s.blind===2&&s.boss==='acorn'&&!s.disabledBoss&&!E.has(s,'chicot')&&card.kind==='joker',name=hidden?'翻面的小丑':this.itemName(card),description=hidden?'琥珀橡果：本轮小丑翻面并打乱':this.itemDesc(card)
     const cost=s?E.itemCost(s,card):0
     const hint=mode==='owned'&&!hidden?cardCue(s,card):null,ready=hint&&hint.ready&&!this.busy
-    return `<div class="bp-item ${card.edition?'bp-ed-'+card.edition:''} ${card.disabled||card.perished?'bp-disabled-joker':''} ${hint?'bp-has-cue':''} ${ready?'bp-cue-ready':''}" data-visual="${card.uid}">
+    const jokerFx=this.actionFx?.phase==='after'&&(this.actionFx.changedJokerUIDs?.includes(card.uid)||this.actionFx.addedJokerUIDs?.includes(card.uid))?'bp-fx-joker-upgrade':''
+    return `<div class="bp-item ${card.edition?'bp-ed-'+card.edition:''} ${card.disabled||card.perished?'bp-disabled-joker':''} ${hint?'bp-has-cue':''} ${ready?'bp-cue-ready':''} ${jokerFx}" data-visual="${card.uid}">
       <button class="bp-item-art" data-action="info" data-uid="${card.uid}" title="${esc(hint?hint.detail:description)}" aria-label="${esc(name+'：'+(hint?hint.detail:description))}">${card.kind==='voucher'?`<div class="bp-voucher-art"><span>VOUCHER</span><b>10</b><small>永久升级</small></div>`:this.art(card,hidden)}${hint?`<span class="bp-card-cue bp-cue-${hint.tone}" data-cue="${card.id}">${ready?'✦ ':''}${esc(hint.label)}</span>`:''}</button>
       <span class="bp-item-name">${esc(name)}</span>
       ${mode!=='owned'?`<p class="bp-item-desc">${esc(description)}</p>${button(mode==='shop'?'buy':'pack-choose',mode==='shop'?`购买 <b>$${cost}</b>`:card.kind==='joker'||card.kind==='card'?'选择':'使用','bp-gold',this.busy||mode==='shop'&&!E.canPay(s,cost),`data-uid="${card.uid}"`)}`:''}
@@ -264,7 +277,9 @@ export default class PokerTable {
     return `<aside class="bp-sidebar"><div class="bp-brand"><b>小丑牌</b><span>BALATRO</span></div><section class="bp-blind-panel"><div class="bp-blind-label"><span class="bp-chip-icon">${s.blind===2?'✦':'$'}</span><b>${blindName}</b></div><small>至少获得</small><strong class="bp-target">${num(E.target(s))}</strong><small>分数 · 奖励 ${'$'.repeat([3,4,5][s.blind])}</small>${s.blind===2?`<p class="bp-boss-rule">${esc(boss.desc)}</p>`:''}</section><div class="bp-round-score"><span>本轮得分</span><b>${num(this.anim?this.anim.before.score:s.score)}</b></div><div class="bp-calculator"><div class="bp-hand-name">${p?p.name:'选择牌型'} ${p?`<small>Lv.${s.levels[p.id]}</small>`:''}</div><div class="bp-equation"><strong data-chips>${num(chips)}</strong><span>×</span><strong data-mult>${num(mult)}</strong></div><small>${this.anim?'正在结算…':'基础筹码 × 基础倍率'}</small></div><div class="bp-counters"><div><span>出牌</span><b class="bp-blue-text">${s.hands}</b></div><div><span>弃牌</span><b class="bp-red-text">${s.discards}</b></div></div><div class="bp-money">$${num(s.money)}</div><div class="bp-progress"><div><span>底注</span><b>${s.ante}<small>/8</small></b></div><div><span>回合</span><b>${s.round}</b></div></div><div class="bp-side-actions">${button('hands','牌型','bp-blue')}${button('menu','选项','bp-red')}</div></aside>`
   }
   inventory(s){
-    return `<div class="bp-inventory"><section class="bp-joker-rack"><div class="bp-rack-label"><span>小丑牌 <b>${s.jokers.length}/${E.slots(s)}</b></span><small>从左至右触发 · 点击查看 / 调序</small></div><div class="bp-rack-cards">${s.jokers.map(j=>this.itemTile(j)).join('')}${Array.from({length:Math.max(0,E.slots(s)-s.jokers.length)},()=>'<div class="bp-empty-slot"><span>J</span></div>').join('')}</div></section><section class="bp-consumable-rack"><div class="bp-rack-label"><span>消耗牌 <b>${s.consumables.length}/${E.consumableSlots(s)}</b></span></div><div class="bp-rack-cards">${s.consumables.map(c=>this.itemTile(c)).join('')}${Array.from({length:Math.max(0,E.consumableSlots(s)-s.consumables.length)},()=>'<div class="bp-empty-slot bp-consume-empty"><span>✧</span></div>').join('')}</div></section></div>`
+    const lost=this.actionFx?.phase==='after'?this.actionFx.removedJokers:[]
+    const ghosts=lost.map((j,i)=>`<div class="bp-item bp-joker-ghost bp-fx-joker-destroy" style="--fx-delay:${i*90}ms" aria-hidden="true"><div class="bp-item-art">${jokerArt(j)}</div><span class="bp-item-name">${esc(this.itemName(j))}</span></div>`).join('')
+    return `<div class="bp-inventory"><section class="bp-joker-rack"><div class="bp-rack-label"><span>小丑牌 <b>${s.jokers.length}/${E.slots(s)}</b></span><small>从左至右触发 · 点击查看 / 调序</small></div><div class="bp-rack-cards">${s.jokers.map(j=>this.itemTile(j)).join('')}${ghosts}${Array.from({length:Math.max(0,E.slots(s)-s.jokers.length)},()=>'<div class="bp-empty-slot"><span>J</span></div>').join('')}</div></section><section class="bp-consumable-rack"><div class="bp-rack-label"><span>消耗牌 <b>${s.consumables.length}/${E.consumableSlots(s)}</b></span></div><div class="bp-rack-cards">${s.consumables.map(c=>this.itemTile(c)).join('')}${Array.from({length:Math.max(0,E.consumableSlots(s)-s.consumables.length)},()=>'<div class="bp-empty-slot bp-consume-empty"><span>✧</span></div>').join('')}</div></section></div>`
   }
   cueStrip(s){
     if(this.busy||s.phase!=='play')return ''
@@ -279,9 +294,9 @@ export default class PokerTable {
     }).join('')}</div>${s.tags.length?`<div class="bp-tags">${s.tags.map(t=>`<span>${tagNames[t]}</span>`).join('')}</div>`:''}${s.vouchers.includes('director')?button('boss','更换 Boss · $10','bp-quiet',!E.canPay(s,10)):''}</div>`
   }
   hand(s){
-    const fx=this.actionFx,list=this.orderedHand(),cards=this.anim?this.anim.before.hand.filter(c=>!this.anim.result.cards.some(p=>p.uid===c.uid)):fx&&fx.phase!=='deal'?fx.beforeHand:list
+    const fx=this.actionFx,list=this.orderedHand(),cards=this.anim?this.anim.before.hand.filter(c=>!this.anim.result.cards.some(p=>p.uid===c.uid)):fx&&['cast','reveal','gather'].includes(fx.phase)?fx.beforeHand:list
     return `<div class="bp-hand-area"><div class="bp-hand-caption"><span>${this.busy?'结算中':s.pack?'选择手牌作为消耗牌目标':`手牌 ${s.hand.length}/${E.handSize(s)} · 已选 ${s.selected.length}/5`}</span><div>${button('sort-rank','点数',this.sort==='rank'?'bp-sort-active':'',this.busy)}${button('sort-suit','花色',this.sort==='suit'?'bp-sort-active':'',this.busy)}</div></div><div class="bp-hand ${cards.length>12?'bp-overfull':''}" style="--hand-count:${Math.max(1,cards.length)}">${cards.map((c,index)=>{
-      const next=fx?.phase==='reveal'?fx.finalCards.get(c.uid):null,display=next||c,changed=fx?.changedUIDs.includes(c.uid),removed=fx?.removedUIDs.includes(c.uid),gather=fx?.phase==='gather'&&fx.gatherUIDs.includes(c.uid),destroy=fx?.phase==='gather'&&removed,deal=fx?.phase==='deal'&&fx.dealUIDs.includes(c.uid)
+      const next=fx?.phase==='reveal'?fx.finalCards.get(c.uid):null,display=next||c,changed=fx?.changedUIDs.includes(c.uid),removed=fx?.removedUIDs.includes(c.uid),gather=fx?.phase==='gather'&&fx.gatherUIDs.includes(c.uid),destroy=fx?.phase==='gather'&&removed,deal=fx?.phase==='after'&&fx.dealUIDs.includes(c.uid)
       const sealTarget=fx?.sealUID===c.uid,fxClass=gather?'bp-fx-gather':deal?'bp-fx-deal':destroy?'bp-fx-destroy':removed?'bp-fx-mark':sealTarget&&fx.phase==='cast'?'bp-fx-seal-pending':changed?fx.phase==='reveal'?'bp-fx-reveal':fx.phase==='cast'?'bp-fx-shake':'' :''
       const sealFx=sealTarget&&fx.phase==='reveal',sealKind=fx?.finalCards.get(c.uid)?.seal||'gold'
       return this.cardButton(display,{selected:s.selected.includes(c.uid),disabled:this.busy||s.phase!=='play'&&!s.pack,hidden:c.hidden,fxClass,sealFx,sealKind,fxDelay:`${index*65}ms`})
@@ -293,7 +308,10 @@ export default class PokerTable {
   }
   reward(s){const r=s.roundReward;return `<div class="bp-result"><span class="bp-eyebrow">BLIND DEFEATED</span><h2>盲注击破</h2><div class="bp-result-score">${num(s.score)} <small>分</small></div><div class="bp-receipt"><div><span>盲注奖励</span><b>$${r.reward}</b></div><div><span>剩余出牌</span><b>$${r.hands}</b></div><div><span>利息</span><b>$${r.interest}</b></div>${r.extra?`<div><span>卡牌与牌组奖励</span><b>$${r.extra}</b></div>`:''}<div class="bp-receipt-total"><span>本轮收入</span><b>$${r.total}</b></div></div>${button('cash','领取奖励 →','bp-gold')}<small>奖励已入账，结算不会重复领取。</small></div>`}
   shop(s){
-    if(s.pack)return `<div class="bp-shop-stage bp-pack-stage"><div class="bp-stage-heading"><span>BOOSTER PACK</span><h2>${packNames[s.pack.kind]}</h2><p>选择 1 张${['tarot','planet','spectral'].includes(s.pack.kind)?'立即使用':''} · 改牌类需先选择下方目标手牌</p></div><div class="bp-shop-cards">${s.pack.cards.map(c=>this.itemTile(c,'pack')).join('')}</div>${button('pack-skip','跳过补充包','bp-quiet')}</div>`
+    if(s.pack){
+      const packInfo=this.itemDesc({kind:'pack',id:s.pack.kind}),instruction={joker:'选 1 张小丑加入牌组',planet:'选 1 张星球牌，立即升级牌型',tarot:'选 1 张塔罗牌立即使用',spectral:'选 1 张幻灵牌立即使用',standard:'选 1 张扑克牌加入牌组'}[s.pack.kind]
+      return `<div class="bp-shop-stage bp-pack-stage"><div class="bp-stage-heading"><span>BOOSTER PACK · ${s.pack.cards.length} 选 1</span><h2>${packNames[s.pack.kind]}</h2><p>${esc(instruction)} · ${esc(packInfo)}</p></div><div class="bp-shop-cards">${s.pack.cards.map(c=>this.itemTile(c,'pack')).join('')}</div>${button('pack-skip','跳过补充包','bp-quiet')}</div>`
+    }
     return `<div class="bp-shop-stage"><div class="bp-shop-heading"><div><span>SHOP</span><h2>商店</h2></div>${button('next','下一轮 →','bp-red')}${button('reroll',`重掷 <b>$${E.rerollCost(s)}</b>`,'bp-green',!E.canPay(s,E.rerollCost(s)))}</div><div class="bp-shop-shelves"><section><label>卡牌</label><div class="bp-shop-cards">${s.shop.cards.length?s.shop.cards.map(c=>this.itemTile(c,'shop')).join(''):'<p class="bp-sold-out">本批商品已售完</p>'}</div></section><section class="bp-shop-extras"><label>补充包与优惠券</label><div class="bp-shop-cards">${s.shop.packs.map(c=>this.itemTile(c,'shop')).join('')}${s.shop.voucher?this.itemTile(s.shop.voucher,'shop'):''}</div></section></div><div class="bp-shop-tip">小丑槽位 ${s.jokers.length}/${E.slots(s)} · 点击拥有的卡牌可出售 · 每 $5 存款产生 $1 利息</div></div>`
   }
   end(s){const win=s.phase==='won';return `<div class="bp-result"><span class="bp-eyebrow">${win?'YOU WIN!':'GAME OVER'}</span><h2>${win?'底注 8 · 通关！':'本局结束'}</h2><div class="bp-result-score">${num(s.best)}<small>最高单手</small></div><p>${win?'继续挑战无尽模式，看看这副牌的极限。':`本轮得到 ${num(s.score)} 分，还差 ${num(E.target(s)-s.score)} 分。`}</p><div class="bp-receipt"><div><span>底注 / 回合</span><b>${s.ante} / ${s.round}</b></div><div><span>累计出牌</span><b>${s.totalHands}</b></div><div><span>种子</span><b>${esc(s.seed)}</b></div></div>${win?button('endless','继续无尽模式','bp-blue'):''}${button('restart','再来一局','bp-red')}</div>`}
@@ -309,7 +327,7 @@ export default class PokerTable {
     const s=this.state
     if(m.type==='help'){
       title='怎么玩'
-      body=`<div class="bp-help-grid"><section><b>01 · 打出牌型</b><p>从手牌选 1～5 张。对子、同花、顺子等决定基础筹码和倍率。只有参与牌型的牌计分；A 为 11 筹码，人头牌为 10。</p></section><section><b>02 · 筹码 × 倍率</b><p>先结算打出的牌，再结算留手效果，最后从左到右触发小丑。把加倍率的小丑放在乘倍率的小丑前面，得分会不同。</p></section><section><b>03 · 构筑你的牌组</b><p>击败盲注获得金钱，商店购买小丑、补充包和永久优惠券。星球提升牌型等级；塔罗和幻灵改变扑克牌。点击卡牌查看说明、使用或出售。</p></section><section><b>04 · 连过 8 个底注</b><p>每个底注有小盲注、大盲注、Boss 盲注。前两个可跳过领取标签，Boss 不能跳过。出牌耗尽且分数不够则本局结束。</p></section></div><div class="bp-help-note"><b>操作</b><p>单击选牌；再次单击取消。星球牌可快速双点使用。键盘 1～8 选牌，Enter 出牌，D 弃牌。点击小丑可左右移动，调整结算顺序。改牌类消耗牌须先选择手牌目标。</p><p>开始自动请求全屏；不支持系统全屏的设备使用网页全屏。iPhone Safari 普通标签页仍保留系统地址栏，添加到主屏幕后可使用独立窗口。关闭页面后可从首页继续。</p></div>`
+      body=`<div class="bp-help-grid"><section><b>01 · 打出牌型</b><p>从手牌选 1～5 张。对子、同花、顺子等决定基础筹码和倍率。只有参与牌型的牌计分；A 为 11 筹码，人头牌为 10。</p></section><section><b>02 · 筹码 × 倍率</b><p>先结算打出的牌，再结算留手效果，最后从左到右触发小丑。把加倍率的小丑放在乘倍率的小丑前面，得分会不同。</p></section><section><b>03 · 卡包里有什么</b><p>小丑包获得持续能力；星球牌升级牌型；秘术牌改变或强化手牌，也能影响金钱；幻灵牌是强力的一次性效果，可能改造或销毁扑克牌、小丑。点击卡包封面查看本包内容与数量。</p></section><section><b>04 · 连过 8 个底注</b><p>每个底注有小盲注、大盲注、Boss 盲注。前两个可跳过领取标签，Boss 不能跳过。出牌耗尽且分数不够则本局结束。</p></section></div><div class="bp-help-note"><b>操作</b><p>单击选牌；再次单击取消。星球牌可快速双点使用。键盘 1～8 选牌，Enter 出牌，D 弃牌。点击小丑可左右移动，调整结算顺序。改牌类消耗牌须先选择手牌目标。</p><p>开始自动请求全屏；不支持系统全屏的设备使用网页全屏。iPhone Safari 普通标签页仍保留系统地址栏，添加到主屏幕后可使用独立窗口。关闭页面后可从首页继续。</p></div>`
     }
     if(m.type==='hands'){
       title='牌型与等级';body=`<div class="bp-hands-table">${HANDS.slice().reverse().map(h=>{const b=s?E.handBase(s,h.id):h;return `<div><b>${h.name}</b><span>Lv.${s?s.levels[h.id]:1}</span><strong class="bp-blue-text">${num(b.chips)}</strong><span>×</span><strong class="bp-red-text">${num(b.mult)}</strong><small>${h.planet}</small></div>`}).join('')}</div><p class="bp-help-note">显示基础分数。计分牌的筹码、增强牌与小丑效果会依次加入。高牌只计算最高点数牌，对子只计算对子牌；石头牌额外计分。</p>`
@@ -336,7 +354,7 @@ export default class PokerTable {
     if(this.destroyed)return
     this.updateLayout()
     this.root.innerHTML=(this.state?this.game():this.entry())+this.dialog()+`<div class="bp-effect-notice ${this.effect?'':'bp-effect-hidden'}" data-effect-notice role="status" aria-live="polite">${esc(this.effect)}</div>`+(this.toast?`<div class="bp-toast" role="status">${esc(this.toast)}</div>`:'')
-    this.root.classList.toggle('bp-is-playing',!!this.state);this.root.classList.toggle('bp-is-busy',this.busy)
+    this.root.classList.toggle('bp-is-playing',!!this.state);this.root.classList.toggle('bp-is-busy',this.busy);this.root.classList.toggle('bp-pack-open',!!this.state?.pack)
     this.positionEffectCards()
   }
   destroy(){
