@@ -52,7 +52,7 @@ export default class PokerTable {
   constructor(root){
     this.root=root;this.state=null;this.saved=E.restore(safeRead(SAVE));this.settings={sound:true,music:false,fast:false}
     try{Object.assign(this.settings,JSON.parse(safeRead(SETTINGS)||'{}'))}catch(_){}
-    this.audio=new Sound(this.settings);this.modal=null;this.busy=false;this.immersive=false;this.destroyed=false;this.timers=new Set();this.seed='';this.deckType='red';this.sort='rank';this.toast='';this.effect='';this.anim=null;this.actionFx=null
+    this.audio=new Sound(this.settings);this.modal=null;this.busy=false;this.immersive=false;this.destroyed=false;this.timers=new Set();this.seed='';this.deckType='red';this.sort='rank';this.toast='';this.effect='';this.anim=null;this.actionFx=null;this.packFx=null;this.packChoiceFx=null
     this.stake=0;this.marker=document.createComment('balatro-position');root.parentNode.insertBefore(this.marker,root)
     this.onClick=this.click.bind(this);this.onKey=this.key.bind(this);this.onDouble=e=>e.preventDefault()
     this.pendingPlanet=null
@@ -105,7 +105,7 @@ export default class PokerTable {
   }
   start(resume=false){
     this.audio.unlock();this.state=resume&&this.saved?E.clone(this.saved):E.newRun(this.seed||Math.random().toString(36).slice(2,10).toUpperCase(),this.deckType,this.stake)
-    this.modal=null;this.busy=false;this.anim=null;this.fullscreen();this.persist();this.render();this.audio.music(true)
+    this.modal=null;this.busy=false;this.anim=null;this.actionFx=null;this.packFx=null;this.packChoiceFx=null;this.fullscreen();this.persist();this.render();this.audio.music(true)
   }
   notify(message){this.toast=message;this.render();this.later(()=>{if(this.toast===message){this.toast='';const t=this.root.querySelector('.bp-toast');if(t)t.remove()}},3500)}
   showEffect(message){
@@ -150,7 +150,10 @@ export default class PokerTable {
       const ops={blind:E.startBlind,skip:E.skipBlind,discard:E.discard,cash:E.cashOut,next:E.nextBlind,reroll:E.rerollShop,boss:E.rerollBoss,endless:E.continueEndless,'pack-skip':E.closePack,buy:s=>E.buy(s,uid),'pack-choose':s=>E.choosePack(s,uid),use:s=>E.use(s,uid),sell:s=>E.sell(s,uid),left:s=>E.reorder(s,uid,-1),right:s=>E.reorder(s,uid,1)}
       if(!ops[action])return
       const used=action==='use'?this.state.consumables.find(c=>c.uid===uid):action==='pack-choose'?this.state.pack?.cards.find(c=>c.uid===uid):null
-      if(used&&(action==='use'&&used.kind!=='planet'||action==='pack-choose'&&['tarot','spectral'].includes(used.kind))){this.animateConsumable(ops[action],used);return}
+      const pack=action==='buy'?this.state.shop?.packs.find(c=>c.uid===uid):null
+      if(pack){this.animatePackOpening(ops[action],pack);return}
+      if(action==='pack-choose'&&used&&['card','joker'].includes(used.kind)){this.animatePackChoice(ops[action],used);return}
+      if(used&&(action==='use'&&used.kind!=='planet'||action==='pack-choose'&&['tarot','spectral','planet'].includes(used.kind))){this.animateConsumable(ops[action],used);return}
       this.transact(ops[action]);this.modal=null;this.audio.fx(action==='use'?used?.kind==='planet'?'planet':'magic':['buy','cash','sell'].includes(action)?'coin':'deal')
       if(this.state.notice){this.toast=this.state.notice;delete this.state.notice}
       this.render()
@@ -161,6 +164,69 @@ export default class PokerTable {
         }else this.showEffect(`${this.itemName(used)} 已生效 · ${this.itemDesc(used)}`)
       }
     }catch(error){this.busy=false;this.notify(error.message||'操作失败，请重试')}
+  }
+  packSource(card){
+    const root=this.root.getBoundingClientRect(),art=this.root.querySelector(`.bp-item[data-visual="${card.uid}"] .bp-item-art`),rect=art?.getBoundingClientRect()
+    if(!rect)return {left:this.root.clientWidth/2-45,top:this.root.clientHeight/2-63,width:90,height:126,x:0,y:0,scale:.65}
+    const width=Math.max(1,rect.width),height=Math.max(1,rect.height)
+    return {left:rect.left-root.left,top:rect.top-root.top,width,height,x:rect.left+rect.width/2-(root.left+root.width/2),y:rect.top+rect.height/2-(root.top+root.height/2),scale:width/96}
+  }
+  animatePackOpening(operation,pack){
+    const preview=E.clone(this.state);operation(preview)
+    const reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches,from=this.packSource(pack),fx={phase:'travel',kind:pack.id,from,preview,token:Symbol('booster-opening')}
+    this.packFx=fx;this.busy=true;this.modal=null;this.audio.fx('deal');this.render()
+    const advance=(phase,delay,next)=>this.later(()=>{if(this.destroyed||this.packFx!==fx)return;fx.phase=phase;this.audio.fx(phase==='tear'?'magic':'tap');this.render();if(next)next()},delay)
+    advance('shake',reduced?45:440,()=>advance('tear',reduced?60:700,()=>this.later(()=>{
+      if(this.destroyed||this.packFx!==fx)return
+      this.state=preview;this.persist();fx.phase='reveal';this.render();this.audio.fx('magic')
+      fx.cards=preview.pack?.cards||[]
+      fx.cards.forEach((_,index)=>this.later(()=>this.audio.fx('deal'),index*(reduced?15:135)))
+      this.later(()=>{if(this.packFx!==fx)return;this.packFx=null;this.busy=false;this.render()},reduced?100:1120)
+    },reduced?70:470)))
+  }
+  animatePackChoice(operation,card){
+    const preview=E.clone(this.state);operation(preview)
+    const reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches,fx={phase:'lift',card,from:this.packSource(card),token:Symbol('booster-choice')}
+    this.packChoiceFx=fx;this.busy=true;this.modal=null;this.audio.fx('deal');this.render()
+    this.later(()=>{
+      if(this.destroyed||this.packChoiceFx!==fx)return
+      this.state=preview;this.persist();fx.phase='fly';this.render();this.audio.fx('deal')
+      this.later(()=>{
+        if(this.packChoiceFx!==fx)return
+        const name=this.itemName(card);this.packChoiceFx=null;this.busy=false;this.render();this.showEffect(`${name} 已加入${card.kind==='joker'?'小丑牌架':'牌组'}`)
+      },reduced?90:640)
+    },reduced?25:220)
+  }
+  packOpeningOverlay(){
+    const fx=this.packFx;if(!fx||fx.phase==='reveal')return ''
+    const art=packArt(fx.kind)
+    return `<div class="bp-pack-opening" aria-hidden="true"><div class="bp-pack-opening-shade"></div><div class="bp-pack-prop bp-pack-prop-${fx.phase}" style="--pack-from-x:${fx.from.x}px;--pack-from-y:${fx.from.y}px;--pack-from-scale:${fx.from.scale}"><div class="bp-pack-face">${art}</div><div class="bp-pack-half bp-pack-half-top">${art}</div><div class="bp-pack-half bp-pack-half-bottom">${art}</div><i class="bp-pack-rip"></i></div><span class="bp-pack-opening-label">${fx.phase==='tear'?'撕开补充包':fx.phase==='shake'?'摇一摇…':'补充包送达'}</span></div>`
+  }
+  packChoiceOverlay(){
+    const fx=this.packChoiceFx;if(!fx)return ''
+    const {card,from}=fx
+    return `<div class="bp-card-flight bp-card-flight-${fx.phase}" style="--flight-left:${from.left}px;--flight-top:${from.top}px;--flight-width:${from.width}px;--flight-height:${from.height}px" aria-hidden="true">${this.art(card)}</div>`
+  }
+  positionPackRevealCards(){
+    if(this.packFx?.phase!=='reveal')return
+    const stage=this.root.querySelector('.bp-pack-stage .bp-shop-cards');if(!stage)return
+    const center=stage.getBoundingClientRect(),cards=stage.querySelectorAll(':scope > .bp-item.bp-pack-card-reveal')
+    cards.forEach(el=>{
+      el.style.animation='none'
+      const rect=el.getBoundingClientRect()
+      el.style.setProperty('--pack-from-x',`${center.left+center.width/2-(rect.left+rect.width/2)}px`)
+      el.style.setProperty('--pack-from-y',`${center.top+center.height/2-(rect.top+rect.height/2)}px`)
+      void el.offsetWidth
+      el.style.removeProperty('animation')
+    })
+  }
+  positionPackChoice(){
+    const fx=this.packChoiceFx;if(fx?.phase!=='fly')return
+    const target=this.root.querySelector(fx.card.kind==='joker'?'.bp-joker-rack .bp-rack-cards':'[data-deck-pile]'),el=this.root.querySelector('.bp-card-flight')
+    if(!target||!el)return
+    const root=this.root.getBoundingClientRect(),rect=target.getBoundingClientRect()
+    const toX=rect.left+rect.width/2-(root.left+fx.from.left+fx.from.width/2),toY=rect.top+rect.height/2-(root.top+fx.from.top+fx.from.height/2)
+    el.style.setProperty('--flight-x',`${toX}px`);el.style.setProperty('--flight-y',`${toY}px`)
   }
   animateConsumable(operation,used){
     const before=E.clone(this.state),preview=E.clone(this.state)
@@ -255,12 +321,13 @@ export default class PokerTable {
     return byId(card.kind==='spectral'?SPECTRALS:TAROTS,card.id).desc
   }
   art(card,hidden=false){return card.kind==='joker'?jokerArt(card,hidden):card.kind==='pack'?packArt(card.id):card.kind==='card'?playingCard(card):consumableArt(card)}
-  itemTile(card,mode='owned'){
+  itemTile(card,mode='owned',options={}){
     const s=this.state,hidden=mode==='owned'&&s&&s.phase==='play'&&s.blind===2&&s.boss==='acorn'&&!s.disabledBoss&&!E.has(s,'chicot')&&card.kind==='joker',name=hidden?'翻面的小丑':this.itemName(card),description=hidden?'琥珀橡果：本轮小丑翻面并打乱':this.itemDesc(card)
     const cost=s?E.itemCost(s,card):0
     const hint=mode==='owned'&&!hidden?cardCue(s,card):null,ready=hint&&hint.ready&&!this.busy
     const jokerFx=this.actionFx?.phase==='after'&&(this.actionFx.changedJokerUIDs?.includes(card.uid)||this.actionFx.addedJokerUIDs?.includes(card.uid))?'bp-fx-joker-upgrade':''
-    return `<div class="bp-item ${card.edition?'bp-ed-'+card.edition:''} ${card.disabled||card.perished?'bp-disabled-joker':''} ${hint?'bp-has-cue':''} ${ready?'bp-cue-ready':''} ${jokerFx}" data-visual="${card.uid}">
+    const packReveal=mode==='pack'&&this.packFx?.phase==='reveal',packSelected=this.packChoiceFx?.phase==='lift'&&this.packChoiceFx.card.uid===card.uid
+    return `<div class="bp-item ${card.edition?'bp-ed-'+card.edition:''} ${card.disabled||card.perished?'bp-disabled-joker':''} ${hint?'bp-has-cue':''} ${ready?'bp-cue-ready':''} ${jokerFx} ${packReveal?'bp-pack-card-reveal':''} ${packSelected?'bp-pack-choice-selected':''}" data-visual="${card.uid}" ${packReveal?`style="--pack-delay:${(options.index||0)*135}ms"`:''}>
       <button class="bp-item-art" data-action="info" data-uid="${card.uid}" title="${esc(hint?hint.detail:description)}" aria-label="${esc(name+'：'+(hint?hint.detail:description))}">${card.kind==='voucher'?`<div class="bp-voucher-art"><span>VOUCHER</span><b>10</b><small>永久升级</small></div>`:this.art(card,hidden)}${hint?`<span class="bp-card-cue bp-cue-${hint.tone}" data-cue="${card.id}">${ready?'✦ ':''}${esc(hint.label)}</span>`:''}</button>
       <span class="bp-item-name">${esc(name)}</span>
       ${mode!=='owned'?`<p class="bp-item-desc">${esc(description)}</p>${button(mode==='shop'?'buy':'pack-choose',mode==='shop'?`购买 <b>$${cost}</b>`:card.kind==='joker'||card.kind==='card'?'选择':'使用','bp-gold',this.busy||mode==='shop'&&!E.canPay(s,cost),`data-uid="${card.uid}"`)}`:''}
@@ -310,7 +377,7 @@ export default class PokerTable {
   shop(s){
     if(s.pack){
       const packInfo=this.itemDesc({kind:'pack',id:s.pack.kind}),instruction={joker:'选 1 张小丑加入牌组',planet:'选 1 张星球牌，立即升级牌型',tarot:'选 1 张塔罗牌立即使用',spectral:'选 1 张幻灵牌立即使用',standard:'选 1 张扑克牌加入牌组'}[s.pack.kind]
-      return `<div class="bp-shop-stage bp-pack-stage"><div class="bp-stage-heading"><span>BOOSTER PACK · ${s.pack.cards.length} 选 1</span><h2>${packNames[s.pack.kind]}</h2><p>${esc(instruction)} · ${esc(packInfo)}</p></div><div class="bp-shop-cards">${s.pack.cards.map(c=>this.itemTile(c,'pack')).join('')}</div>${button('pack-skip','跳过补充包','bp-quiet')}</div>`
+      return `<div class="bp-shop-stage bp-pack-stage"><div class="bp-stage-heading"><span>BOOSTER PACK · ${s.pack.cards.length} 选 1</span><h2>${packNames[s.pack.kind]}</h2><p>${esc(instruction)} · ${esc(packInfo)}</p></div><div class="bp-shop-cards">${s.pack.cards.map((c,index)=>this.itemTile(c,'pack',{index})).join('')}</div>${button('pack-skip','跳过补充包','bp-quiet')}</div>`
     }
     return `<div class="bp-shop-stage"><div class="bp-shop-heading"><div><span>SHOP</span><h2>商店</h2></div>${button('next','下一轮 →','bp-red')}${button('reroll',`重掷 <b>$${E.rerollCost(s)}</b>`,'bp-green',!E.canPay(s,E.rerollCost(s)))}</div><div class="bp-shop-shelves"><section><label>卡牌</label><div class="bp-shop-cards">${s.shop.cards.length?s.shop.cards.map(c=>this.itemTile(c,'shop')).join(''):'<p class="bp-sold-out">本批商品已售完</p>'}</div></section><section class="bp-shop-extras"><label>补充包与优惠券</label><div class="bp-shop-cards">${s.shop.packs.map(c=>this.itemTile(c,'shop')).join('')}${s.shop.voucher?this.itemTile(s.shop.voucher,'shop'):''}</div></section></div><div class="bp-shop-tip">小丑槽位 ${s.jokers.length}/${E.slots(s)} · 点击拥有的卡牌可出售 · 每 $5 存款产生 $1 利息</div></div>`
   }
@@ -353,9 +420,10 @@ export default class PokerTable {
   render(){
     if(this.destroyed)return
     this.updateLayout()
-    this.root.innerHTML=(this.state?this.game():this.entry())+this.dialog()+`<div class="bp-effect-notice ${this.effect?'':'bp-effect-hidden'}" data-effect-notice role="status" aria-live="polite">${esc(this.effect)}</div>`+(this.toast?`<div class="bp-toast" role="status">${esc(this.toast)}</div>`:'')
-    this.root.classList.toggle('bp-is-playing',!!this.state);this.root.classList.toggle('bp-is-busy',this.busy);this.root.classList.toggle('bp-pack-open',!!this.state?.pack)
-    this.positionEffectCards()
+    this.root.innerHTML=(this.state?this.game():this.entry())+this.dialog()+`<div class="bp-effect-notice ${this.effect?'':'bp-effect-hidden'}" data-effect-notice role="status" aria-live="polite">${esc(this.effect)}</div>`+(this.toast?`<div class="bp-toast" role="status">${esc(this.toast)}</div>`:'')+this.packOpeningOverlay()+this.packChoiceOverlay()
+    const phase=this.state?.phase
+    this.root.classList.toggle('bp-is-playing',!!this.state);this.root.classList.toggle('bp-is-busy',this.busy);this.root.classList.toggle('bp-pack-open',!!this.state?.pack);this.root.classList.toggle('bp-intermission',!!this.state&&['select','reward','won','lost'].includes(phase));this.root.classList.toggle('bp-pack-reveal',this.packFx?.phase==='reveal');this.root.classList.toggle('bp-pack-choice-flight',!!this.packChoiceFx)
+    this.positionEffectCards();this.positionPackRevealCards();this.positionPackChoice()
   }
   destroy(){
     this.destroyed=true;this.persist();this.timers.forEach(t=>clearTimeout(t));this.timers.clear();this.audio.destroy()

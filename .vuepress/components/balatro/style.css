@@ -633,6 +633,78 @@
 #balatro-game.bp-short .bp-card-cue { font-size: 8px; padding: 1px 0; bottom: 2px; left: 0; right: 0; }
 #balatro-game.bp-short .bp-live-cues { font-size: 9px; padding: 3px 0; }
 #balatro-game.bp-short .bp-live-cues > span { padding: 1px 6px; }
+/* Booster packs travel to center, shake twice, tear open, then deal choices. */
+#balatro-game .bp-pack-opening { position: absolute; z-index: 80; inset: 0; display: grid; place-items: center; overflow: hidden; pointer-events: auto; }
+#balatro-game .bp-pack-opening-shade { position: absolute; inset: 0; background: radial-gradient(ellipse at center,#355b50d9 0,#102923ed 68%,#081713f2 100%); animation: bp-pack-shade-in .28s ease-out both; }
+#balatro-game .bp-pack-prop { position: absolute; left: 50%; top: 50%; width: clamp(76px,20vh,118px); aspect-ratio: 120/168; transform: translate(-50%,-50%); filter: drop-shadow(0 14px 18px #0009); }
+#balatro-game .bp-pack-prop > .bp-pack-face, #balatro-game .bp-pack-half { position: absolute; inset: 0; }
+#balatro-game .bp-pack-face { backface-visibility: hidden; }
+#balatro-game .bp-pack-prop-travel { animation: bp-pack-to-center .46s cubic-bezier(.17,.78,.25,1) both; }
+#balatro-game .bp-pack-prop-shake { animation: bp-pack-shake .72s cubic-bezier(.35,.06,.25,1) both; }
+#balatro-game .bp-pack-half { opacity: 0; overflow: hidden; }
+#balatro-game .bp-pack-half-top { clip-path: inset(0 0 49% 0); }
+#balatro-game .bp-pack-half-bottom { clip-path: inset(51% 0 0 0); }
+#balatro-game .bp-pack-rip { position: absolute; z-index: 3; left: -7%; right: -7%; top: 50%; height: 3px; opacity: 0; transform: scaleX(.05); background: linear-gradient(90deg,transparent,#fff5c5 15%,#fff 50%,#fff0ac 85%,transparent); filter: drop-shadow(0 0 7px #ffe7a8); clip-path: polygon(0 35%,8% 0,16% 70%,24% 20%,34% 100%,43% 22%,51% 80%,62% 8%,71% 86%,82% 24%,91% 75%,100% 15%,100% 100%,0 100%); }
+#balatro-game .bp-pack-prop-tear .bp-pack-face { animation: bp-pack-face-tear .48s ease-in both; }
+#balatro-game .bp-pack-prop-tear .bp-pack-half { opacity: 1; }
+#balatro-game .bp-pack-prop-tear .bp-pack-half-top { animation: bp-pack-flap-top .48s cubic-bezier(.2,.72,.25,1) both; }
+#balatro-game .bp-pack-prop-tear .bp-pack-half-bottom { animation: bp-pack-flap-bottom .48s cubic-bezier(.2,.72,.25,1) both; }
+#balatro-game .bp-pack-prop-tear .bp-pack-rip { animation: bp-pack-rip .38s ease-out both; }
+#balatro-game .bp-pack-opening-label { position: absolute; left: 12px; right: 12px; top: calc(50% + clamp(72px,20vh,112px)); color: #f3d894; font: 800 12px/1.2 "Trebuchet MS",sans-serif; letter-spacing: 2px; text-align: center; text-shadow: 0 2px 6px #000; }
+#balatro-game .bp-pack-prop-shake ~ .bp-pack-opening-label { animation: bp-pack-label-pulse .72s ease-out both; }
+#balatro-game .bp-pack-prop-tear ~ .bp-pack-opening-label { animation: bp-pack-label-flash .48s ease-out both; }
+@keyframes bp-pack-shade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes bp-pack-to-center { from { transform: translate(calc(-50% + var(--pack-from-x)),calc(-50% + var(--pack-from-y))) scale(var(--pack-from-scale,.55)) rotate(-9deg); } to { transform: translate(-50%,-50%) scale(1) rotate(0); } }
+@keyframes bp-pack-shake { 0%,100% { transform: translate(-50%,-50%) rotate(0) scale(1); } 18% { transform: translate(calc(-50% - 8px),-50%) rotate(-8deg) scale(1.04); } 36% { transform: translate(calc(-50% + 8px),-50%) rotate(8deg) scale(1.02); } 54% { transform: translate(calc(-50% - 6px),-50%) rotate(-6deg); } 72% { transform: translate(calc(-50% + 6px),-50%) rotate(6deg); } 88% { transform: translate(-50%,-50%) rotate(-1deg) scale(1.01); } }
+@keyframes bp-pack-face-tear { 0%,20% { opacity: 1; transform: scale(1); } 45% { filter: brightness(1.65); } 100% { opacity: 0; transform: scale(.92); } }
+@keyframes bp-pack-flap-top { 0%,18% { opacity: 0; transform: translateY(0) rotate(0); } 38% { opacity: 1; } 100% { opacity: 0; transform: translateY(-34%) rotate(-13deg) scale(.88); } }
+@keyframes bp-pack-flap-bottom { 0%,18% { opacity: 0; transform: translateY(0) rotate(0); } 38% { opacity: 1; } 100% { opacity: 0; transform: translateY(34%) rotate(13deg) scale(.88); } }
+@keyframes bp-pack-rip { 0% { opacity: 0; transform: scaleX(.05); } 25% { opacity: 1; transform: scaleX(1); } 75% { opacity: 1; } 100% { opacity: 0; transform: scaleX(1.2); } }
+@keyframes bp-pack-label-pulse { 0%,100% { opacity: .65; } 25%,58% { opacity: 1; filter: brightness(1.4); } }
+@keyframes bp-pack-label-flash { 0%,100% { opacity: .4; } 30% { opacity: 1; filter: brightness(1.8); } }
+#balatro-game .bp-pack-card-reveal { opacity: 0; animation: bp-pack-card-deal .62s cubic-bezier(.16,.82,.25,1) var(--pack-delay,0ms) both; }
+#balatro-game .bp-pack-choice-selected { opacity: 0 !important; }
+@keyframes bp-pack-card-deal { 0% { opacity: 0; transform: translate(var(--pack-from-x,0),var(--pack-from-y,0)) scale(.2) rotate(-9deg); filter: brightness(1.5); } 65% { opacity: 1; transform: translate(0,-8px) scale(1.06) rotate(2deg); filter: brightness(1.2) drop-shadow(0 0 10px #efd485); } 100% { opacity: 1; transform: translate(0,0) scale(1) rotate(0); filter: none; } }
+#balatro-game .bp-card-flight { position: absolute; z-index: 95; left: var(--flight-left); top: var(--flight-top); width: var(--flight-width); height: var(--flight-height); aspect-ratio: 120/168; pointer-events: none; transform-origin: center; filter: drop-shadow(2px 7px 9px #0009); }
+#balatro-game .bp-card-flight-lift { animation: bp-pack-choice-lift .22s cubic-bezier(.2,.8,.25,1) both; }
+#balatro-game .bp-card-flight-fly { animation: bp-pack-choice-fly .62s cubic-bezier(.2,.8,.25,1) both; }
+@keyframes bp-pack-choice-lift { 0% { transform: translateY(0) scale(1); } 55% { transform: translateY(-12px) scale(1.08) rotate(-3deg); filter: brightness(1.25) drop-shadow(0 0 9px #f4d47b); } 100% { transform: translateY(-3px) scale(1.04); } }
+@keyframes bp-pack-choice-fly { 0% { transform: translate(0,0) scale(1) rotate(0); opacity: 1; } 18% { transform: translate(0,-10px) scale(1.08) rotate(-4deg); opacity: 1; } 100% { transform: translate(var(--flight-x,0),var(--flight-y,0)) scale(.12) rotate(14deg); opacity: .18; filter: brightness(1.5); } }
+
+/* In short landscape intermission screens, reserve the whole table for the next action. */
+#balatro-game.bp-short.bp-intermission .bp-sidebar,
+#balatro-game.bp-short.bp-intermission .bp-inventory,
+#balatro-game.bp-short.bp-intermission .bp-live-cues,
+#balatro-game.bp-short.bp-intermission .bp-table-footer { display: none; }
+#balatro-game.bp-short.bp-intermission .bp-table { display: flex; gap: 0; padding: 4px 10px; }
+#balatro-game.bp-short.bp-intermission .bp-main { width: 100%; flex: 1; min-height: 0; }
+#balatro-game.bp-short.bp-intermission .bp-stage { overflow: hidden; justify-content: center; }
+#balatro-game.bp-short.bp-intermission .bp-select-stage { margin: auto; padding: 0 2px; }
+#balatro-game.bp-short.bp-intermission .bp-stage-heading { margin: 0 0 5px; }
+#balatro-game.bp-short.bp-intermission .bp-stage-heading h2 { font-size: 17px; }
+#balatro-game.bp-short.bp-intermission .bp-stage-heading p { margin-top: 2px; font-size: 8px; }
+#balatro-game.bp-short.bp-intermission .bp-blind-choices { gap: 6px; }
+#balatro-game.bp-short.bp-intermission .bp-blind-choice { gap: 3px; padding: 5px 6px; }
+#balatro-game.bp-short.bp-intermission .bp-blind-choice-head { font-size: 10px; padding: 4px 2px; }
+#balatro-game.bp-short.bp-intermission .bp-blind-token { width: 29px; height: 29px; margin: 1px auto; font-size: 14px; }
+#balatro-game.bp-short.bp-intermission .bp-blind-choice > strong { font-size: 16px; }
+#balatro-game.bp-short.bp-intermission .bp-blind-choice > p { min-height: 0; max-height: 25px; overflow: hidden; font-size: 8px; line-height: 1.25; }
+#balatro-game.bp-short.bp-intermission .bp-blind-choice > button { min-height: 24px; padding: 4px 2px; font-size: 9px; }
+#balatro-game.bp-short.bp-intermission .bp-tags { gap: 3px; margin-top: 5px; font-size: 8px; }
+#balatro-game.bp-short.bp-intermission .bp-tags span { padding: 2px 5px; }
+#balatro-game.bp-short.bp-intermission .bp-result { width: min(330px,100%); max-height: 100%; gap: 5px; padding: 3px 10px; overflow-y: auto; scrollbar-width: none; }
+#balatro-game.bp-short.bp-intermission .bp-result h2 { font-size: 18px; }
+#balatro-game.bp-short.bp-intermission .bp-result-score { font-size: 23px; line-height: 1; }
+#balatro-game.bp-short.bp-intermission .bp-result > p { font-size: 9px; }
+#balatro-game.bp-short.bp-intermission .bp-result > small { font-size: 8px; }
+#balatro-game.bp-short.bp-intermission .bp-receipt { padding: 3px 10px; }
+#balatro-game.bp-short.bp-intermission .bp-receipt > div { padding: 2px 0; font-size: 10px; }
+#balatro-game.bp-short.bp-intermission .bp-receipt-total { font-size: 12px; }
+#balatro-game.bp-short.bp-intermission .bp-result > .bp-btn { min-height: 30px; padding: 6px 10px; font-size: 11px; }
+@media (prefers-reduced-motion: reduce) {
+  #balatro-game .bp-pack-opening *, #balatro-game .bp-pack-card-reveal,
+  #balatro-game .bp-card-flight { animation-duration: 1ms !important; }
+}
 body.bp-body-immersive { background: #1e5045; }
 @media (hover: none) {
   #balatro-game .bp-playing:not(.bp-selected):not(:disabled):hover,
