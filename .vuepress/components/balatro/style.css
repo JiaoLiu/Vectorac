@@ -622,6 +622,18 @@
   #balatro-game.bp-short .bp-live-boss { font-size: 9px; padding: 2px 8px; }
   #balatro-game.bp-short .bp-score-label { font-size: 14px; min-height: 18px; }
   #balatro-game.bp-short .bp-scoring-cards > .bp-playing { width: 28px; }
+  /* 横屏结算：舞台只有 65px，装不下「分数标签 + 算分牌 + 跳过按钮」，算分牌上下都会被裁掉。
+     这里把结算舞台改成向下展开的浮层——不动其它区域的布局，手牌不会跟着跳；
+     算分牌按视口高度放大，跳过按钮收到浮层右上角，不再占布局高度。 */
+  #balatro-game.bp-short.bp-scoring .bp-stage { position: relative; overflow: visible; z-index: 30; }
+  #balatro-game.bp-short.bp-scoring .bp-play-stage { position: absolute; top: 0; left: 0; right: 0; min-height: 0; padding: 0; gap: 6px; justify-content: flex-start; align-items: center; z-index: 30; }
+  #balatro-game.bp-short.bp-scoring .bp-score-label { font-size: 15px; min-height: 20px; }
+  #balatro-game.bp-short.bp-scoring .bp-scoring-cards { gap: 12px; align-items: center; }
+  #balatro-game.bp-short.bp-scoring .bp-scoring-cards > .bp-playing { width: auto; height: min(20dvh,104px); }
+  #balatro-game.bp-short.bp-scoring .bp-play-stage > .bp-btn { position: absolute; top: 0; right: 2px; min-height: 26px; margin: 0; padding: 4px 9px; font-size: 10px; }
+  #balatro-game.bp-short.bp-scoring .bp-scoring-cards > .bp-playing.bp-trigger { animation: bp-score-pop-tall .22s ease-out; }
+  #balatro-game.bp-fast.bp-short.bp-scoring .bp-scoring-cards > .bp-playing.bp-trigger { animation-duration: .12s; }
+  @keyframes bp-score-pop-tall { 0% { transform: translateY(0) scale(1); } 45% { transform: translateY(-16px) scale(1.1) rotate(-2deg); filter: brightness(1.4) drop-shadow(0 0 10px #f4d47b); } 100% { transform: translateY(0) scale(1); } }
   #balatro-game.bp-short .bp-stage-heading { margin: 5px 0 9px; }
   #balatro-game.bp-short .bp-stage-heading h2 { font-size: 18px; }
   #balatro-game.bp-short .bp-stage-heading > span { display: none; }

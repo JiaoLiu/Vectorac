@@ -638,7 +638,7 @@ export default class PokerTable {
     this.updateLayout()
     this.root.innerHTML=(this.state?this.game():this.entry())+this.dialog()+`<div class="bp-effect-notice ${this.effect?'':'bp-effect-hidden'}" data-effect-notice role="status" aria-live="polite">${esc(this.effect)}</div>`+(this.toast?`<div class="bp-toast" role="status">${esc(this.toast)}</div>`:'')+this.packOpeningOverlay()+this.packChoiceOverlay()+this.addedCardsOverlay()
     const phase=this.state?.phase
-    this.root.classList.toggle('bp-is-playing',!!this.state);this.root.classList.toggle('bp-is-busy',this.busy);this.root.classList.toggle('bp-fast',this.settings.fast);this.root.classList.toggle('bp-pack-open',!!this.state?.pack);this.root.classList.toggle('bp-intermission',!this.busy&&!!this.state&&['select','reward','won','lost'].includes(phase));this.root.classList.toggle('bp-pack-reveal',this.packFx?.phase==='reveal');this.root.classList.toggle('bp-pack-choice-flight',!!this.packChoiceFx)
+    this.root.classList.toggle('bp-is-playing',!!this.state);this.root.classList.toggle('bp-is-busy',this.busy);this.root.classList.toggle('bp-fast',this.settings.fast);this.root.classList.toggle('bp-pack-open',!!this.state?.pack);this.root.classList.toggle('bp-intermission',!this.busy&&!!this.state&&['select','reward','won','lost'].includes(phase));this.root.classList.toggle('bp-scoring',!!this.anim);this.root.classList.toggle('bp-pack-reveal',this.packFx?.phase==='reveal');this.root.classList.toggle('bp-pack-choice-flight',!!this.packChoiceFx)
     this.positionEffectCards();this.positionPackRevealCards();this.positionPackChoice()
   }
   destroy(){
