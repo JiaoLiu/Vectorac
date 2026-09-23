@@ -73,6 +73,67 @@ test('skipping score stays final and disabled after fullscreen re-render',()=>{
  assert.match(table.renderedStage,/data-action="skip-score"[^>]*disabled/,'fullscreen re-render keeps skip unavailable')
  assert.equal(chips.textContent,'1,324');assert.equal(mult.textContent,'4');assert.equal(label.textContent,'+5,296','fullscreen re-render reapplies the final score instead of the last animation tick')
 })
+const consumableAnimation=(operation,used)=>{
+ const table=Object.create(PokerTable.prototype),queue=[],frames=[]
+ table.state=state();table.sort='rank';table.settings={fast:false};table.audio={fx:()=>{}}
+ table.destroyed=false;table.anim=null;table.actionFx=null;table.busy=false
+ table.itemName=()=>used.id;table.itemDesc=()=>used.id;table.persist=()=>{};table.showEffect=()=>{}
+ table.orderedHand=()=>table.state.hand.slice().sort((a,b)=>b.rank-a.rank||a.suit-b.suit)
+ table.cardButton=(card,{fxClass})=>`<i data-card="${card.uid}" data-edition="${card.edition||''}" data-fx="${fxClass}"></i>`
+ table.render=()=>frames.push(table.hand(table.state))
+ table.later=fn=>queue.push(fn)
+ const priorWindow=globalThis.window
+ globalThis.window={matchMedia:()=>({matches:false})}
+ try{
+  table.animateConsumable(operation,used)
+  return {table,frames,next:()=>queue.shift()?.(),pending:()=>queue.length}
+ }finally{globalThis.window=priorWindow}
+}
+test('an existing hand card gains an edition in place, without a deal-from-deck animation',()=>{
+ const fx=consumableAnimation(s=>{
+  const aura={uid:++s.uid,id:'aura',kind:'spectral'};s.consumables.push(aura);s.selected=[1];s.rng=4000;E.use(s,aura.uid)
+ },{id:'aura',kind:'spectral'})
+ assert.deepEqual(fx.table.actionFx.changedUIDs,[1]);assert.deepEqual(fx.table.actionFx.gatherUIDs,[])
+ fx.next()
+ assert.match(fx.frames.at(-1),/data-card="1" data-edition="poly" data-fx="bp-fx-reveal"/)
+ fx.next()
+ assert.equal(fx.table.state.hand[0].edition,'poly')
+ assert.equal(fx.table.actionFx,null)
+ assert.ok(fx.frames.every(frame=>!frame.includes('bp-fx-gather')&&!frame.includes('bp-fx-deal')))
+})
+test('a Tarot rank conversion reveals two existing hand cards without gathering them',()=>{
+ const fx=consumableAnimation(s=>{
+  const strength={uid:++s.uid,id:'strength',kind:'tarot'};s.consumables.push(strength);s.selected=[1,2];E.use(s,strength.uid)
+ },{id:'strength',kind:'tarot'})
+ assert.deepEqual(fx.table.actionFx.changedUIDs,[1,2])
+ fx.next();assert.equal((fx.frames.at(-1).match(/bp-fx-reveal/g)||[]).length,2)
+ fx.next();assert.equal(fx.table.actionFx,null)
+ assert.ok(fx.frames.every(frame=>!frame.includes('bp-fx-gather')&&!frame.includes('bp-fx-deal')))
+})
+test('multi-card transformation stays in place, including while another card is destroyed',()=>{
+ const fx=consumableAnimation(s=>{
+  for(const c of s.hand.slice(0,2)){c.edition='poly';s.deck.find(x=>x.uid===c.uid).edition='poly'}
+  s.hand=s.hand.filter(c=>c.uid!==3);s.deck=s.deck.filter(c=>c.uid!==3)
+ },{id:'mixed',kind:'spectral'})
+ fx.next();assert.match(fx.frames.at(-1),/data-card="1" data-edition="poly" data-fx="bp-fx-reveal"/)
+ fx.next();assert.equal(fx.table.actionFx.phase,'gather')
+ assert.match(fx.frames.at(-1),/data-card="1" data-edition="poly" data-fx=""/,'the changed face does not revert during destruction')
+ assert.ok(!fx.frames.at(-1).includes('bp-fx-gather'))
+ fx.next();assert.equal(fx.table.actionFx,null)
+ assert.equal(fx.table.state.hand.some(c=>c.uid===3),false)
+ assert.ok(fx.frames.every(frame=>!frame.includes('bp-fx-deal')))
+})
+test('a genuinely added card still deals into the hand',()=>{
+ const fx=consumableAnimation(s=>{
+  const created={uid:++s.uid,rank:10,suit:0,enh:null,edition:null,seal:null}
+  s.deck.push(created);s.hand.push(created)
+ },{id:'cryptid',kind:'spectral'})
+ const added=fx.table.actionFx.addedUIDs[0]
+ fx.next();fx.next();fx.next()
+ assert.deepEqual(fx.table.actionFx.dealUIDs,[added])
+ assert.match(fx.frames.at(-1),/bp-fx-deal/)
+ fx.next();assert.equal(fx.table.actionFx,null)
+})
 const copiedRepeatScore=(jokerId,rank,configure=()=>{})=>{
  const s=state([rank,8,6,4,2]);add(s,'blueprint');add(s,jokerId);configure(s);s.selected=[s.hand[0].uid]
  return E.play(s)
@@ -120,6 +181,41 @@ test('Blueprint only copies Golden Joker among blind-end reward effects',()=>{
   s.score=E.target(s)-1;s.selected=[s.hand[0].uid];E.play(s)
   assert.equal(s.phase,'reward');assert.equal(s.roundReward.extra,expected,`${id} keeps its native single-trigger reward`)
  }
+})
+test('Blueprint and Brainstorm keep their own editions when the copied ability is unavailable',()=>{
+ const foil=state();add(foil,'blueprint','foil');add(foil,'golden')
+ assert.equal(play(foil,[1,2]).chips,82,'the incompatible scoring ability does not suppress Blueprint’s own +50 Chips edition')
+ const holo=state();add(holo,'brainstorm','holo');add(holo,'joker')
+ assert.equal(play(holo,[1,2]).mult,16,'a self-copy loop does not suppress Brainstorm’s own +10 Mult edition')
+})
+test('Blueprint copies Burglar on blind entry and Space Joker independently before scoring',()=>{
+ assert.equal(E.blueprintCanCopy('burglar','blindStart'),true)
+ const entry=E.newRun('BLUEPRINT-BURGLAR');add(entry,'blueprint');add(entry,'burglar');E.startBlind(entry)
+ assert.equal(entry.hands,10,'two Burglar triggers each grant three hands');assert.equal(entry.discards,0)
+ assert.equal(E.blueprintCanCopy('space','scoring'),true)
+ const space=state();add(space,'blueprint');add(space,'space');space.rng=8
+ const prior=space.levels.high;play(space,[1])
+ assert.equal(space.levels.high,prior+2,'seed 8 makes both independent 1-in-4 Space triggers succeed')
+})
+test('Blueprint copies Mime at blind reward and Matador on a blocked Boss hand',()=>{
+ const mime=state();add(mime,'blueprint');add(mime,'mime');mime.hand[2].enh=mime.deck[2].enh='gold'
+ mime.score=E.target(mime)-1;play(mime,[1]);assert.equal(mime.roundReward.extra,9,'held Gold pays once plus two Mime retriggers')
+ assert.equal(E.blueprintCanCopy('matador','scoring'),true)
+ const blocked=state();blocked.blind=2;blocked.boss='psychic';add(blocked,'blueprint');add(blocked,'matador')
+ const money=blocked.money;play(blocked,[1]);assert.equal(blocked.money-money,16,'the blocked hand pays both Matador triggers')
+})
+test('Blueprint copies Perkeo at shop exit and Hallucination on pack opening',()=>{
+ assert.equal(E.blueprintCanCopy('perkeo','shopExit'),true)
+ const exit=E.newRun('BLUEPRINT-PERKEO');exit.phase='shop';exit.consumables.push({uid:++exit.uid,kind:'tarot',id:'hermit'})
+ add(exit,'blueprint');add(exit,'perkeo');E.nextBlind(exit)
+ assert.equal(exit.consumables.length,3,'Perkeo and its Blueprint copy each add a Negative copy')
+ assert.equal(exit.consumables.filter(c=>c.edition==='negative').length,2)
+ assert.equal(E.blueprintCanCopy('hallucination','packOpen'),true)
+ const pack=E.newRun('BLUEPRINT-HALLUCINATION');pack.phase='shop';pack.money=100
+ add(pack,'blueprint');add(pack,'hallucination');add(pack,'oops')
+ pack.shop={cards:[],packs:[{uid:++pack.uid,kind:'pack',id:'joker'}],voucher:null,rerolls:0,freeUsed:false}
+ const packUID=pack.shop.packs[0].uid;E.buy(pack,packUID)
+ assert.equal(pack.consumables.length,2,'Oops guarantees that both Hallucination triggers create Tarot cards')
 })
 test('blind reward display value comes from the same stake-aware engine rule as payout',()=>{
  const white=E.newRun('REWARD-WHITE','red',0),red=E.newRun('REWARD-RED','red',1)
@@ -375,6 +471,8 @@ test('target rank/suit, limited triggers and copied reminders remain current',()
  const dna=add(s,'DNA');s.selected=[1];assert.equal(cardCue(s,dna).ready,true);s.plays=1;assert.equal(cardCue(s,dna).label,'下轮恢复')
  const b=state(),copy=add(b,'blueprint'),todo=add(b,'toDo');todo.hand='pair';b.selected=[1,2];assert.equal(cardCue(b,copy).label,'对子 +$4');assert.equal(cardCue(b,copy).ready,true)
  b.jokers=[copy,add(b,'brainstorm')];assert.equal(cardCue(b,copy).label,'复制循环')
+ const incompatible=state(),blueprint=add(incompatible,'blueprint');add(incompatible,'trading')
+ assert.equal(cardCue(incompatible,blueprint).label,'无法复制','the reminder does not advertise a Trading trigger that the engine will not copy')
 })
 test('reminders do not leak face-down cards or disabled joker identities',()=>{
  const s=state(),j=add(s,'toDo');j.hand='pair';s.selected=[1,2];s.hand[0].hidden=true;assert.equal(cardCue(s,j).ready,false)

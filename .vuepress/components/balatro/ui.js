@@ -372,7 +372,9 @@ export default class PokerTable {
     const addedCards=preview.deck.filter(c=>!original.has(c.uid))
     const previewJokers=new Map(preview.jokers.map(j=>[j.uid,j])),beforeJokers=new Map(before.jokers.map(j=>[j.uid,j]))
     const removedJokers=before.jokers.filter(j=>!previewJokers.has(j.uid)),addedJokerUIDs=preview.jokers.filter(j=>!beforeJokers.has(j.uid)).map(j=>j.uid),changedJokerUIDs=before.jokers.filter(j=>{const next=previewJokers.get(j.uid);return next&&['edition','value','perished','disabled'].some(k=>j[k]!==next[k])}).map(j=>j.uid)
-    const gatherUIDs=Array.from(new Set(changedUIDs))
+    // A changed card is still the same card in hand: reveal it in place.
+    // Only cards genuinely created or destroyed should use deck/destroy FX.
+    const gatherUIDs=[]
     const sealUID=changedUIDs.find(id=>!original.get(id)?.seal&&finalCards.get(id)?.seal)||null
     const fx={phase:'cast',beforeHand:before.hand,preview,finalCards,changedUIDs,removedUIDs,addedUIDs,gatherUIDs,sealUID,removedJokers,changedJokerUIDs,addedJokerUIDs,token:Symbol('card-effect')}
     this.actionFx=fx;this.busy=true;this.modal=null
@@ -382,7 +384,7 @@ export default class PokerTable {
     const commitPreview=()=>{
       if(this.destroyed||this.actionFx!==fx)return
       this.state=preview;this.persist()
-      const dealUIDs=Array.from(new Set(changedUIDs.concat(addedUIDs))).filter(id=>preview.hand.some(c=>c.uid===id))
+      const dealUIDs=addedUIDs.filter(id=>preview.hand.some(c=>c.uid===id))
       const hasExitFX=dealUIDs.length>0||removedJokers.length>0||changedJokerUIDs.length>0||addedJokerUIDs.length>0
       this.busy=hasExitFX;this.actionFx=hasExitFX?{phase:'after',dealUIDs,removedJokers,changedJokerUIDs,addedJokerUIDs,token:fx.token}:null
       this.render();this.audio.fx('coin')
@@ -405,10 +407,10 @@ export default class PokerTable {
       fx.phase='reveal';this.render();this.audio.fx('magic')
       this.later(()=>{
         if(this.destroyed||this.actionFx!==fx)return
-        const shouldGather=gatherUIDs.length>1||removedUIDs.length>0||addedUIDs.length>0||removedJokers.length>0||changedJokerUIDs.length>0||addedJokerUIDs.length>0
+        const shouldGather=removedUIDs.length>0||addedUIDs.length>0||removedJokers.length>0||changedJokerUIDs.length>0||addedJokerUIDs.length>0
         if(!shouldGather){finish();return}
         fx.phase='gather';this.render();this.audio.fx('deal')
-        const gatherDuration=(reduced?50:390)+Math.max(0,Math.max(gatherUIDs.length,removedUIDs.length)-1)*(reduced?15:65)
+        const gatherDuration=(reduced?50:390)+Math.max(0,removedUIDs.length-1)*(reduced?15:65)
         const destroyDuration=removedUIDs.length?(reduced?50:(this.settings.fast?650:840)+(removedUIDs.length-1)*95+160):0
         const duration=Math.max(gatherDuration,destroyDuration)
         this.later(finish,duration)
@@ -556,9 +558,9 @@ export default class PokerTable {
     const fx=this.actionFx,list=this.orderedHand(),baseCards=this.anim?this.anim.before.hand.filter(c=>!this.anim.result.cards.some(p=>p.uid===c.uid)):fx&&['cast','reveal','gather','added'].includes(fx.phase)?fx.beforeHand:list
     const cards=fx?.phase==='added'?baseCards.filter(c=>!fx.removedUIDs.includes(c.uid)):baseCards
     return `<div class="bp-hand-area"><div class="bp-hand-caption"><span>${this.anim?'结算中':this.busy?'效果处理中…':s.pack?'选择手牌作为消耗牌目标':`手牌 ${s.hand.length}/${E.handSize(s)} · 已选 ${s.selected.length}/5`}</span><div>${button('sort-rank','点数',this.sort==='rank'?'bp-sort-active':'',this.busy)}${button('sort-suit','花色',this.sort==='suit'?'bp-sort-active':'',this.busy)}</div></div><div class="bp-hand ${cards.length>12?'bp-overfull':''}" style="--hand-count:${Math.max(1,cards.length)}">${cards.map((c,index)=>{
-      const next=fx?.phase==='reveal'?fx.finalCards.get(c.uid):null,display=next||c,changed=fx?.changedUIDs.includes(c.uid),removed=fx?.removedUIDs.includes(c.uid),gather=fx?.phase==='gather'&&fx.gatherUIDs.includes(c.uid),destroy=fx?.phase==='gather'&&removed,deal=fx?.phase==='after'&&fx.dealUIDs.includes(c.uid)
+      const next=fx&&['reveal','gather','added'].includes(fx.phase)?fx.finalCards.get(c.uid):null,display=next||c,changed=fx?.changedUIDs?.includes(c.uid),removed=fx?.removedUIDs?.includes(c.uid),gather=fx?.phase==='gather'&&fx.gatherUIDs?.includes(c.uid),destroy=fx?.phase==='gather'&&removed,deal=fx?.phase==='after'&&fx.dealUIDs?.includes(c.uid)
       const sealTarget=fx?.sealUID===c.uid,fxClass=gather?'bp-fx-gather':deal?'bp-fx-deal':destroy?'bp-fx-destroy':removed?'bp-fx-mark':sealTarget&&fx.phase==='cast'?'bp-fx-seal-pending':changed?fx.phase==='reveal'?'bp-fx-reveal':fx.phase==='cast'?'bp-fx-shake':'' :''
-      const sealFx=sealTarget&&fx.phase==='reveal',sealKind=fx?.finalCards.get(c.uid)?.seal||'gold'
+      const sealFx=sealTarget&&fx.phase==='reveal',sealKind=fx?.finalCards?.get(c.uid)?.seal||'gold'
       const destroyDelay=destroy?fx.removedUIDs.indexOf(c.uid)*95:index*65
       // 只有带增强、版本或封蜡的牌才需要详情入口，普通牌加标记只会干扰看牌。
       const hasDetail=!!(display.enh||display.edition||display.seal)
