@@ -9,6 +9,17 @@ const num=value=>!Number.isFinite(value)?'0':Math.abs(value)>=1e9?value.toExpone
 const button=(action,label,cls='',disabled=false,extra='')=>`<button type="button" data-action="${action}" class="bp-btn ${cls}" ${disabled?'disabled':''} ${extra}>${label}</button>`
 const packNames={joker:'小丑包',planet:'天体包',tarot:'秘术包',standard:'标准包',spectral:'幻灵包'}
 const tagNames={money:'经济标签 · 获得 $15',rare:'稀有标签 · 下个商店免费稀有小丑',hands:'便利标签 · 下轮出牌 +3',discards:'垃圾标签 · 下轮弃牌 +3',free:'优惠标签 · 下个商店卡牌免费',double:'双倍标签'}
+const stakeDescriptions=[
+  '标准难度，没有额外赌注惩罚。',
+  '小盲注不再提供奖励金。',
+  '提高盲注的目标分数。',
+  '部分商店小丑会带有永恒：不能出售或摧毁。',
+  '每个盲注少 1 次弃牌。',
+  '盲注目标分数再提高一档。',
+  '部分小丑会带有易腐：5 轮后失效。',
+  '部分小丑会带有租赁：每轮支付 $3。'
+]
+const stakeColors=['#e6e7da','#d55349','#55a76e','#333b45','#4d9bcd','#8b69bd','#e28a43','#d9b64d']
 const rankName=c=>({11:'J',12:'Q',13:'K',14:'A'}[c.rank]||c.rank)
 const cardName=c=>`${SUIT_NAMES[c.suit]} ${rankName(c)}`
 const safeRead=key=>{try{return localStorage.getItem(key)}catch(_){return null}}
@@ -102,6 +113,7 @@ export default class PokerTable {
     if(this.marker.parentNode)this.marker.parentNode.insertBefore(this.root,this.marker.nextSibling)
     if(native&&(document.fullscreenElement===this.root||document.webkitFullscreenElement===this.root))try{const p=(document.exitFullscreen||document.webkitExitFullscreen).call(document);if(p&&p.catch)p.catch(()=>{})}catch(_){}
     this.render()
+    if(this.busy&&this.anim)this.updateScore(this.anim.event)
   }
   start(resume=false){
     this.audio.unlock();this.state=resume&&this.saved?E.clone(this.saved):E.newRun(this.seed||Math.random().toString(36).slice(2,10).toUpperCase(),this.deckType,this.stake)
@@ -126,12 +138,14 @@ export default class PokerTable {
   click(e){
     const b=e.target.closest('[data-action]');if(!b||!this.root.contains(b)||b.disabled)return
     const action=b.dataset.action,uid=Number(b.dataset.uid),id=b.dataset.id
+    if(this.busy&&action!=='fullscreen')return
     if(action!=='info')this.clearPlanetTap()
     if(action==='deck-choice'){this.deckType=id;this.seed=(this.root.querySelector('[data-seed]')||{}).value||this.seed;this.render();return}
-    if(action==='stake'){this.stake=(this.stake+1)%8;this.seed=(this.root.querySelector('[data-seed]')||{}).value||this.seed;this.render();return}
+    if(action==='stake'){this.seed=(this.root.querySelector('[data-seed]')||{}).value||this.seed;this.modal={type:'stakes'};this.render();return}
+    if(action==='stake-select'){this.stake=Math.max(0,Math.min(STAKES.length-1,Number(id)||0));this.seed=(this.root.querySelector('[data-seed]')||{}).value||this.seed;this.modal=null;this.render();return}
     if(action==='start'){this.seed=(this.root.querySelector('[data-seed]')||{}).value||this.seed;this.start(false);return}
     if(action==='resume'){this.start(true);return}
-    if(action==='fullscreen'){if(this.immersive)this.exitFullscreen();else{this.fullscreen();this.render()}return}
+    if(action==='fullscreen'){if(this.immersive)this.exitFullscreen();else{this.fullscreen();this.render();if(this.busy&&this.anim)this.updateScore(this.anim.event)}return}
     if(action==='sound'||action==='music'||action==='fast'){this.settings[action]=!this.settings[action];this.audio.unlock();this.audio.music(!!this.state);this.persist();this.render();if(action==='sound'&&this.settings.sound)this.audio.fx('magic');return}
     if(action==='help'||action==='hands'||action==='deck'||action==='collection'||action==='menu'){this.modal={type:action};this.render();return}
     if(action==='close'){this.modal=null;this.render();return}
@@ -283,10 +297,12 @@ export default class PokerTable {
     const before=E.clone(this.state),result=this.transact(E.play)
     this.busy=true;this.anim={before,result,event:result.events[0],index:0};this.render()
     const events=result.events.length>22?result.events.filter((_,i)=>i===0||i===result.events.length-1||i%Math.ceil(result.events.length/20)===0):result.events
+    const reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    const tickDelay=reduced?95:this.settings.fast?125:220
     let index=0
     const tick=()=>{
-      if(index<events.length){this.anim.event=events[index];this.anim.index=index;this.updateScore(events[index]);this.audio.fx('score',index++);this.later(tick,this.settings.fast?32:95)}
-      else {this.updateScore({chips:result.chips,mult:result.mult,source:`+${num(result.total)}`});this.audio.fx('coin');this.later(()=>{this.busy=false;this.anim=null;this.render()},this.settings.fast?80:450)}
+      if(index<events.length){this.anim.event=events[index];this.anim.index=index;this.updateScore(events[index]);this.audio.fx('score',index++);this.later(tick,tickDelay)}
+      else {this.updateScore({chips:result.chips,mult:result.mult,source:`+${num(result.total)}`});this.audio.fx('coin');this.later(()=>{this.busy=false;this.anim=null;this.render()},reduced?100:this.settings.fast?260:450)}
     }
     this.later(tick,150)
   }
@@ -335,7 +351,7 @@ export default class PokerTable {
   }
   entry(){
     const deck=byId(DECKS,this.deckType)
-    return `<div class="bp-entry"><div class="bp-entry-top"><span>POKER ROGUELIKE</span>${button('help','玩法说明','bp-quiet')}</div><div class="bp-title-art"><img class="bp-entry-cover" src="/img/games/balatro-cover.svg" alt="小丑牌 · 筹码与倍率，构筑你的致胜牌组"></div><div class="bp-start-panel"><div class="bp-deck-preview" style="--deck-color:${deck.color}">${playingCard({},true)}<b>${deck.name}</b><span>${deck.desc}</span></div><div class="bp-start-options"><div class="bp-start-stake"><label class="bp-eyebrow">选择起始牌组</label>${button('stake',STAKES[this.stake],'bp-quiet')}</div><div class="bp-deck-choices">${DECKS.map(d=>`<button data-action="deck-choice" data-id="${d.id}" class="${d.id===deck.id?'active':''}" style="--deck-color:${d.color}" title="${esc(d.name+'：'+d.desc)}" aria-label="${d.name}" aria-pressed="${d.id===deck.id}"><i></i></button>`).join('')}</div><label class="bp-seed-label">种子 <input data-seed maxlength="32" placeholder="随机开局（可选）" value="${esc(this.seed)}" /></label><div class="bp-start-buttons">${this.saved?button('resume',`继续游戏 <small>底注 ${this.saved.ante} · $${this.saved.money}</small>`,'bp-blue'):''}${button('start',this.saved?'新一局':'开始游戏','bp-red')}</div><small class="bp-entry-note">开始即全屏 · 随时退出 · 自动保存进度</small></div></div><div class="bp-entry-bottom"><span>♠ ♥ ♣ ♦</span><span>盲注 · 小丑组合 · 商店 · 塔罗 · 星球</span>${button('collection','查看卡牌','bp-quiet')}</div></div>`
+    return `<div class="bp-entry"><div class="bp-entry-top"><span>POKER ROGUELIKE</span>${button('help','玩法说明','bp-quiet')}</div><div class="bp-title-art"><img class="bp-entry-cover" src="/img/games/balatro-cover.svg" alt="小丑牌 · 筹码与倍率，构筑你的致胜牌组"></div><div class="bp-start-panel"><div class="bp-deck-preview" style="--deck-color:${deck.color}">${playingCard({},true)}<b>${deck.name}</b><span>${deck.desc}</span></div><div class="bp-start-options"><div class="bp-start-stake"><label class="bp-eyebrow">起始赌注</label>${button('stake',`${STAKES[this.stake]} <span aria-hidden="true">▾</span>`,'bp-quiet',false,'aria-haspopup="dialog"')}</div><div class="bp-deck-choices">${DECKS.map(d=>`<button data-action="deck-choice" data-id="${d.id}" class="${d.id===deck.id?'active':''}" style="--deck-color:${d.color}" title="${esc(d.name+'：'+d.desc)}" aria-label="${d.name}" aria-pressed="${d.id===deck.id}"><i></i></button>`).join('')}</div><label class="bp-seed-label">种子 <input data-seed maxlength="32" placeholder="随机开局（可选）" value="${esc(this.seed)}" /></label><div class="bp-start-buttons">${this.saved?button('resume',`继续游戏 <small>底注 ${this.saved.ante} · $${this.saved.money}</small>`,'bp-blue'):''}${button('start',this.saved?'新一局':'开始游戏','bp-red')}</div><small class="bp-entry-note">开始即全屏 · 随时退出 · 自动保存进度</small></div></div><div class="bp-entry-bottom"><span>♠ ♥ ♣ ♦</span><span>盲注 · 小丑组合 · 商店 · 塔罗 · 星球</span>${button('collection','查看卡牌','bp-quiet')}</div></div>`
   }
   sidebar(s){
     const boss=byId(BOSSES,s.boss),blindName=s.blind===2?boss.name:['小盲注','大盲注'][s.blind]
@@ -396,6 +412,10 @@ export default class PokerTable {
       title='怎么玩'
       body=`<div class="bp-help-grid"><section><b>01 · 打出牌型</b><p>从手牌选 1～5 张。对子、同花、顺子等决定基础筹码和倍率。只有参与牌型的牌计分；A 为 11 筹码，人头牌为 10。</p></section><section><b>02 · 筹码 × 倍率</b><p>先结算打出的牌，再结算留手效果，最后从左到右触发小丑。把加倍率的小丑放在乘倍率的小丑前面，得分会不同。</p></section><section><b>03 · 卡包里有什么</b><p>小丑包获得持续能力；星球牌升级牌型；秘术牌改变或强化手牌，也能影响金钱；幻灵牌是强力的一次性效果，可能改造或销毁扑克牌、小丑。点击卡包封面查看本包内容与数量。</p></section><section><b>04 · 连过 8 个底注</b><p>每个底注有小盲注、大盲注、Boss 盲注。前两个可跳过领取标签，Boss 不能跳过。出牌耗尽且分数不够则本局结束。</p></section></div><div class="bp-help-note"><b>操作</b><p>单击选牌；再次单击取消。星球牌可快速双点使用。键盘 1～8 选牌，Enter 出牌，D 弃牌。点击小丑可左右移动，调整结算顺序。改牌类消耗牌须先选择手牌目标。</p><p>开始自动请求全屏；不支持系统全屏的设备使用网页全屏。iPhone Safari 普通标签页仍保留系统地址栏，添加到主屏幕后可使用独立窗口。关闭页面后可从首页继续。</p></div>`
     }
+    if(m.type==='stakes'){
+      title='选择起始赌注';cls='bp-stake-dialog'
+      body=`<p class="bp-stake-intro">难度逐级增加；选择更高赌注时，下面所有较低赌注的规则也会一并生效。</p><div class="bp-stakes-list">${STAKES.map((name,index)=>{const selected=this.stake===index;return button('stake-select',`<span class="bp-stake-token" style="--stake-color:${stakeColors[index]}">${String(index+1).padStart(2,'0')}</span><span class="bp-stake-copy"><b>${name}</b><small>${stakeDescriptions[index]}</small></span><span class="bp-stake-check" aria-hidden="true">${selected?'✓':''}</span>`,`bp-stake-option ${selected?'bp-stake-active':''}`,false,`data-id="${index}" aria-pressed="${selected}"`) }).join('')}</div><p class="bp-stake-footnote">赌注规则会在开局后持续生效，本局中不能更改。</p>`
+    }
     if(m.type==='hands'){
       title='牌型与等级';body=`<div class="bp-hands-table">${HANDS.slice().reverse().map(h=>{const b=s?E.handBase(s,h.id):h;return `<div><b>${h.name}</b><span>Lv.${s?s.levels[h.id]:1}</span><strong class="bp-blue-text">${num(b.chips)}</strong><span>×</span><strong class="bp-red-text">${num(b.mult)}</strong><small>${h.planet}</small></div>`}).join('')}</div><p class="bp-help-note">显示基础分数。计分牌的筹码、增强牌与小丑效果会依次加入。高牌只计算最高点数牌，对子只计算对子牌；石头牌额外计分。</p>`
     }
@@ -435,7 +455,7 @@ export default class PokerTable {
     this.updateLayout()
     this.root.innerHTML=(this.state?this.game():this.entry())+this.dialog()+`<div class="bp-effect-notice ${this.effect?'':'bp-effect-hidden'}" data-effect-notice role="status" aria-live="polite">${esc(this.effect)}</div>`+(this.toast?`<div class="bp-toast" role="status">${esc(this.toast)}</div>`:'')+this.packOpeningOverlay()+this.packChoiceOverlay()
     const phase=this.state?.phase
-    this.root.classList.toggle('bp-is-playing',!!this.state);this.root.classList.toggle('bp-is-busy',this.busy);this.root.classList.toggle('bp-pack-open',!!this.state?.pack);this.root.classList.toggle('bp-intermission',!!this.state&&['select','reward','won','lost'].includes(phase));this.root.classList.toggle('bp-pack-reveal',this.packFx?.phase==='reveal');this.root.classList.toggle('bp-pack-choice-flight',!!this.packChoiceFx)
+    this.root.classList.toggle('bp-is-playing',!!this.state);this.root.classList.toggle('bp-is-busy',this.busy);this.root.classList.toggle('bp-fast',this.settings.fast);this.root.classList.toggle('bp-pack-open',!!this.state?.pack);this.root.classList.toggle('bp-intermission',!this.busy&&!!this.state&&['select','reward','won','lost'].includes(phase));this.root.classList.toggle('bp-pack-reveal',this.packFx?.phase==='reveal');this.root.classList.toggle('bp-pack-choice-flight',!!this.packChoiceFx)
     this.positionEffectCards();this.positionPackRevealCards();this.positionPackChoice()
   }
   destroy(){

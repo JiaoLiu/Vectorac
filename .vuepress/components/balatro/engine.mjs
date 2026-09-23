@@ -128,9 +128,13 @@ function randomJoker(s,rarity) {
   const pool=JOKERS.filter(j=>j.rarity===r&&(j.id!=='banana'||s.grosGone)&&(has(s,'showman')||!s.jokers.some(x=>x.id===j.id)))
   return makeJoker(s,pick(s,pool.length?pool:JOKERS.filter(j=>j.rarity===r)).id,edition(s))
 }
-function planet(s) {
-  const pool=HANDS.filter((h,i)=>(i<9||s.played[h.id]>0)&&(has(s,'showman')||!s.consumables.some(c=>c.kind==='planet'&&c.id===h.id)))
-  return item(s,'planet',pick(s,pool.length?pool:HANDS.slice(0,9)).id)
+function planet(s, excluded = new Set()) {
+  const held = new Set(s.consumables.filter(c=>c.kind==='planet').map(c=>c.id))
+  const available = HANDS.filter(h=>!excluded.has(h.id)&&(has(s,'showman')||!held.has(h.id)))
+  const playable = available.filter(h=>HANDS.indexOf(h)<9||s.played[h.id]>0)
+  const chosen = pick(s,playable.length?playable:available.length?available:HANDS.filter(h=>!excluded.has(h.id)))
+  excluded.add(chosen.id)
+  return item(s,'planet',chosen.id)
 }
 function tarot(s) { const pool=TAROTS.filter(t=>has(s,'showman')||!s.consumables.some(c=>c.kind==='tarot'&&c.id===t.id));return item(s,'tarot',pick(s,pool.length?pool:TAROTS).id) }
 function spectral(s) { return item(s,'spectral',pick(s,SPECTRALS.filter(x=>!['soul','blackhole'].includes(x.id))).id) }
@@ -498,17 +502,21 @@ export function buy(s,uid) {
 function openPack(s,kind) {
   for(const j of s.jokers)if(j.id==='hallucination'&&!j.perished&&chance(s,2))addConsumable(s,tarot(s))
   const cards=[]
-  for(let i=0;i<(kind==='joker'?2:3);i++) {
+  const planetIds=new Set()
+  if(kind==='planet'&&owns(s,'telescope')) {
+    const mostPlayed=HANDS.reduce((a,b)=>s.played[b.id]>s.played[a.id]?b:a)
+    cards.push(item(s,'planet',mostPlayed.id));planetIds.add(mostPlayed.id)
+  }
+  for(let i=cards.length;i<(kind==='joker'?2:3);i++) {
     let c
     if(kind==='joker')c=randomJoker(s)
-    else if(kind==='planet')c=planet(s)
+    else if(kind==='planet')c=planet(s,planetIds)
     else if(kind==='tarot')c=owns(s,'omen')&&random(s)<.2?spectral(s):tarot(s)
     else if(kind==='spectral')c=random(s)<.006?item(s,'spectral',pick(s,['soul','blackhole'])):spectral(s)
     else c={uid:++s.uid,kind:'card',rank:2+Math.floor(random(s)*13),suit:Math.floor(random(s)*4),enh:random(s)<.4?pick(s,['bonus','mult','wild','glass','steel','stone','gold','lucky']):null,edition:edition(s),seal:random(s)<.2?pick(s,['red','blue','gold','purple']):null}
     if(c.edition==='negative'&&c.kind==='card')c.edition=null
     cards.push(c)
   }
-  if(kind==='planet'&&owns(s,'telescope'))cards[0]=item(s,'planet',HANDS.reduce((a,b)=>s.played[b.id]>s.played[a.id]?b:a).id)
   s.pack={kind,cards,handBefore:clone(s.hand)}
   if(['tarot','spectral'].includes(kind)){s.hand=shuffle(s,s.deck).slice(0,handSize(s)).map(c=>Object.assign({},c));s.selected=[]}
 }
