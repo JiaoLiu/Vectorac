@@ -199,6 +199,19 @@ test('Pillar tracks only actually played cards across blinds',()=>{
  const currentPlay=s.hand.find(c=>!s.antePlayed.includes(c.uid));assert.ok(currentPlay);assert.equal(E.debuffed(s,currentPlay),false)
  s.score=0;play(s,[currentPlay.uid]);assert.equal(E.debuffed(s,currentPlay),false,'this blind’s own play is not debuffed retroactively before it ends')
 })
+test('Pillar boss blind does not grey out the hand that defeats it',()=>{
+ const s=state([14,14,13,12,10,8,4,2]);s.blind=2;s.boss='pillar'
+ const priorPlayed=s.hand[1].uid,winner=s.hand[0].uid
+ s.antePlayed=[priorPlayed];s.score=E.target(s)-1
+ const before=E.clone(s),result=play(s,[winner])
+ assert.equal(s.phase,'reward')
+ assert.equal(E.debuffed(before,s.deck.find(c=>c.uid===winner)),false,'the winning hand was never played before this blind, so it scores normally')
+ assert.equal(E.debuffed(s,s.deck.find(c=>c.uid===winner)),true,'the engine folds the winning hand into antePlayed once the blind is over')
+ const table=Object.create(PokerTable.prototype)
+ table.state=s;table.anim={before,result}
+ const html=table.playStage(s)
+ assert.equal(html.includes('bp-debuff'),false,'the scoring stage judges debuffs from the pre-play snapshot, not the post-payout state')
+})
 test('actual pre-tracking v3 save resets contaminated Pillar history and resumes tracking',()=>{
  const legacy=JSON.parse(readFileSync(new URL('./fixtures/balatro-v3-pre-blindplayed.json',import.meta.url),'utf8'))
  assert.equal(legacy.version,3);assert.equal(legacy.blindPlayed,undefined)
