@@ -2,7 +2,7 @@ import * as E from './engine.mjs'
 import { HANDS, JOKERS, TAROTS, SPECTRALS, VOUCHERS, BOSSES, DECKS, STAKES, SUITS, SUIT_NAMES, ENHANCEMENTS, EDITIONS, SEALS, boosterPack, byId } from './catalog.mjs'
 import { playingCard, jokerArt, consumableArt, packArt } from './art.mjs'
 import { cardCue } from './cues.mjs'
-import { playingCardDetails } from './card-details.mjs'
+import { playingCardDetails, playingCardSummary } from './card-details.mjs'
 
 const SAVE='vectorac.balatro.run.v3', SETTINGS='vectorac.balatro.settings.v3'
 const esc=value=>String(value==null?'':value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))
@@ -489,7 +489,16 @@ export default class PokerTable {
     const shards=destroying?`<span class="bp-destroy-shards" aria-hidden="true">${Array.from({length:5},(_,i)=>`<span class="bp-destroy-shard bp-shard-${i+1}">${playingCard(c,hidden)}</span>`).join('')}</span>`:''
     return `<button type="button" class="bp-playing ${selected?'bp-selected':''} ${!hidden&&c.edition?'bp-ed-'+c.edition:''} ${fxClass} ${!hidden&&this.state&&E.debuffed(this.state,c)?'bp-debuff':''}" style="--fx-delay:${fxDelay}" data-action="select" data-uid="${c.uid}" data-visual="${c.uid}" ${disabled?'disabled':''} aria-pressed="${selected}" aria-label="${esc(hidden?'背面朝上的牌':cardName(c)+(detail?'，'+detail:''))}" title="${esc(hidden?'背面朝上':cardName(c)+(detail?' · '+detail:''))}">${playingCard(c,hidden)}${shards}${sealFx?`<span class="bp-seal-stamp bp-seal-${sealKind}" aria-hidden="true">✦</span>`:''}${!hidden&&mods?`<span class="bp-card-mod">${esc(mods)}</span>`:''}${this.state&&this.state.forced===c.uid?'<span class="bp-forced">必须选择</span>':''}</button>`
   }
-  itemName(card){return card.kind==='joker'?byId(JOKERS,card.id).name:card.kind==='planet'?byId(HANDS,card.id).planet:card.kind==='voucher'?byId(VOUCHERS,card.id).name:card.kind==='pack'?boosterPack(card.id).name:card.kind==='card'?cardName(card):byId(card.kind==='spectral'?SPECTRALS:TAROTS,card.id).name}
+  itemName(card){
+    // 牌组与手牌里的扑克牌没有 kind 字段，和补充包里的 kind:'card' 一样按牌面命名，
+    // 否则会落到塔罗/幻灵分支去查不存在的 id。
+    if(card.kind==='joker')return byId(JOKERS,card.id).name
+    if(card.kind==='planet')return byId(HANDS,card.id).planet
+    if(card.kind==='voucher')return byId(VOUCHERS,card.id).name
+    if(card.kind==='pack')return boosterPack(card.id).name
+    if(!card.kind||card.kind==='card')return cardName(card)
+    return byId(card.kind==='spectral'?SPECTRALS:TAROTS,card.id).name
+  }
   itemDesc(card){
     if(card.kind==='joker')return byId(JOKERS,card.id).desc
     if(card.kind==='planet'){const h=byId(HANDS,card.id);return `${h.name}升 1 级：+${h.dc} 筹码，+${h.dm} 倍率`}
@@ -498,7 +507,7 @@ export default class PokerTable {
       const pack=boosterPack(card.id)
       return `含 ${pack.options} 张${pack.content}，选择 ${pack.choose} 张${pack.action}。${pack.description}`
     }
-    if(card.kind==='card')return [card.enh?ENHANCEMENTS[card.enh]:'标准扑克牌',card.edition?EDITIONS[card.edition]:'',card.seal?SEALS[card.seal].split('：')[0]:''].filter(Boolean).join(' · ')
+    if(card.kind==='card')return playingCardSummary(card)
     return byId(card.kind==='spectral'?SPECTRALS:TAROTS,card.id).desc
   }
   art(card,hidden=false){if(card.kind==='joker')return jokerArt(card,hidden);if(card.kind==='pack'){const pack=boosterPack(card.id);return packArt(pack.family,pack.size)}return card.kind==='card'?playingCard(card):consumableArt(card)}
@@ -551,7 +560,9 @@ export default class PokerTable {
       const sealTarget=fx?.sealUID===c.uid,fxClass=gather?'bp-fx-gather':deal?'bp-fx-deal':destroy?'bp-fx-destroy':removed?'bp-fx-mark':sealTarget&&fx.phase==='cast'?'bp-fx-seal-pending':changed?fx.phase==='reveal'?'bp-fx-reveal':fx.phase==='cast'?'bp-fx-shake':'' :''
       const sealFx=sealTarget&&fx.phase==='reveal',sealKind=fx?.finalCards.get(c.uid)?.seal||'gold'
       const destroyDelay=destroy?fx.removedUIDs.indexOf(c.uid)*95:index*65
-      return `<div class="bp-hand-card">${this.cardButton(display,{selected:s.selected.includes(c.uid),disabled:this.busy||s.phase!=='play'&&!s.pack,hidden:c.hidden,fxClass,sealFx,sealKind,fxDelay:`${destroyDelay}ms`})}${!c.hidden?`<button type="button" class="bp-card-detail-button" data-action="card-details" data-uid="${c.uid}" aria-label="查看 ${esc(cardName(c))} 的牌面与效果详情" title="卡牌详情">i</button>`:''}</div>`
+      // 只有带增强、版本或封蜡的牌才需要详情入口，普通牌加标记只会干扰看牌。
+      const hasDetail=!!(display.enh||display.edition||display.seal)
+      return `<div class="bp-hand-card">${this.cardButton(display,{selected:s.selected.includes(c.uid),disabled:this.busy||s.phase!=='play'&&!s.pack,hidden:c.hidden,fxClass,sealFx,sealKind,fxDelay:`${destroyDelay}ms`})}${!c.hidden&&hasDetail?`<button type="button" class="bp-card-detail-button" data-action="card-details" data-uid="${c.uid}" aria-label="查看 ${esc(cardName(c))} 的牌面与效果详情" title="卡牌详情">i</button>`:''}</div>`
     }).join('')}</div><div class="bp-play-controls">${button('play','出牌','bp-blue',this.busy||s.phase!=='play'||!s.selected.length||!!s.pack)}<span>${this.anim?'正在结算…':this.busy?'正在展示效果…':s.pack?'先选目标，再点击包中的「使用」':'最多选择 5 张牌'}</span>${button('discard','弃牌','bp-red',this.busy||s.phase!=='play'||!s.selected.length||s.discards<=0||!!s.pack)}</div></div>`
   }
   playStage(s){

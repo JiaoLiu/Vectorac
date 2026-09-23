@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs'
 import * as E from '../.vuepress/components/balatro/engine.mjs'
 import { HANDS,JOKERS,TAROTS,SPECTRALS,VOUCHERS,BOSSES,DECKS,BOOSTER_PACKS } from '../.vuepress/components/balatro/catalog.mjs'
 import { cardCue } from '../.vuepress/components/balatro/cues.mjs'
-import { playingCardDetails } from '../.vuepress/components/balatro/card-details.mjs'
+import { playingCardDetails, playingCardSummary } from '../.vuepress/components/balatro/card-details.mjs'
 import PokerTable from '../.vuepress/components/balatro/ui.js'
 
 const cards=(ranks,suits=[])=>ranks.map((rank,i)=>({uid:i+1,rank,suit:suits[i]===undefined?i%4:suits[i],enh:null,edition:null,seal:null}))
@@ -142,6 +142,32 @@ test('playing-card details share complete face, enhancement, edition and seal tr
   assert.equal(details[0].value,'梅花 A');assert.match(details[1].value,/计分时/);assert.match(details[2].value,/参与计分时/);assert.ok(details[3].value.includes(phrase),seal)
  }
  assert.deepEqual(playingCardDetails({rank:14,suit:0,hidden:true}),[],'face-down cards reveal no card facts')
+})
+test('pack and shop card descriptions spell out seal effects instead of bare names',()=>{
+ assert.equal(playingCardSummary({rank:10,suit:1}),'标准扑克牌','plain cards stay short')
+ const blue=playingCardSummary({rank:10,suit:1,seal:'blue'})
+ assert.ok(blue.includes('蓝色蜡封：'),blue);assert.ok(blue.includes('生成一张对应上一手牌型的星球牌'),blue)
+ const gold=playingCardSummary({rank:10,suit:1,seal:'gold'})
+ assert.ok(gold.includes('金色蜡封：'),gold);assert.ok(gold.includes('每次触发获得 $3'),gold)
+ const red=playingCardSummary({rank:10,suit:1,seal:'red'})
+ assert.ok(red.includes('红色蜡封：')&&red.includes('额外触发一次'),red)
+ const purple=playingCardSummary({rank:10,suit:1,seal:'purple'})
+ assert.ok(purple.includes('紫色蜡封：')&&purple.includes('生成一张塔罗牌'),purple)
+ const special=playingCardSummary({rank:10,suit:1,enh:'glass',edition:'poly'})
+ assert.ok(special.includes('玻璃牌：')&&special.includes('多彩：'),special)
+ assert.equal(playingCardSummary({rank:10,suit:1,hidden:true}),'背面朝上')
+})
+test('detail dialogs name deck cards that carry no kind field',()=>{
+ const table=Object.create(PokerTable.prototype)
+ assert.equal(table.itemName({uid:1,rank:14,suit:0}),'黑桃 A','deck cards are playing cards, not tarots')
+ assert.equal(table.itemName({uid:2,rank:10,suit:1,seal:'blue'}),'红桃 10')
+ assert.equal(table.itemName({kind:'card',rank:4,suit:2}),'梅花 4')
+ assert.equal(table.itemName({kind:'joker',id:JOKERS[0].id}),JOKERS[0].name)
+ assert.equal(table.itemName({kind:'tarot',id:TAROTS[0].id}),TAROTS[0].name)
+ assert.equal(table.itemName({kind:'spectral',id:SPECTRALS[0].id}),SPECTRALS[0].name)
+ assert.equal(table.itemName({kind:'planet',id:HANDS[0].id}),HANDS[0].planet)
+ assert.equal(table.itemName({kind:'voucher',id:VOUCHERS[0].id}),VOUCHERS[0].name)
+ assert.equal(table.itemName({kind:'pack',id:BOOSTER_PACKS.standard.id}),BOOSTER_PACKS.standard.name)
 })
 test('held steel and Baron precede joker additions',()=>{
  const s=state();s.hand[2].enh=s.deck[2].enh='steel';add(s,'baron');add(s,'joker');assert.equal(play(s,[1,2]).mult,8.5)
