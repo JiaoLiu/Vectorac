@@ -4,18 +4,16 @@
   var gameNames = {
     '/blogs/other/mahjong_game.html': '四川麻将',
     '/blogs/other/gomoku.html': '五子棋',
-    '/blogs/other/cardforge.html': '小丑牌',
-    '/blogs/other/keyboard_game.html': '键盘学习',
-    '/blogs/other/typing_game.html': '经典打字',
-    '/blogs/other/hua_rong_dao.html': '华容道',
-    '/blogs/other/sudoku.html': '数独',
-    '/blogs/other/2048.html': '2048',
-    '/blogs/other/slime_game.html': '史莱姆模拟'
+    '/blogs/other/cardforge.html': '小丑牌'
+  }
+  var gameRoots = {
+    '/blogs/other/mahjong_game.html': '#scmjGame',
+    '/blogs/other/gomoku.html': '#gomokuGame',
+    '/blogs/other/cardforge.html': '#balatro-game'
   }
   var currentPath = ''
   var currentGame = ''
   var valine = null
-  var feedbackButton = null
   var feedbackModal = null
   var bodyOverflow = ''
   var priorFocus = null
@@ -24,9 +22,6 @@
   var css = document.createElement('style')
   css.id = 'game-feedback-style'
   css.textContent = [
-    '#game-feedback-fab{position:fixed;right:calc(env(safe-area-inset-right,0px) + 16px);bottom:calc(env(safe-area-inset-bottom,0px) + 24px);z-index:2147483646;display:flex;align-items:center;gap:8px;min-height:44px;padding:0 16px;border:1px solid rgba(255,255,255,.7);border-radius:999px;background:#176b59;color:#fff;font:600 14px/1 system-ui,-apple-system,"Segoe UI",sans-serif;box-shadow:0 4px 18px rgba(8,35,31,.25);cursor:pointer;-webkit-tap-highlight-color:transparent}',
-    '#game-feedback-fab:hover{background:#0f5749;transform:translateY(-1px)}#game-feedback-fab:active{transform:scale(.97)}',
-    '#game-feedback-fab svg{width:18px;height:18px;flex:none}',
     '#game-feedback-modal[hidden]{display:none!important}',
     '#game-feedback-modal{position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;padding:calc(16px + env(safe-area-inset-top,0px)) calc(16px + env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) calc(16px + env(safe-area-inset-left,0px));box-sizing:border-box;background:rgba(9,19,30,.62);-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px)}',
     '#game-feedback-modal .gf-dialog{width:min(560px,100%);max-height:min(820px,88vh);max-height:min(820px,88dvh);overflow:auto;border:1px solid rgba(255,255,255,.72);border-radius:20px;background:#fff;color:#253142;box-shadow:0 24px 80px rgba(0,0,0,.34);padding:22px 24px 20px;box-sizing:border-box;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}',
@@ -44,8 +39,7 @@
     '#game-feedback-modal .vrow{padding:4px 10px 10px}',
     '#game-feedback-modal .vsubmit{min-width:88px;border:0!important;border-radius:9px!important;background:#176b59!important;color:#fff!important;font-size:14px!important}',
     '#game-feedback-modal .status-bar{font-size:12px;color:#39725f}',
-    '@media(max-width:520px){#game-feedback-fab{right:calc(env(safe-area-inset-right,0px) + 10px);bottom:calc(env(safe-area-inset-bottom,0px) + 16px);min-height:42px;padding:0 13px;font-size:13px}#game-feedback-modal{padding:calc(10px + env(safe-area-inset-top,0px)) calc(10px + env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) calc(10px + env(safe-area-inset-left,0px))}#game-feedback-modal .gf-dialog{max-height:90vh;max-height:90dvh;padding:18px 16px 14px;border-radius:17px}#game-feedback-modal .gf-title{font-size:20px}#game-feedback-modal .veditor{min-height:34vh;max-height:48vh}}',
-    '@media(prefers-reduced-motion:reduce){#game-feedback-fab{transition:none}}'
+    '@media(max-width:520px){#game-feedback-modal{padding:calc(10px + env(safe-area-inset-top,0px)) calc(10px + env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) calc(10px + env(safe-area-inset-left,0px))}#game-feedback-modal .gf-dialog{max-height:90vh;max-height:90dvh;padding:18px 16px 14px;border-radius:17px}#game-feedback-modal .gf-title{font-size:20px}#game-feedback-modal .veditor{min-height:34vh;max-height:48vh}}'
   ].join('')
 
   function normalizedPath () {
@@ -58,8 +52,7 @@
 
   function moveToDisplayRoot () {
     var root = displayRoot()
-    if (feedbackButton && currentGame && feedbackButton.parentNode !== root) root.appendChild(feedbackButton)
-    if (feedbackModal) {
+    if (feedbackModal && currentGame) {
       var modalRoot = feedbackModal.hidden ? document.body : root
       if (feedbackModal.parentNode !== modalRoot) modalRoot.appendChild(feedbackModal)
     }
@@ -230,15 +223,6 @@
 
   function ensureUi () {
     if (!document.getElementById('game-feedback-style')) document.head.appendChild(css)
-    if (!feedbackButton) {
-      var button = document.createElement('button')
-      button.id = 'game-feedback-fab'
-      button.type = 'button'
-      button.setAttribute('aria-label', '提交游戏意见或 Bug 反馈')
-      button.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8z"/></svg><span>反馈</span>'
-      button.addEventListener('click', openModal)
-      feedbackButton = button
-    }
     if (!feedbackModal) {
       var dialog = document.createElement('div')
       dialog.id = 'game-feedback-modal'
@@ -301,7 +285,6 @@
       })
       feedbackModal = dialog
     }
-    feedbackButton.style.display = ''
     var heading = feedbackModal.querySelector('#game-feedback-title')
     if (heading) heading.textContent = currentGame + ' · 意见反馈'
     moveToDisplayRoot()
@@ -310,17 +293,16 @@
   function syncRoute () {
     var path = normalizedPath()
     var game = gameNames[path]
-    var buttonPresent = feedbackButton && feedbackButton.isConnected
     var dialogPresent = feedbackModal && feedbackModal.isConnected
-    if (path === currentPath && (game ? buttonPresent && dialogPresent : !buttonPresent)) {
+    if (path === currentPath && (game ? dialogPresent : !dialogPresent)) {
       moveToDisplayRoot()
       return
     }
     currentPath = path
     if (!game) {
-      currentGame = ''
-      if (feedbackButton && feedbackButton.isConnected) feedbackButton.remove()
       if (feedbackModal && !feedbackModal.hidden) closeModal()
+      currentGame = ''
+      if (feedbackModal && feedbackModal.isConnected) feedbackModal.remove()
       return
     }
     currentGame = game
@@ -342,6 +324,17 @@
   ;['keydown', 'keyup', 'keypress'].forEach(function (type) {
     window.addEventListener(type, isolateExternalKeyboard, true)
   })
+  document.addEventListener('click', function (event) {
+    var trigger = event.target.closest && event.target.closest('[data-game-feedback]')
+    if (!trigger) return
+    syncRoute()
+    if (!currentGame) return
+    var gameRoot = document.querySelector(gameRoots[currentPath])
+    if (!gameRoot || !gameRoot.contains(trigger)) return
+    event.preventDefault()
+    event.stopPropagation()
+    openModal()
+  }, true)
   document.addEventListener('fullscreenchange', moveToDisplayRoot)
   document.addEventListener('webkitfullscreenchange', moveToDisplayRoot)
   window.addEventListener('popstate', syncRoute)

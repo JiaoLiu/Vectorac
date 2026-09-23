@@ -37,6 +37,7 @@ meta:
 <span class="gk-stat"><i class="gk-stat-num draw" data-gk-draw>0</i>平</span>
 <span class="gk-stats-scope">· <span data-gk-stats-level>中等</span></span>
 </div>
+<button type="button" class="gk-btn gk-feedback-entry" data-game-feedback aria-label="反馈五子棋问题">反馈</button>
 <button type="button" class="gk-btn gk-fs-toggle" data-gk-fullscreen aria-label="退出全屏">✕</button>
 </div>
 <!-- 状态条 -->
@@ -120,6 +121,7 @@ meta:
   color: transparent;
 }
 .gk-moves { font-size: 12px; color: #8b93a8; letter-spacing: 1px; }
+.gk-feedback-entry { white-space: nowrap; }
 
 /* 难度分段控件（Apple 风格） */
 .gk-diff {

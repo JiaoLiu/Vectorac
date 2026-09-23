@@ -154,6 +154,7 @@ meta:
 <label><input type="checkbox" data-scmj-set-sound checked /> 音效</label>
 <label><input type="checkbox" data-scmj-set-anim checked /> 动画</label>
 <label><input type="checkbox" data-scmj-set-passhu checked /> 过胡时二次确认</label>
+<button type="button" class="scmj-btn scmj-btn-ghost scmj-feedback-entry" data-game-feedback>反馈麻将问题</button>
 </div>
 <button type="button" class="scmj-btn scmj-btn-primary" data-scmj-close-settings>完成</button>
 </div>
@@ -1221,6 +1222,7 @@ meta:
 #scmjGame .scmj-rules-note { margin-top: 10px; color: #9fbfa8; font-size: 12.5px; }
 #scmjGame .scmj-settings-body { display: flex; flex-direction: column; gap: 12px; }
 #scmjGame .scmj-settings-body label { display: flex; align-items: center; gap: 8px; font-size: 15px; color: #e9f0e6; min-height: 36px; }
+#scmjGame .scmj-settings-body .scmj-feedback-entry { align-self: flex-start; min-height: 36px; }
 #scmjGame .scmj-confirm { width: min(420px, 90%); text-align: center; }
 #scmjGame .scmj-confirm-text { color: #f3ead8; font-size: 15px; line-height: 1.7; margin-bottom: 16px; }
 #scmjGame .scmj-confirm-btns { display: flex; gap: 12px; justify-content: center; }
