@@ -372,6 +372,16 @@
 #balatro-game.bp-short.bp-pack-open .bp-pack-stage .bp-item-desc { display: -webkit-box; overflow: hidden; max-height: 30px; margin: 3px 0; font-size: 10px; line-height: 1.35; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 #balatro-game.bp-short.bp-pack-open .bp-pack-stage .bp-shop-cards .bp-btn { min-height: 36px; padding: 6px 8px; font-size: 11px; }
 #balatro-game.bp-short.bp-pack-open .bp-pack-stage > .bp-quiet { min-height: 36px; margin-top: 4px; padding: 6px 10px; font-size: 11px; }
+/* 横屏开补充包：舞台装不下「标题 + 卡牌 + 跳过按钮」，卡牌会上下溢出，压住标题和跳过按钮。
+   开包时出牌/弃牌本就不可用、手牌说明也被舞台标题取代，一起让位给卡牌。 */
+#balatro-game.bp-short.bp-pack-open .bp-hand-caption { display: none; }
+#balatro-game.bp-short.bp-pack-open .bp-play-controls > button { display: none; }
+#balatro-game.bp-short.bp-pack-open .bp-play-controls { padding: 3px 0 2px; }
+#balatro-game.bp-short.bp-pack-open .bp-pack-stage .bp-stage-heading p { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 1; }
+#balatro-game.bp-short.bp-pack-open .bp-pack-stage .bp-shop-cards .bp-item-art { max-width: 50px; }
+#balatro-game.bp-short.bp-pack-open .bp-pack-stage .bp-item-desc { margin: 2px 0; }
+#balatro-game.bp-short.bp-pack-open .bp-pack-stage .bp-shop-cards .bp-btn { min-height: 28px; }
+#balatro-game.bp-short.bp-pack-open .bp-pack-stage > .bp-quiet { min-height: 28px; margin-top: 3px; }
 #balatro-game .bp-joker-ghost { transform-origin: center; }
 #balatro-game .bp-joker-ghost.bp-fx-joker-destroy { z-index: 5; pointer-events: none; animation: bp-joker-destroy .72s cubic-bezier(.25,.62,.35,1) var(--fx-delay,0ms) both; }
 #balatro-game .bp-fx-joker-upgrade .bp-item-art { animation: bp-joker-upgrade .85s ease-out both; }
