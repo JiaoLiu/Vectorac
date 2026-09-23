@@ -433,6 +433,9 @@ function finishBlind(s) {
   s.money+=total;s.earned+=total;s.roundReward={reward,hands,interest,extra:extra+discardMoney,total}
   s.antePlayed=Array.from(new Set(s.antePlayed.concat(s.spent.map(c=>c.uid))))
   if(s.blind===2&&s.deckType==='anaglyph')s.tags.push('double')
+  // The hand, draw pile, and played cards are returned to the deck between blinds.
+  // Clear the table only after rewards and per-card effects have been calculated.
+  s.hand=[];s.draw=[];s.spent=[];s.selected=[];s.forced=null
   s.phase='reward'
 }
 export function cashOut(s) {

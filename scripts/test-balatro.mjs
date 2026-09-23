@@ -51,6 +51,11 @@ test('round stages enforce single cashout, single purchase, no double advancemen
  s.money=100;const card=s.shop.cards[0],fee=E.itemCost(s,card);E.buy(s,card.uid);assert.equal(s.money,100-fee);assert.throws(()=>E.buy(s,card.uid))
  E.nextBlind(s);assert.equal(s.phase,'select');assert.equal(s.blind,1);assert.throws(()=>E.nextBlind(s))
 })
+test('blind payout records played cards, then clears the table for the next screen',()=>{
+ const s=state([14,14,13,12,10,8,4,2]);const played=s.hand.slice(0,5).map(c=>c.uid);s.score=E.target(s)-1;s.selected=played;E.play(s)
+ assert.equal(s.phase,'reward');assert.ok(played.every(uid=>s.antePlayed.includes(uid)))
+ assert.deepEqual(s.hand,[]);assert.deepEqual(s.draw,[]);assert.deepEqual(s.spent,[]);assert.deepEqual(s.selected,[]);assert.equal(s.forced,null)
+})
 test('skip cannot bypass Boss and tags are single use',()=>{const s=E.newRun('SKIP');E.skipBlind(s);assert.equal(s.money,19);E.skipBlind(s);assert.equal(s.blind,2);assert.throws(()=>E.skipBlind(s))})
 test('Psychic invalid hand consumes a play but scores zero',()=>{const s=state();s.blind=2;s.boss='psychic';const r=play(s,[1]);assert.equal(r.total,0);assert.equal(s.hands,3)})
 test('debuffed cards retain base hand scoring; Chicot removes debuffs',()=>{
@@ -100,6 +105,10 @@ test('all tarots, spectrals execute with valid target fixtures',()=>{
    const s=state();add(s,'joker');s.lastUsed={kind:'planet',id:'high'};s.consumables=[{uid:999,kind,id:def.id}];if(def.max)s.selected=s.hand.slice(0,def.id==='death'?2:1).map(c=>c.uid)
    E.use(s,999);assert.ok(E.restore(s),kind+'/'+def.id)
  }
+})
+test('Soul in a spectral pack grants a legendary joker and closes the pack',()=>{
+ const s=E.newRun('SOUL');E.startBlind(s);s.phase='shop';s.hand=[];s.pack={kind:'spectral',cards:[{uid:900,kind:'spectral',id:'soul'}],handBefore:[]};E.choosePack(s,900)
+ assert.equal(s.phase,'shop');assert.equal(s.pack,null);assert.equal(s.jokers.length,1);assert.equal(JOKERS.find(j=>j.id===s.jokers[0].id).rarity,4)
 })
 test('all 32 vouchers buy without breaking stage and save',()=>{
  for(const v of VOUCHERS){const s=state([10,11,12,13,14],[1,1,1,1,1]);play(s,[1,2,3,4,5]);E.cashOut(s);s.money=100;s.shop.voucher={uid:900,kind:'voucher',id:v.id};E.buy(s,900);assert.ok(s.vouchers.includes(v.id));assert.ok(E.restore(s),v.id)}

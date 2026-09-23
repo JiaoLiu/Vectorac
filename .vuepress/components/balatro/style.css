@@ -707,18 +707,21 @@
 #balatro-game.bp-short.bp-intermission .bp-table-footer { display: none; }
 #balatro-game.bp-short.bp-intermission .bp-table { display: flex; gap: 0; padding: 4px 10px; }
 #balatro-game.bp-short.bp-intermission .bp-main { width: 100%; flex: 1; min-height: 0; }
-#balatro-game.bp-short.bp-intermission .bp-stage { overflow: hidden; justify-content: center; }
-#balatro-game.bp-short.bp-intermission .bp-select-stage { margin: auto; padding: 0 2px; }
-#balatro-game.bp-short.bp-intermission .bp-stage-heading { margin: 0 0 5px; }
+#balatro-game.bp-short.bp-intermission .bp-stage { overflow-x: hidden; overflow-y: auto; justify-content: center; }
+#balatro-game.bp-short.bp-intermission .bp-select-stage { width: 100%; margin: auto; padding: 0 2px 4px; }
+#balatro-game.bp-short.bp-intermission .bp-stage-heading { margin: 0 0 7px; }
 #balatro-game.bp-short.bp-intermission .bp-stage-heading h2 { font-size: 17px; }
-#balatro-game.bp-short.bp-intermission .bp-stage-heading p { margin-top: 2px; font-size: 8px; }
-#balatro-game.bp-short.bp-intermission .bp-blind-choices { gap: 6px; }
-#balatro-game.bp-short.bp-intermission .bp-blind-choice { gap: 3px; padding: 5px 6px; }
-#balatro-game.bp-short.bp-intermission .bp-blind-choice-head { font-size: 10px; padding: 4px 2px; }
-#balatro-game.bp-short.bp-intermission .bp-blind-token { width: 29px; height: 29px; margin: 1px auto; font-size: 14px; }
-#balatro-game.bp-short.bp-intermission .bp-blind-choice > strong { font-size: 16px; }
-#balatro-game.bp-short.bp-intermission .bp-blind-choice > p { min-height: 0; max-height: 25px; overflow: hidden; font-size: 8px; line-height: 1.25; }
-#balatro-game.bp-short.bp-intermission .bp-blind-choice > button { min-height: 24px; padding: 4px 2px; font-size: 9px; }
+#balatro-game.bp-short.bp-intermission .bp-stage-heading p { margin-top: 2px; font-size: 9px; }
+#balatro-game.bp-short.bp-intermission .bp-blind-choices { width: min(570px,100%); margin: 0 auto; grid-template-columns: repeat(3,minmax(0,1fr)); gap: clamp(8px,1.5vw,16px); }
+#balatro-game.bp-short.bp-intermission .bp-blind-choice { display: flex; height: clamp(245px,calc(100dvh - 130px),330px); min-height: 0; gap: 3px; padding: 8px 8px 10px; text-align: center; }
+#balatro-game.bp-short.bp-intermission .bp-blind-choice-head { font-size: 13px; padding: 6px 3px; }
+#balatro-game.bp-short.bp-intermission .bp-blind-token { width: 42px; height: 42px; flex: 0 0 42px; margin: 2px auto; font-size: 18px; outline-width: 2px; outline-offset: -6px; }
+#balatro-game.bp-short.bp-intermission .bp-blind-choice > strong { font-size: 19px; }
+#balatro-game.bp-short.bp-intermission .bp-blind-choice > small,
+#balatro-game.bp-short.bp-intermission .bp-blind-choice > span { display: block; font-size: 10px; }
+#balatro-game.bp-short.bp-intermission .bp-blind-choice > p { display: -webkit-box; min-height: 28px; max-height: 32px; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; font-size: 9px; line-height: 1.3; }
+#balatro-game.bp-short.bp-intermission .bp-blind-choice > button { min-height: 40px; padding: 7px 3px; font-size: 11px; }
+#balatro-game.bp-short.bp-intermission .bp-blind-choice > .bp-quiet { min-height: 34px; font-size: 10px; }
 #balatro-game.bp-short.bp-intermission .bp-tags { gap: 3px; margin-top: 5px; font-size: 8px; }
 #balatro-game.bp-short.bp-intermission .bp-tags span { padding: 2px 5px; }
 #balatro-game.bp-short.bp-intermission .bp-result { width: min(330px,100%); max-height: 100%; gap: 5px; padding: 3px 10px; overflow-y: auto; scrollbar-width: none; }

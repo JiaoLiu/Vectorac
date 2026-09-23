@@ -72,11 +72,21 @@ export default class PokerTable {
     if(this.resizeObserver)this.resizeObserver.observe(root)
     window.addEventListener('resize',this.onResize)
     this.onVisibility=()=>this.audio.music(!!this.state&&!document.hidden)
-    this.onFull=()=>{if(this.immersive&&!document.fullscreenElement&&!document.webkitFullscreenElement&&this.nativeFullscreen)this.exitFullscreen(false)}
+    this.onFull=()=>{
+      const active=document.fullscreenElement===this.root||document.webkitFullscreenElement===this.root
+      this.nativeFullscreen=active
+      if(this.immersive&&!active)this.exitFullscreen(false)
+    }
     root.addEventListener('click',this.onClick);root.addEventListener('dblclick',this.onDouble);document.addEventListener('keydown',this.onKey);document.addEventListener('visibilitychange',this.onVisibility);document.addEventListener('fullscreenchange',this.onFull);document.addEventListener('webkitfullscreenchange',this.onFull)
     this.render()
   }
-  later(fn,ms){const t=setTimeout(()=>{this.timers.delete(t);if(!this.destroyed)fn()},ms);this.timers.add(t);return t}
+  later(fn,ms){const t=setTimeout(()=>{this.timers.delete(t);if(this.destroyed)return;try{fn()}catch(error){this.recoverAnimation(error)}},ms);this.timers.add(t);return t}
+  recoverAnimation(error){
+    console.error('Balatro timed action failed',error)
+    this.busy=false;this.anim=null;this.actionFx=null;this.packFx=null;this.packChoiceFx=null
+    this.toast='动画中断，操作已恢复'
+    try{this.render()}catch(renderError){console.error('Balatro recovery render failed',renderError)}
+  }
   updateLayout(){
     if(this.destroyed)return
     const width=this.root.clientWidth,height=this.root.clientHeight
@@ -177,7 +187,7 @@ export default class PokerTable {
           this.showEffect(`${hand.planet} 生效 · ${hand.name} Lv.${this.state.levels[used.id]} · ${num(base.chips)} 筹码 × ${num(base.mult)} 倍率`)
         }else this.showEffect(`${this.itemName(used)} 已生效 · ${this.itemDesc(used)}`)
       }
-    }catch(error){this.busy=false;this.notify(error.message||'操作失败，请重试')}
+    }catch(error){this.busy=false;this.anim=null;this.actionFx=null;this.packFx=null;this.packChoiceFx=null;this.notify(error.message||'操作失败，请重试')}
   }
   packSource(card){
     const root=this.root.getBoundingClientRect(),art=this.root.querySelector(`.bp-item[data-visual="${card.uid}"] .bp-item-art`),rect=art?.getBoundingClientRect()
@@ -378,12 +388,12 @@ export default class PokerTable {
   }
   hand(s){
     const fx=this.actionFx,list=this.orderedHand(),cards=this.anim?this.anim.before.hand.filter(c=>!this.anim.result.cards.some(p=>p.uid===c.uid)):fx&&['cast','reveal','gather'].includes(fx.phase)?fx.beforeHand:list
-    return `<div class="bp-hand-area"><div class="bp-hand-caption"><span>${this.busy?'结算中':s.pack?'选择手牌作为消耗牌目标':`手牌 ${s.hand.length}/${E.handSize(s)} · 已选 ${s.selected.length}/5`}</span><div>${button('sort-rank','点数',this.sort==='rank'?'bp-sort-active':'',this.busy)}${button('sort-suit','花色',this.sort==='suit'?'bp-sort-active':'',this.busy)}</div></div><div class="bp-hand ${cards.length>12?'bp-overfull':''}" style="--hand-count:${Math.max(1,cards.length)}">${cards.map((c,index)=>{
+    return `<div class="bp-hand-area"><div class="bp-hand-caption"><span>${this.anim?'结算中':this.busy?'效果处理中…':s.pack?'选择手牌作为消耗牌目标':`手牌 ${s.hand.length}/${E.handSize(s)} · 已选 ${s.selected.length}/5`}</span><div>${button('sort-rank','点数',this.sort==='rank'?'bp-sort-active':'',this.busy)}${button('sort-suit','花色',this.sort==='suit'?'bp-sort-active':'',this.busy)}</div></div><div class="bp-hand ${cards.length>12?'bp-overfull':''}" style="--hand-count:${Math.max(1,cards.length)}">${cards.map((c,index)=>{
       const next=fx?.phase==='reveal'?fx.finalCards.get(c.uid):null,display=next||c,changed=fx?.changedUIDs.includes(c.uid),removed=fx?.removedUIDs.includes(c.uid),gather=fx?.phase==='gather'&&fx.gatherUIDs.includes(c.uid),destroy=fx?.phase==='gather'&&removed,deal=fx?.phase==='after'&&fx.dealUIDs.includes(c.uid)
       const sealTarget=fx?.sealUID===c.uid,fxClass=gather?'bp-fx-gather':deal?'bp-fx-deal':destroy?'bp-fx-destroy':removed?'bp-fx-mark':sealTarget&&fx.phase==='cast'?'bp-fx-seal-pending':changed?fx.phase==='reveal'?'bp-fx-reveal':fx.phase==='cast'?'bp-fx-shake':'' :''
       const sealFx=sealTarget&&fx.phase==='reveal',sealKind=fx?.finalCards.get(c.uid)?.seal||'gold'
       return this.cardButton(display,{selected:s.selected.includes(c.uid),disabled:this.busy||s.phase!=='play'&&!s.pack,hidden:c.hidden,fxClass,sealFx,sealKind,fxDelay:`${index*65}ms`})
-    }).join('')}</div><div class="bp-play-controls">${button('play','出牌','bp-blue',this.busy||s.phase!=='play'||!s.selected.length||!!s.pack)}<span>${this.busy?'正在结算效果…':s.pack?'先选目标，再点击包中的「使用」':'最多选择 5 张牌'}</span>${button('discard','弃牌','bp-red',this.busy||s.phase!=='play'||!s.selected.length||s.discards<=0||!!s.pack)}</div></div>`
+    }).join('')}</div><div class="bp-play-controls">${button('play','出牌','bp-blue',this.busy||s.phase!=='play'||!s.selected.length||!!s.pack)}<span>${this.anim?'正在结算…':this.busy?'正在展示效果…':s.pack?'先选目标，再点击包中的「使用」':'最多选择 5 张牌'}</span>${button('discard','弃牌','bp-red',this.busy||s.phase!=='play'||!s.selected.length||s.discards<=0||!!s.pack)}</div></div>`
   }
   playStage(s){
     if(this.anim)return `<div class="bp-play-stage"><div class="bp-score-label" data-score-event>${this.anim.result.name}</div><div class="bp-scoring-cards">${this.anim.result.cards.map(c=>this.cardButton(c,{disabled:true})).join('')}</div><span class="bp-stage-hint">扑克牌 → 留手效果 → 小丑牌</span></div>`
@@ -399,8 +409,8 @@ export default class PokerTable {
   }
   end(s){const win=s.phase==='won';return `<div class="bp-result"><span class="bp-eyebrow">${win?'YOU WIN!':'GAME OVER'}</span><h2>${win?'底注 8 · 通关！':'本局结束'}</h2><div class="bp-result-score">${num(s.best)}<small>最高单手</small></div><p>${win?'继续挑战无尽模式，看看这副牌的极限。':`本轮得到 ${num(s.score)} 分，还差 ${num(E.target(s)-s.score)} 分。`}</p><div class="bp-receipt"><div><span>底注 / 回合</span><b>${s.ante} / ${s.round}</b></div><div><span>累计出牌</span><b>${s.totalHands}</b></div><div><span>种子</span><b>${esc(s.seed)}</b></div></div>${win?button('endless','继续无尽模式','bp-blue'):''}${button('restart','再来一局','bp-red')}</div>`}
   game(){
-    const s=this.state,withHand=(s.phase==='play'||s.pack&&['tarot','spectral'].includes(s.pack.kind)||this.busy)
-    const stage=this.busy?this.playStage(s):s.phase==='select'?this.blindSelection(s):s.phase==='play'?this.playStage(s):s.phase==='reward'?this.reward(s):s.phase==='shop'?this.shop(s):this.end(s)
+    const s=this.state,withHand=(s.phase==='play'||s.pack&&['tarot','spectral'].includes(s.pack.kind)||!!this.anim)
+    const stage=this.anim?this.playStage(s):s.phase==='select'?this.blindSelection(s):s.phase==='play'?this.playStage(s):s.phase==='reward'?this.reward(s):s.phase==='shop'?this.shop(s):this.end(s)
     return `<div class="bp-game"><div class="bp-topbar"><span>♠ <b>小丑牌</b> <small>${esc(byId(DECKS,s.deckType).name)}</small></span><div>${button('menu','≡','bp-icon',false,'aria-label="游戏选项"')}${button('help','?','bp-icon',false,'aria-label="玩法帮助"')}${button('sound',this.settings.sound?'音效 开':'音效 关','bp-quiet')}${button('music',this.settings.music?'♫ 开':'♫ 关','bp-quiet',false,'aria-label="切换音乐"')}${button('fullscreen',this.immersive?'退出全屏':'进入全屏','bp-quiet')}</div></div><div class="bp-table">${this.sidebar(s)}<main class="bp-main">${this.inventory(s)}${this.cueStrip(s)}<div class="bp-stage ${withHand?'bp-has-hand':''}">${stage}</div>${withHand?this.hand(s):''}<footer class="bp-table-footer"><span data-deck-pile>${s.phase==='play'?`牌库 ${s.draw.length} · 已出 ${s.spent.length}`:`种子 ${esc(s.seed)}`}<small> · 自动保存</small></span>${button('deck',`查看牌组 ${s.deck.length} 张`,'bp-quiet')}</footer></main></div></div>`
   }
   findItem(uid){const s=this.state;if(!s)return null;return s.jokers.concat(s.consumables,s.shop?s.shop.cards.concat(s.shop.packs,s.shop.voucher?[s.shop.voucher]:[]):[],s.pack?s.pack.cards:[]).find(c=>c.uid===uid)}
