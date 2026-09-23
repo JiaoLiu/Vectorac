@@ -1,7 +1,7 @@
 #balatro-game {
   --ink: #f2edda; --muted: #b3c2b4; --red: #c64b45; --blue: #357da4;
   --gold: #d2a755; --panel: #2c4240; --edge: #8b9980;
-  position: relative; isolation: isolate; margin: 24px 0; width: 100%; height: 780px;
+  position: relative; isolation: isolate; box-sizing: border-box; margin: 24px 0; width: 100%; height: 780px;
   min-height: 420px; overflow: hidden; border-radius: 12px;
   color: var(--ink); background: #1e5045; font-family: "Trebuchet MS", "PingFang SC", "Microsoft YaHei", sans-serif;
   font-size: 14px; line-height: 1.4; font-weight: 600;
@@ -15,7 +15,7 @@
 #balatro-game.bp-fullscreen, #balatro-game:fullscreen {
   position: fixed; inset: 0; z-index: 2147483000; width: 100%; height: 100vh; height: 100dvh;
   min-height: 0; max-width: none; margin: 0; border-radius: 0; box-shadow: none;
-  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  padding: max(4px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(4px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
 }
 #balatro-game *, #balatro-game *::before, #balatro-game *::after { box-sizing: border-box; }
 #balatro-game h1, #balatro-game h2, #balatro-game h3, #balatro-game p { margin: 0; padding: 0; border: 0; color: inherit; }
@@ -127,7 +127,6 @@
 #balatro-game .bp-empty-slot span { font: italic 40px Georgia,serif; color: #d2ddb624; }
 #balatro-game .bp-item { position: relative; min-width: 0; text-align: center; }
 #balatro-game .bp-item-art { display: block; background: transparent; padding: 0; border: 0; width: 100%; aspect-ratio: 120/168; border-radius: 5px; filter: drop-shadow(2px 4px 2px #102c2860); transition: transform .15s; }
-#balatro-game .bp-item-art:hover { transform: translateY(-4px) rotate(2deg); }
 #balatro-game .bp-item-name { display: block; margin-top: 6px; font-size: 10px; line-height: 1.15; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #balatro-game .bp-item-desc { font-size: 11px; line-height: 1.5; font-weight: 500; color: #bdcbbb; min-height: 34px; margin: 5px 0 9px; }
 #balatro-game .bp-disabled-joker { opacity: .4; filter: grayscale(1); }
@@ -175,9 +174,12 @@
 #balatro-game .bp-hand { display: flex; justify-content: center; align-items: end; gap: clamp(2px,.5vw,8px); padding: 12px 4px 9px; min-height: 116px; }
 #balatro-game .bp-hand > .bp-playing { flex: 0 1 108px; width: min(108px, calc((100% - (var(--hand-count) - 1) * 6px) / var(--hand-count))); min-width: 0; }
 #balatro-game .bp-playing { display: block; position: relative; padding: 0; border: 0; border-radius: 6px; background: transparent; aspect-ratio: 120/168; box-shadow: 1px 5px 2px #102d2b80; transition: transform .12s, box-shadow .12s; }
-#balatro-game .bp-playing:not(:disabled):hover { transform: translateY(-7px); }
 #balatro-game .bp-playing.bp-selected { transform: translateY(-18px); box-shadow: 0 0 0 2px #edc771, 2px 9px 4px #102d2b60; }
-#balatro-game .bp-playing.bp-selected:hover { transform: translateY(-19px); }
+@media (hover: hover) and (pointer: fine) {
+  #balatro-game .bp-playing:not(:disabled):hover { transform: translateY(-7px); }
+  #balatro-game .bp-playing.bp-selected:hover { transform: translateY(-19px); }
+  #balatro-game .bp-item-art:hover { transform: translateY(-4px) rotate(2deg); }
+}
 #balatro-game .bp-card-mod { position: absolute; bottom: 3px; left: 3px; right: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 8px; color: #223f37; background: #eddfb6ee; border-radius: 2px; }
 #balatro-game .bp-forced { position: absolute; top: -16px; left: 0; right: 0; font-size: 8px; color: #f3dc8c; text-shadow: 0 1px 2px #000; white-space: nowrap; }
 #balatro-game .bp-debuff { filter: grayscale(.8) brightness(.75); }
@@ -255,6 +257,11 @@
 #balatro-game .bp-collection b { display: block; text-align: center; font-size: 12px; }
 #balatro-game .bp-collection p { font-size: 11px; margin-top: 6px; }
 #balatro-game .bp-toast { position: absolute; z-index: 80; bottom: 22px; left: 50%; transform: translateX(-50%); max-width: 90%; border: 1px solid #dfbc78; border-radius: 7px; background: #3f322af5; box-shadow: 0 5px 20px #0006; padding: 12px 18px; color: #f5e2b8; font-size: 13px; text-align: center; pointer-events: none; }
+#balatro-game .bp-effect-notice { position: absolute; z-index: 70; top: 36%; left: 50%; transform: translateX(-50%); max-width: min(90%, 600px); padding: 9px 16px; border: 1px solid #f4ce7e; border-radius: 8px; background: #253e37f5; color: #ffe4a4; box-shadow: 0 8px 26px #102b25aa, inset 0 1px #fff4; font-size: 14px; font-weight: 800; text-align: center; line-height: 1.35; pointer-events: none; }
+#balatro-game .bp-effect-hidden { display: none; }
+#balatro-game .bp-effect-pop { animation: bp-effect-pop .25s ease-out; }
+@keyframes bp-effect-pop { from { opacity: 0; transform: translate(-50%, -12px) scale(.94); } to { opacity: 1; transform: translate(-50%, 0) scale(1); } }
+#balatro-game.bp-short .bp-effect-notice { padding: 5px 10px; font-size: 10px; }
 #balatro-game .bp-trigger { animation: bp-score-pop .19s ease-out; }
 @keyframes bp-score-pop { 0% { transform: translateY(0); } 45% { transform: translateY(-9px) rotate(-3deg); filter: brightness(1.3); } 100% { transform: translateY(0); } }
 
@@ -281,258 +288,295 @@
 }
 
 /* Portrait: compact dashboard, independently scrollable centre, hand stays reachable. */
-@media (max-width: 640px) and (min-height: 501px) {
-  #balatro-game { height: 800px; min-height: 0; font-size: 12px; }
-  #balatro-game .bp-topbar { height: 36px; min-height: 36px; padding: 3px 8px; }
-  #balatro-game .bp-topbar > span { gap: 4px; }
-  #balatro-game .bp-topbar > span > small { display: none; }
-  #balatro-game .bp-topbar > div { gap: 2px; }
-  #balatro-game .bp-topbar .bp-btn { font-size: 10px; padding: 4px 6px; min-height: 28px; }
-  #balatro-game .bp-topbar .bp-icon { width: 24px; }
-  #balatro-game .bp-table { display: flex; flex-direction: column; padding: 8px; gap: 9px; }
-  #balatro-game .bp-sidebar { flex-shrink: 0; display: grid; grid-template-columns: 1.15fr 1.1fr .8fr; grid-template-rows: 55px 55px; gap: 5px; padding: 7px; border-radius: 7px; overflow: visible; }
-  #balatro-game .bp-brand, #balatro-game .bp-progress, #balatro-game .bp-sidebar .bp-side-actions { display: none; }
-  #balatro-game .bp-blind-panel { grid-column: 1; grid-row: 1/3; padding: 4px; gap: 1px; }
-  #balatro-game .bp-blind-label { font-size: 11px; padding: 4px; gap: 4px; margin-bottom: 2px; }
-  #balatro-game .bp-chip-icon { height: 19px; width: 19px; outline-width: 1px; outline-offset: -3px; }
-  #balatro-game .bp-blind-panel > small { font-size: 8px; }
-  #balatro-game .bp-target { font-size: 23px; }
-  #balatro-game .bp-boss-rule { font-size: 8px; line-height: 1.25; padding: 2px 0; }
-  #balatro-game .bp-round-score { grid-column: 2; grid-row: 1; flex-direction: column; justify-content: center; padding: 3px; gap: 1px; }
-  #balatro-game .bp-round-score span { font-size: 9px; }
-  #balatro-game .bp-round-score b { font-size: 22px; }
-  #balatro-game .bp-calculator { grid-column: 2; grid-row: 2; padding: 2px 3px; }
-  #balatro-game .bp-hand-name { min-height: 13px; font-size: 10px; }
-  #balatro-game .bp-hand-name small { font-size: 8px; }
-  #balatro-game .bp-equation { gap: 2px; margin: 3px 0 0; }
-  #balatro-game .bp-equation strong { font-size: 17px; padding: 6px 1px; border-radius: 3px; }
-  #balatro-game .bp-equation > span { font-size: 14px; }
-  #balatro-game .bp-calculator > small { display: none; }
-  #balatro-game .bp-counters { grid-column: 3; grid-row: 1; gap: 3px; }
-  #balatro-game .bp-counters > div { padding: 3px 1px; }
-  #balatro-game .bp-counters span { font-size: 9px; }
-  #balatro-game .bp-counters b { font-size: 26px; }
-  #balatro-game .bp-money { grid-column: 3; grid-row: 2; font-size: 27px; display: grid; place-items: center; padding: 2px; }
-  #balatro-game .bp-main { flex: 1; }
-  #balatro-game .bp-inventory { grid-template-columns: minmax(0,1fr) 92px; gap: 7px; padding-bottom: 4px; }
-  #balatro-game .bp-rack-label { font-size: 9px; margin-bottom: 2px; }
-  #balatro-game .bp-rack-label b { margin-left: 2px; }
-  #balatro-game .bp-rack-cards { gap: 4px; min-height: 77px; padding: 3px 1px 5px; }
-  #balatro-game .bp-rack-cards > .bp-item { flex: 0 0 43px; width: 43px; }
-  #balatro-game .bp-empty-slot { flex-basis: 43px; height: 60px; }
-  #balatro-game .bp-empty-slot span { font-size: 27px; }
-  #balatro-game .bp-item-name { font-size: 8px; margin-top: 3px; }
-  #balatro-game .bp-stage-heading { margin: 12px 0; }
-  #balatro-game h2 { font-size: 22px; }
-  #balatro-game .bp-stage-heading p { font-size: 9px; }
-  #balatro-game .bp-stage-heading > span { font-size: 9px; }
-  #balatro-game .bp-blind-choices { gap: 6px; }
-  #balatro-game .bp-blind-choice { padding: 5px; gap: 5px; }
-  #balatro-game .bp-blind-choice-head { font-size: 12px; padding: 5px 2px; }
-  #balatro-game .bp-blind-token { height: 42px; width: 42px; outline-width: 2px; outline-offset: -5px; font-size: 20px; margin: 3px 0; }
-  #balatro-game .bp-blind-choice > strong { font-size: 22px; }
-  #balatro-game .bp-blind-choice small, #balatro-game .bp-blind-choice > span { font-size: 9px; }
-  #balatro-game .bp-blind-choice > p { font-size: 9px; min-height: 38px; }
-  #balatro-game .bp-blind-choice > button { min-height: 33px; font-size: 11px; padding: 7px 2px; }
-  #balatro-game .bp-hand-area { padding-top: 4px; }
-  #balatro-game .bp-hand-caption { font-size: 9px; padding-bottom: 10px; }
-  #balatro-game .bp-hand-caption .bp-btn { font-size: 9px; padding: 5px 8px; min-height: 27px; }
-  #balatro-game .bp-hand { --cw: clamp(52px, 16.5vw, 68px); gap: 0; padding: 10px 2px 6px; min-height: 100px; }
-  #balatro-game .bp-hand > .bp-playing { flex: 0 0 var(--cw); width: var(--cw); }
-  #balatro-game .bp-hand > .bp-playing + .bp-playing { margin-left: min(3px, calc((100% - var(--hand-count) * var(--cw) - 4px) / (var(--hand-count) - 1))); }
-  #balatro-game .bp-hand.bp-overfull { overflow-x: auto; justify-content: flex-start; }
-  #balatro-game .bp-hand.bp-overfull > .bp-playing + .bp-playing { margin-left: -20px; }
-  #balatro-game .bp-playing.bp-selected { transform: translateY(-12px); }
-  #balatro-game .bp-play-controls { gap: 8px; padding-top: 12px; }
-  #balatro-game .bp-play-controls > button { flex: 1; min-width: 0; min-height: 43px; font-size: 15px; }
-  #balatro-game .bp-play-controls > span { font-size: 9px; max-width: 105px; }
-  #balatro-game .bp-table-footer { font-size: 8px; padding-top: 2px; min-height: 23px; }
-  #balatro-game .bp-table-footer small { display: none; }
-  #balatro-game .bp-table-footer .bp-quiet { min-height: 25px; font-size: 9px; }
-  #balatro-game .bp-table-emblem { font-size: 60px; }
-  #balatro-game .bp-stage-hint { font-size: 10px; }
-  #balatro-game .bp-play-stage { padding: 6px 0; gap: 7px; }
-  #balatro-game .bp-live-boss { font-size: 10px; }
-  #balatro-game .bp-scoring-cards { gap: 5px; }
-  #balatro-game .bp-scoring-cards > .bp-playing { width: 48px; }
-  #balatro-game .bp-score-label { font-size: 19px; min-height: 26px; }
-  #balatro-game .bp-shop-stage { padding-top: 9px; }
-  #balatro-game .bp-shop-heading { gap: 8px; margin-bottom: 12px; }
-  #balatro-game .bp-shop-heading h2 { font-size: 22px; }
-  #balatro-game .bp-shop-heading .bp-btn { min-height: 36px; font-size: 11px; padding: 8px 11px; }
-  #balatro-game .bp-shop-cards { gap: 13px; }
-  #balatro-game .bp-shop-cards .bp-item-art { max-width: 71px; }
-  #balatro-game .bp-shop-cards .bp-item-name { font-size: 11px; }
-  #balatro-game .bp-shop-cards .bp-item-desc { font-size: 10px; min-height: 25px; }
-  #balatro-game .bp-shop-shelves { gap: 9px; }
-  #balatro-game .bp-shop-shelves label { font-size: 9px; margin-bottom: 8px; }
-  #balatro-game .bp-shop-tip { font-size: 9px; margin-top: 10px; }
-  #balatro-game .bp-pack-stage .bp-shop-cards .bp-item-art { max-width: 68px; }
-  #balatro-game .bp-pack-stage .bp-stage-heading { margin: 3px 0 10px; }
-  #balatro-game .bp-pack-stage .bp-stage-heading h2 { font-size: 19px; }
-  #balatro-game .bp-pack-stage .bp-item-desc { font-size: 9px; margin-bottom: 4px; }
-  #balatro-game .bp-pack-stage .bp-item-name { font-size: 10px; margin-top: 5px; }
-  #balatro-game .bp-pack-stage .bp-shop-cards .bp-btn { min-height: 30px; }
-  #balatro-game .bp-result { padding: 15px 8px; gap: 12px; }
-  #balatro-game .bp-result h2 { font-size: 25px; }
-  #balatro-game .bp-result-score { font-size: 33px; }
-  #balatro-game .bp-modal-backdrop { padding: 12px; }
-  #balatro-game .bp-dialog-header { padding: 11px 14px; }
-  #balatro-game .bp-dialog-header h2 { font-size: 18px; }
-  #balatro-game .bp-dialog-content { padding: 16px; }
-  #balatro-game .bp-help-grid { grid-template-columns: 1fr; gap: 16px; }
-  #balatro-game .bp-hands-table > div { grid-template-columns: 1.1fr 35px .9fr 12px .9fr; font-size: 11px; padding: 8px 2px; }
-  #balatro-game .bp-hands-table small { display: none; }
-  #balatro-game .bp-hands-table strong { font-size: 17px; }
-  #balatro-game .bp-info { grid-template-columns: 85px 1fr; gap: 18px; align-items: start; }
-  #balatro-game .bp-info p { font-size: 12px; }
-  #balatro-game .bp-info .bp-btn { font-size: 11px; min-height: 35px; padding: 8px 10px; }
-  #balatro-game .bp-collection { grid-template-columns: repeat(3,minmax(0,1fr)); gap: 18px; }
-  #balatro-game .bp-collection > div > div { height: 110px; }
-  #balatro-game .bp-collection p { font-size: 10px; }
-  #balatro-game .bp-deck-grid { grid-template-columns: repeat(7,minmax(0,1fr)); gap: 5px; }
-  #balatro-game .bp-deck-summary { font-size: 16px; gap: 10px; }
-  #balatro-game .bp-entry { padding: 16px; gap: 16px; }
-  #balatro-game .bp-title-art { height: 255px; }
-  #balatro-game .bp-title-word > span { font-size: 37px; letter-spacing: 5px; }
-  #balatro-game .bp-title-word h1 { font-size: 36px; letter-spacing: 10px; }
-  #balatro-game .bp-title-card { width: 80px; height: 112px; }
-  #balatro-game .bp-title-left { left: calc(50% - 154px); top: 58px; }
-  #balatro-game .bp-title-right { right: calc(50% - 154px); top: 58px; }
-  #balatro-game .bp-title-word p { font-size: 10px; letter-spacing: 2px; }
-  #balatro-game .bp-start-panel { grid-template-columns: 85px 1fr; padding: 16px 13px; gap: 14px; }
-  #balatro-game .bp-deck-preview { padding-right: 12px; }
-  #balatro-game .bp-deck-preview svg { width: 52px; height: 74px; }
-  #balatro-game .bp-deck-preview b { font-size: 11px; }
-  #balatro-game .bp-deck-preview span { font-size: 10px; }
-  #balatro-game .bp-deck-choices button { width: 25px; height: 29px; padding: 3px; }
-  #balatro-game .bp-deck-choices { gap: 2px; }
-  #balatro-game .bp-start-buttons { flex-direction: column; gap: 9px; }
-  #balatro-game .bp-start-buttons .bp-btn { min-height: 41px; flex-direction: row; font-size: 12px; }
-  #balatro-game .bp-start-buttons small { font-size: 9px; }
-  #balatro-game .bp-eyebrow { font-size: 9px; letter-spacing: 1px; }
-  #balatro-game .bp-entry-bottom { font-size: 8px; letter-spacing: 0; }
-  #balatro-game .bp-entry-bottom > span:first-child { display: none; }
+@media all {
+  #balatro-game.bp-compact:not(.bp-fullscreen) { height: clamp(600px, calc(100svh - 95px), 740px); min-height: 0; font-size: 12px; }
+  #balatro-game.bp-compact .bp-topbar { height: 36px; min-height: 36px; padding: 3px 8px; }
+  #balatro-game.bp-compact .bp-topbar > span { gap: 4px; }
+  #balatro-game.bp-compact .bp-topbar > span > small { display: none; }
+  #balatro-game.bp-compact .bp-topbar > div { gap: 2px; }
+  #balatro-game.bp-compact .bp-topbar .bp-btn { font-size: 10px; padding: 4px 6px; min-height: 28px; }
+  #balatro-game.bp-compact .bp-topbar .bp-icon { width: 24px; }
+  #balatro-game.bp-compact .bp-table { display: flex; flex-direction: column; padding: 8px; gap: 9px; }
+  #balatro-game.bp-compact .bp-sidebar { flex-shrink: 0; display: grid; grid-template-columns: 1.15fr 1.1fr .8fr; grid-template-rows: 55px 55px; gap: 5px; padding: 7px; border-radius: 7px; overflow: visible; }
+  #balatro-game.bp-compact .bp-brand, #balatro-game.bp-compact .bp-progress, #balatro-game.bp-compact .bp-sidebar .bp-side-actions { display: none; }
+  #balatro-game.bp-compact .bp-blind-panel { grid-column: 1; grid-row: 1/3; padding: 4px; gap: 1px; }
+  #balatro-game.bp-compact .bp-blind-label { font-size: 11px; padding: 4px; gap: 4px; margin-bottom: 2px; }
+  #balatro-game.bp-compact .bp-chip-icon { height: 19px; width: 19px; outline-width: 1px; outline-offset: -3px; }
+  #balatro-game.bp-compact .bp-blind-panel > small { font-size: 8px; }
+  #balatro-game.bp-compact .bp-target { font-size: 23px; }
+  #balatro-game.bp-compact .bp-boss-rule { font-size: 8px; line-height: 1.25; padding: 2px 0; }
+  #balatro-game.bp-compact .bp-round-score { grid-column: 2; grid-row: 1; flex-direction: column; justify-content: center; padding: 3px; gap: 1px; }
+  #balatro-game.bp-compact .bp-round-score span { font-size: 9px; }
+  #balatro-game.bp-compact .bp-round-score b { font-size: 22px; }
+  #balatro-game.bp-compact .bp-calculator { grid-column: 2; grid-row: 2; padding: 2px 3px; }
+  #balatro-game.bp-compact .bp-hand-name { min-height: 13px; font-size: 10px; }
+  #balatro-game.bp-compact .bp-hand-name small { font-size: 8px; }
+  #balatro-game.bp-compact .bp-equation { gap: 2px; margin: 3px 0 0; }
+  #balatro-game.bp-compact .bp-equation strong { font-size: 17px; padding: 6px 1px; border-radius: 3px; }
+  #balatro-game.bp-compact .bp-equation > span { font-size: 14px; }
+  #balatro-game.bp-compact .bp-calculator > small { display: none; }
+  #balatro-game.bp-compact .bp-counters { grid-column: 3; grid-row: 1; gap: 3px; }
+  #balatro-game.bp-compact .bp-counters > div { padding: 3px 1px; }
+  #balatro-game.bp-compact .bp-counters span { font-size: 9px; }
+  #balatro-game.bp-compact .bp-counters b { font-size: 26px; }
+  #balatro-game.bp-compact .bp-money { grid-column: 3; grid-row: 2; font-size: 27px; display: grid; place-items: center; padding: 2px; }
+  #balatro-game.bp-compact .bp-main { flex: 1; }
+  #balatro-game.bp-compact .bp-inventory { grid-template-columns: minmax(0,1fr) 92px; gap: 7px; padding-bottom: 4px; }
+  #balatro-game.bp-compact .bp-rack-label { font-size: 9px; margin-bottom: 2px; }
+  #balatro-game.bp-compact .bp-rack-label b { margin-left: 2px; }
+  #balatro-game.bp-compact .bp-rack-cards { gap: 4px; min-height: 77px; padding: 3px 1px 5px; }
+  #balatro-game.bp-compact .bp-rack-cards > .bp-item { flex: 0 0 43px; width: 43px; }
+  #balatro-game.bp-compact .bp-empty-slot { flex-basis: 43px; height: 60px; }
+  #balatro-game.bp-compact .bp-empty-slot span { font-size: 27px; }
+  #balatro-game.bp-compact .bp-item-name { font-size: 8px; margin-top: 3px; }
+  #balatro-game.bp-compact .bp-stage-heading { margin: 12px 0; }
+  #balatro-game.bp-compact h2 { font-size: 22px; }
+  #balatro-game.bp-compact .bp-stage-heading p { font-size: 9px; }
+  #balatro-game.bp-compact .bp-stage-heading > span { font-size: 9px; }
+  #balatro-game.bp-compact .bp-blind-choices { gap: 6px; }
+  #balatro-game.bp-compact .bp-blind-choice { padding: 5px; gap: 5px; }
+  #balatro-game.bp-compact .bp-blind-choice-head { font-size: 12px; padding: 5px 2px; }
+  #balatro-game.bp-compact .bp-blind-token { height: 42px; width: 42px; outline-width: 2px; outline-offset: -5px; font-size: 20px; margin: 3px 0; }
+  #balatro-game.bp-compact .bp-blind-choice > strong { font-size: 22px; }
+  #balatro-game.bp-compact .bp-blind-choice small, #balatro-game.bp-compact .bp-blind-choice > span { font-size: 9px; }
+  #balatro-game.bp-compact .bp-blind-choice > p { font-size: 9px; min-height: 38px; }
+  #balatro-game.bp-compact .bp-blind-choice > button { min-height: 33px; font-size: 11px; padding: 7px 2px; }
+  #balatro-game.bp-compact .bp-hand-area { padding-top: 4px; }
+  #balatro-game.bp-compact .bp-hand-caption { font-size: 9px; padding-bottom: 10px; }
+  #balatro-game.bp-compact .bp-hand-caption .bp-btn { font-size: 9px; padding: 5px 8px; min-height: 27px; }
+  #balatro-game.bp-compact .bp-hand { --cw: clamp(52px, 16.5vw, 68px); gap: 0; padding: 10px 2px 6px; min-height: 100px; }
+  #balatro-game.bp-compact .bp-hand > .bp-playing { flex: 0 0 var(--cw); width: var(--cw); }
+  #balatro-game.bp-compact .bp-hand > .bp-playing + .bp-playing { margin-left: min(3px, calc((100% - var(--hand-count) * var(--cw) - 4px) / (var(--hand-count) - 1))); }
+  #balatro-game.bp-compact .bp-hand.bp-overfull { overflow-x: auto; justify-content: flex-start; }
+  #balatro-game.bp-compact .bp-hand.bp-overfull > .bp-playing + .bp-playing { margin-left: -20px; }
+  #balatro-game.bp-compact .bp-playing.bp-selected { transform: translateY(-12px); }
+  #balatro-game.bp-compact .bp-play-controls { gap: 8px; padding-top: 12px; }
+  #balatro-game.bp-compact .bp-play-controls > button { flex: 1; min-width: 0; min-height: 43px; font-size: 15px; }
+  #balatro-game.bp-compact .bp-play-controls > span { font-size: 9px; max-width: 105px; }
+  #balatro-game.bp-compact .bp-table-footer { font-size: 8px; padding-top: 2px; min-height: 23px; }
+  #balatro-game.bp-compact .bp-table-footer small { display: none; }
+  #balatro-game.bp-compact .bp-table-footer .bp-quiet { min-height: 25px; font-size: 9px; }
+  #balatro-game.bp-compact .bp-table-emblem { font-size: 60px; }
+  #balatro-game.bp-compact .bp-stage-hint { font-size: 10px; }
+  #balatro-game.bp-compact .bp-play-stage { padding: 6px 0; gap: 7px; }
+  #balatro-game.bp-compact .bp-live-boss { font-size: 10px; }
+  #balatro-game.bp-compact .bp-scoring-cards { gap: 5px; }
+  #balatro-game.bp-compact .bp-scoring-cards > .bp-playing { width: 48px; }
+  #balatro-game.bp-compact .bp-score-label { font-size: 19px; min-height: 26px; }
+  #balatro-game.bp-compact .bp-shop-stage { padding-top: 9px; }
+  #balatro-game.bp-compact .bp-shop-heading { gap: 8px; margin-bottom: 12px; }
+  #balatro-game.bp-compact .bp-shop-heading h2 { font-size: 22px; }
+  #balatro-game.bp-compact .bp-shop-heading .bp-btn { min-height: 36px; font-size: 11px; padding: 8px 11px; }
+  #balatro-game.bp-compact .bp-shop-cards { gap: 13px; }
+  #balatro-game.bp-compact .bp-shop-cards .bp-item-art { max-width: 71px; }
+  #balatro-game.bp-compact .bp-shop-cards .bp-item-name { font-size: 11px; }
+  #balatro-game.bp-compact .bp-shop-cards .bp-item-desc { font-size: 10px; min-height: 25px; }
+  #balatro-game.bp-compact .bp-shop-shelves { gap: 9px; }
+  #balatro-game.bp-compact .bp-shop-shelves label { font-size: 9px; margin-bottom: 8px; }
+  #balatro-game.bp-compact .bp-shop-tip { font-size: 9px; margin-top: 10px; }
+  #balatro-game.bp-compact .bp-pack-stage .bp-shop-cards .bp-item-art { max-width: 68px; }
+  #balatro-game.bp-compact .bp-pack-stage .bp-stage-heading { margin: 3px 0 10px; }
+  #balatro-game.bp-compact .bp-pack-stage .bp-stage-heading h2 { font-size: 19px; }
+  #balatro-game.bp-compact .bp-pack-stage .bp-item-desc { font-size: 9px; margin-bottom: 4px; }
+  #balatro-game.bp-compact .bp-pack-stage .bp-item-name { font-size: 10px; margin-top: 5px; }
+  #balatro-game.bp-compact .bp-pack-stage .bp-shop-cards .bp-btn { min-height: 30px; }
+  #balatro-game.bp-compact .bp-result { padding: 15px 8px; gap: 12px; }
+  #balatro-game.bp-compact .bp-result h2 { font-size: 25px; }
+  #balatro-game.bp-compact .bp-result-score { font-size: 33px; }
+  #balatro-game.bp-compact .bp-modal-backdrop { padding: 12px; }
+  #balatro-game.bp-compact .bp-dialog-header { padding: 11px 14px; }
+  #balatro-game.bp-compact .bp-dialog-header h2 { font-size: 18px; }
+  #balatro-game.bp-compact .bp-dialog-content { padding: 16px; }
+  #balatro-game.bp-compact .bp-help-grid { grid-template-columns: 1fr; gap: 16px; }
+  #balatro-game.bp-compact .bp-hands-table > div { grid-template-columns: 1.1fr 35px .9fr 12px .9fr; font-size: 11px; padding: 8px 2px; }
+  #balatro-game.bp-compact .bp-hands-table small { display: none; }
+  #balatro-game.bp-compact .bp-hands-table strong { font-size: 17px; }
+  #balatro-game.bp-compact .bp-info { grid-template-columns: 85px 1fr; gap: 18px; align-items: start; }
+  #balatro-game.bp-compact .bp-info p { font-size: 12px; }
+  #balatro-game.bp-compact .bp-info .bp-btn { font-size: 11px; min-height: 35px; padding: 8px 10px; }
+  #balatro-game.bp-compact .bp-collection { grid-template-columns: repeat(3,minmax(0,1fr)); gap: 18px; }
+  #balatro-game.bp-compact .bp-collection > div > div { height: 110px; }
+  #balatro-game.bp-compact .bp-collection p { font-size: 10px; }
+  #balatro-game.bp-compact .bp-deck-grid { grid-template-columns: repeat(7,minmax(0,1fr)); gap: 5px; }
+  #balatro-game.bp-compact .bp-deck-summary { font-size: 16px; gap: 10px; }
+  #balatro-game.bp-compact .bp-entry { padding: 16px; gap: 16px; }
+  #balatro-game.bp-compact .bp-title-art { height: 255px; }
+  #balatro-game.bp-compact .bp-title-word > span { font-size: 37px; letter-spacing: 5px; }
+  #balatro-game.bp-compact .bp-title-word h1 { font-size: 36px; letter-spacing: 10px; }
+  #balatro-game.bp-compact .bp-title-card { width: 80px; height: 112px; }
+  #balatro-game.bp-compact .bp-title-left { left: calc(50% - 154px); top: 58px; }
+  #balatro-game.bp-compact .bp-title-right { right: calc(50% - 154px); top: 58px; }
+  #balatro-game.bp-compact .bp-title-word p { font-size: 10px; letter-spacing: 2px; }
+  #balatro-game.bp-compact .bp-start-panel { grid-template-columns: 85px 1fr; padding: 16px 13px; gap: 14px; }
+  #balatro-game.bp-compact .bp-deck-preview { padding-right: 12px; }
+  #balatro-game.bp-compact .bp-deck-preview svg { width: 52px; height: 74px; }
+  #balatro-game.bp-compact .bp-deck-preview b { font-size: 11px; }
+  #balatro-game.bp-compact .bp-deck-preview span { font-size: 10px; }
+  #balatro-game.bp-compact .bp-deck-choices button { width: 25px; height: 29px; padding: 3px; }
+  #balatro-game.bp-compact .bp-deck-choices { gap: 2px; }
+  #balatro-game.bp-compact .bp-start-buttons { flex-direction: column; gap: 9px; }
+  #balatro-game.bp-compact .bp-start-buttons .bp-btn { min-height: 41px; flex-direction: row; font-size: 12px; }
+  #balatro-game.bp-compact .bp-start-buttons small { font-size: 9px; }
+  #balatro-game.bp-compact .bp-eyebrow { font-size: 9px; letter-spacing: 1px; }
+  #balatro-game.bp-compact .bp-entry-bottom { font-size: 8px; letter-spacing: 0; }
+  #balatro-game.bp-compact .bp-entry-bottom > span:first-child { display: none; }
 }
 
 /* Landscape phones: full-height side dashboard, cards scaled by viewport height. */
-@media (max-height: 500px) and (min-width: 550px) {
-  #balatro-game .bp-topbar { height: 29px; min-height: 29px; padding: 1px 9px; }
-  #balatro-game .bp-topbar .bp-btn { min-height: 24px; padding: 3px 7px; font-size: 10px; }
-  #balatro-game .bp-table { grid-template-columns: 143px minmax(0,1fr); gap: 10px; padding: 7px 11px; }
-  #balatro-game .bp-sidebar { gap: 5px; padding: 7px; }
-  #balatro-game .bp-brand { display: none; }
-  #balatro-game .bp-blind-panel { padding: 4px; gap: 1px; }
-  #balatro-game .bp-blind-label { padding: 3px; font-size: 11px; margin: 0; }
-  #balatro-game .bp-chip-icon { width: 19px; height: 19px; font-size: 12px; outline-width: 1px; outline-offset: -3px; }
-  #balatro-game .bp-target { font-size: 22px; }
-  #balatro-game .bp-blind-panel > small { font-size: 8px; }
-  #balatro-game .bp-boss-rule { font-size: 8px; padding: 2px 0; }
-  #balatro-game .bp-round-score { padding: 5px; }
-  #balatro-game .bp-round-score span { font-size: 9px; }
-  #balatro-game .bp-round-score b { font-size: 18px; }
-  #balatro-game .bp-calculator { padding: 4px; }
-  #balatro-game .bp-hand-name { min-height: 12px; font-size: 11px; }
-  #balatro-game .bp-equation { margin: 3px 0 0; }
-  #balatro-game .bp-equation strong { font-size: 19px; padding: 6px 2px; }
-  #balatro-game .bp-equation > span { font-size: 17px; }
-  #balatro-game .bp-calculator > small { display: none; }
-  #balatro-game .bp-counters > div { padding: 2px; flex-direction: row; gap: 9px; }
-  #balatro-game .bp-counters span { font-size: 10px; }
-  #balatro-game .bp-counters b { font-size: 23px; }
-  #balatro-game .bp-money { font-size: 22px; padding: 2px; }
-  #balatro-game .bp-progress > div { padding: 2px; flex-direction: row; gap: 8px; }
-  #balatro-game .bp-progress span { font-size: 9px; }
-  #balatro-game .bp-progress b { font-size: 17px; }
-  #balatro-game .bp-progress small { font-size: 10px; }
-  #balatro-game .bp-side-actions { gap: 6px; padding: 0; }
-  #balatro-game .bp-side-actions .bp-btn { min-height: 27px; font-size: 11px; padding: 6px 4px; }
-  #balatro-game .bp-inventory { grid-template-columns: minmax(0,1fr) 110px; gap: 12px; padding-bottom: 3px; }
-  #balatro-game .bp-rack-label { font-size: 9px; margin-bottom: 2px; }
-  #balatro-game .bp-rack-cards { min-height: 70px; padding: 2px 2px 3px; gap: 7px; }
-  #balatro-game .bp-rack-cards > .bp-item { flex-basis: 43px; width: 43px; }
-  #balatro-game .bp-empty-slot { flex-basis: 43px; height: 60px; }
-  #balatro-game .bp-empty-slot span { font-size: 25px; }
-  #balatro-game .bp-item-name { font-size: 8px; margin-top: 2px; }
-  #balatro-game .bp-hand-area { padding: 2px 0; }
-  #balatro-game .bp-hand-caption { padding: 0 3px 2px; font-size: 9px; }
-  #balatro-game .bp-hand-caption .bp-btn { font-size: 9px; padding: 2px 7px; min-height: 20px; }
-  #balatro-game .bp-hand { min-height: 65px; gap: 5px; padding: 10px 4px 3px; }
-  #balatro-game .bp-hand > .bp-playing { flex: 0 1 55px; max-width: calc((100dvh - 240px)*.60); }
-  #balatro-game .bp-playing.bp-selected { transform: translateY(-9px); }
-  #balatro-game .bp-play-controls { padding: 5px 0 2px; gap: 15px; }
-  #balatro-game .bp-play-controls > button { min-height: 31px; min-width: 102px; font-size: 13px; padding: 6px 12px; }
-  #balatro-game .bp-play-controls > span { font-size: 9px; }
-  #balatro-game .bp-table-footer { min-height: 19px; padding: 0; font-size: 8px; }
-  #balatro-game .bp-table-footer .bp-btn { min-height: 19px; padding: 2px 6px; font-size: 9px; }
-  #balatro-game .bp-play-stage { min-height: 45px; gap: 3px; padding: 3px 0; }
-  #balatro-game .bp-table-emblem { font-size: 30px; }
-  #balatro-game .bp-table-emblem span, #balatro-game .bp-play-stage > .bp-stage-hint { display: none; }
-  #balatro-game .bp-last-hand { display: flex; align-items: center; gap: 15px; }
-  #balatro-game .bp-last-hand b { font-size: 22px; }
-  #balatro-game .bp-last-hand span { font-size: 10px; }
-  #balatro-game .bp-live-boss { font-size: 9px; padding: 2px 8px; }
-  #balatro-game .bp-score-label { font-size: 14px; min-height: 18px; }
-  #balatro-game .bp-scoring-cards > .bp-playing { width: 28px; }
-  #balatro-game .bp-stage-heading { margin: 5px 0 9px; }
-  #balatro-game .bp-stage-heading h2 { font-size: 18px; }
-  #balatro-game .bp-stage-heading > span { display: none; }
-  #balatro-game .bp-stage-heading p { font-size: 9px; margin: 2px 0; }
-  #balatro-game .bp-blind-choices { gap: 12px; }
-  #balatro-game .bp-blind-choice { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 6px; text-align: center; }
-  #balatro-game .bp-blind-choice-head { grid-column: 1/3; font-size: 12px; padding: 5px; }
-  #balatro-game .bp-blind-token { width: 36px; height: 36px; font-size: 16px; grid-row: 2/4; grid-column: 1; margin: 3px auto; outline-width: 2px; outline-offset: -5px; }
-  #balatro-game .bp-blind-choice > strong { font-size: 19px; grid-column: 2; }
-  #balatro-game .bp-blind-choice > small { font-size: 8px; grid-column: 2; }
-  #balatro-game .bp-blind-choice > span { display: none; }
-  #balatro-game .bp-blind-choice > p { grid-column: 1/3; font-size: 9px; min-height: 25px; }
-  #balatro-game .bp-blind-choice > button { grid-column: 1/3; min-height: 26px; font-size: 10px; padding: 5px; }
-  #balatro-game .bp-blind-choice > .bp-quiet { min-height: 20px; }
-  #balatro-game .bp-shop-stage { padding: 6px 0; }
-  #balatro-game .bp-shop-heading { margin-bottom: 10px; }
-  #balatro-game .bp-shop-heading h2 { font-size: 19px; }
-  #balatro-game .bp-shop-heading > div > span { display: none; }
-  #balatro-game .bp-shop-heading .bp-btn { min-height: 28px; font-size: 11px; padding: 6px 12px; }
-  #balatro-game .bp-shop-shelves { grid-template-columns: 1fr 1.2fr; gap: 10px; }
-  #balatro-game .bp-shop-shelves > section { padding: 8px; }
-  #balatro-game .bp-shop-shelves label { margin-bottom: 6px; font-size: 8px; }
-  #balatro-game .bp-shop-cards { gap: 10px; }
-  #balatro-game .bp-shop-cards .bp-item-art { max-width: 52px; }
-  #balatro-game .bp-shop-cards .bp-item-name { font-size: 10px; margin-top: 6px; }
-  #balatro-game .bp-shop-cards .bp-item-desc { font-size: 9px; margin: 4px 0 7px; min-height: 25px; }
-  #balatro-game .bp-shop-cards .bp-btn { min-height: 26px; font-size: 10px; padding: 5px; }
-  #balatro-game .bp-shop-tip { font-size: 9px; margin-top: 10px; }
-  #balatro-game .bp-pack-stage .bp-shop-cards { gap: 18px; }
-  #balatro-game .bp-pack-stage .bp-item-art { max-width: 35px; }
-  #balatro-game .bp-pack-stage .bp-item-desc { font-size: 8px; min-height: 0; }
-  #balatro-game .bp-pack-stage > .bp-quiet { margin-top: 4px; padding: 3px; min-height: 22px; font-size: 10px; }
-  #balatro-game .bp-result { padding: 12px; gap: 9px; max-width: 330px; }
-  #balatro-game .bp-result h2 { font-size: 23px; }
-  #balatro-game .bp-result-score { font-size: 25px; }
-  #balatro-game .bp-result .bp-receipt > div { font-size: 11px; padding: 4px 0; }
-  #balatro-game .bp-entry { padding: 12px 30px; gap: 8px; display: grid; grid-template-columns: .85fr 1fr; grid-template-rows: 25px 1fr 25px; }
-  #balatro-game .bp-entry-top { grid-column: 1/3; margin: 0; }
-  #balatro-game .bp-title-art { height: 230px; }
-  #balatro-game .bp-title-word > span { font-size: 31px; letter-spacing: 5px; }
-  #balatro-game .bp-title-word h1 { font-size: 31px; }
-  #balatro-game .bp-title-word p { font-size: 9px; letter-spacing: 1px; }
-  #balatro-game .bp-title-joker { width: 70px; height: 98px; left: calc(50% - 35px); top: 5px; }
-  #balatro-game .bp-title-card { width: 60px; height: 84px; top: 70px; }
-  #balatro-game .bp-title-left { left: calc(50% - 133px); }
-  #balatro-game .bp-title-right { right: calc(50% - 133px); }
-  #balatro-game .bp-title-word { padding-top: 76px; }
-  #balatro-game .bp-start-panel { padding: 12px; grid-template-columns: 70px 1fr; gap: 12px; }
-  #balatro-game .bp-deck-preview { padding-right: 9px; }
-  #balatro-game .bp-deck-preview svg { height: 75px; width: 54px; }
-  #balatro-game .bp-deck-preview b { font-size: 11px; }
-  #balatro-game .bp-deck-preview span { font-size: 9px; }
-  #balatro-game .bp-start-options { gap: 7px; }
-  #balatro-game .bp-deck-choices { gap: 1px; }
-  #balatro-game .bp-deck-choices button { width: 22px; height: 25px; padding: 3px; }
-  #balatro-game .bp-start-buttons button { font-size: 11px; padding: 8px; min-height: 35px; }
-  #balatro-game .bp-eyebrow { font-size: 9px; }
-  #balatro-game .bp-entry-bottom { grid-column: 1/3; margin: 0; font-size: 8px; }
+@media all {
+  #balatro-game.bp-short .bp-topbar { height: 29px; min-height: 29px; padding: 1px 9px; }
+  #balatro-game.bp-short .bp-topbar .bp-btn { min-height: 24px; padding: 3px 7px; font-size: 10px; }
+  #balatro-game.bp-short .bp-table { grid-template-columns: 143px minmax(0,1fr); gap: 10px; padding: 7px 11px; }
+  #balatro-game.bp-short .bp-sidebar { gap: 5px; padding: 7px; }
+  #balatro-game.bp-short .bp-brand { display: none; }
+  #balatro-game.bp-short .bp-blind-panel { padding: 4px; gap: 1px; }
+  #balatro-game.bp-short .bp-blind-label { padding: 3px; font-size: 11px; margin: 0; }
+  #balatro-game.bp-short .bp-chip-icon { width: 19px; height: 19px; font-size: 12px; outline-width: 1px; outline-offset: -3px; }
+  #balatro-game.bp-short .bp-target { font-size: 22px; }
+  #balatro-game.bp-short .bp-blind-panel > small { font-size: 8px; }
+  #balatro-game.bp-short .bp-boss-rule { font-size: 8px; padding: 2px 0; }
+  #balatro-game.bp-short .bp-round-score { padding: 5px; }
+  #balatro-game.bp-short .bp-round-score span { font-size: 9px; }
+  #balatro-game.bp-short .bp-round-score b { font-size: 18px; }
+  #balatro-game.bp-short .bp-calculator { padding: 4px; }
+  #balatro-game.bp-short .bp-hand-name { min-height: 12px; font-size: 11px; }
+  #balatro-game.bp-short .bp-equation { margin: 3px 0 0; }
+  #balatro-game.bp-short .bp-equation strong { font-size: 19px; padding: 6px 2px; }
+  #balatro-game.bp-short .bp-equation > span { font-size: 17px; }
+  #balatro-game.bp-short .bp-calculator > small { display: none; }
+  #balatro-game.bp-short .bp-counters > div { padding: 2px; flex-direction: row; gap: 9px; }
+  #balatro-game.bp-short .bp-counters span { font-size: 10px; }
+  #balatro-game.bp-short .bp-counters b { font-size: 23px; }
+  #balatro-game.bp-short .bp-money { font-size: 22px; padding: 2px; }
+  #balatro-game.bp-short .bp-progress > div { padding: 2px; flex-direction: row; gap: 8px; }
+  #balatro-game.bp-short .bp-progress span { font-size: 9px; }
+  #balatro-game.bp-short .bp-progress b { font-size: 17px; }
+  #balatro-game.bp-short .bp-progress small { font-size: 10px; }
+  #balatro-game.bp-short .bp-side-actions { gap: 6px; padding: 0; }
+  #balatro-game.bp-short .bp-side-actions .bp-btn { min-height: 27px; font-size: 11px; padding: 6px 4px; }
+  #balatro-game.bp-short .bp-inventory { grid-template-columns: minmax(0,1fr) 110px; gap: 12px; padding-bottom: 3px; }
+  #balatro-game.bp-short .bp-rack-label { font-size: 9px; margin-bottom: 2px; }
+  #balatro-game.bp-short .bp-rack-cards { min-height: 70px; padding: 2px 2px 3px; gap: 7px; }
+  #balatro-game.bp-short .bp-rack-cards > .bp-item { flex-basis: 43px; width: 43px; }
+  #balatro-game.bp-short .bp-empty-slot { flex-basis: 43px; height: 60px; }
+  #balatro-game.bp-short .bp-empty-slot span { font-size: 25px; }
+  #balatro-game.bp-short .bp-item-name { font-size: 8px; margin-top: 2px; }
+  #balatro-game.bp-short .bp-hand-area { padding: 2px 0; }
+  #balatro-game.bp-short .bp-hand-caption { padding: 0 3px 2px; font-size: 9px; }
+  #balatro-game.bp-short .bp-hand-caption .bp-btn { font-size: 9px; padding: 2px 7px; min-height: 20px; }
+  #balatro-game.bp-short .bp-hand { min-height: 65px; gap: 5px; padding: 10px 4px 3px; }
+  #balatro-game.bp-short .bp-hand > .bp-playing { flex: 0 1 55px; max-width: calc((100dvh - 240px)*.60); }
+  #balatro-game.bp-short .bp-playing.bp-selected { transform: translateY(-9px); }
+  #balatro-game.bp-short .bp-play-controls { padding: 5px 0 2px; gap: 15px; }
+  #balatro-game.bp-short .bp-play-controls > button { min-height: 31px; min-width: 102px; font-size: 13px; padding: 6px 12px; }
+  #balatro-game.bp-short .bp-play-controls > span { font-size: 9px; }
+  #balatro-game.bp-short .bp-table-footer { min-height: 19px; padding: 0; font-size: 8px; }
+  #balatro-game.bp-short .bp-table-footer .bp-btn { min-height: 19px; padding: 2px 6px; font-size: 9px; }
+  #balatro-game.bp-short .bp-play-stage { min-height: 45px; gap: 3px; padding: 3px 0; }
+  #balatro-game.bp-short .bp-table-emblem { font-size: 30px; }
+  #balatro-game.bp-short .bp-table-emblem span, #balatro-game.bp-short .bp-play-stage > .bp-stage-hint { display: none; }
+  #balatro-game.bp-short .bp-last-hand { display: flex; align-items: center; gap: 15px; }
+  #balatro-game.bp-short .bp-last-hand b { font-size: 22px; }
+  #balatro-game.bp-short .bp-last-hand span { font-size: 10px; }
+  #balatro-game.bp-short .bp-live-boss { font-size: 9px; padding: 2px 8px; }
+  #balatro-game.bp-short .bp-score-label { font-size: 14px; min-height: 18px; }
+  #balatro-game.bp-short .bp-scoring-cards > .bp-playing { width: 28px; }
+  #balatro-game.bp-short .bp-stage-heading { margin: 5px 0 9px; }
+  #balatro-game.bp-short .bp-stage-heading h2 { font-size: 18px; }
+  #balatro-game.bp-short .bp-stage-heading > span { display: none; }
+  #balatro-game.bp-short .bp-stage-heading p { font-size: 9px; margin: 2px 0; }
+  #balatro-game.bp-short .bp-blind-choices { gap: 12px; }
+  #balatro-game.bp-short .bp-blind-choice { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 6px; text-align: center; }
+  #balatro-game.bp-short .bp-blind-choice-head { grid-column: 1/3; font-size: 12px; padding: 5px; }
+  #balatro-game.bp-short .bp-blind-token { width: 36px; height: 36px; font-size: 16px; grid-row: 2/4; grid-column: 1; margin: 3px auto; outline-width: 2px; outline-offset: -5px; }
+  #balatro-game.bp-short .bp-blind-choice > strong { font-size: 19px; grid-column: 2; }
+  #balatro-game.bp-short .bp-blind-choice > small { font-size: 8px; grid-column: 2; }
+  #balatro-game.bp-short .bp-blind-choice > span { display: none; }
+  #balatro-game.bp-short .bp-blind-choice > p { grid-column: 1/3; font-size: 9px; min-height: 25px; }
+  #balatro-game.bp-short .bp-blind-choice > button { grid-column: 1/3; min-height: 26px; font-size: 10px; padding: 5px; }
+  #balatro-game.bp-short .bp-blind-choice > .bp-quiet { min-height: 20px; }
+  #balatro-game.bp-short .bp-shop-stage { padding: 6px 0; }
+  #balatro-game.bp-short .bp-shop-heading { margin-bottom: 10px; }
+  #balatro-game.bp-short .bp-shop-heading h2 { font-size: 19px; }
+  #balatro-game.bp-short .bp-shop-heading > div > span { display: none; }
+  #balatro-game.bp-short .bp-shop-heading .bp-btn { min-height: 28px; font-size: 11px; padding: 6px 12px; }
+  #balatro-game.bp-short .bp-shop-shelves { grid-template-columns: 1fr 1.2fr; gap: 10px; }
+  #balatro-game.bp-short .bp-shop-shelves > section { padding: 8px; }
+  #balatro-game.bp-short .bp-shop-shelves label { margin-bottom: 6px; font-size: 8px; }
+  #balatro-game.bp-short .bp-shop-cards { gap: 10px; }
+  #balatro-game.bp-short .bp-shop-cards .bp-item-art { max-width: 52px; }
+  #balatro-game.bp-short .bp-shop-cards .bp-item-name { font-size: 10px; margin-top: 6px; }
+  #balatro-game.bp-short .bp-shop-cards .bp-item-desc { font-size: 9px; margin: 4px 0 7px; min-height: 25px; }
+  #balatro-game.bp-short .bp-shop-cards .bp-btn { min-height: 26px; font-size: 10px; padding: 5px; }
+  #balatro-game.bp-short .bp-shop-tip { font-size: 9px; margin-top: 10px; }
+  #balatro-game.bp-short .bp-pack-stage .bp-shop-cards { gap: 18px; }
+  #balatro-game.bp-short .bp-pack-stage .bp-item-art { max-width: 35px; }
+  #balatro-game.bp-short .bp-pack-stage .bp-item-desc { font-size: 8px; min-height: 0; }
+  #balatro-game.bp-short .bp-pack-stage > .bp-quiet { margin-top: 4px; padding: 3px; min-height: 22px; font-size: 10px; }
+  #balatro-game.bp-short .bp-result { padding: 12px; gap: 9px; max-width: 330px; }
+  #balatro-game.bp-short .bp-result h2 { font-size: 23px; }
+  #balatro-game.bp-short .bp-result-score { font-size: 25px; }
+  #balatro-game.bp-short .bp-result .bp-receipt > div { font-size: 11px; padding: 4px 0; }
+  #balatro-game.bp-short .bp-entry { padding: 12px 30px; gap: 8px; display: grid; grid-template-columns: .85fr 1fr; grid-template-rows: 25px 1fr 25px; }
+  #balatro-game.bp-short .bp-entry-top { grid-column: 1/3; margin: 0; }
+  #balatro-game.bp-short .bp-title-art { height: 230px; }
+  #balatro-game.bp-short .bp-title-word > span { font-size: 31px; letter-spacing: 5px; }
+  #balatro-game.bp-short .bp-title-word h1 { font-size: 31px; }
+  #balatro-game.bp-short .bp-title-word p { font-size: 9px; letter-spacing: 1px; }
+  #balatro-game.bp-short .bp-title-joker { width: 70px; height: 98px; left: calc(50% - 35px); top: 5px; }
+  #balatro-game.bp-short .bp-title-card { width: 60px; height: 84px; top: 70px; }
+  #balatro-game.bp-short .bp-title-left { left: calc(50% - 133px); }
+  #balatro-game.bp-short .bp-title-right { right: calc(50% - 133px); }
+  #balatro-game.bp-short .bp-title-word { padding-top: 76px; }
+  #balatro-game.bp-short .bp-start-panel { padding: 12px; grid-template-columns: 70px 1fr; gap: 12px; }
+  #balatro-game.bp-short .bp-deck-preview { padding-right: 9px; }
+  #balatro-game.bp-short .bp-deck-preview svg { height: 75px; width: 54px; }
+  #balatro-game.bp-short .bp-deck-preview b { font-size: 11px; }
+  #balatro-game.bp-short .bp-deck-preview span { font-size: 9px; }
+  #balatro-game.bp-short .bp-start-options { gap: 7px; }
+  #balatro-game.bp-short .bp-deck-choices { gap: 1px; }
+  #balatro-game.bp-short .bp-deck-choices button { width: 22px; height: 25px; padding: 3px; }
+  #balatro-game.bp-short .bp-start-buttons button { font-size: 11px; padding: 8px; min-height: 35px; }
+  #balatro-game.bp-short .bp-eyebrow { font-size: 9px; }
+  #balatro-game.bp-short .bp-entry-bottom { grid-column: 1/3; margin: 0; font-size: 8px; }
 }
 @media (prefers-reduced-motion: reduce) {
   #balatro-game *, #balatro-game *::before, #balatro-game *::after { animation: none !important; transition: none !important; }
 }
+#balatro-game .bp-card-cue { position: absolute; bottom: 5px; left: 3px; right: 3px; border: 1px solid #ecd29d9c; border-radius: 3px; padding: 3px 1px; background: #2d3c35f5; color: #f5d799; font-size: 10px; line-height: 1.2; text-align: center; pointer-events: none; white-space: normal; }
+#balatro-game .bp-cue-planet { background: #3a345cf2; color: #e4d2ff; border-color: #bdb0e5; }
+#balatro-game .bp-cue-muted { color: #b5b8ae; border-color: #899787; }
+#balatro-game .bp-cue-ready .bp-item-art { outline: 2px solid #edcd73; outline-offset: 2px; box-shadow: 0 0 12px #f7cf6345; }
+#balatro-game .bp-cue-ready .bp-card-cue { background: #e8ca75; color: #253e32; font-weight: 800; }
+#balatro-game .bp-cue-ready { animation: bp-cue-notice .6s ease-out 2; }
+#balatro-game .bp-live-cues { display: flex; flex-shrink: 0; gap: 6px; padding: 7px 1px; overflow-x: auto; scrollbar-width: thin; font-size: 11px; color: #e2ca92; }
+#balatro-game .bp-live-cues > span { flex-shrink: 0; padding: 3px 8px; border: 1px solid #c8b37e4d; border-radius: 4px; background: #193c35; }
+#balatro-game .bp-live-cues .ready { border-color: #dccc8a; background: #4d6442; color: #fff0b6; }
+#balatro-game .bp-entry-cover { display: block; width: 100%; height: 100%; max-width: 660px; object-fit: contain; border-radius: 10px; pointer-events: none; }
+#balatro-game.bp-compact .bp-topbar { height: auto; min-height: 36px; flex-wrap: wrap; row-gap: 2px; padding: 4px 8px; }
+#balatro-game.bp-compact .bp-topbar > div { margin-left: auto; }
+#balatro-game.bp-compact:not(.bp-is-playing):not(.bp-fullscreen) { height: auto; }
+#balatro-game.bp-compact .bp-entry { gap: 10px; padding: 12px; overflow-y: auto; }
+#balatro-game.bp-compact:not(.bp-is-playing):not(.bp-fullscreen) .bp-entry { height: auto; overflow: visible; }
+#balatro-game.bp-compact .bp-title-art { height: 200px; min-height: 110px; }
+#balatro-game.bp-compact .bp-start-panel { grid-template-columns: 60px minmax(0,1fr); padding: 12px; gap: 10px; }
+#balatro-game.bp-compact .bp-start-options { gap: 7px; }
+#balatro-game.bp-compact .bp-deck-preview { padding-right: 8px; }
+#balatro-game .bp-joker-rack, #balatro-game .bp-consumable-rack { min-width: 0; overflow: hidden; }
+#balatro-game.bp-compact .bp-rack-label small { display: none; }
+#balatro-game .bp-seed-label { white-space: nowrap; }
+#balatro-game.bp-compact .bp-rack-cards > .bp-item, #balatro-game.bp-compact .bp-empty-slot { flex-basis: 53px; width: 53px; }
+#balatro-game.bp-compact .bp-empty-slot { height: 74px; }
+#balatro-game.bp-compact .bp-card-cue { bottom: 3px; left: 1px; right: 1px; padding: 2px 0; font-size: 9px; }
+#balatro-game.bp-compact .bp-live-cues { font-size: 10px; padding: 5px 0; }
+#balatro-game.bp-compact .bp-live-cues > span { padding: 3px 5px; }
+#balatro-game.bp-short .bp-card-cue { font-size: 8px; padding: 1px 0; bottom: 2px; left: 0; right: 0; }
+#balatro-game.bp-short .bp-live-cues { font-size: 9px; padding: 3px 0; }
+#balatro-game.bp-short .bp-live-cues > span { padding: 1px 6px; }
+body.bp-body-immersive { background: #1e5045; }
+@media (hover: none) {
+  #balatro-game .bp-playing:not(.bp-selected):not(:disabled):hover,
+  #balatro-game.bp-short .bp-playing:not(.bp-selected):not(:disabled):hover { transform: none; }
+  #balatro-game .bp-item-art:hover { transform: none; }
+}
+@keyframes bp-cue-notice { 50% { filter: brightness(1.18); } }

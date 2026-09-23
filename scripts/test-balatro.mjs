@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import * as E from '../.vuepress/components/balatro/engine.mjs'
 import { HANDS,JOKERS,TAROTS,SPECTRALS,VOUCHERS,BOSSES,DECKS } from '../.vuepress/components/balatro/catalog.mjs'
+import { cardCue } from '../.vuepress/components/balatro/cues.mjs'
 
 const cards=(ranks,suits=[])=>ranks.map((rank,i)=>({uid:i+1,rank,suit:suits[i]===undefined?i%4:suits[i],enh:null,edition:null,seal:null}))
 const state=(ranks=[14,14,13,12,10,8,4,2],suits=[])=>{
@@ -108,3 +109,30 @@ test('ante 8 win and endless continuation advance to ante 9 once',()=>{
 })
 test('Yorick and Loyalty counters are not reset at blind entry',()=>{const s=E.newRun('COUNTERS');add(s,'yorick').counter=22;add(s,'loyalty').counter=5;E.startBlind(s);assert.equal(s.jokers[0].counter,22);assert.equal(s.jokers[1].counter,5)})
 test('invalid saves are rejected rather than mounted',()=>{assert.equal(E.restore('{'),null);const s=E.newRun('BAD');s.deck[0].rank=100;assert.equal(E.restore(s),null);assert.equal(E.restore({version:0}),null)})
+test('To Do List displays its target and highlights only a matching selection',()=>{
+ const s=state(),j=add(s,'toDo');j.hand='pair'
+ assert.equal(cardCue(s,j).label,'对子 +$4');assert.equal(cardCue(s,j).ready,false)
+ s.selected=[1,2];assert.equal(cardCue(s,j).ready,true)
+ const before=JSON.stringify(s);for(let i=0;i<50;i++)cardCue(s,j);assert.equal(JSON.stringify(s),before,'cue must not mutate RNG or scoring state')
+ s.selected=[1];assert.equal(cardCue(s,j).ready,false)
+ j.hand='flush';assert.equal(cardCue(s,j).label,'同花 +$4')
+ j.hand='pair';s.selected=[1,2];s.blind=2;s.boss='psychic';assert.equal(cardCue(s,j).ready,false,'Boss-disallowed selection must not promise a proc')
+})
+test('target rank/suit, limited triggers and copied reminders remain current',()=>{
+ const s=state(),mail=add(s,'mail');mail.rank=14;s.selected=[1,2];assert.equal(cardCue(s,mail).label,'A +$5');assert.equal(cardCue(s,mail).ready,true)
+ s.discards=0;assert.equal(cardCue(s,mail).ready,false)
+ const loyalty=add(s,'loyalty');loyalty.counter=5;assert.equal(cardCue(s,loyalty).ready,true)
+ const dna=add(s,'DNA');s.selected=[1];assert.equal(cardCue(s,dna).ready,true);s.plays=1;assert.equal(cardCue(s,dna).label,'下轮恢复')
+ const b=state(),copy=add(b,'blueprint'),todo=add(b,'toDo');todo.hand='pair';b.selected=[1,2];assert.equal(cardCue(b,copy).label,'对子 +$4');assert.equal(cardCue(b,copy).ready,true)
+ b.jokers=[copy,add(b,'brainstorm')];assert.equal(cardCue(b,copy).label,'复制循环')
+})
+test('reminders do not leak face-down cards or disabled joker identities',()=>{
+ const s=state(),j=add(s,'toDo');j.hand='pair';s.selected=[1,2];s.hand[0].hidden=true;assert.equal(cardCue(s,j).ready,false)
+ s.blind=2;s.boss='acorn';assert.equal(cardCue(s,j),null)
+ s.disabledBoss=true;assert.equal(cardCue(s,j).label,'对子 +$4')
+ j.disabled=true;assert.equal(cardCue(s,j).label,'已失效')
+})
+test('consumable reminders distinguish upgrade, targeting and exact Death count',()=>{
+ const s=state();assert.equal(cardCue(s,{kind:'planet',id:'pair'}).label,'对子 ↑1')
+ const death={kind:'tarot',id:'death'};s.selected=[1];assert.equal(cardCue(s,death).ready,false);s.selected=[1,2];assert.equal(cardCue(s,death).ready,true)
+})
