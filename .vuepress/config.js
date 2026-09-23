@@ -1,3 +1,5 @@
+const valineConfig = require('./valine-config')
+
 module.exports = {
   title: '成都向量加速科技有限公司',
   description: 'Vectorac',
@@ -81,7 +83,7 @@ module.exports = {
       }
     ]
   ],
-  plugins: [require('./plugins/chat-widget')],
+  plugins: [require('./plugins/chat-widget'), require('./plugins/game-feedback')],
   theme: 'reco',
   themeConfig: {
     nav: [
@@ -183,11 +185,7 @@ module.exports = {
     //   }
     // ],
     type: 'blog',
-    valineConfig: {
-      appId: 'U0MS3MvBkFXhqRxsoj7nWKii-gzGzoHsz', // your appId
-      appKey: '0VPcObmnbcWKHqRM77jChYQL', // your appKey
-      showComment: false
-    },
+    valineConfig,
     // blogConfig: {
     //   category: {
     //     location: 2,
