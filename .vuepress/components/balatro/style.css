@@ -712,3 +712,26 @@ body.bp-body-immersive { background: #1e5045; }
   #balatro-game .bp-item-art:hover { transform: none; }
 }
 @keyframes bp-cue-notice { 50% { filter: brightness(1.18); } }
+#balatro-game .bp-shop-cards > .bp-item > .bp-btn { margin-top: auto; }
+#balatro-game .bp-pack-info { display: grid; grid-template-columns: 88px minmax(0,1fr); align-items: center; gap: 20px; min-width: 0; }
+#balatro-game .bp-pack-info-cover { width: 88px; filter: drop-shadow(2px 6px 5px #101d1bb0); }
+#balatro-game .bp-pack-info-copy { min-width: 0; }
+#balatro-game .bp-pack-info-copy > .bp-eyebrow { display: block; margin-bottom: 4px; font-size: 9px; }
+#balatro-game .bp-pack-info-copy h3 { margin: 0 0 10px; font-size: 20px; color: #f1e8ce; }
+#balatro-game .bp-pack-info-copy p { max-width: 46ch; overflow-wrap: anywhere; white-space: normal; line-height: 1.7; }
+#balatro-game .bp-pack-info-copy .bp-pack-info-summary { margin: 0 0 12px; padding: 8px 10px; border-left: 3px solid #d2a755; border-radius: 0 5px 5px 0; background: #172f2a80; color: #e7d5a6; font-size: 12px; }
+#balatro-game .bp-pack-info-copy section { padding-top: 9px; border-top: 1px solid #cfddbd24; }
+#balatro-game .bp-pack-info-copy section > b { display: block; margin-bottom: 3px; color: #d8be83; font-size: 11px; }
+#balatro-game .bp-pack-info-copy section > p { font-size: 12px; }
+#balatro-game .bp-pack-info-copy > .bp-btn { margin-top: 15px; }
+#balatro-game .bp-pack-info-dialog .bp-dialog-content { padding: 18px 22px; }
+#balatro-game.bp-compact .bp-pack-info { grid-template-columns: 64px minmax(0,1fr); align-items: start; gap: 12px; }
+#balatro-game.bp-compact .bp-pack-info-cover { width: 64px; }
+#balatro-game.bp-compact .bp-pack-info-copy h3 { font-size: 17px; margin-bottom: 7px; }
+#balatro-game.bp-compact .bp-pack-info-dialog .bp-dialog-content { padding: 13px; }
+#balatro-game.bp-short .bp-pack-info { grid-template-columns: 58px minmax(0,1fr); gap: 10px; }
+#balatro-game.bp-short .bp-pack-info-cover { width: 58px; }
+#balatro-game.bp-short .bp-pack-info-copy h3 { font-size: 16px; margin-bottom: 5px; }
+#balatro-game.bp-short .bp-pack-info-copy .bp-pack-info-summary { margin-bottom: 8px; padding: 6px 8px; font-size: 10px; }
+#balatro-game.bp-short .bp-pack-info-copy section > p { font-size: 10px; }
+#balatro-game.bp-short .bp-pack-info-copy > .bp-btn { min-height: 30px; margin-top: 9px; padding: 6px 10px; font-size: 10px; }
