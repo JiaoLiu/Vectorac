@@ -1,0 +1,23 @@
+[Unit]
+Description=Vectorac Face Compare Service (ONNX Runtime)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/FaceNet_Compare
+ExecStart=/home/FaceNet_Compare/venv38/bin/python /home/FaceNet_Compare/server.py
+Restart=on-failure
+RestartSec=5
+StartLimitIntervalSec=300
+StartLimitBurst=10
+
+User=root
+Group=root
+
+# 日志走 journald
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=facecompare
+
+[Install]
+WantedBy=multi-user.target

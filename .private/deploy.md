@@ -334,6 +334,87 @@ sleep 2; ss -tlnp | grep ':5001'
 - `/home/ocr/images/` — 上传图片暂存（前端每次覆盖同名 `temp.jpg`，不会无限堆积）
 - `/home/ocr/ocr_output.log` — 运行日志
 
+## 人脸匹配服务
+
+官网「产品 → 人脸匹配」演示页的后端。**独立部署在服务器 `/home/FaceNet_Compare/`，不在本仓库内**（本仓库只保留源码副本 `.private/face-service/`），与其它服务无依赖。
+
+### 访问链路
+
+```
+浏览器
+  └─ https://vectorac.com/face_compare          (产品页 Demo 链接，直接用这个地址)
+       └─ nginx location /face_compare → http://127.0.0.1:5000/
+            └─ Flask 服务 /home/FaceNet_Compare/server.py（渲染前端 + 检测/识别/活体）
+```
+
+- `nginx`：`/etc/nginx/conf.d/vectorac.conf` 里有两块：`location /face_compare` 和 `location = /face_compare/`。**后者不能省**——`proxy_pass .../` 会把 `/face_compare/` 拼成 `//` 传给 Flask，Werkzeug 会把 `//` 308 重定向到 `http://vectorac.com/`，用户带尾斜杠访问会被弹回官网首页。
+- 前端页面是 Flask 模板 `/home/FaceNet_Compare/templates/index.html`，**不在本仓库**；改 UI 直接改这个文件，**改完必须重启服务**（生产模式 Jinja2 缓存模板，`curl -s http://127.0.0.1:5000/ | grep 新特征串` 验证）。
+- 前端流程：选图 → canvas 压缩（`MAX_WH` 最长边、JPEG 质量）→ POST `/face_compare/upload` 存到 `/home/FaceNet_Compare/images/` → GET `/face_compare/compare?img1=&img2=` 返回 JSON。
+
+### 迁移前架构（TensorFlow 1.x + FaceNet，已废弃）
+
+- 引擎：2018 年自训练的 **FaceNet**（`20180408-102900.pb`，92MB frozen graph，Inception-ResNet-v1）+ **MTCNN**（`align/det1~3.npy` 三级级联）。
+- 运行时：**Python 2.7 + TensorFlow 1.x**，uwsgi socket 监听 5000。
+- 带不动的原因：TF1 进程常驻 500MB~1GB，92MB 的 Inception-ResNet-v1 在 2核2G 机器上推理慢且易触发 swap；MTCNN 三级级联还要额外开销；旧代码读图后**只 padding 不缩放**，大图直接喂模型。用户已于 2026-09 停掉该服务。
+
+### 迁移后架构（ONNX Runtime CPU）
+
+| 环节 | 模型 | 大小 | 输入 |
+| --- | --- | --- | --- |
+| 人脸检测 | SCRFD-500M `det_500m.onnx` | 2.5MB | 640×640，9 个输出按 `[score8,score16,score32,bbox8,bbox16,bbox32,kps8,kps16,kps32]` |
+| 特征提取 | ArcFace MobileFaceNet `w600k_mbf.onnx` | 13MB | 112×112，输出 512 维，需 L2 归一化 + 余弦相似度 |
+| 静默活体 | MiniFASNetV2 `minifasnet_v2.onnx` | 1.7MB | 80×80，输出 3 类 **logits（不含 softmax）** |
+
+- 运行时：**独立 venv `/home/FaceNet_Compare/venv38`（Python 3.8.8）**，与 OCR 的 `/home/ocr/venv38` 分开，互不影响。
+- 优势：常驻内存 **~77MB**（旧服务 500MB~1GB）、单次比对 50~110ms、新增静默活体能力。
+- 旧代码全部保留在 `/home/FaceNet_Compare/_legacy_backup/`，可回滚。
+
+### 踩过的坑（重要）
+
+1. **活体模型绝对不能对输入做 `/255` 归一化。** 官方 `src/data_io/functional.py` 的 `to_tensor` 里 `return img.float().div(255)` 这行**被注释掉了**（`modify by zkx`），模型期望的是 **0~255 原始像素、BGR、HWC→CHW**。如果按常规习惯除以 255，模型输出会饱和成几乎恒定的值，真人/伪造都判成同一类（实测真人样本 live 概率从 0.9997 掉到 0.0003）。模型输出是 logits，需要自己做 softmax。
+2. **活体模型用哪一类代表「真人」**：官方 `test.py` 里 `label == 1` 才打印 `Real Face`，所以 `FACE_LIVE_CLASS=1`。官方 demo 是把 `2.7_80x80_MiniFASNetV2` 和 `4_0_80x80_MiniFASNetV1SE` 两个模型结果相加求平均，本服务只用 V2 单模型（省内存），实测已足够。
+3. **横躺/倒置照片会让关键点错乱。** SCRFD 仍能检出人脸，但 5 点顺序会乱（鼻尖跑到眼睛上方），对齐随之失效——同一人的相似度会从 0.79 掉到 0.06。`server.py` 用 `_lm_valid()` 检查「鼻尖在双眼连线下方、嘴在鼻尖下方」，不通过就依次试 90°/270°/180° 旋转。正常照片第一次（0°）就通过，**零额外开销**；只有问题照片才多跑几次检测。返回给前端的 `box` 已换算回原图坐标，前端不需要做旋转处理（`rotate` 字段仅作提示）。
+4. **阈值取值**（实测 15 张真人照 + 官方活体样本）：同一人余弦相似度 0.43~0.79，不同人 0.01~0.20，故 `FACE_SIM_THRESHOLD` 取 **0.35**（两侧余量都够）。活体：真人照片 0.74~1.00，伪造样本 0.0004~0.02，`FACE_LIVE_THRESHOLD` 取 **0.50**。
+5. **已知误判**：低分辨率、强后期/调色的图（例如电视剧截图）会被活体判成「疑似翻拍」。这是模型对「非自然拍摄画面」的正常反应，真人自拍不受影响。
+6. 服务器上的 `models/minifasnet_v2.onnx` 是早期从 HuggingFace 下的版本，**与从官方 `.pth` 自行转换的结果逐位等价**（torch/onnx maxdiff ~1e-6），无需替换。
+
+### 启动 / 停止（systemd）
+
+```bash
+# 状态 / 启动 / 停止 / 重启
+systemctl status facecompare
+systemctl start facecompare
+systemctl stop facecompare
+systemctl restart facecompare
+
+# 实时日志（服务 stdout/stderr 走 journald）
+journalctl -u facecompare -f
+
+# 改完 /home/FaceNet_Compare/server.py 或 templates/index.html 后
+systemctl restart facecompare
+```
+
+### 排查问题
+
+| 现象 | 排查 |
+| --- | --- |
+| 页面打不开 / 502 | `curl -s http://127.0.0.1:5000/healthz`；`systemctl status facecompare` 看进程和报错 |
+| 带尾斜杠访问被弹回官网首页 | 确认 `nginx -T \| grep -A2 "location = /face_compare/"` 存在，改完 `nginx -t && systemctl reload nginx` |
+| 比对接口 400 `face not detected` | 图里确实没脸，或脸太小（`FACE_MIN_SIZE` 默认 40px） |
+| 相似度普遍偏低 | 先确认服务加载的是 ONNX 版（`journalctl -u facecompare` 应看到「模型加载完成」）；再确认 `FACE_SIM_THRESHOLD` 没被环境变量改乱 |
+| 活体结果全是同一类 | 十有八九是 `liveness()` 里又对输入做了 `/255`，见「踩过的坑 1」 |
+| 内存占用高 | `systemctl status facecompare` 看 Memory；正常应 ~77MB，明显偏高就 `systemctl restart facecompare` |
+
+### 关键文件
+
+- `/home/FaceNet_Compare/server.py` — Flask 服务（检测 / 对齐 / 识别 / 活体 / 比对），源码副本在 `.private/face-service/server.py`
+- `/home/FaceNet_Compare/templates/index.html` — 演示页 UI（压缩参数 `MAX_WH`、JPEG 质量在这改），副本在 `.private/face-service/templates/index.html`
+- `/etc/systemd/system/facecompare.service` — systemd 单元，副本在 `.private/face-service/facecompare.service`
+- `/home/FaceNet_Compare/venv38/` — 独立 Python 3.8 环境（onnxruntime + opencv-python-headless + flask + numpy）
+- `/home/FaceNet_Compare/models/` — 三个 ONNX 模型
+- `/home/FaceNet_Compare/images/` — 上传图片暂存（前端每次覆盖同名文件，不会无限堆积）
+- `/home/FaceNet_Compare/_legacy_backup/` — 旧 FaceNet/MTCNN/uwsgi 代码，回滚用
+
 ## 部署配置
 
 ### 1. 核心配置文件

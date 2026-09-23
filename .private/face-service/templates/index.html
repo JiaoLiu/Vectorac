@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>人脸匹配 · Vectorac</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --panel: #161b22;
+    --panel-2: #1c232c;
+    --line: #262e3a;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --accent: #3eaf7c;
+    --accent-dim: rgba(62, 175, 124, .12);
+    --danger: #f85149;
+    --warn: #d29922;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                 "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .fc-root {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 28px 18px 48px;
+    padding-left: calc(18px + env(safe-area-inset-left));
+    padding-right: calc(18px + env(safe-area-inset-right));
+  }
+
+  /* ---------- 头部 ---------- */
+  .fc-head { text-align: center; margin-bottom: 26px; }
+  .fc-head h1 {
+    margin: 0 0 8px;
+    font-size: 26px;
+    font-weight: 600;
+    letter-spacing: .5px;
+    background: linear-gradient(135deg, #3eaf7c 0%, #4aa3e8 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .fc-head p { margin: 0; color: var(--muted); font-size: 13.5px; }
+
+  /* ---------- 图片卡片 ---------- */
+  .fc-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .fc-card {
+    position: relative;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    overflow: hidden;
+    min-height: 230px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: border-color .2s, background .2s;
+  }
+  .fc-card:hover { border-color: #35404e; background: var(--panel-2); }
+  .fc-card.dragover { border-color: var(--accent); background: var(--accent-dim); }
+  .fc-card.has-image { cursor: default; align-items: stretch; }
+  .fc-card.has-image:hover { background: var(--panel); border-color: var(--line); }
+
+  .fc-card canvas { display: block; width: 100%; height: auto; }
+
+  .fc-empty {
+    text-align: center;
+    color: var(--muted);
+    font-size: 13.5px;
+    padding: 30px 16px;
+    line-height: 1.9;
+    pointer-events: none;
+  }
+  .fc-empty svg { display: block; margin: 0 auto 10px; opacity: .5; }
+  .fc-empty b { color: var(--accent); font-weight: 500; }
+
+  .fc-tag {
+    position: absolute;
+    top: 10px; left: 10px;
+    padding: 4px 9px;
+    font-size: 11.5px;
+    border-radius: 20px;
+    background: rgba(13, 17, 23, .82);
+    border: 1px solid var(--line);
+    color: var(--muted);
+    backdrop-filter: blur(6px);
+    pointer-events: none;
+  }
+  .fc-tag.ok { color: var(--accent); border-color: rgba(62,175,124,.45); }
+  .fc-tag.bad { color: var(--danger); border-color: rgba(248,81,73,.45); }
+
+  /* 更换照片（已有图片时才出现，避免用户换不掉已选的照片） */
+  .fc-change {
+    position: absolute;
+    top: 8px; right: 8px;
+    appearance: none;
+    padding: 4px 11px;
+    font-size: 11.5px;
+    font-family: inherit;
+    border-radius: 20px;
+    color: var(--text);
+    background: rgba(13, 17, 23, .82);
+    border: 1px solid var(--line);
+    backdrop-filter: blur(6px);
+    cursor: pointer;
+    transition: color .2s, border-color .2s, background .2s;
+  }
+  .fc-change:hover { color: var(--accent); border-color: rgba(62,175,124,.45); background: var(--accent-dim); }
+
+  .fc-meta {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    padding: 22px 12px 9px;
+    font-size: 11.5px;
+    color: var(--muted);
+    background: linear-gradient(to top, rgba(13,17,23,.94), transparent);
+    pointer-events: none;
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  /* ---------- 按钮 ---------- */
+  .fc-actions { display: flex; justify-content: center; margin: 24px 0 0; }
+  .fc-btn {
+    appearance: none;
+    border: none;
+    border-radius: 10px;
+    padding: 12px 44px;
+    font-size: 15px;
+    font-weight: 500;
+    color: #08130d;
+    background: linear-gradient(135deg, #46c98d 0%, #3eaf7c 100%);
+    cursor: pointer;
+    transition: transform .15s, box-shadow .2s, opacity .2s;
+    box-shadow: 0 4px 18px rgba(62, 175, 124, .25);
+    font-family: inherit;
+  }
+  .fc-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 22px rgba(62,175,124,.35); }
+  .fc-btn:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
+
+  /* ---------- 结果 ---------- */
+  .fc-result { margin-top: 26px; }
+  .fc-panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 22px 22px 20px;
+  }
+  .fc-score-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .fc-score-label { font-size: 13px; color: var(--muted); }
+  .fc-score-value {
+    font-size: 38px;
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: -.5px;
+  }
+  .fc-score-value small { font-size: 18px; font-weight: 500; margin-left: 2px; }
+  .fc-bar {
+    height: 9px;
+    border-radius: 5px;
+    background: #21262d;
+    overflow: hidden;
+    margin-bottom: 18px;
+  }
+  .fc-bar > i {
+    display: block;
+    height: 100%;
+    width: 0;
+    border-radius: 5px;
+    background: linear-gradient(90deg, #3eaf7c, #4aa3e8);
+    transition: width .6s cubic-bezier(.22,.61,.36,1);
+  }
+  .fc-verdict {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding-top: 16px;
+    border-top: 1px solid var(--line);
+  }
+  .fc-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .fc-badge.ok { color: var(--accent); background: var(--accent-dim); border: 1px solid rgba(62,175,124,.35); }
+  .fc-badge.bad { color: var(--danger); background: rgba(248,81,73,.1); border: 1px solid rgba(248,81,73,.35); }
+  .fc-badge.neutral { color: var(--muted); background: rgba(139,148,158,.1); border: 1px solid var(--line); }
+
+  .fc-live-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--line);
+  }
+  .fc-live-item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .fc-dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; }
+  .fc-dot.ok { background: var(--accent); box-shadow: 0 0 8px rgba(62,175,124,.7); }
+  .fc-dot.bad { background: var(--danger); box-shadow: 0 0 8px rgba(248,81,73,.6); }
+  .fc-dot.warn { background: var(--warn); }
+
+  .fc-foot {
+    margin-top: 14px;
+    font-size: 11.5px;
+    color: #5d6672;
+    text-align: center;
+  }
+
+  .fc-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 22px;
+    color: var(--muted);
+    font-size: 13.5px;
+  }
+  .fc-spin {
+    width: 16px; height: 16px;
+    border: 2px solid #2d3742;
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: fc-spin .8s linear infinite;
+  }
+  @keyframes fc-spin { to { transform: rotate(360deg); } }
+
+  @media (max-width: 640px) {
+    .fc-root { padding-top: 20px; }
+    .fc-head h1 { font-size: 22px; }
+    .fc-grid, .fc-live-grid { grid-template-columns: 1fr; }
+    .fc-card { min-height: 190px; }
+    .fc-score-value { font-size: 32px; }
+    .fc-btn { width: 100%; padding: 13px 0; }
+  }
+</style>
+</head>
+<body>
+<div class="fc-root">
+  <header class="fc-head">
+    <h1>人脸匹配</h1>
+    <p>两张人脸 1:1 比对 · 静默活体检测</p>
+  </header>
+
+  <div class="fc-grid">
+    <div class="fc-card" id="card1">
+      <div class="fc-empty">
+        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4">
+          <path d="M12 15a4 4 0 0 0 4-4V8a4 4 0 1 0-8 0v3a4 4 0 0 0 4 4Z"/>
+          <path d="M4 20a8 8 0 0 1 16 0"/>
+        </svg>
+        点击或拖拽上传<b>人脸照片 A</b>
+      </div>
+      <canvas id="cv1" style="display:none"></canvas>
+      <div class="fc-tag" id="tag1" style="display:none"></div>
+      <button class="fc-change" id="chg1" type="button" style="display:none">更换</button>
+      <div class="fc-meta" id="meta1" style="display:none"></div>
+    </div>
+
+    <div class="fc-card" id="card2">
+      <div class="fc-empty">
+        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4">
+          <path d="M12 15a4 4 0 0 0 4-4V8a4 4 0 1 0-8 0v3a4 4 0 0 0 4 4Z"/>
+          <path d="M4 20a8 8 0 0 1 16 0"/>
+        </svg>
+        点击或拖拽上传<b>人脸照片 B</b>
+      </div>
+      <canvas id="cv2" style="display:none"></canvas>
+      <div class="fc-tag" id="tag2" style="display:none"></div>
+      <button class="fc-change" id="chg2" type="button" style="display:none">更换</button>
+      <div class="fc-meta" id="meta2" style="display:none"></div>
+    </div>
+  </div>
+
+  <div class="fc-actions">
+    <button class="fc-btn" id="btnCompare" disabled>开始比对</button>
+  </div>
+
+  <div class="fc-result" id="result"></div>
+</div>
+
+<input type="file" id="fileInput" accept="image/*" hidden>
+
+<script>
+(function () {
+  'use strict';
+
+  // 兼容 /face_compare 与 /face_compare/ 两种访问路径
+  var baseUrl = location.pathname.replace(/\/?$/, '/');
+  var MAX_WH = 1000;      // 上传前最长边压缩
+  var JPEG_Q = 0.9;
+
+  var state = {
+    names: [null, null],
+    images: [null, null],   // { el, w, h }
+    faces: [null, null],
+    live: [null, null],
+    busy: false
+  };
+
+  var $ = function (id) { return document.getElementById(id); };
+
+  /* ---------------- 上传 ---------------- */
+  function pick(idx) {
+    var input = $('fileInput');
+    input.value = '';
+    input.onchange = function () {
+      if (input.files && input.files[0]) handleFile(input.files[0], idx);
+    };
+    input.click();
+  }
+
+  function handleFile(file, idx) {
+    if (!/^image\//.test(file.type)) { flash(idx, '请选择图片文件', 'bad'); return; }
+    var reader = new FileReader();
+    reader.onload = function (e) {
+      var img = new Image();
+      img.onload = function () {
+        var w = img.width, h = img.height;
+        if (h > MAX_WH) { w = Math.round(w * MAX_WH / h); h = MAX_WH; }
+        if (w > MAX_WH) { h = Math.round(h * MAX_WH / w); w = MAX_WH; }
+        var cv = document.createElement('canvas');
+        cv.width = w; cv.height = h;
+        cv.getContext('2d').drawImage(img, 0, 0, w, h);
+
+        cv.toBlob(function (blob) {
+          if (!blob) { flash(idx, '图片处理失败', 'bad'); return; }
+          var fd = new FormData();
+          fd.append('file', new File([blob], 'face' + (idx + 1) + '.jpg', { type: 'image/jpeg' }));
+          setTag(idx, '上传中…', '');
+          fetch(baseUrl + 'upload', { method: 'POST', body: fd })
+            .then(function (r) { return r.json(); })
+            .then(function (res) {
+              if (res.code !== 200) { flash(idx, res.msg || '上传失败', 'bad'); return; }
+              var replaced = !!state.images[idx];
+              state.names[idx] = res.name;
+              state.images[idx] = { el: img, w: w, h: h };
+              state.faces[idx] = null;
+              state.live[idx] = null;
+              renderCard(idx);
+              setTag(idx, '待比对', '');
+              if (replaced) $('result').innerHTML = '';
+              refreshBtn();
+            })
+            .catch(function () { flash(idx, '网络异常，上传失败', 'bad'); });
+        }, 'image/jpeg', JPEG_Q);
+      };
+      img.onerror = function () { flash(idx, '无法解析该图片', 'bad'); };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  /* ---------------- 渲染卡片 ---------------- */
+  function renderCard(idx) {
+    var n = idx + 1;
+    var card = $('card' + n), cv = $('cv' + n);
+    var meta = $('meta' + n), tag = $('tag' + n), chg = $('chg' + n);
+    var img = state.images[idx];
+
+    card.querySelector('.fc-empty').style.display = 'none';
+    if (!img) {
+      cv.style.display = 'none';
+      meta.style.display = 'none';
+      tag.style.display = 'none';
+      chg.style.display = 'none';
+      card.classList.remove('has-image');
+      return;
+    }
+    card.classList.add('has-image');
+    cv.style.display = 'block';
+    tag.style.display = 'inline-block';
+    chg.style.display = 'block';
+    meta.style.display = 'flex';
+
+    var maxW = card.clientWidth || 420;
+    var scale = maxW / img.w;
+    cv.width = maxW;
+    cv.height = Math.round(img.h * scale);
+
+    var ctx = cv.getContext('2d');
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    ctx.drawImage(img.el, 0, 0, cv.width, cv.height);
+
+    var f = state.faces[idx];
+    if (f && f.box) {
+      var b = f.box, pad = 1.5;
+      var x = b[0] * scale - pad, y = b[1] * scale - pad;
+      var bw = (b[2] - b[0]) * scale + pad * 2;
+      var bh = (b[3] - b[1]) * scale + pad * 2;
+
+      ctx.strokeStyle = '#3eaf7c';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x, y, bw, bh);
+
+      // 四角加粗
+      var L = Math.max(10, Math.min(bw, bh) * 0.16);
+      ctx.lineWidth = 3.5;
+      ctx.beginPath();
+      ctx.moveTo(x, y + L); ctx.lineTo(x, y); ctx.lineTo(x + L, y);
+      ctx.moveTo(x + bw - L, y); ctx.lineTo(x + bw, y); ctx.lineTo(x + bw, y + L);
+      ctx.moveTo(x + bw, y + bh - L); ctx.lineTo(x + bw, y + bh); ctx.lineTo(x + bw - L, y + bh);
+      ctx.moveTo(x + L, y + bh); ctx.lineTo(x, y + bh); ctx.lineTo(x, y + bh - L);
+      ctx.stroke();
+    }
+
+    var parts = [];
+    parts.push('检测到 ' + (f ? f.count : 1) + ' 张人脸');
+    if (f) parts.push('置信度 ' + (f.score * 100).toFixed(1) + '%');
+    if (state.live[idx]) {
+      parts.push(state.live[idx].is_live ? '活体通过' : '疑似翻拍');
+    }
+    meta.innerHTML = '<span>' + parts.join(' · ') + '</span>' +
+                     '<span>' + img.w + '×' + img.h + '</span>';
+
+    if (state.live[idx]) {
+      tag.className = 'fc-tag ' + (state.live[idx].is_live ? 'ok' : 'bad');
+      tag.textContent = state.live[idx].is_live ? '✓ 真人' : '✗ 疑似翻拍';
+    } else if (f) {
+      tag.className = 'fc-tag ok';
+      tag.textContent = '✓ 已检测到人脸';
+    }
+  }
+
+  function setTag(idx, text, cls) {
+    var tag = $('tag' + (idx + 1));
+    if (state.images[idx]) {
+      tag.style.display = 'inline-block';
+      tag.className = 'fc-tag ' + (cls || '');
+      tag.textContent = text;
+    }
+  }
+
+  function flash(idx, msg, cls) {
+    setTag(idx, msg, cls || 'bad');
+    setTimeout(function () {
+      if (state.images[idx]) { renderCard(idx); }
+      else { setTag(idx, '', ''); $('tag' + (idx + 1)).style.display = 'none'; }
+    }, 2200);
+  }
+
+  function refreshBtn() {
+    $('btnCompare').disabled = state.busy || !(state.names[0] && state.names[1]);
+  }
+
+  /* ---------------- 比对 ---------------- */
+  function compare() {
+    if (state.busy || !state.names[0] || !state.names[1]) return;
+    state.busy = true;
+    refreshBtn();
+    $('result').innerHTML =
+      '<div class="fc-panel"><div class="fc-loading">' +
+      '<span class="fc-spin"></span>正在比对，请稍候…</div></div>';
+
+    var url = baseUrl + 'compare?img1=' + encodeURIComponent(state.names[0]) +
+              '&img2=' + encodeURIComponent(state.names[1]);
+
+    fetch(url)
+      .then(function (r) { return r.json(); })
+      .then(function (res) {
+        state.busy = false;
+        refreshBtn();
+        if (res.code !== 200) { renderError(res); return; }
+        state.faces[0] = res.faces.img1;
+        state.faces[1] = res.faces.img2;
+        state.live[0] = res.liveness.img1;
+        state.live[1] = res.liveness.img2;
+        renderCard(0); renderCard(1);
+        renderResult(res);
+      })
+      .catch(function () {
+        state.busy = false;
+        refreshBtn();
+        $('result').innerHTML =
+          '<div class="fc-panel"><div class="fc-loading" style="color:var(--danger)">' +
+          '请求失败，请检查网络后重试</div></div>';
+      });
+  }
+
+  function renderError(res) {
+    var which = res.which === 'img2' ? '照片 B' : '照片 A';
+    var msg = res.msg || '比对失败';
+    if (msg === 'face not detected') {
+      msg = which + ' 中未检测到人脸，请换一张更清晰的正面照片';
+    } else if (msg === 'file not exist') {
+      msg = '图片不存在，请重新上传';
+    }
+    $('result').innerHTML =
+      '<div class="fc-panel"><div class="fc-loading" style="color:var(--warn)">' + msg + '</div></div>';
+  }
+
+  function renderResult(res) {
+    var pct = Math.max(0, Math.min(100, res.score));
+    var ok = res.is_same;
+    var color = ok ? 'var(--accent)' : 'var(--danger)';
+
+    var live1 = res.liveness.img1, live2 = res.liveness.img2;
+    var l1ok = live1.is_live, l2ok = live2.is_live;
+
+    var html = '' +
+      '<div class="fc-panel">' +
+        '<div class="fc-score-row">' +
+          '<span class="fc-score-label">人脸相似度</span>' +
+          '<span class="fc-score-value" style="color:' + color + '">' +
+            pct.toFixed(1) + '<small>%</small></span>' +
+        '</div>' +
+        '<div class="fc-bar"><i id="fcBar"></i></div>' +
+        '<div class="fc-verdict">' +
+          '<span class="fc-badge ' + (ok ? 'ok' : 'bad') + '">' +
+            (ok ? '判定为同一人' : '判定为不同人') + '</span>' +
+          '<span class="fc-badge neutral">判定阈值 ' + (res.threshold * 100).toFixed(0) + '%</span>' +
+          '<span class="fc-badge neutral">耗时 ' + res.elapsed_ms + ' ms</span>' +
+        '</div>' +
+        '<div class="fc-live-grid">' +
+          '<div class="fc-live-item">' +
+            '<span class="fc-dot ' + (l1ok ? 'ok' : 'bad') + '"></span>' +
+            '照片 A 活体：' + (l1ok ? '真人' : '疑似翻拍') +
+            '（' + (live1.score * 100).toFixed(1) + '%）</div>' +
+          '<div class="fc-live-item">' +
+            '<span class="fc-dot ' + (l2ok ? 'ok' : 'bad') + '"></span>' +
+            '照片 B 活体：' + (l2ok ? '真人' : '疑似翻拍') +
+            '（' + (live2.score * 100).toFixed(1) + '%）</div>' +
+        '</div>' +
+        '<div class="fc-foot">活体检测用于识别打印照片 / 屏幕翻拍，分数越低越可能是翻拍</div>' +
+      '</div>';
+
+    $('result').innerHTML = html;
+    requestAnimationFrame(function () {
+      var bar = $('fcBar');
+      if (bar) bar.style.width = pct + '%';
+    });
+  }
+
+  /* ---------------- 事件绑定 ---------------- */
+  [0, 1].forEach(function (idx) {
+    var n = idx + 1;
+    var card = $('card' + n);
+    card.addEventListener('click', function () {
+      if (!state.images[idx]) pick(idx);
+    });
+    // 已有图片时卡片本身不再触发选择，靠「更换」按钮重新选图
+    $('chg' + n).addEventListener('click', function (e) {
+      e.stopPropagation();
+      pick(idx);
+    });
+    ['dragenter', 'dragover'].forEach(function (ev) {
+      card.addEventListener(ev, function (e) {
+        e.preventDefault();
+        card.classList.add('dragover');
+      });
+    });
+    ['dragleave', 'drop'].forEach(function (ev) {
+      card.addEventListener(ev, function (e) {
+        e.preventDefault();
+        card.classList.remove('dragover');
+      });
+    });
+    card.addEventListener('drop', function (e) {
+      var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (f) handleFile(f, idx);
+    });
+  });
+
+  $('btnCompare').addEventListener('click', compare);
+
+  var rt;
+  window.addEventListener('resize', function () {
+    clearTimeout(rt);
+    rt = setTimeout(function () { renderCard(0); renderCard(1); }, 150);
+  });
+})();
+</script>
+</body>
+</html>
