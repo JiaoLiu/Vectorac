@@ -123,7 +123,9 @@
 #balatro-game .bp-rack-label { display: flex; align-items: center; justify-content: space-between; gap: 6px; font-size: 11px; color: #bccfb6; margin-bottom: 8px; }
 #balatro-game .bp-rack-label b { color: #e9dfba; margin-left: 5px; }
 #balatro-game .bp-rack-label small { font-size: 9px; color: #a3baa3; }
-#balatro-game .bp-rack-cards { display: flex; align-items: flex-start; gap: 9px; min-height: 115px; overflow-x: auto; padding: 4px 3px 8px; scrollbar-width: thin; scrollbar-color: #85978155 transparent; }
+/* 被拖动的小丑牌会撑大滚动区域，牌架底部随之冒出一条横向滚动条横在牌上（松手才消失）；这里隐藏滚动条，横向滚动本身保留。 */
+#balatro-game .bp-rack-cards { display: flex; align-items: flex-start; gap: 9px; min-height: 115px; overflow-x: auto; padding: 4px 3px 8px; scrollbar-width: none; }
+#balatro-game .bp-rack-cards::-webkit-scrollbar { display: none; }
 #balatro-game .bp-rack-cards > .bp-item { flex: 0 0 clamp(58px,6.5vw,84px); width: clamp(58px,6.5vw,84px); }
 #balatro-game .bp-joker-rack .bp-rack-cards > .bp-item[data-visual] > .bp-item-art { touch-action: none; cursor: grab; -webkit-user-drag: none; }
 #balatro-game .bp-joker-dragging { position: relative; z-index: 12; opacity: .92; pointer-events: none; transform: translate3d(var(--joker-drag-x,0),var(--joker-drag-y,0),0) scale(1.06); transition: none !important; }
