@@ -23,8 +23,8 @@
   css.id = 'game-feedback-style'
   css.textContent = [
     '#game-feedback-modal[hidden]{display:none!important}',
-    '#game-feedback-modal{position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;padding:calc(16px + env(safe-area-inset-top,0px)) calc(16px + env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) calc(16px + env(safe-area-inset-left,0px));box-sizing:border-box;background:rgba(9,19,30,.62);-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px)}',
-    '#game-feedback-modal .gf-dialog{width:min(560px,100%);max-height:min(820px,88vh);max-height:min(820px,88dvh);overflow:auto;border:1px solid rgba(255,255,255,.72);border-radius:20px;background:#fff;color:#253142;box-shadow:0 24px 80px rgba(0,0,0,.34);padding:22px 24px 20px;box-sizing:border-box;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}',
+    '#game-feedback-modal{position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;padding:calc(16px + env(safe-area-inset-top,0px)) calc(16px + env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) calc(16px + env(safe-area-inset-left,0px));box-sizing:border-box;background:rgba(9,19,30,.62);-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px);overscroll-behavior:contain}',
+    '#game-feedback-modal .gf-dialog{width:min(560px,100%);max-height:min(820px,88vh);max-height:min(820px,88dvh);overflow:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;border:1px solid rgba(255,255,255,.72);border-radius:20px;background:#fff;color:#253142;box-shadow:0 24px 80px rgba(0,0,0,.34);padding:22px 24px 20px;box-sizing:border-box;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}',
     '#game-feedback-modal .gf-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:8px}',
     '#game-feedback-modal .gf-eyebrow{margin:0 0 4px;color:#398c74;font-size:12px;font-weight:700;letter-spacing:.08em}',
     '#game-feedback-modal .gf-title{margin:0;font-size:22px;line-height:1.3;color:#1d2b38}',
@@ -39,7 +39,8 @@
     '#game-feedback-modal .vrow{padding:4px 10px 10px}',
     '#game-feedback-modal .vsubmit{min-width:88px;border:0!important;border-radius:9px!important;background:#176b59!important;color:#fff!important;font-size:14px!important}',
     '#game-feedback-modal .status-bar{font-size:12px;color:#39725f}',
-    '@media(max-width:520px){#game-feedback-modal{padding:calc(10px + env(safe-area-inset-top,0px)) calc(10px + env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) calc(10px + env(safe-area-inset-left,0px))}#game-feedback-modal .gf-dialog{max-height:90vh;max-height:90dvh;padding:18px 16px 14px;border-radius:17px}#game-feedback-modal .gf-title{font-size:20px}#game-feedback-modal .veditor{min-height:34vh;max-height:48vh}}'
+    // 移动端改为底部抽屉：头部固定，Valine 区域独立滚动，保证提交按钮不会被软键盘顶出屏幕。
+    '@media(max-width:640px){#game-feedback-modal{padding:0;align-items:flex-end}#game-feedback-modal .gf-dialog{width:100%;max-width:none;max-height:100%;border:0;border-radius:18px 18px 0 0;padding:16px 16px calc(14px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;overflow:hidden}#game-feedback-modal .gf-head{flex:none;margin-bottom:6px}#game-feedback-modal .gf-eyebrow{font-size:11px}#game-feedback-modal .gf-title{font-size:19px}#game-feedback-modal .gf-close{flex:none;width:44px;height:44px;border-radius:13px;font-size:26px}#game-feedback-modal .gf-copy{flex:none;margin-bottom:6px;font-size:13px}#game-feedback-modal .gf-archive{flex:none;margin-bottom:10px;font-size:11.5px}#game-feedback-modal .gf-valine{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}#game-feedback-modal input,#game-feedback-modal textarea{font-size:16px!important}#game-feedback-modal .veditor{min-height:116px;max-height:42vh;padding:12px!important;font-size:16px!important;line-height:1.6!important}#game-feedback-modal .vrow{padding:6px 0 8px}#game-feedback-modal .vsubmit{min-width:112px;min-height:44px;border-radius:11px!important;font-size:15px!important}#game-feedback-modal .gf-error{flex:none;margin-top:4px;font-size:12.5px}}'
   ].join('')
 
   function normalizedPath () {
@@ -56,6 +57,33 @@
       var modalRoot = feedbackModal.hidden ? document.body : root
       if (feedbackModal.parentNode !== modalRoot) modalRoot.appendChild(feedbackModal)
     }
+  }
+
+  // iOS 弹出软键盘时只改变 visualViewport，position:fixed 的参考框不变，
+  // 因此把遮罩层锁到可视区域，弹窗与提交按钮才会留在键盘之上。
+  function syncViewport () {
+    var dialog = modal()
+    if (!dialog) return
+    var viewport = window.visualViewport
+    if (!viewport || dialog.hidden) {
+      dialog.style.top = ''
+      dialog.style.bottom = ''
+      dialog.style.height = ''
+      return
+    }
+    dialog.style.top = viewport.offsetTop + 'px'
+    dialog.style.height = viewport.height + 'px'
+    dialog.style.bottom = 'auto'
+  }
+
+  function revealEditor (field) {
+    if (!field) return
+    window.setTimeout(function () {
+      if (!modal() || modal().hidden || document.activeElement !== field) return
+      var viewport = window.visualViewport
+      if (!viewport || viewport.height >= window.innerHeight - 80) return
+      try { field.scrollIntoView({ block: 'center', behavior: 'smooth' }) } catch (_) { field.scrollIntoView() }
+    }, 320)
   }
 
   function modal () { return feedbackModal }
@@ -193,6 +221,7 @@
     dialog.hidden = true
     document.body.style.overflow = bodyOverflow
     moveToDisplayRoot()
+    syncViewport()
     var field = editor()
     if (field) {
       field.value = ''
@@ -210,6 +239,7 @@
     document.body.style.overflow = 'hidden'
     dialog.hidden = false
     moveToDisplayRoot()
+    syncViewport()
     ensureValine()
     var initialFocus = editor() || dialog.querySelector('.gf-close') || dialog.querySelector('.gf-dialog')
     if (initialFocus) initialFocus.focus()
@@ -255,6 +285,9 @@
         }
         if (error) error.textContent = ''
       }, true)
+      dialog.addEventListener('focusin', function (event) {
+        if (event.target.matches && event.target.matches('.veditor')) revealEditor(event.target)
+      })
       dialog.addEventListener('input', function (event) {
         if (event.target.matches('.veditor')) {
           var error = dialog.querySelector('.gf-error')
@@ -337,6 +370,14 @@
   }, true)
   document.addEventListener('fullscreenchange', moveToDisplayRoot)
   document.addEventListener('webkitfullscreenchange', moveToDisplayRoot)
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', function () {
+      syncViewport()
+      var field = editor()
+      if (field && document.activeElement === field) revealEditor(field)
+    })
+    window.visualViewport.addEventListener('scroll', syncViewport)
+  }
   window.addEventListener('popstate', syncRoute)
 
   function start () {
