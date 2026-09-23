@@ -196,8 +196,10 @@ export function startBlind(s) {
   }
   if(bossActive(s,'acorn')) s.jokers=shuffle(s,s.jokers)
   const certificates=[],startEffects=jokerTriggers(s,'blindStart')
+  let burglarTriggers=0
   for(const {slot,j} of startEffects) {
     if(!s.jokers.includes(slot)||!s.jokers.includes(j)||j.perished)continue
+    if(j.id==='burglar')burglarTriggers++
     if(j.id==='marble')addCard(s,{rank:2+Math.floor(random(s)*13),suit:Math.floor(random(s)*4),enh:'stone',edition:null,seal:null})
     if(j.id==='riff')for(let i=0;i<2&&s.jokers.length<slots(s);i++)s.jokers.push(randomJoker(s,1))
     if(j.id==='cartomancer')addConsumable(s,tarot(s))
@@ -206,7 +208,7 @@ export function startBlind(s) {
   }
   s.hands=Math.max(1,4+Number(s.deckType==='blue')-Number(s.deckType==='black')+Number(owns(s,'grabber'))+Number(owns(s,'nacho'))-Number(owns(s,'hieroglyph'))-count(s,'troubadour'))
   s.discards=Math.max(0,3+Number(s.deckType==='red')+Number(owns(s,'wasteful'))+Number(owns(s,'recyclo'))+count(s,'drunk')+count(s,'merryandy')*3-Number(owns(s,'petroglyph'))-Number(s.stake>=4))
-  if(has(s,'burglar')){s.hands+=3*count(s,'burglar');s.discards=0}
+  if(burglarTriggers){s.hands+=3*burglarTriggers;s.discards=0}
   if(bossActive(s,'needle'))s.hands=1
   if(bossActive(s,'water'))s.discards=0
   s.oxHand=HANDS.reduce((a,b)=>(s.played[b.id]||0)>(s.played[a.id]||0)?b:a).id
@@ -242,12 +244,15 @@ function effective(s,index,seen=[]) {
 // incompatible destructive one-offs are excluded. Golden Joker is an explicit
 // exception requested for this game's Blueprint behavior.
 const BLUEPRINT_COPYABLE = {
-  scoring: new Set(('greedy lusty wrath glutton fibonacci scary even odd scholar business photograph smiley ticket triboulet bloodstone arrowhead onyx rough walkie ancient idol wee eightball hiker mime baron shoot reserved jolly zany mad crazy droll sly wily clever devious crafty duo trio family order tribe joker half banner summit misprint fist blackboard steel abstract supernova green bus trousers popcorn redcard flash ceremonial runner square ice castle constellation hologram ramen banana vampire glass luckycat madness obelisk campfire hitroad canio yorick fortune acrobat loyalty stencil bull boot seeing cardsharp flower stone throwback gros blue erosion swash stuntman drivers superposition seance vagabond toDo DNA baseball sock hack dusk seltzer hanging').split(' ')),
-  blindStart: new Set(['marble','riff','cartomancer','madness','certificate']),
+  scoring: new Set(('greedy lusty wrath glutton fibonacci scary even odd scholar business photograph smiley ticket triboulet bloodstone arrowhead onyx rough walkie ancient idol wee eightball hiker mime baron shoot reserved jolly zany mad crazy droll sly wily clever devious crafty duo trio family order tribe joker half banner summit misprint fist blackboard steel abstract supernova green bus trousers popcorn redcard flash ceremonial runner square ice castle constellation hologram ramen banana vampire glass luckycat madness obelisk campfire hitroad canio yorick fortune acrobat loyalty stencil bull boot seeing cardsharp flower stone throwback gros blue erosion swash stuntman drivers superposition seance vagabond toDo DNA baseball sock hack dusk seltzer hanging space matador').split(' ')),
+  blindStart: new Set(['marble','riff','cartomancer','madness','certificate','burglar']),
   discard: new Set(['green','ramen','burnt','castle','mail','faceless','hitroad','yorick']),
-  roundReward: new Set(['golden'])
+  roundReward: new Set(['golden']),
+  shopExit: new Set(['perkeo']),
+  packOpen: new Set(['hallucination'])
 }
 export function blueprintCanCopy(id,phase) { return !!(BLUEPRINT_COPYABLE[phase]&&BLUEPRINT_COPYABLE[phase].has(id)) }
+export function blueprintCanCopyAny(id) { return Object.values(BLUEPRINT_COPYABLE).some(ids=>ids.has(id)) }
 function jokerTriggers(s,phase) {
   return s.jokers.map((slot,index)=>({slot,j:effective(s,index)})).filter(({slot,j})=>j&&(slot===j||blueprintCanCopy(j.id,phase)))
 }
@@ -327,7 +332,10 @@ function scoring(s,cards,e) {
       if(j.id==='reserved'&&face(s,c)&&chance(s,2))s.money++
     }
   }
-  for(const {slot,j} of effects) {
+  const effectBySlot=new Map(effects.map(({slot,j})=>[slot,j]))
+  for(const slot of s.jokers) {
+    if(slot.disabled||slot.perished)continue
+    const j=effectBySlot.get(slot)||null
     if(slot.edition==='foil')add('闪箔',50,0,1,slot.uid)
     if(slot.edition==='holo')add('镭射',0,10,1,slot.uid)
     if(j) {
@@ -383,13 +391,13 @@ export function play(s) {
   assert(!s.forced||cards.some(c=>c.uid===s.forced),'必须打出铃铛指定的牌')
   const e=evaluate(cards,s)
   const blocked=bossActive(s,'psychic')&&cards.length!==5||bossActive(s,'eye')&&s.roundPlayed[e.id]||bossActive(s,'mouth')&&Object.keys(s.roundPlayed).length>0&&!s.roundPlayed[e.id]
-  for(const j of s.jokers)if(j.id==='space'&&!j.perished&&chance(s,4))s.levels[e.id]++
+  for(const {j} of jokerTriggers(s,'scoring'))if(j.id==='space'&&chance(s,4))s.levels[e.id]++
   if(bossActive(s,'arm'))s.levels[e.id]=Math.max(1,s.levels[e.id]-1)
   if(bossActive(s,'ox')&&e.id===s.oxHand)s.money=0
   if(bossActive(s,'tooth'))s.money=Math.max(-20,s.money-cards.length)
   if(bossActive(s,'heart')&&s.jokers.length){s.jokers.forEach(j=>j.disabled=false);pick(s,s.jokers).disabled=true}
   let result
-  if(blocked){s.money+=8*count(s,'matador');result={id:e.id,name:e.id==='high'?'牌型被限制':byId(HANDS,e.id).name,chips:0,mult:0,total:0,events:[{source:'Boss 限制：本手不计分',chips:0,mult:0}],destroy:[],cards:clone(cards)}}
+  if(blocked){s.money+=8*jokerTriggers(s,'scoring').filter(({j})=>j.id==='matador').length;result={id:e.id,name:e.id==='high'?'牌型被限制':byId(HANDS,e.id).name,chips:0,mult:0,total:0,events:[{source:'Boss 限制：本手不计分',chips:0,mult:0}],destroy:[],cards:clone(cards)}}
   else result=scoring(s,cards,e)
   s.hands--;s.plays++;s.totalHands++;s.played[e.id]++;s.roundPlayed[e.id]=(s.roundPlayed[e.id]||0)+1;s.score+=result.total;s.best=Math.max(s.best,result.total)
   s.spent.push(...cards);s.blindPlayed=Array.from(new Set(s.blindPlayed.concat(cards.map(c=>c.uid))));s.hand=s.hand.filter(c=>!cards.some(p=>p.uid===c.uid));s.selected=[];s.forced=null
@@ -430,8 +438,9 @@ function finishBlind(s) {
   const reward=blindReward(s), hands=s.hands*(s.deckType==='green'?2:1),discardMoney=s.deckType==='green'?s.discards:0
   const interest=s.deckType==='green'?0:Math.min(owns(s,'tree')?20:owns(s,'seed')?10:5,Math.max(0,Math.floor(s.money/5))*(1+count(s,'tomoon')))
   let extra=0
+  const mimeTriggers=jokerTriggers(s,'scoring').filter(({j})=>j.id==='mime').length
   for(const c of s.hand) if(!debuffed(s,c)) {
-    const repeat=1+count(s,'mime')+Number(c.seal==='red')
+    const repeat=1+mimeTriggers+Number(c.seal==='red')
     if(c.enh==='gold')extra+=3*repeat
     if(c.seal==='blue')for(let i=0;i<repeat;i++)addConsumable(s,item(s,'planet',s.lastResult.id))
   }
@@ -519,7 +528,7 @@ export function rerollShop(s) {
 }
 export function nextBlind(s) {
   assert(s.phase==='shop'&&!s.pack,'请先完成当前商店操作')
-  for(const j of s.jokers)if(j.id==='perkeo'&&!j.perished&&s.consumables.length){const c=clone(pick(s,s.consumables));c.uid=++s.uid;c.edition='negative';s.consumables.push(c)}
+  for(const {j} of jokerTriggers(s,'shopExit'))if(j.id==='perkeo'&&s.consumables.length){const c=clone(pick(s,s.consumables));c.uid=++s.uid;c.edition='negative';s.consumables.push(c)}
   if(s.blind<2)s.blind++;else{s.blind=0;s.ante++;s.antePlayed=[];chooseBoss(s)}
   s.phase='select';s.hand=[];s.draw=[];s.spent=[];s.selected=[];s.shop=null
 }
@@ -540,7 +549,7 @@ export function buy(s,uid) {
 }
 function openPack(s,id) {
   const def=boosterPack(id),kind=def.family
-  for(const j of s.jokers)if(j.id==='hallucination'&&!j.perished&&chance(s,2))addConsumable(s,tarot(s))
+  for(const {j} of jokerTriggers(s,'packOpen'))if(j.id==='hallucination'&&chance(s,2))addConsumable(s,tarot(s))
   const cards=[],offered=new Set()
   const planetIds=new Set()
   if(kind==='planet'&&owns(s,'telescope')) {

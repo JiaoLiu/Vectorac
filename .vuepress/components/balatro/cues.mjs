@@ -1,5 +1,5 @@
 import { HANDS, JOKERS, TAROTS, SPECTRALS, SUITS, byId } from './catalog.mjs'
-import { evaluate, debuffed, matchesSuit, has, consumableSlots } from './engine.mjs'
+import { evaluate, debuffed, matchesSuit, has, consumableSlots, blueprintCanCopyAny } from './engine.mjs'
 
 const rank = n => ({11:'J',12:'Q',13:'K',14:'A'}[n] || n)
 const face = (s,c) => c.enh!=='stone' && (c.rank>=11 && c.rank<=13 || has(s,'pareidolia'))
@@ -36,7 +36,8 @@ export function cardCue(s,card,visited=[]) {
   if(['blueprint','brainstorm'].includes(card.id)) {
     if(visited.includes(card.uid))return cue('复制循环','没有可复制的有效效果',false,'muted')
     const index=s.jokers.findIndex(j=>j.uid===card.uid),source=s.jokers[card.id==='blueprint'?index+1:0]
-    if(!source)return cue('右侧空位','右侧放一张小丑才能复制能力',false,'muted')
+    if(!source)return cue(card.id==='blueprint'?'右侧空位':'最左侧空位',card.id==='blueprint'?'右侧放一张小丑才能复制能力':'最左侧放一张小丑才能复制能力',false,'muted')
+    if(!['blueprint','brainstorm'].includes(source.id)&&!blueprintCanCopyAny(source.id))return cue('无法复制',`${byId(JOKERS,source.id).name} 的能力不兼容蓝图`,false,'muted')
     const inherited=cardCue(s,source,visited.concat(card.uid))
     return inherited?{...inherited,detail:`复制 ${byId(JOKERS,source.id).name}：${inherited.detail}`}:cue('复制中',`复制 ${byId(JOKERS,source.id).name} 的能力`,false,'copy')
   }
