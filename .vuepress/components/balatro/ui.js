@@ -36,7 +36,7 @@ class Sound {
     // dropping it while suspended makes every short interaction sound silent.
     if(!this.ctx||this.ctx.state==='closed')return
     const o=this.ctx.createOscillator(),g=this.ctx.createGain(),t=this.ctx.currentTime+delay
-    o.type=type;o.frequency.value=freq;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(volume,t+.008);g.gain.exponentialRampToValueAtTime(.0001,t+length)
+    o.type=type;o.frequency.value=freq;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(volume,t+.014);g.gain.exponentialRampToValueAtTime(.0001,t+length)
     o.connect(g);g.connect(this.master);o.start(t);o.stop(t+length+.02);this.nodes.add(o)
     o.onended=()=>{o.disconnect();g.disconnect();this.nodes.delete(o)}
   }
@@ -44,18 +44,20 @@ class Sound {
     if(!this.settings.sound)return
     this.unlock()
     if(kind==='coin'||kind==='planet'){
-      (kind==='planet'?[440,554,659,880]:[523,659,784]).forEach((f,i)=>this.note(f,.16,.22,'triangle',i*.07))
+      (kind==='planet'?[440,554,659,880]:[523,659,784]).forEach((f,i)=>this.note(f,.18,.18,'triangle',i*.07))
     }else if(kind==='magic'){
-      [392,587,784].forEach((f,i)=>this.note(f,.14,.17,'sine',i*.055))
-    }else if(kind==='score')this.note(260*Math.pow(1.05946,index%18),.11,.20)
-    else if(kind==='deal')this.note(180,.075,.16,'sawtooth')
-    else this.note(440,.065,.18)
+      [392,587,784].forEach((f,i)=>this.note(f,.16,.14,'sine',i*.055))
+    }else if(kind==='score')this.note(260*Math.pow(1.05946,index%18),.12,.16)
+    else if(kind==='deal')this.note(240,.08,.09,'triangle')
+    else this.note(520,.07,.12)
   }
   music(active){
     clearInterval(this.timer);this.timer=null
     if(!active||!this.settings.music||document.hidden)return
     this.unlock()
-    const tick=()=>{if(!this.ctx||this.ctx.state!=='running')return;const chords=[[146.83,174.61,220,293.66],[130.81,164.81,196,261.63],[116.54,146.83,174.61,233.08],[130.81,164.81,220,261.63]],ch=chords[Math.floor(this.step/16)%4];this.note(ch[this.step%4]*(this.step%8===7?2:1),.45,.09,'triangle');if(this.step%4===0)this.note(ch[0]/2,.65,.14,'sine');this.step++}
+    // Dm – C – Bb – Am 进行：琶音 + 低音 + 稀疏旋律线，芯片风循环
+    const chords=[[146.83,220,293.66,349.23],[130.81,196,261.63,329.63],[116.54,174.61,233.08,293.66],[110,164.81,220,261.63]],melody=[587.33,0,659.25,0,698.46,0,659.25,587.33,523.25,0,587.33,0,440,0,493.88,0]
+    const tick=()=>{if(!this.ctx||this.ctx.state!=='running')return;const ch=chords[Math.floor(this.step/16)%4];this.note(ch[this.step%4]*(this.step%8===7?2:1),.5,.065,'triangle');if(this.step%4===0)this.note(ch[0]/2,.7,.1,'sine');const m=melody[this.step%16];if(m)this.note(m,.32,.04,'sine');this.step++}
     tick();this.timer=setInterval(tick,230)
   }
   destroy(){clearInterval(this.timer);this.nodes.forEach(o=>{try{o.stop()}catch(_){}});if(this.ctx)this.ctx.close().catch(()=>{});this.ctx=null}
@@ -63,7 +65,7 @@ class Sound {
 
 export default class PokerTable {
   constructor(root){
-    this.root=root;this.state=null;this.saved=E.restore(safeRead(SAVE));this.settings={sound:true,music:false,fast:false}
+    this.root=root;this.state=null;this.saved=E.restore(safeRead(SAVE));this.settings={sound:true,music:true,fast:false}
     try{Object.assign(this.settings,JSON.parse(safeRead(SETTINGS)||'{}'))}catch(_){}
     this.audio=new Sound(this.settings);this.modal=null;this.busy=false;this.immersive=false;this.destroyed=false;this.timers=new Set();this.scoreTimer=null;this.scoreToken=0;this.seed='';this.deckType='red';this.sort=['rank','suit','custom'].includes(this.settings.handSort)?this.settings.handSort:'rank';this.toast='';this.effect='';this.anim=null;this.actionFx=null;this.packFx=null;this.packChoiceFx=null
     this.stake=0;this.marker=document.createComment('balatro-position');root.parentNode.insertBefore(this.marker,root)

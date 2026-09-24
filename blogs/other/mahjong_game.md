@@ -151,7 +151,8 @@ meta:
 <div class="scmj-modal-body">
 <div class="scmj-modal-title">设置</div>
 <div class="scmj-modal-content scmj-settings-body">
-<label><input type="checkbox" data-scmj-set-sound checked /> 音效</label>
+<label><input type="checkbox" data-scmj-set-sound checked /> 音效（碰/杠/胡带语音播报）</label>
+<label><input type="checkbox" data-scmj-set-music checked /> 背景音乐</label>
 <label><input type="checkbox" data-scmj-set-anim checked /> 动画</label>
 <label><input type="checkbox" data-scmj-set-passhu checked /> 过胡时二次确认</label>
 <button type="button" class="scmj-btn scmj-btn-ghost scmj-feedback-entry" data-game-feedback>反馈麻将问题</button>

@@ -44,7 +44,7 @@ export default class GomokuUI {
     this.ctx = this.canvas.getContext('2d')
 
     // 设置（持久化）
-    this.settings = Object.assign({ level: LEVEL.MEDIUM, first: 'player', sound: true }, loadJSON(SETTINGS_KEY, {}))
+    this.settings = Object.assign({ level: LEVEL.MEDIUM, first: 'player', sound: true, music: true }, loadJSON(SETTINGS_KEY, {}))
     this.stats = loadJSON(STATS_KEY, {})
 
     // 对局状态
@@ -78,6 +78,14 @@ export default class GomokuUI {
     // 原生全屏需用户手势，首次触摸/点击时再尝试一次
     this._onFirstGesture = () => {
       if (this._fullscreen) this._tryNativeFullscreen()
+      // AudioContext 同样需手势解锁：resume 后背景音乐自动出声
+      this._ensureAudio()
+      if (this._audio && this._audio.state === 'suspended') this._audio.resume().catch(() => {})
+    }
+    // 页面切后台暂停背景音乐，回前台恢复
+    this._onVisibility = () => {
+      if (typeof document === 'undefined') return
+      this._music(!document.hidden)
     }
   }
 
@@ -89,6 +97,7 @@ export default class GomokuUI {
     this.canvas.addEventListener('contextmenu', this._onContextMenu)
     window.addEventListener('resize', this._onResize)
     document.addEventListener('pointerdown', this._onFirstGesture, { once: true })
+    document.addEventListener('visibilitychange', this._onVisibility)
     this._ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(this._onResize) : null
     if (this._ro) this._ro.observe(this.canvas.parentElement)
 
@@ -98,6 +107,7 @@ export default class GomokuUI {
     // 进入页面即开始游戏：默认全屏（移动端棋盘不再被主题内容容器压缩）
     this.enterFullscreen()
     this._newGame(true)
+    this._music(true)
   }
 
   destroy() {
@@ -109,6 +119,8 @@ export default class GomokuUI {
     this.canvas.removeEventListener('contextmenu', this._onContextMenu)
     window.removeEventListener('resize', this._onResize)
     document.removeEventListener('pointerdown', this._onFirstGesture)
+    document.removeEventListener('visibilitychange', this._onVisibility)
+    this._music(false)
     if (this._ro) this._ro.disconnect()
     if (this._aiTimer) clearTimeout(this._aiTimer)
     if (this._raf) cancelAnimationFrame(this._raf)
@@ -614,6 +626,12 @@ export default class GomokuUI {
         this._playMelody([660], 0.08, 0.1)
       }
     })
+    this.root.querySelector('[data-gk-music]').addEventListener('click', () => {
+      this.settings.music = !this.settings.music
+      saveJSON(SETTINGS_KEY, this.settings)
+      this._syncSettingsUI()
+      this._music(this.settings.music)
+    })
     this.root.querySelector('[data-gk-again]').addEventListener('click', () => this._newGame(true))
     this.root.querySelector('[data-gk-view]').addEventListener('click', () => this._hideResultOverlay())
     this.root.querySelector('[data-gk-fullscreen]').addEventListener('click', () => {
@@ -633,6 +651,9 @@ export default class GomokuUI {
     soundBtn.classList.toggle('muted', !this.settings.sound)
     soundBtn.textContent = this.settings.sound ? '🔊' : '🔇'
     soundBtn.setAttribute('aria-label', this.settings.sound ? '关闭音效' : '打开音效')
+    const musicBtn = this.root.querySelector('[data-gk-music]')
+    musicBtn.classList.toggle('muted', !this.settings.music)
+    musicBtn.setAttribute('aria-label', this.settings.music ? '关闭背景音乐' : '打开背景音乐')
   }
 
   _syncButtons() {
@@ -763,5 +784,47 @@ export default class GomokuUI {
 
   _playMelody(freqs, noteLen, volume) {
     freqs.forEach((f, i) => this._tone(f, i * noteLen * 1.1, noteLen, volume))
+  }
+
+  // ---------------- 背景音乐（禅意循环） ----------------
+
+  _padTone(freq, duration, volume) {
+    const ctx = this._audio
+    if (!ctx || ctx.state === 'closed') return
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.type = 'sine'
+    osc.frequency.value = freq
+    const t0 = ctx.currentTime
+    gain.setValueAtTime(0.0001, t0)
+    gain.exponentialRampToValueAtTime(volume, t0 + 0.3)
+    gain.exponentialRampToValueAtTime(0.0001, t0 + duration)
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+    osc.start(t0)
+    osc.stop(t0 + duration + 0.05)
+  }
+
+  /** C 宫五声音阶稀疏长音 + 低音 pad，围棋对弈的安静氛围 */
+  _music(active) {
+    clearInterval(this._musicTimer)
+    this._musicTimer = null
+    if (!active || this.settings.music === false) return
+    if (typeof document !== 'undefined' && document.hidden) return
+    this._ensureAudio()
+    if (!this._audio) return
+    const scale = [261.63, 293.66, 329.63, 392, 440] // C D E G A
+    const melody = [0, 0, 5, 0, 0, 3, 0, 0, 4, 0, 0, 0, 2, 0, 3, 0] // 16 步，0=休止
+    let step = this._musicStep || 0
+    const tick = () => {
+      if (!this._audio || this._audio.state !== 'running') return
+      const n = melody[step % 16]
+      if (n) this._padTone(scale[n - 1] * 2, 1.8, 0.026)
+      if (step % 16 === 0) this._padTone(scale[0] / 2, 3.6, 0.028)
+      step++
+      this._musicStep = step
+    }
+    tick()
+    this._musicTimer = setInterval(tick, 500)
   }
 }

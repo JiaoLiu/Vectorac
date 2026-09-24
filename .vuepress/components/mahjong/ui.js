@@ -166,6 +166,7 @@ export default class ScmjUI {
     // yaojiEnabled：幺鸡赖子开关（入口勾选，开启后幺鸡当万能牌）
     this.settings = {
       sound: true,
+      music: true,
       animation: true,
       passHuConfirm: true,
       capFan: 3,
@@ -249,6 +250,7 @@ export default class ScmjUI {
       modalConfirm: q('[data-scmj-modal-confirm]'),
       rulesContent: q('[data-scmj-rules-content]'),
       setSound: q('[data-scmj-set-sound]'),
+      setMusic: q('[data-scmj-set-music]'),
       setAnim: q('[data-scmj-set-anim]'),
       setPassHu: q('[data-scmj-set-passhu]'),
       confirmText: q('.scmj-confirm-text'),
@@ -316,6 +318,13 @@ export default class ScmjUI {
     }
     window.addEventListener('resize', this._onResize)
     window.addEventListener('orientationchange', this._onResize)
+    // 页面切后台时暂停背景音乐，回前台且仍在牌桌时恢复
+    this._onVisibility = () => {
+      if (typeof document === 'undefined') return
+      if (document.hidden) this.music(false)
+      else if (this._els.table && !this._els.table.hidden) this.music(true)
+    }
+    document.addEventListener('visibilitychange', this._onVisibility)
     if (this._els.rulesContent) this._els.rulesContent.innerHTML = this.buildRulesHtml()
     this.refreshEntry()
     this.showEntry()
@@ -343,6 +352,13 @@ export default class ScmjUI {
       window.removeEventListener('orientationchange', this._onResize)
       this._onResize = null
     }
+    if (this._onVisibility) {
+      document.removeEventListener('visibilitychange', this._onVisibility)
+      this._onVisibility = null
+    }
+    this.music(false)
+    try { if (window.speechSynthesis) window.speechSynthesis.cancel() } catch (e) { /* 忽略 */ }
+    if (this._ac && this._ac.state !== 'closed') { this._ac.close().catch(() => {}); this._ac = null }
     this.hideOpening()
     this.exitFullscreen()
     clearTimeout(this._toastTimer)
@@ -389,6 +405,7 @@ export default class ScmjUI {
     setChecked(e.entryYaoji, this.settings.yaojiEnabled)
     setChecked(e.entryAssist, this.settings.assist !== false)
     setChecked(e.setSound, this.settings.sound)
+    setChecked(e.setMusic, this.settings.music !== false)
     setChecked(e.setAnim, this.settings.animation)
     setChecked(e.setPassHu, this.settings.passHuConfirm)
     // 封顶番数步进器（2~6，点 − / ＋ 加减，到边界禁用对应按钮）
@@ -653,6 +670,11 @@ export default class ScmjUI {
       this.settings.sound = e.setSound.checked
       this.saveSettings()
     })
+    on(e.setMusic, 'change', () => {
+      this.settings.music = e.setMusic.checked
+      this.saveSettings()
+      this.music(this.settings.music && this._els.table && !this._els.table.hidden)
+    })
     on(e.setAnim, 'change', () => {
       this.settings.animation = e.setAnim.checked
       this.saveSettings()
@@ -675,6 +697,7 @@ export default class ScmjUI {
   }
 
   showEntry() {
+    this.music(false)
     if (this._els.entry) this._els.entry.hidden = false
     if (this._els.table) this._els.table.hidden = true
     if (this._els.settle) this._els.settle.hidden = true
@@ -685,6 +708,7 @@ export default class ScmjUI {
     if (this._els.entry) this._els.entry.hidden = true
     if (this._els.table) this._els.table.hidden = false
     if (this._els.lobby) this._els.lobby.hidden = true
+    this.music(true)
     // 竖屏提示：开局后在原位显示 5s，再收起腾出高度给牌桌
     this.showPortraitTip()
   }
@@ -802,6 +826,7 @@ export default class ScmjUI {
    * 否则它们会一直盖在大厅列表上面，看起来像按钮点了没反应。
    */
   hideTableChrome() {
+    this.music(false)
     if (this._els.table) this._els.table.hidden = true
     if (this._els.settle) this._els.settle.hidden = true
   }
@@ -1107,6 +1132,10 @@ export default class ScmjUI {
     else if (ev && (ev.type === 'peng' || ev.type === 'draw')) this.sound('draw')
     else if (ev && ev.type === 'gang') this.sound('gang')
     else if (ev && ev.type === 'hu') this.sound('hu')
+    // 碰/杠/胡同步语音播报（自己与他人都报；自摸单独播报）
+    if (ev && ev.type === 'peng') this.speak('peng')
+    else if (ev && ev.type === 'gang') this.speak('gang')
+    else if (ev && ev.type === 'hu') this.speak(ev.data && ev.data.how === 'zimo' ? 'zimo' : 'hu')
     // 全量重渲染：数据量小，简单可靠
     this.render()
   }
@@ -2439,37 +2468,138 @@ export default class ScmjUI {
     this._confirmCb = onOk
   }
 
-  // ==================== 音效（WebAudio 简单合成，v1 占位级） ====================
+  // ==================== 音效 / 背景音乐 / 语音播报 ====================
+
+  _ensureAudio() {
+    if (typeof window === 'undefined') return null
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext
+      if (!AC) return null
+      if (!this._ac) {
+        this._ac = new AC()
+        this._master = this._ac.createGain()
+        this._master.gain.value = 0.5
+        this._master.connect(this._ac.destination)
+      }
+      if (this._ac.state === 'suspended') this._ac.resume().catch(() => {})
+      return this._ac
+    } catch (e) {
+      return null
+    }
+  }
+
+  _note(freq, length = 0.1, volume = 0.14, type = 'sine', delay = 0) {
+    const ac = this._ac
+    if (!ac || ac.state === 'closed') return
+    const o = ac.createOscillator()
+    const g = ac.createGain()
+    const t = ac.currentTime + delay
+    o.type = type
+    o.frequency.value = freq
+    g.gain.setValueAtTime(0, t)
+    g.gain.linearRampToValueAtTime(volume, t + 0.012)
+    g.gain.exponentialRampToValueAtTime(0.0001, t + length)
+    o.connect(g)
+    g.connect(this._master)
+    o.start(t)
+    o.stop(t + length + 0.02)
+    o.onended = () => { o.disconnect(); g.disconnect() }
+  }
 
   sound(type) {
     if (!this.settings.sound || typeof window === 'undefined') return
-    try {
-      const AC = window.AudioContext || window.webkitAudioContext
-      if (!AC) return
-      if (!this._ac) this._ac = new AC()
-      const ac = this._ac
-      if (ac.state === 'suspended') ac.resume()
+    if (!this._ensureAudio()) return
+    // 碰/杠/胡用和弦垫底（语音播报同步进行），其余为轻量单音
+    if (type === 'peng') {
+      this._note(520, 0.14, 0.1, 'triangle')
+      this._note(780, 0.12, 0.06, 'triangle', 0.02)
+    } else if (type === 'gang') {
+      this._note(420, 0.2, 0.12, 'triangle')
+      this._note(210, 0.24, 0.09, 'sine')
+      this._note(630, 0.16, 0.06, 'triangle', 0.03)
+    } else if (type === 'hu') {
+      ;[660, 880, 1108.7].forEach((f, i) => this._note(f, 0.2, 0.1, 'triangle', i * 0.06))
+    } else {
       const conf = {
-        click: [660, 0.05, 0.04],
-        draw: [500, 0.05, 0.04],
-        discard: [320, 0.08, 0.06],
-        peng: [520, 0.16, 0.14],
-        gang: [420, 0.2, 0.18],
-        hu: [880, 0.35, 0.32],
-        deal: [440, 0.12, 0.1]
-      }[type] || [600, 0.05, 0.04]
-      const o = ac.createOscillator()
-      const g = ac.createGain()
-      o.type = 'sine'
-      o.frequency.value = conf[0]
-      g.gain.setValueAtTime(0.16, ac.currentTime)
-      g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + conf[2])
-      o.connect(g)
-      g.connect(ac.destination)
-      o.start()
-      o.stop(ac.currentTime + conf[1])
+        click: [660, 0.05, 0.07],
+        draw: [500, 0.06, 0.07],
+        discard: [320, 0.09, 0.09],
+        deal: [440, 0.12, 0.08]
+      }[type] || [600, 0.05, 0.06]
+      this._note(conf[0], conf[1], conf[2], 'sine')
+    }
+  }
+
+  /** 背景音乐：A 宫五声音阶循环，竹笛感 pluck 旋律 + 低音 drone（茶馆氛围） */
+  music(active) {
+    clearInterval(this._musicTimer)
+    this._musicTimer = null
+    if (!active || this.settings.music === false) return
+    if (typeof document !== 'undefined' && document.hidden) return
+    if (!this._ensureAudio()) return
+    const scale = [440, 493.88, 554.37, 659.25, 739.99] // A B C# E F#
+    const melody = [3, 0, 4, 0, 3, 2, 0, 1, 0, 2, 3, 0, 5, 0, 4, 0] // 16 步，0=休止
+    let step = this._musicStep || 0
+    const tick = () => {
+      if (!this._ac || this._ac.state !== 'running') return
+      const n = melody[step % 16]
+      if (n) this._note(scale[n - 1], 0.55, 0.04, 'triangle')
+      if (step % 8 === 0) this._note(110, 1.5, 0.04, 'sine')
+      step++
+      this._musicStep = step
+    }
+    tick()
+    this._musicTimer = setInterval(tick, 320)
+  }
+
+  /**
+   * 碰/杠/胡语音播报。
+   * 真人录音（四川话语音包）优先：/audio/mahjong/{peng,gang,hu,zimo}.mp3 存在即播放；
+   * 文件缺失时该词条自动回退浏览器语音合成（普通话高音调近似俏皮川话），互不影响。
+   */
+  speak(key) {
+    if (this.settings.sound === false || typeof window === 'undefined') return
+    const text = { peng: '碰！', gang: '杠！', hu: '胡了！', zimo: '自摸！' }[key]
+    if (!text) return
+    if (!this._voiceCache) this._voiceCache = {}
+    let clip = this._voiceCache[key]
+    if (!clip) {
+      try {
+        clip = new Audio(`/audio/mahjong/${key}.mp3`)
+        clip.preload = 'auto'
+        clip.addEventListener('error', () => { clip._broken = true })
+        this._voiceCache[key] = clip
+      } catch (e) {
+        this._speakSynth(text)
+        return
+      }
+    }
+    if (!clip._broken) {
+      try {
+        clip.currentTime = 0
+        const p = clip.play()
+        if (p && p.catch) p.catch(() => { clip._broken = true; this._speakSynth(text) })
+        return
+      } catch (e) {
+        clip._broken = true
+      }
+    }
+    this._speakSynth(text)
+  }
+
+  _speakSynth(text) {
+    try {
+      const synth = window.speechSynthesis
+      if (!synth || typeof SpeechSynthesisUtterance === 'undefined') return
+      synth.cancel() // 新播报顶掉未播完的，避免叠音
+      const u = new SpeechSynthesisUtterance(text)
+      u.lang = 'zh-CN'
+      u.pitch = 1.4
+      u.rate = 1.15
+      u.volume = 0.9
+      synth.speak(u)
     } catch (e) {
-      /* 音频不可用时静默 */
+      /* 语音不可用时静默 */
     }
   }
 }

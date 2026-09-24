@@ -70,6 +70,7 @@ meta:
 <button type="button" data-first="ai">AI 先手</button>
 </div>
 <button type="button" class="gk-btn gk-sound" data-gk-sound>🔊</button>
+<button type="button" class="gk-btn gk-music" data-gk-music>♫</button>
 </div>
 </div>
 <div class="gk-tips">黑先白后 · 先成五连（及以上）者胜 · 战绩按难度分别统计，存于本机浏览器</div>
@@ -308,8 +309,8 @@ meta:
   color: #231300;
   font-weight: 700;
 }
-.gk-sound { width: 46px; padding-left: 0; padding-right: 0; text-align: center; }
-.gk-sound.muted { opacity: 0.45; }
+.gk-sound, .gk-music { width: 46px; padding-left: 0; padding-right: 0; text-align: center; }
+.gk-sound.muted, .gk-music.muted { opacity: 0.45; }
 .gk-fs-toggle {
   width: 40px;
   min-height: 36px;
