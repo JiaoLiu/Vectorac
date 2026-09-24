@@ -357,6 +357,7 @@ export default class ScmjUI {
       this._onVisibility = null
     }
     this.music(false)
+    if (this._bgm) { this._bgm.pause(); this._bgm.removeAttribute('src'); this._bgm = null }
     try { if (window.speechSynthesis) window.speechSynthesis.cancel() } catch (e) { /* 忽略 */ }
     if (this._ac && this._ac.state !== 'closed') { this._ac.close().catch(() => {}); this._ac = null }
     this.hideOpening()
@@ -2478,7 +2479,7 @@ export default class ScmjUI {
       if (!this._ac) {
         this._ac = new AC()
         this._master = this._ac.createGain()
-        this._master.gain.value = 0.5
+        this._master.gain.value = 0.6
         this._master.connect(this._ac.destination)
       }
       if (this._ac.state === 'suspended') this._ac.resume().catch(() => {})
@@ -2530,12 +2531,32 @@ export default class ScmjUI {
     }
   }
 
-  /** 背景音乐：A 宫五声音阶循环，竹笛感 pluck 旋律 + 低音 drone（茶馆氛围） */
+  /** 背景音乐：优先音乐文件循环（Eastern Thought · Kevin MacLeod, CC-BY 4.0），
+   *  文件缺失时回退 Web Audio 合成（A 宫五声音阶，竹笛 pluck + 低音 drone） */
   music(active) {
     clearInterval(this._musicTimer)
     this._musicTimer = null
+    if (this._bgm) this._bgm.pause()
     if (!active || this.settings.music === false) return
     if (typeof document !== 'undefined' && document.hidden) return
+    if (!this._bgmFailed) {
+      if (!this._bgm) {
+        try {
+          const a = new Audio('/audio/mahjong/bgm.mp3')
+          a.loop = true
+          a.volume = 0.5
+          a.addEventListener('error', () => { this._bgmFailed = true; this._bgm = null; this.music(true) })
+          this._bgm = a
+        } catch (e) {
+          this._bgmFailed = true
+        }
+      }
+      if (this._bgm) {
+        const p = this._bgm.play()
+        if (p && p.catch) p.catch(() => {})
+        return
+      }
+    }
     if (!this._ensureAudio()) return
     const scale = [440, 493.88, 554.37, 659.25, 739.99] // A B C# E F#
     const melody = [3, 0, 4, 0, 3, 2, 0, 1, 0, 2, 3, 0, 5, 0, 4, 0] // 16 步，0=休止
@@ -2543,8 +2564,8 @@ export default class ScmjUI {
     const tick = () => {
       if (!this._ac || this._ac.state !== 'running') return
       const n = melody[step % 16]
-      if (n) this._note(scale[n - 1], 0.55, 0.04, 'triangle')
-      if (step % 8 === 0) this._note(110, 1.5, 0.04, 'sine')
+      if (n) this._note(scale[n - 1], 0.55, 0.07, 'triangle')
+      if (step % 8 === 0) this._note(110, 1.5, 0.06, 'sine')
       step++
       this._musicStep = step
     }

@@ -207,6 +207,7 @@ meta:
 <li>电脑端鼠标点击，移动端触控操作，所有按钮均已做触控友好处理</li>
 <li>联机对局：房主（头像旁 👑）可改规则、加 / 移除 AI、开始游戏；轮到你的操作会在顶栏显示剩余秒数，超时由 AI 代打一手，不会卡住牌局</li>
 </ul>
+<p><small>背景音乐：Eastern Thought · Kevin MacLeod（incompetech.com），CC-BY 4.0 授权；碰 / 杠 / 胡播报为 AI 合成语音。</small></p>
 </div>
 
 <style>

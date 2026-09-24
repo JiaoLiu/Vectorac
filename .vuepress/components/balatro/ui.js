@@ -27,9 +27,9 @@ const cardName=c=>`${SUIT_NAMES[c.suit]} ${rankName(c)}`
 const safeRead=key=>{try{return localStorage.getItem(key)}catch(_){return null}}
 
 class Sound {
-  constructor(settings){this.settings=settings;this.ctx=null;this.timer=null;this.step=0;this.nodes=new Set()}
+  constructor(settings){this.settings=settings;this.ctx=null;this.timer=null;this.step=0;this.nodes=new Set();this.bgm=null;this.bgmFailed=false}
   unlock(){
-    try{if(!this.ctx){const Audio=window.AudioContext||window.webkitAudioContext;if(!Audio)return;this.ctx=new Audio();this.master=this.ctx.createGain();this.master.gain.value=.38;this.master.connect(this.ctx.destination)}if(this.ctx.state==='suspended')this.ctx.resume().catch(()=>{})}catch(_){}
+    try{if(!this.ctx){const Audio=window.AudioContext||window.webkitAudioContext;if(!Audio)return;this.ctx=new Audio();this.master=this.ctx.createGain();this.master.gain.value=.5;this.master.connect(this.ctx.destination)}if(this.ctx.state==='suspended')this.ctx.resume().catch(()=>{})}catch(_){}
   }
   note(freq,length=.1,volume=.18,type='triangle',delay=0){
     // iOS resumes AudioContext asynchronously after a tap. Queue the note on its clock now;
@@ -53,14 +53,24 @@ class Sound {
   }
   music(active){
     clearInterval(this.timer);this.timer=null
+    if(this.bgm)this.bgm.pause()
     if(!active||!this.settings.music||document.hidden)return
+    // 优先音乐文件循环（Fluffing a Duck · Kevin MacLeod, CC-BY 4.0），文件缺失时回退 Web Audio 合成
+    if(!this.bgmFailed){
+      if(!this.bgm)try{
+        const a=new Audio('/audio/balatro/bgm.mp3');a.loop=true;a.volume=.55
+        a.addEventListener('error',()=>{this.bgmFailed=true;this.bgm=null;this.music(true)})
+        this.bgm=a
+      }catch(_){this.bgmFailed=true}
+      if(this.bgm){const p=this.bgm.play();if(p&&p.catch)p.catch(()=>{});return}
+    }
     this.unlock()
-    // Dm – C – Bb – Am 进行：琶音 + 低音 + 稀疏旋律线，芯片风循环
+    // 合成兜底：Dm – C – Bb – Am 进行，琶音 + 低音 + 稀疏旋律线
     const chords=[[146.83,220,293.66,349.23],[130.81,196,261.63,329.63],[116.54,174.61,233.08,293.66],[110,164.81,220,261.63]],melody=[587.33,0,659.25,0,698.46,0,659.25,587.33,523.25,0,587.33,0,440,0,493.88,0]
-    const tick=()=>{if(!this.ctx||this.ctx.state!=='running')return;const ch=chords[Math.floor(this.step/16)%4];this.note(ch[this.step%4]*(this.step%8===7?2:1),.5,.065,'triangle');if(this.step%4===0)this.note(ch[0]/2,.7,.1,'sine');const m=melody[this.step%16];if(m)this.note(m,.32,.04,'sine');this.step++}
+    const tick=()=>{if(!this.ctx||this.ctx.state!=='running')return;const ch=chords[Math.floor(this.step/16)%4];this.note(ch[this.step%4]*(this.step%8===7?2:1),.5,.09,'triangle');if(this.step%4===0)this.note(ch[0]/2,.7,.12,'sine');const m=melody[this.step%16];if(m)this.note(m,.32,.055,'sine');this.step++}
     tick();this.timer=setInterval(tick,230)
   }
-  destroy(){clearInterval(this.timer);this.nodes.forEach(o=>{try{o.stop()}catch(_){}});if(this.ctx)this.ctx.close().catch(()=>{});this.ctx=null}
+  destroy(){clearInterval(this.timer);if(this.bgm){this.bgm.pause();this.bgm.removeAttribute('src');this.bgm=null}this.nodes.forEach(o=>{try{o.stop()}catch(_){}});if(this.ctx)this.ctx.close().catch(()=>{});this.ctx=null}
 }
 
 export default class PokerTable {

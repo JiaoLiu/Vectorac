@@ -73,7 +73,7 @@ meta:
 <button type="button" class="gk-btn gk-music" data-gk-music>♫</button>
 </div>
 </div>
-<div class="gk-tips">黑先白后 · 先成五连（及以上）者胜 · 战绩按难度分别统计，存于本机浏览器</div>
+<div class="gk-tips">黑先白后 · 先成五连（及以上）者胜 · 战绩按难度分别统计，存于本机浏览器<br>背景音乐：Meditation Impromptu 01 · Kevin MacLeod（incompetech.com），CC-BY 4.0 授权</div>
 </div>
 
 <style>

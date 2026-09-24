@@ -78,9 +78,10 @@ export default class GomokuUI {
     // 原生全屏需用户手势，首次触摸/点击时再尝试一次
     this._onFirstGesture = () => {
       if (this._fullscreen) this._tryNativeFullscreen()
-      // AudioContext 同样需手势解锁：resume 后背景音乐自动出声
+      // AudioContext 与 Audio 元素均需手势解锁：resume 后背景音乐自动出声
       this._ensureAudio()
       if (this._audio && this._audio.state === 'suspended') this._audio.resume().catch(() => {})
+      this._music(true)
     }
     // 页面切后台暂停背景音乐，回前台恢复
     this._onVisibility = () => {
@@ -121,6 +122,7 @@ export default class GomokuUI {
     document.removeEventListener('pointerdown', this._onFirstGesture)
     document.removeEventListener('visibilitychange', this._onVisibility)
     this._music(false)
+    if (this._bgm) { this._bgm.pause(); this._bgm.removeAttribute('src'); this._bgm = null }
     if (this._ro) this._ro.disconnect()
     if (this._aiTimer) clearTimeout(this._aiTimer)
     if (this._raf) cancelAnimationFrame(this._raf)
@@ -805,12 +807,32 @@ export default class GomokuUI {
     osc.stop(t0 + duration + 0.05)
   }
 
-  /** C 宫五声音阶稀疏长音 + 低音 pad，围棋对弈的安静氛围 */
+  /** 背景音乐：优先音乐文件循环（Meditation Impromptu 01 · Kevin MacLeod, CC-BY 4.0），
+   *  文件缺失时回退 Web Audio 合成（C 宫五声音阶稀疏长音 + 低音 pad） */
   _music(active) {
     clearInterval(this._musicTimer)
     this._musicTimer = null
+    if (this._bgm) this._bgm.pause()
     if (!active || this.settings.music === false) return
     if (typeof document !== 'undefined' && document.hidden) return
+    if (!this._bgmFailed) {
+      if (!this._bgm) {
+        try {
+          const a = new Audio('/audio/gomoku/bgm.mp3')
+          a.loop = true
+          a.volume = 0.5
+          a.addEventListener('error', () => { this._bgmFailed = true; this._bgm = null; this._music(true) })
+          this._bgm = a
+        } catch (e) {
+          this._bgmFailed = true
+        }
+      }
+      if (this._bgm) {
+        const p = this._bgm.play()
+        if (p && p.catch) p.catch(() => {})
+        return
+      }
+    }
     this._ensureAudio()
     if (!this._audio) return
     const scale = [261.63, 293.66, 329.63, 392, 440] // C D E G A
@@ -819,8 +841,8 @@ export default class GomokuUI {
     const tick = () => {
       if (!this._audio || this._audio.state !== 'running') return
       const n = melody[step % 16]
-      if (n) this._padTone(scale[n - 1] * 2, 1.8, 0.026)
-      if (step % 16 === 0) this._padTone(scale[0] / 2, 3.6, 0.028)
+      if (n) this._padTone(scale[n - 1] * 2, 1.8, 0.045)
+      if (step % 16 === 0) this._padTone(scale[0] / 2, 3.6, 0.05)
       step++
       this._musicStep = step
     }

@@ -35,6 +35,8 @@ meta:
 
 键盘快捷键：`1～8` 选牌，`Enter` 出牌，`D` 弃牌。音效与音乐可单独关闭。
 
+<small>背景音乐：Fluffing a Duck · Kevin MacLeod（incompetech.com），CC-BY 4.0 授权。</small>
+
 <script>
 import '../../.vuepress/components/balatro/style.css'
 
