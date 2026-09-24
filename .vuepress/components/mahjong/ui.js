@@ -382,6 +382,7 @@ export default class ScmjUI {
     this.music(false)
     if (this._bgm) { this._bgm.pause(); this._bgm.removeAttribute('src'); this._bgm = null }
     this._stopVoiceNow() // 掐断当前播报 + speechSynthesis.cancel
+    if (this._voiceMsgPlaying) { try { this._voiceMsgPlaying.pause() } catch (e) { /* 忽略 */ } this._voiceMsgPlaying = null }
     if (this._ac && this._ac.state !== 'closed') { this._ac.close().catch(() => {}); this._ac = null }
     this.hideOpening()
     this.exitFullscreen()
@@ -853,7 +854,9 @@ export default class ScmjUI {
     return seat && seat.closest ? seat.closest('.scmj-seatwrap') : null
   }
 
-  /** base64 → Blob URL 播放（iOS Safari 对 data: 音频兼容性差，走 Blob 更稳） */
+  /** base64 → Blob URL 播放（iOS Safari 对 data: 音频兼容性差，走 Blob 更稳）。
+   *  单例：连点多个气泡 / 自动播与重播叠加时，永远只有最新一条出声，
+   *  同时掐掉语音播报（语音类声音全局互斥，避免好几个声音重叠）。 */
   _playVoiceData(mime, data) {
     if (!mime || !data) return
     try {
@@ -862,10 +865,19 @@ export default class ScmjUI {
       for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
       const url = URL.createObjectURL(new Blob([bytes], { type: mime }))
       const a = new Audio(url)
+      if (this._voiceMsgPlaying) {
+        try { this._voiceMsgPlaying.pause() } catch (e) { /* 忽略 */ }
+        this._voiceMsgPlaying = null
+      }
+      this._stopVoiceNow() // 语音消息与播报互斥：听消息时不掺报牌声
+      this._voiceMsgPlaying = a
       // 语音消息播放期间压低 BGM：按时长粗估（opus ≈16kbps、mp4 ≈64kbps），最长 15 秒
       const bps = /mp4/.test(mime) ? 8000 : 2000
       this._duckBgmTemp(Math.max(0.6, Math.min(15, bytes.length / bps)))
-      const release = () => URL.revokeObjectURL(url)
+      const release = () => {
+        URL.revokeObjectURL(url)
+        if (this._voiceMsgPlaying === a) this._voiceMsgPlaying = null
+      }
       a.onended = release
       a.onerror = release
       a.play().catch(release)
@@ -2999,6 +3011,11 @@ export default class ScmjUI {
     const now = this._voiceNow
     if (now && !now.lowPrio && lowPrio) return // 高优先级播报中，报牌让路
     this._stopVoiceNow()
+    // 播报与语音消息互斥：报牌/短语开声前掐掉正在播的语音消息
+    if (this._voiceMsgPlaying) {
+      try { this._voiceMsgPlaying.pause() } catch (e) { /* 忽略 */ }
+      this._voiceMsgPlaying = null
+    }
     const item = { key, say, lowPrio }
     this._voiceNow = item
     this._duckBgmTemp(1.6) // 播报期间压低 BGM（真人录音多为 1~2 秒）
