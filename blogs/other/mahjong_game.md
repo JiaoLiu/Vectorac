@@ -80,10 +80,6 @@ meta:
 <div class="scmj-seat" data-scmj-seat2></div>
 <div class="scmj-seatmelds" data-scmj-seat2melds></div>
 </div>
-<div class="scmj-disc scmj-disc-2">
-<div class="scmj-disc-label">对家弃牌</div>
-<div class="scmj-disc-tiles" data-scmj-disc2tiles></div>
-</div>
 </div>
 <div class="scmj-side scmj-side-3">
 <div class="scmj-seatwrap">
@@ -92,13 +88,9 @@ meta:
 <div class="scmj-seat" data-scmj-seat3></div>
 <div class="scmj-seatmelds" data-scmj-seat3melds></div>
 </div>
-<div class="scmj-disc">
-<div class="scmj-disc-label">上家弃牌</div>
-<div class="scmj-disc-tiles" data-scmj-disc3tiles></div>
-</div>
 </div>
 <div class="scmj-center" data-scmj-center>
-<div class="scmj-center-info"><span>剩余 <b data-scmj-wall>0</b> 张</span><span data-scmj-turn>—</span></div>
+<div class="scmj-center-info"><span data-scmj-turn>—</span></div>
 <div class="scmj-centerslot" data-scmj-centerslot>
 <div class="scmj-centerbox" data-scmj-centerbox>
 <div class="scmj-wallbox" data-scmj-wallbox>
@@ -107,6 +99,12 @@ meta:
 <div class="scmj-wallring-right" data-scmj-wallring-right></div>
 <div class="scmj-wallring-bottom" data-scmj-wallring-bottom></div>
 <div class="scmj-wallring-left" data-scmj-wallring-left></div>
+</div>
+<div class="scmj-felt" data-scmj-felt>
+<div class="scmj-disc-tiles scmj-felt-disc-2" data-scmj-disc2tiles></div>
+<div class="scmj-disc-tiles scmj-felt-disc-3" data-scmj-disc3tiles></div>
+<div class="scmj-disc-tiles scmj-felt-disc-1" data-scmj-disc1tiles></div>
+<div class="scmj-disc-tiles scmj-felt-disc-0" data-scmj-disc0tiles></div>
 </div>
 <div class="scmj-compass" data-scmj-compass></div>
 </div>
@@ -121,14 +119,6 @@ meta:
 <div class="scmj-seat" data-scmj-seat1></div>
 <div class="scmj-seatmelds" data-scmj-seat1melds></div>
 </div>
-<div class="scmj-disc">
-<div class="scmj-disc-label">下家弃牌</div>
-<div class="scmj-disc-tiles" data-scmj-disc1tiles></div>
-</div>
-</div>
-<div class="scmj-disc scmj-disc-0">
-<div class="scmj-disc-label">你的弃牌</div>
-<div class="scmj-disc-tiles" data-scmj-disc0tiles></div>
 </div>
 </div>
 <div class="scmj-player">
@@ -184,11 +174,10 @@ meta:
 <div class="scmj-settle" data-scmj-settle hidden></div>
 <div class="scmj-chat" data-scmj-chat hidden>
 <div class="scmj-chat-rectip" data-scmj-chat-rectip hidden>🎙 正在录音…松开发送</div>
-<div class="scmj-chat-panel" data-scmj-chat-panel hidden></div>
-<div class="scmj-chat-btns">
-<button type="button" class="scmj-chat-btn" data-scmj-chat-toggle title="快捷短语">💬</button>
-<button type="button" class="scmj-chat-btn scmj-chat-mic" data-scmj-chat-mic title="按住说话">🎤</button>
+<div class="scmj-chat-panel" data-scmj-chat-panel hidden>
+<button type="button" class="scmj-chat-micbtn" data-scmj-chat-mic title="按住说话">🎤 按住说话</button>
 </div>
+<button type="button" class="scmj-chat-btn" data-scmj-chat-toggle title="语音 / 短语">💬</button>
 </div>
 <div class="scmj-dice" data-scmj-dice hidden>
 <div class="scmj-dice-card">
@@ -217,7 +206,7 @@ meta:
 <li>点击任意对手头像，可查看其积分、手牌数、缺门、副露与本局得失</li>
 <li>电脑端鼠标点击，移动端触控操作，所有按钮均已做触控友好处理</li>
 <li>联机对局：房主（头像旁 👑）可改规则、加 / 移除 AI、开始游戏；轮到你的操作会在顶栏显示剩余秒数，超时由 AI 代打一手，不会卡住牌局</li>
-<li>联机对局：右侧 💬 发快捷短语、🎤 按住说话发语音，同桌即时收到（服务器只转发不存储），气泡点 🔊 可重播</li>
+<li>联机对局：点右侧 💬 打开交流面板，🎤 按住说话发语音、或点快捷短语，同桌即时收到（服务器只转发不存储），气泡点 🔊 可重播</li>
 </ul>
 <p><small>背景音乐：Ishikari Lore · Kevin MacLeod（incompetech.com），CC-BY 4.0 授权；报牌与碰 / 杠 / 胡播报为 AI 合成语音。</small></p>
 </div>
@@ -534,11 +523,10 @@ meta:
 #scmjGame .scmj-board {
   display: grid;
   grid-template-columns: 168px minmax(0, 1fr) 168px;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr);
   grid-template-areas:
     "side2 side2  side2"
-    "side3 center side1"
-    "disc0 disc0  disc0";
+    "side3 center side1";
   gap: 8px;
   min-height: 400px;
 }
@@ -546,7 +534,6 @@ meta:
 #scmjGame .scmj-side-3 { grid-area: side3; }
 #scmjGame .scmj-side-1 { grid-area: side1; }
 #scmjGame .scmj-center { grid-area: center; }
-#scmjGame .scmj-disc-0 { grid-area: disc0; }
 #scmjGame .scmj-side {
   display: flex;
   flex-direction: column;
@@ -554,10 +541,10 @@ meta:
   min-width: 0;
   align-self: start;
 }
-/* 左右两侧：面板与弃牌区铺满本列 */
+/* 左右两侧：面板铺满本列 */
 #scmjGame .scmj-side-3 > *,
 #scmjGame .scmj-side-1 > * { width: 100%; box-sizing: border-box; }
-/* 座位区 = 状态浮字 + 精简面板 + 副露牌排（上下结构，独立于弃牌区） */
+/* 座位区 = 状态浮字 + 精简面板 + 副露牌排（上下结构） */
 #scmjGame .scmj-seatwrap {
   position: relative;
   display: flex;
@@ -568,24 +555,15 @@ meta:
 }
 #scmjGame .scmj-side-3 .scmj-seatwrap,
 #scmjGame .scmj-side-1 .scmj-seatwrap { width: 100%; }
-/* 顶部对家一栏：对家面板 + 对家弃牌并排，弃牌不再塞进中央牌墙里。
-   必须写在本文件 .scmj-side（列方向）之后，否则同权重会被覆盖成上下堆叠，
-   顶部一栏变高会挤压中央牌墙空间。 */
+/* 顶部对家一栏：对家面板居中（弃牌已收进中央桌布，见 .scmj-felt）。
+   必须写在本文件 .scmj-side（列方向）之后，否则同权重会被覆盖成上下堆叠。 */
 #scmjGame .scmj-side-2 {
   flex-direction: row;
   align-items: center;
   justify-content: center;
   gap: 10px;
 }
-#scmjGame .scmj-side-2 .scmj-seatwrap { width: min(300px, 46%); box-sizing: border-box; }
-#scmjGame .scmj-disc-2 {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: min(430px, 100%);
-  box-sizing: border-box;
-}
-#scmjGame .scmj-disc-2 .scmj-disc-label { margin-bottom: 0; }
+#scmjGame .scmj-side-2 .scmj-seatwrap { width: min(300px, 60%); box-sizing: border-box; }
 
 /* 方位标注：东/南/西/北 */
 #scmjGame .scmj-windtag {
@@ -928,7 +906,7 @@ meta:
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  z-index: 2;
+  z-index: 4; /* 压过桌布弃牌（最高 z-index 3）：弃牌多了伸到罗盘底下被盖，如真实牌桌 */
   pointer-events: none;
   width: var(--scmj-compass-size, 104px);
   height: var(--scmj-compass-size, 104px);
@@ -941,10 +919,23 @@ meta:
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.05;
+  white-space: nowrap;
+}
+/* 罗盘核心 = 剩余牌墙张数（旧「方位」二字无信息量，剩余数原来独占顶部一行，收进罗盘省空间） */
+#scmjGame .scmj-compass-core b {
+  font-size: calc(var(--scmj-compass-size, 104px) * 0.24);
+  color: #ffd968;
+  font-weight: 800;
+}
+#scmjGame .scmj-compass-core i {
+  font-style: normal;
   font-size: calc(var(--scmj-compass-size, 104px) * 0.1);
   color: #9fbfa8;
   letter-spacing: 1px;
-  white-space: nowrap;
 }
 /* 风位圆牌随罗盘同比缩放（含探出罗盘的偏移量），整体占位 ≈ 罗盘直径 ×1.12 */
 #scmjGame .scmj-wind {
@@ -991,23 +982,73 @@ meta:
   justify-content: center;
 }
 
-/* ---- 弃牌区（位置稳定，每行 5 张自动换行） ---- */
-#scmjGame .scmj-disc {
-  padding: 6px 8px;
-  border-radius: 14px;
-  background: rgba(9, 40, 21, 0.35);
-  border: 1px solid rgba(44, 92, 60, 0.8);
-  min-width: 0;
+/* ---- 中央桌布弃牌（传统摆法：四家各一小堆摆在牌墙内圈，近大远小） ----
+   felt 铺满牌墙内圈（inset = 牌墙厚度 + 2px，由 ui.js fitWallRing 写入），
+   四堆各居一方、从自家边缘向桌心生长；牌多了自然伸到罗盘底下被压住——
+   与真实麻将桌「转盘压着弃牌」一致。自己最近最大（z-index 3），对家最远最小。 */
+#scmjGame .scmj-felt {
+  position: absolute;
+  inset: var(--scmj-felt-inset, 24px);
+  z-index: 1;
+  pointer-events: none;
 }
-#scmjGame .scmj-disc-0 { justify-self: center; width: min(560px, 100%); box-sizing: border-box; }
-#scmjGame .scmj-disc-label { font-size: 11px; color: #9fbfa8; margin-bottom: 4px; text-align: center; }
-#scmjGame .scmj-disc-tiles {
+#scmjGame .scmj-felt .scmj-disc-tiles {
+  position: absolute;
   display: flex;
   flex-wrap: wrap;
   gap: 2px 1px;
+  margin: 0;
+  max-width: none;
+}
+/* 上 = 对家（最小，向桌心生长） */
+#scmjGame .scmj-felt-disc-2 {
+  left: 50%;
+  top: 0;
+  transform: translateX(-50%);
+  max-width: 88%;
   justify-content: center;
-  max-width: 100%;
-  margin: 0 auto;
+  align-content: flex-start;
+  z-index: 1;
+}
+/* 下 = 自己（近大，压过别家弃牌） */
+#scmjGame .scmj-felt-disc-0 {
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  max-width: 94%;
+  justify-content: center;
+  align-content: flex-end;
+  z-index: 3;
+}
+/* 左 = 上家 / 右 = 下家：竖排紧贴自家边，排满换列向桌心生长 */
+#scmjGame .scmj-felt-disc-3 {
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  max-height: 88%;
+  flex-direction: column;
+  justify-content: center;
+  align-content: flex-start;
+  z-index: 2;
+}
+#scmjGame .scmj-felt-disc-1 {
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  max-height: 88%;
+  flex-direction: column;
+  justify-content: center;
+  align-content: flex-end;
+  z-index: 2;
+}
+/* 桌布弃牌尺寸随牌墙内圈缩放（变量由 fitWallRing 写入），近大远小 */
+#scmjGame .scmj-felt .scmj-tile-disc {
+  width: var(--scmj-felt-tile-w, 18px);
+  height: var(--scmj-felt-tile-h, 24px);
+}
+#scmjGame .scmj-felt-disc-0 .scmj-tile-disc {
+  width: var(--scmj-felt-tile0-w, 24px);
+  height: var(--scmj-felt-tile0-h, 32px);
 }
 
 /* ============ 麻将牌（贴图：/mahjong/tiles/*.png，透明背景） ============ */
@@ -1461,7 +1502,6 @@ meta:
   align-items: flex-end;
   gap: 8px;
 }
-#scmjGame .scmj-chat-btns { display: flex; flex-direction: column; gap: 8px; }
 #scmjGame .scmj-chat-btn {
   width: 42px;
   height: 42px;
@@ -1506,6 +1546,19 @@ meta:
   box-shadow: 0 6px 22px rgba(0, 0, 0, 0.5);
   max-width: 240px;
 }
+/* 面板顶部全宽「按住说话」：最常用的语音入口放第一位，短语退居其次 */
+#scmjGame .scmj-chat-micbtn {
+  grid-column: 1 / -1;
+  padding: 12px 10px;
+  border-radius: 10px;
+  border: 1.5px solid rgba(212, 175, 55, 0.65);
+  background: rgba(23, 77, 46, 0.9);
+  color: #ffd968;
+  font-size: 14px;
+  white-space: nowrap;
+  touch-action: none; /* 按住录音不被滚动/捏合手势打断 */
+}
+#scmjGame .scmj-chat-micbtn:active { background: rgba(212, 175, 55, 0.3); }
 #scmjGame .scmj-chat-phrase {
   padding: 8px 10px;
   border-radius: 10px;
@@ -1630,30 +1683,30 @@ meta:
   #scmjGame .scmj-action-explain { display: none; }
   #scmjGame .scmj-board {
     grid-template-columns: 76px minmax(0, 1fr) 76px;
-    /* 第一行 86px = 对家牌背 22px + 座位/弃牌行 64px */
-    grid-template-rows: 86px minmax(0, 1fr) 62px;
+    /* 两行：对家行 + 中央行（弃牌已收进中央桌布，不再有自己的弃牌行） */
+    grid-template-rows: 86px minmax(0, 1fr);
     gap: 5px;
     min-height: 0;
   }
-  /* 竖屏两侧列窄且有 overflow:hidden：左右两家的牌背改为面板下方横排（小尺寸），
-     避免竖排越界被裁；座位面板下方腾 18px 放牌背 */
+  /* 竖屏左右两家牌背：贴在座位面板正下方竖排叠放（列内，不越界），
+     与桌面/横屏的竖排观感一致；弃牌收进中央后列里没有别的元素，不会遮挡 */
   #scmjGame .scmj-handbacks-3,
   #scmjGame .scmj-handbacks-1 {
     left: 50%;
     right: auto;
-    top: calc(100% + 2px);
+    top: calc(100% + 4px);
     transform: translateX(-50%);
-    flex-direction: row;
+    flex-direction: column;
   }
   #scmjGame .scmj-handbacks-3 .scmj-handback,
-  #scmjGame .scmj-handbacks-1 .scmj-handback { width: 11px; height: 15px; }
+  #scmjGame .scmj-handbacks-1 .scmj-handback { width: 15px; height: 20px; }
   #scmjGame .scmj-handbacks-3 .scmj-handback + .scmj-handback,
-  #scmjGame .scmj-handbacks-1 .scmj-handback + .scmj-handback { margin-top: 0; margin-left: -5px; }
-  /* 对家：面板 + 弃牌并排单行（弃牌横向滚动），整行高度固定不变 */
+  #scmjGame .scmj-handbacks-1 .scmj-handback + .scmj-handback { margin-top: -11px; }
+  /* 对家：面板居中单行，整行高度固定不变 */
   #scmjGame .scmj-side-2 {
     flex-direction: row;
     align-items: center;
-    justify-content: flex-start;
+    justify-content: center;
     gap: 6px;
     min-height: 0;
     overflow: hidden;
@@ -1661,24 +1714,11 @@ meta:
   #scmjGame .scmj-side-2 .scmj-seatwrap { width: auto; flex: none; }
   #scmjGame .scmj-side-2 .scmj-seat { flex-direction: row; padding: 4px 7px; gap: 5px; }
   #scmjGame .scmj-side-2 .scmj-seat-meta { align-items: flex-start; }
-  #scmjGame .scmj-disc-2 { flex: 1 1 auto; min-width: 0; max-height: none; overflow: hidden; }
-  #scmjGame .scmj-disc-2 .scmj-disc-tiles {
-    flex: 1 1 auto;
-    min-width: 0;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    justify-content: flex-start;
-    -webkit-overflow-scrolling: touch;
-  }
-  /* 左右两列：座位固定在列首，弃牌在自己的高度内纵向滚动（兼修座位上方浮标被裁） */
+  /* 左右两列：座位固定在列首（兼修座位上方浮标被裁） */
   #scmjGame .scmj-side-3,
   #scmjGame .scmj-side-1 { align-self: stretch; height: 100%; min-height: 0; overflow: hidden; }
   #scmjGame .scmj-side-3 > .scmj-seatwrap,
-  #scmjGame .scmj-side-1 > .scmj-seatwrap { flex: none; padding-top: 10px; margin-bottom: 18px; }
-  #scmjGame .scmj-side-3 > .scmj-disc,
-  #scmjGame .scmj-side-1 > .scmj-disc { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
-  #scmjGame .scmj-side-3 .scmj-disc-tiles,
-  #scmjGame .scmj-side-1 .scmj-disc-tiles { flex: 1 1 auto; min-height: 0; overflow-y: auto; align-content: flex-start; -webkit-overflow-scrolling: touch; }
+  #scmjGame .scmj-side-1 > .scmj-seatwrap { flex: none; padding-top: 10px; }
   /* 竖屏两侧列窄，副露整组 3~4 张会把标签挤到看不见：整组只留 1 张牌面
      + 标签（碰 / 明杠 / 暗杠 / 补杠 / 带赖），既省地方又保留「有没有碰杠」
      的信息；横屏空间足够，仍展示整组。 */
@@ -1694,15 +1734,6 @@ meta:
   #scmjGame .scmj-side-1 .scmj-streak { right: 0; }
   #scmjGame .scmj-side-3 .scmj-seatpend,
   #scmjGame .scmj-side-1 .scmj-seatpend { top: 0; }
-  /* 自己的弃牌行固定高度，牌多时行内纵向滚动 */
-  #scmjGame .scmj-disc-0 { width: min(560px, 100%); min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
-  #scmjGame .scmj-disc-0 .scmj-disc-tiles {
-    flex: 1 1 auto;
-    min-height: 0;
-    overflow-y: auto;
-    align-content: flex-start;
-    -webkit-overflow-scrolling: touch;
-  }
   #scmjGame .scmj-seat { flex-direction: column; text-align: center; padding: 6px 5px; gap: 4px; }
   #scmjGame .scmj-seat-meta { align-items: center; }
   #scmjGame .scmj-seat-name { font-size: 11.5px; }
@@ -1789,17 +1820,15 @@ body.scmj-lock #cw-panel { display: none !important; }
   #scmjGame .scmj-topbar-btns .scmj-btn { min-height: 30px; padding: 3px 9px; font-size: 11.5px; }
   #scmjGame .scmj-portrait-tip { display: none !important; }
   /* 中央行给个下限：屏幕再矮也不能把牌墙压成看不见的一条缝 */
-  /* 横屏矮屏最省竖向空间的排法：两侧收窄并贯穿到底（弃牌区更高），
-     自己的弃牌挪到中栏底部、不再独占整行，腾出的高度全给左右弃牌区。 */
+  /* 横屏矮屏最省竖向空间的排法：两侧收窄并贯穿到底，中央区两行全高
+     （弃牌已收进中央桌布，不再有自己的弃牌行）。 */
   #scmjGame .scmj-board {
     grid-template-columns: 116px minmax(0, 1fr) 116px;
-    /* 三行都按内容固定高度（自己弃牌固定单行不换行），牌墙那一行吃掉剩余空间；
-       这样碰/杠出现副露时也不会把弃牌区压扁。 */
-    grid-template-rows: auto minmax(110px, 1fr) auto;
+    /* 中央行吃掉剩余空间，碰/杠出现副露时也不会把牌桌压扁 */
+    grid-template-rows: auto minmax(110px, 1fr);
     grid-template-areas:
       "side2 side2 side2"
-      "side3 center side1"
-      "side3 disc0 side1";
+      "side3 center side1";
     min-height: 0;
     gap: 5px;
   }
@@ -1858,10 +1887,7 @@ body.scmj-lock #cw-panel { display: none !important; }
   #scmjGame .scmj-center-info b { font-size: 15px; }
   #scmjGame .scmj-center-latest { right: 0; }
   #scmjGame .scmj-wind-seat { display: none; }
-  #scmjGame .scmj-disc { padding: 3px 5px; border-radius: 10px; }
-  #scmjGame .scmj-disc-label { font-size: 10px; margin-bottom: 2px; }
-  /* 横屏矮屏：左右两侧座位固定在顶部，弃牌区在剩余高度内纵向滚动。
-     否则弃牌一多就顶出中栏，被底部操作/听牌条盖住且无法查看。 */
+  /* 横屏矮屏：左右两侧座位固定在列首；牌背竖排比桌面略小，避免越出列底被裁 */
   #scmjGame .scmj-side-3,
   #scmjGame .scmj-side-1 {
     align-self: stretch;
@@ -1871,44 +1897,11 @@ body.scmj-lock #cw-panel { display: none !important; }
   }
   #scmjGame .scmj-side-3 > .scmj-seatwrap,
   #scmjGame .scmj-side-1 > .scmj-seatwrap { flex: none; }
-  #scmjGame .scmj-side-3 > .scmj-disc,
-  #scmjGame .scmj-side-1 > .scmj-disc {
-    flex: 1 1 auto;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-  #scmjGame .scmj-side-3 .scmj-disc-tiles,
-  #scmjGame .scmj-side-1 .scmj-disc-tiles {
-    flex: 1 1 auto;
-    min-height: 0;
-    overflow-y: auto;
-    align-content: flex-start;
-    -webkit-overflow-scrolling: touch;
-  }
-  /* 矮屏横屏：隐藏自己弃牌区的标签，把手牌往上顶，保证一屏放下 */
-  #scmjGame .scmj-disc-0 .scmj-disc-label { display: none; }
+  #scmjGame .scmj-handbacks-3 .scmj-handback,
+  #scmjGame .scmj-handbacks-1 .scmj-handback { width: 14px; height: 19px; }
+  #scmjGame .scmj-handbacks-3 .scmj-handback + .scmj-handback,
+  #scmjGame .scmj-handbacks-1 .scmj-handback + .scmj-handback { margin-top: -11px; }
   #scmjGame .scmj-tile-disc { width: 20px; height: 22px; }
-  #scmjGame .scmj-disc-tiles { max-width: 100%; gap: 2px 1px; }
-  /* 自己弃牌固定单行（牌多横向滚动）：不换行就不会撑高、也就不会被压缩裁掉 */
-  #scmjGame .scmj-disc-0 { min-height: 0; }
-  #scmjGame .scmj-disc-0 .scmj-disc-tiles {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    justify-content: flex-start;
-    -webkit-overflow-scrolling: touch;
-  }
-  /* 对家弃牌只占一行（横向滚动）：否则牌一多会把顶栏撑高、挤掉牌墙高度 */
-  #scmjGame .scmj-disc-2 { max-height: 44px; overflow: hidden; }
-  #scmjGame .scmj-disc-2 .scmj-disc-tiles {
-    flex: 1 1 auto;
-    min-width: 0;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    justify-content: flex-start;
-    -webkit-overflow-scrolling: touch;
-  }
   #scmjGame .scmj-player { margin-top: 2px; }
   /* 操作栏左右收窄成居中胶囊，且固定单行：碰/杠后按钮变多也不换行，
      不额外吃掉下方弃牌区的高度（按钮过多时横向滚动）。
@@ -1965,7 +1958,7 @@ body.scmj-lock #cw-panel { display: none !important; }
     padding: calc(2px + env(safe-area-inset-top, 0px)) calc(8px + env(safe-area-inset-right, 0px)) calc(2px + env(safe-area-inset-bottom, 0px)) calc(8px + env(safe-area-inset-left, 0px));
   }
   #scmjGame .scmj-topbar { margin-bottom: 0; }
-  #scmjGame .scmj-board { grid-template-rows: auto minmax(92px, 1fr) auto; gap: 4px; }
+  #scmjGame .scmj-board { grid-template-rows: auto minmax(92px, 1fr); gap: 4px; }
   #scmjGame .scmj-actionbar { min-height: 28px; padding: 1px 5px; }
   #scmjGame .scmj-actionbar .scmj-btn { min-height: 28px; padding: 3px 9px; font-size: 11.5px; }
   /* 极矮横屏也不写死高度：胶囊固定行高后最大 16px（含番数标签描边），17px 足够放下 */
@@ -1974,7 +1967,6 @@ body.scmj-lock #cw-panel { display: none !important; }
   #scmjGame .scmj-mymelds .scmj-tile-disc { width: 17px; height: 21px; }
   #scmjGame .scmj-hand { min-height: 38px; padding: 2px 4px 0; }
   #scmjGame .scmj-tile-hand { width: var(--scmj-hand-tile-w, 28px); height: var(--scmj-hand-tile-h, 38px); }
-  #scmjGame .scmj-disc-2 { max-height: 36px; }
   #scmjGame .scmj-tile-disc { width: 18px; height: 20px; }
 }
 

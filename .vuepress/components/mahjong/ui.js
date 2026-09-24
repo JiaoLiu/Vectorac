@@ -97,6 +97,8 @@ const HAND_SLOTS_REF = 14 // 尺寸按满手 14 张定档：张数变化不改�
 const HAND_DRAWN_GAP = 12 // 新摸的牌与前排之间的正间距（一眼看出刚摸的是哪张）
 // 联机交流：固定短语（点击即发；服务端限长 30 字，这里的文案都远低于上限）
 const CHAT_PHRASES = ['快点啊', '等等，我想想', '别放炮哦', '这牌打得漂亮', '手气真好', '稳一手', '碰得好！', '承让承让']
+// 面板只展示前 4 条（语音为主、短语为辅）；查表保留全量 8 条，旧客户端发来的大序号仍能播
+const CHAT_PANEL_COUNT = 4
 const VOICE_MAX_SEC = 15 // 语音消息最长秒数（按住录音到点自动停）
 const MIN_HAND_TILE_W = 26 // 极窄屏的硬下限，再窄就交给换行
 // 单张手牌的高度上限（宽 = 高 / TILE_ASPECT）。统一给到桌面档，让**宽度**成为
@@ -206,7 +208,6 @@ export default class ScmjUI {
     this._diceVisible = false
     this._destroyed = false
     this._els = {}
-    this._discLens = [0, 0, 0, 0] // 各座位上次渲染的弃牌数（判断新牌以自动滚到末尾）
 
     // ---------- 联机（服务端权威）----------
     // isOnline=true 时：game 来自 remote-game.js，view 由服务端推送；
@@ -291,7 +292,6 @@ export default class ScmjUI {
       float: q('[data-scmj-float]'),
       fx: q('[data-scmj-fx]'),
       toast: q('[data-scmj-toast]'),
-      wall: q('[data-scmj-wall]'),
       turn: q('[data-scmj-turn]'),
       latest: q('[data-scmj-latest]'),
       actions: q('[data-scmj-actions]'),
@@ -731,9 +731,10 @@ export default class ScmjUI {
     const listen = (el, ev, fn) => {
       if (el) el.addEventListener(ev, fn)
     }
-    // 固定短语面板（一次性渲染）：点击发 phrase 序号，全员播报对应预生成语音
+    // 固定短语面板（一次性渲染，只放最常用的前 4 条；「按住说话」按钮在模板里排首位）：
+    // 点击发 phrase 序号，全员播报对应预生成语音
     if (e.chatPanel) {
-      CHAT_PHRASES.forEach((text, idx) => {
+      CHAT_PHRASES.slice(0, CHAT_PANEL_COUNT).forEach((text, idx) => {
         const b = document.createElement('button')
         b.type = 'button'
         b.className = 'scmj-chat-phrase'
@@ -861,6 +862,9 @@ export default class ScmjUI {
       for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
       const url = URL.createObjectURL(new Blob([bytes], { type: mime }))
       const a = new Audio(url)
+      // 语音消息播放期间压低 BGM：按时长粗估（opus ≈16kbps、mp4 ≈64kbps），最长 15 秒
+      const bps = /mp4/.test(mime) ? 8000 : 2000
+      this._duckBgmTemp(Math.max(0.6, Math.min(15, bytes.length / bps)))
       const release = () => URL.revokeObjectURL(url)
       a.onended = release
       a.onerror = release
@@ -1096,7 +1100,6 @@ export default class ScmjUI {
     this.onlineAssist = !(room && room.rules && room.rules.assist === false)
     this.selectedIdx = null
     this.swapPickIdxs = []
-    this._discLens = [0, 0, 0, 0]
     // 多局联机：局号与累计积分都以服务端为准（syncSession 取局号，applyOnlineMeta 取积分），
     // 这里先给一个首帧兜底值，避免进桌瞬间显示空积分
     this.round = 1
@@ -1275,11 +1278,31 @@ export default class ScmjUI {
     }
   }
 
-  /** 读秒 ducking：BGM 音量临时压到 0.1，提醒音更突出；结束后还原 0.5 */
+  /** BGM 音量统一结算：基准 0.5，读秒持续档与音效/语音临时档各自 ×0.2 叠乘 */
+  _duckApply() {
+    if (!this._bgm) return
+    let v = 0.5
+    if (this._bgmDucked) v *= 0.2
+    if (this._bgmTempDucks > 0) v *= 0.2
+    this._bgm.volume = v
+  }
+
+  /** 读秒 ducking（持续档）：读秒期间 BGM 压低，提醒音更突出；结束后还原 */
   _duckBgm(on) {
     if (this._bgmDucked === on) return
     this._bgmDucked = on
-    if (this._bgm) this._bgm.volume = on ? 0.1 : 0.5
+    this._duckApply()
+  }
+
+  /** 音效/语音 ducking（临时档）：播放期间压低 BGM，sec 秒后自动恢复；并发播放计数叠加 */
+  _duckBgmTemp(sec) {
+    if (typeof window === 'undefined') return
+    this._bgmTempDucks = (this._bgmTempDucks || 0) + 1
+    this._duckApply()
+    setTimeout(() => {
+      this._bgmTempDucks = Math.max(0, (this._bgmTempDucks || 0) - 1)
+      this._duckApply()
+    }, Math.max(200, Math.round((sec || 0.6) * 1000)))
   }
 
   // ==================== 对局控制 ====================
@@ -1293,7 +1316,6 @@ export default class ScmjUI {
     this.saveSettings()
     this.selectedIdx = null
     this.swapPickIdxs = []
-    this._discLens = [0, 0, 0, 0] // 新对局：弃牌计数归零，保证第一张起就滚到末尾
     // 会话：开始游戏 = 新会话（每人 100 分重新起算）；继续上局 = 沿用存档
     if (opts.save) this.restoreSession()
     else this.resetSession()
@@ -1753,13 +1775,20 @@ export default class ScmjUI {
   }
 
   // ---------- 方位罗盘（上=对家 右=下家 下=自己 左=上家） ----------
+  // 核心显示牌墙剩余张数（原「方位」二字无信息量；「剩余 X 张」从信息条收进来，
+  // 弃牌全收进牌墙内圈后，罗盘是桌心唯一常驻元素）
   renderCompass(v) {
     const el = this._els.compass
     if (!el) return
     el.innerHTML = ''
     const core = document.createElement('div')
     core.className = 'scmj-compass-core'
-    core.textContent = '方位'
+    const cnt = document.createElement('b')
+    cnt.textContent = v.wallCount
+    core.appendChild(cnt)
+    const lab = document.createElement('i')
+    lab.textContent = '剩余'
+    core.appendChild(lab)
     el.appendChild(core)
     const layout = [
       { seat: 2, pos: 'top' },
@@ -1791,7 +1820,6 @@ export default class ScmjUI {
   // ---------- 中央信息 ----------
   renderCenter(v) {
     this.fitCenterBox() // 中央面板恒为正方形，尺寸依赖中央区实际宽高
-    this._els.wall.textContent = v.wallCount
     if (this._els.roundChip) {
       this._els.roundChip.textContent = this.isOnline
         ? '房间 ' + ((this.onlineRoom && this.onlineRoom.roomCode) || '') + ' · 你 ' + this.scores[0] + ' 分'
@@ -1870,9 +1898,11 @@ export default class ScmjUI {
     const tileH = Math.max(8, Math.floor((size - 8 * GAP) / (COLS + 4 / TILE_ASPECT)))
     const tileW = Math.max(5, Math.floor(tileH / TILE_ASPECT))
     const inset = 2 * tileW + GAP
-    // 罗盘（含探出的风位圆牌）同比缩放，限制在内圈里且封顶 104px
+    // 罗盘（含探出的风位圆牌）同比缩放，限制在内圈里且封顶 96px。
+    // 弃牌收进内圈后罗盘适当调小（0.62→0.42），给四堆弃牌留出生长空间，
+    // 弃牌多了自然伸到罗盘底下被盖住（z-index 罗盘 4 > 弃牌最高 3）。
     const inner = Math.max(0, size - 2 * inset)
-    const compass = Math.max(40, Math.min(104, Math.round(size * 0.62), inner))
+    const compass = Math.max(40, Math.min(96, Math.round(size * 0.42), inner))
     const left = Math.round((w - size) / 2)
     const top = Math.round((h - size) / 2)
     ring.style.left = left + 'px'
@@ -1884,6 +1914,17 @@ export default class ScmjUI {
     box.style.setProperty('--scmj-wall-tile-h', tileH + 'px')
     box.style.setProperty('--scmj-wall-inset', inset + 'px')
     box.style.setProperty('--scmj-compass-size', compass + 'px')
+    // 内圈弃牌（.scmj-felt）：区域 = 牌墙内圈再缩 2px；牌尺寸按内圈边长分档，
+    // 别家小牌（约 inner/8 高，每方两行放得下 8+ 张），自己放大 1.3 倍近大远小。
+    box.style.setProperty('--scmj-felt-inset', (inset + 2) + 'px')
+    const feltH = Math.max(18, Math.min(30, Math.round(inner / 8)))
+    const feltW = Math.max(13, Math.round(feltH / TILE_ASPECT))
+    const felt0H = Math.max(24, Math.min(40, Math.round(feltH * 1.3)))
+    const felt0W = Math.max(17, Math.round(felt0H / TILE_ASPECT))
+    box.style.setProperty('--scmj-felt-tile-w', feltW + 'px')
+    box.style.setProperty('--scmj-felt-tile-h', feltH + 'px')
+    box.style.setProperty('--scmj-felt-tile0-w', felt0W + 'px')
+    box.style.setProperty('--scmj-felt-tile0-h', felt0H + 'px')
   }
 
   /**
@@ -1952,7 +1993,7 @@ export default class ScmjUI {
     }
   }
 
-  // ---------- 四方向弃牌区 ----------
+  // ---------- 四方向弃牌（全部收进牌墙内圈 .scmj-felt，向桌心生长不滚动） ----------
   renderDiscards(v) {
     for (let s = 0; s < 4; s++) {
       const wrap = this._els['discTiles' + s]
@@ -1970,14 +2011,6 @@ export default class ScmjUI {
         }
         wrap.appendChild(t)
       })
-      // 窄屏弃牌区靠滚动容纳更多牌，新牌在末尾：仅在牌数增加时滚到末尾，
-      // 用户回看历史时不强行拉回
-      const grew = list.length > (this._discLens[s] || 0)
-      this._discLens[s] = list.length
-      if (grew) {
-        wrap.scrollTop = wrap.scrollHeight
-        wrap.scrollLeft = wrap.scrollWidth
-      }
     }
   }
 
@@ -2859,6 +2892,9 @@ export default class ScmjUI {
   sound(type) {
     if (!this.settings.sound || typeof window === 'undefined') return
     if (!this._ensureAudio()) return
+    // 特殊音效期间压低 BGM（临时档，与读秒持续档叠乘；click/discard/deal 太短不压）
+    const duckSec = { peng: 0.5, gang: 0.7, hu: 1.2, dice: 0.9, draw: 0.3 }[type]
+    if (duckSec) this._duckBgmTemp(duckSec)
     // 碰/杠/胡用和弦垫底（语音播报同步进行），其余为轻量单音
     if (type === 'peng') {
       this._note(520, 0.14, 0.1, 'triangle')
@@ -2924,6 +2960,7 @@ export default class ScmjUI {
         }
       }
       if (this._bgm) {
+        this._duckApply() // 新建的 BGM 也要套用进行中的 duck（读秒/音效临时档）
         if (this._bgm.paused) {
           const p = this._bgm.play()
           if (p && p.catch) p.catch(() => {})
@@ -2964,6 +3001,7 @@ export default class ScmjUI {
     this._stopVoiceNow()
     const item = { key, say, lowPrio }
     this._voiceNow = item
+    this._duckBgmTemp(1.6) // 播报期间压低 BGM（真人录音多为 1~2 秒）
     this._playVoiceItem(item)
   }
 
