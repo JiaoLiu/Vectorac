@@ -726,6 +726,10 @@ export default class ScmjUI {
   bindChat() {
     const e = this._els
     if (!e.chat) return
+    // 注意：on 是 bindStatic 的局部 helper，这里不可复用（独立作用域）
+    const listen = (el, ev, fn) => {
+      if (el) el.addEventListener(ev, fn)
+    }
     // 固定短语面板（一次性渲染）
     if (e.chatPanel) {
       CHAT_PHRASES.forEach(text => {
@@ -744,23 +748,23 @@ export default class ScmjUI {
         e.chatPanel.appendChild(b)
       })
     }
-    on(e.chatToggle, 'click', () => {
+    listen(e.chatToggle, 'click', () => {
       this.sound('click')
       if (e.chatPanel) e.chatPanel.hidden = !e.chatPanel.hidden
     })
     // 按住说话：pointerdown 开录、up/cancel/滑出 停并发。用 pointer 系事件同时覆盖
     // 鼠标与触屏；contextmenu 防 iOS 长按弹系统菜单打断录音。
-    on(e.chatMic, 'pointerdown', ev => {
+    listen(e.chatMic, 'pointerdown', ev => {
       ev.preventDefault()
       this.startVoiceRec()
     })
-    on(e.chatMic, 'pointerup', ev => {
+    listen(e.chatMic, 'pointerup', ev => {
       ev.preventDefault()
       this.stopVoiceRec()
     })
-    on(e.chatMic, 'pointercancel', () => this.stopVoiceRec())
-    on(e.chatMic, 'pointerleave', () => this.stopVoiceRec())
-    on(e.chatMic, 'contextmenu', ev => ev.preventDefault())
+    listen(e.chatMic, 'pointercancel', () => this.stopVoiceRec())
+    listen(e.chatMic, 'pointerleave', () => this.stopVoiceRec())
+    listen(e.chatMic, 'contextmenu', ev => ev.preventDefault())
   }
 
   /** 订阅服务端的交流转发（进联机桌时挂；重复进桌先退旧订阅） */
