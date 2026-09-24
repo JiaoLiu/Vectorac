@@ -51,18 +51,22 @@ class Sound {
     else if(kind==='deal')this.note(240,.08,.09,'triangle')
     else this.note(520,.07,.12)
   }
+  /** 只停 Web Audio 合成（切后台用），BGM 音频文件不动 */
+  stopSynth(){clearInterval(this.timer);this.timer=null}
   music(active){
-    clearInterval(this.timer);this.timer=null
-    if(this.bgm)this.bgm.pause()
-    if(!active||!this.settings.music||document.hidden)return
-    // 优先音乐文件循环（Fluffing a Duck · Kevin MacLeod, CC-BY 4.0），文件缺失时回退 Web Audio 合成
+    this.stopSynth()
+    if(!active||!this.settings.music){if(this.bgm)this.bgm.pause();return}
+    if(document.hidden)return
+    // 优先音乐文件循环（Fluffing a Duck · Kevin MacLeod, CC-BY 4.0），文件缺失时回退 Web Audio 合成；
+    // 音频文件在页面后台/锁屏后可继续播放（已设 MediaSession 元信息）
     if(!this.bgmFailed){
       if(!this.bgm)try{
         const a=new Audio('/audio/balatro/bgm.mp3');a.loop=true;a.volume=.55
         a.addEventListener('error',()=>{this.bgmFailed=true;this.bgm=null;this.music(true)})
         this.bgm=a
+        if('mediaSession' in navigator)try{navigator.mediaSession.metadata=new MediaMetadata({title:'小丑牌 · 背景音乐',artist:'Kevin MacLeod',album:'Vectorac'})}catch(_){}
       }catch(_){this.bgmFailed=true}
-      if(this.bgm){const p=this.bgm.play();if(p&&p.catch)p.catch(()=>{});return}
+      if(this.bgm){if(this.bgm.paused){const p=this.bgm.play();if(p&&p.catch)p.catch(()=>{})}return}
     }
     this.unlock()
     // 合成兜底：Dm – C – Bb – Am 进行，琶音 + 低音 + 稀疏旋律线
@@ -87,7 +91,8 @@ export default class PokerTable {
     this.resizeObserver=typeof ResizeObserver!=='undefined'?new ResizeObserver(this.onResize):null
     if(this.resizeObserver)this.resizeObserver.observe(root)
     window.addEventListener('resize',this.onResize)
-    this.onVisibility=()=>this.audio.music(!!this.state&&!document.hidden)
+    // 切后台只停 Web Audio 合成，BGM 音频文件继续播；回前台恢复
+    this.onVisibility=()=>{if(document.hidden)this.audio.stopSynth();else this.audio.music(!!this.state)}
     this.onFull=()=>{
       const active=document.fullscreenElement===this.root||document.webkitFullscreenElement===this.root
       this.nativeFullscreen=active

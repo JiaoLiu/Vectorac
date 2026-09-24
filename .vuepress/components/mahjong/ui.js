@@ -318,10 +318,11 @@ export default class ScmjUI {
     }
     window.addEventListener('resize', this._onResize)
     window.addEventListener('orientationchange', this._onResize)
-    // 页面切后台时暂停背景音乐，回前台且仍在牌桌时恢复
+    // 页面切后台时只暂停 Web Audio 合成（系统也会挂起它）；BGM 音频文件继续播，
+    // 回前台恢复。想完全静音可用设置里的「背景音乐」开关。
     this._onVisibility = () => {
       if (typeof document === 'undefined') return
-      if (document.hidden) this.music(false)
+      if (document.hidden) this._stopSynth()
       else if (this._els.table && !this._els.table.hidden) this.music(true)
     }
     document.addEventListener('visibilitychange', this._onVisibility)
@@ -932,6 +933,7 @@ export default class ScmjUI {
   stopCountdown() {
     if (this._countdownTimer) clearInterval(this._countdownTimer)
     this._countdownTimer = null
+    this._lastTickSec = null
     if (this._els.countdown) {
       this._els.countdown.textContent = ''
       this._els.countdown.hidden = true
@@ -952,6 +954,11 @@ export default class ScmjUI {
     el.hidden = false
     el.textContent = '⏳ ' + left + 's'
     el.classList.toggle('scmj-countdown-urgent', left <= 5)
+    // 读秒提醒：最后 5 秒每到新的一秒滴一声（仅轮到自己操作时倒计时会显示）
+    if (left >= 1 && left <= 5 && this.settings.sound !== false && this._lastTickSec !== left) {
+      this._lastTickSec = left
+      if (this._ensureAudio()) this._note(990, 0.09, 0.2, 'sine')
+    }
   }
 
   // ==================== 对局控制 ====================
@@ -2536,13 +2543,21 @@ export default class ScmjUI {
     }
   }
 
-  /** 背景音乐：优先音乐文件循环（Eastern Thought · Kevin MacLeod, CC-BY 4.0），
-   *  文件缺失时回退 Web Audio 合成（A 宫五声音阶，竹笛 pluck + 低音 drone） */
-  music(active) {
+  /** 只停 Web Audio 合成（切后台用），BGM 音频文件不动 */
+  _stopSynth() {
     clearInterval(this._musicTimer)
     this._musicTimer = null
-    if (this._bgm) this._bgm.pause()
-    if (!active || this.settings.music === false) return
+  }
+
+  /** 背景音乐：优先音乐文件循环（Ishikari Lore · Kevin MacLeod, CC-BY 4.0），
+   *  文件缺失时回退 Web Audio 合成（A 宫五声音阶，竹笛 pluck + 低音 drone）。
+   *  音频文件在页面后台/锁屏后可继续播放（已设 MediaSession 元信息）。 */
+  music(active) {
+    this._stopSynth()
+    if (!active || this.settings.music === false) {
+      if (this._bgm) this._bgm.pause()
+      return
+    }
     if (typeof document !== 'undefined' && document.hidden) return
     if (!this._bgmFailed) {
       if (!this._bgm) {
@@ -2552,13 +2567,21 @@ export default class ScmjUI {
           a.volume = 0.5
           a.addEventListener('error', () => { this._bgmFailed = true; this._bgm = null; this.music(true) })
           this._bgm = a
+          // 锁屏/后台播放时让系统媒体中心显示标题（提升后台保活待遇）
+          if ('mediaSession' in navigator) {
+            try {
+              navigator.mediaSession.metadata = new MediaMetadata({ title: '四川麻将 · 背景音乐', artist: 'Kevin MacLeod', album: 'Vectorac' })
+            } catch (e) { /* 忽略 */ }
+          }
         } catch (e) {
           this._bgmFailed = true
         }
       }
       if (this._bgm) {
-        const p = this._bgm.play()
-        if (p && p.catch) p.catch(() => {})
+        if (this._bgm.paused) {
+          const p = this._bgm.play()
+          if (p && p.catch) p.catch(() => {})
+        }
         return
       }
     }

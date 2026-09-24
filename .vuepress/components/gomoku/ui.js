@@ -83,10 +83,11 @@ export default class GomokuUI {
       if (this._audio && this._audio.state === 'suspended') this._audio.resume().catch(() => {})
       this._music(true)
     }
-    // 页面切后台暂停背景音乐，回前台恢复
+    // 页面切后台只停 Web Audio 合成，BGM 音频文件继续播；回前台恢复
     this._onVisibility = () => {
       if (typeof document === 'undefined') return
-      this._music(!document.hidden)
+      if (document.hidden) { clearInterval(this._musicTimer); this._musicTimer = null }
+      else this._music(true)
     }
   }
 
@@ -807,13 +808,16 @@ export default class GomokuUI {
     osc.stop(t0 + duration + 0.05)
   }
 
-  /** 背景音乐：优先音乐文件循环（Meditation Impromptu 01 · Kevin MacLeod, CC-BY 4.0），
-   *  文件缺失时回退 Web Audio 合成（C 宫五声音阶稀疏长音 + 低音 pad） */
+  /** 背景音乐：优先音乐文件循环（Windswept · Kevin MacLeod, CC-BY 4.0），
+   *  文件缺失时回退 Web Audio 合成（C 宫五声音阶稀疏长音 + 低音 pad）。
+   *  音频文件在页面后台/锁屏后可继续播放（已设 MediaSession 元信息）。 */
   _music(active) {
     clearInterval(this._musicTimer)
     this._musicTimer = null
-    if (this._bgm) this._bgm.pause()
-    if (!active || this.settings.music === false) return
+    if (!active || this.settings.music === false) {
+      if (this._bgm) this._bgm.pause()
+      return
+    }
     if (typeof document !== 'undefined' && document.hidden) return
     if (!this._bgmFailed) {
       if (!this._bgm) {
@@ -823,13 +827,20 @@ export default class GomokuUI {
           a.volume = 0.5
           a.addEventListener('error', () => { this._bgmFailed = true; this._bgm = null; this._music(true) })
           this._bgm = a
+          if ('mediaSession' in navigator) {
+            try {
+              navigator.mediaSession.metadata = new MediaMetadata({ title: '五子棋 · 背景音乐', artist: 'Kevin MacLeod', album: 'Vectorac' })
+            } catch (e) { /* 忽略 */ }
+          }
         } catch (e) {
           this._bgmFailed = true
         }
       }
       if (this._bgm) {
-        const p = this._bgm.play()
-        if (p && p.catch) p.catch(() => {})
+        if (this._bgm.paused) {
+          const p = this._bgm.play()
+          if (p && p.catch) p.catch(() => {})
+        }
         return
       }
     }
