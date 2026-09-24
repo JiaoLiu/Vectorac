@@ -512,7 +512,7 @@ export default class PokerTable {
     const result=this.transact(E.play)
     const token=++this.scoreToken
     this.busy=true;this.anim={before,result,event:result.events[0],index:0,token,skipped:false};this.render()
-    const events=result.events.length>22?result.events.filter((_,i)=>i===0||i===result.events.length-1||i%Math.ceil(result.events.length/20)===0):result.events
+    const events=result.events.length>22?result.events.filter((event,i)=>i===0||i===result.events.length-1||i%Math.ceil(result.events.length/20)===0||event.source.includes('：生成')):result.events
     const reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
     const tickDelay=reduced?95:this.settings.fast?145:280
     let index=0
@@ -620,7 +620,8 @@ export default class PokerTable {
   inventory(s){
     const lost=this.actionFx?.phase==='after'?this.actionFx.removedJokers:[]
     const ghosts=lost.map((j,i)=>`<div class="bp-item bp-joker-ghost bp-fx-joker-destroy" style="--fx-delay:${i*90}ms" aria-hidden="true"><div class="bp-item-art">${jokerArt(j)}</div><span class="bp-item-name">${esc(this.itemName(j))}</span></div>`).join('')
-    return `<div class="bp-inventory"><section class="bp-joker-rack"><div class="bp-rack-label"><span>小丑牌 <b>${s.jokers.length}/${E.slots(s)}</b></span><small>从左至右触发 · 拖动调序 · 点击查看</small></div><div class="bp-rack-cards">${s.jokers.map(j=>this.itemTile(j)).join('')}${ghosts}${Array.from({length:Math.max(0,E.slots(s)-s.jokers.length)},()=>'<div class="bp-empty-slot"><span>J</span></div>').join('')}</div></section><section class="bp-consumable-rack"><div class="bp-rack-label"><span>消耗牌 <b>${s.consumables.length}/${E.consumableSlots(s)}</b></span></div><div class="bp-rack-cards">${s.consumables.map(c=>this.itemTile(c)).join('')}${Array.from({length:Math.max(0,E.consumableSlots(s)-s.consumables.length)},()=>'<div class="bp-empty-slot bp-consume-empty"><span>✧</span></div>').join('')}</div></section></div>`
+    const consumables=this.anim?this.anim.before.consumables:s.consumables
+    return `<div class="bp-inventory"><section class="bp-joker-rack"><div class="bp-rack-label"><span>小丑牌 <b>${s.jokers.length}/${E.slots(s)}</b></span><small>从左至右触发 · 拖动调序 · 点击查看</small></div><div class="bp-rack-cards">${s.jokers.map(j=>this.itemTile(j)).join('')}${ghosts}${Array.from({length:Math.max(0,E.slots(s)-s.jokers.length)},()=>'<div class="bp-empty-slot"><span>J</span></div>').join('')}</div></section><section class="bp-consumable-rack"><div class="bp-rack-label"><span>消耗牌 <b>${consumables.length}/${E.consumableSlots(s)}</b></span></div><div class="bp-rack-cards">${consumables.map(c=>this.itemTile(c)).join('')}${Array.from({length:Math.max(0,E.consumableSlots(s)-consumables.length)},()=>'<div class="bp-empty-slot bp-consume-empty"><span>✧</span></div>').join('')}</div></section></div>`
   }
   cueStrip(s){
     if(this.busy||s.phase!=='play')return ''
@@ -642,9 +643,7 @@ export default class PokerTable {
       const sealTarget=fx?.sealUID===c.uid,fxClass=gather?'bp-fx-gather':deal?'bp-fx-deal':destroy?'bp-fx-destroy':removed?'bp-fx-mark':sealTarget&&fx.phase==='cast'?'bp-fx-seal-pending':changed?fx.phase==='reveal'?'bp-fx-reveal':fx.phase==='cast'?'bp-fx-shake':'' :''
       const sealFx=sealTarget&&fx.phase==='reveal',sealKind=fx?.finalCards?.get(c.uid)?.seal||'gold'
       const destroyDelay=destroy?fx.removedUIDs.indexOf(c.uid)*95:index*65
-      // 只有带增强、版本或封蜡的牌才需要详情入口，普通牌加标记只会干扰看牌。
-      const hasDetail=!!(display.enh||display.edition||display.seal)
-      return `<div class="bp-hand-card">${this.cardButton(display,{selected:s.selected.includes(c.uid),disabled:this.busy||s.phase!=='play'&&!s.pack,hidden:c.hidden,fxClass,sealFx,sealKind,fxDelay:`${destroyDelay}ms`})}${!c.hidden&&hasDetail?`<button type="button" class="bp-card-detail-button" data-action="card-details" data-uid="${c.uid}" aria-label="查看 ${esc(cardName(c))} 的牌面与效果详情" title="卡牌详情">i</button>`:''}</div>`
+      return `<div class="bp-hand-card">${this.cardButton(display,{selected:s.selected.includes(c.uid),disabled:this.busy||s.phase!=='play'&&!s.pack,hidden:c.hidden,fxClass,sealFx,sealKind,fxDelay:`${destroyDelay}ms`})}</div>`
     }).join('')}</div><div class="bp-play-controls">${button('play','出牌','bp-blue',this.busy||s.phase!=='play'||!s.selected.length||!!s.pack)}<span>${this.anim?'正在结算…':this.busy?'正在展示效果…':s.pack?'先选目标，再点击包中的「使用」':'最多选择 5 张牌'}</span>${button('discard','弃牌','bp-red',this.busy||s.phase!=='play'||!s.selected.length||s.discards<=0||!!s.pack)}</div></div>`
   }
   playStage(s){
@@ -653,7 +652,7 @@ export default class PokerTable {
     if(this.anim)return `<div class="bp-play-stage"><div class="bp-score-label" data-score-event>${this.anim.result.name}</div><div class="bp-scoring-cards">${this.anim.result.cards.map(c=>this.cardButton(c,{disabled:true,state:this.anim.before})).join('')}</div><span class="bp-stage-hint">扑克牌 → 留手效果 → 小丑牌</span>${button('skip-score','跳过本次结算','bp-quiet',this.anim.skipped)}</div>`
     return `<div class="bp-play-stage"><div class="bp-table-emblem">♠<span>PLAY YOUR HAND</span></div>${s.lastResult?`<div class="bp-last-hand"><span>上一手 · ${s.lastResult.name}</span><b>+${num(s.lastResult.total)}</b></div>`:`<p class="bp-stage-hint">选择手牌，组合牌型<br>小丑牌让每一手牌都不一样。</p>`}${s.blind===2?`<div class="bp-live-boss">✦ ${esc(byId(BOSSES,s.boss).desc)}</div>`:''}</div>`
   }
-  reward(s){const r=s.roundReward;return `<div class="bp-result"><span class="bp-eyebrow">BLIND DEFEATED</span><h2>盲注击破</h2><div class="bp-result-score">${num(s.score)} <small>分</small></div><div class="bp-receipt"><div><span>盲注奖励</span><b>$${r.reward}</b></div><div><span>剩余出牌</span><b>$${r.hands}</b></div><div><span>利息</span><b>$${r.interest}</b></div>${r.extra?`<div><span>卡牌与牌组奖励</span><b>$${r.extra}</b></div>`:''}<div class="bp-receipt-total"><span>本轮收入</span><b>$${r.total}</b></div></div>${button('cash','领取奖励 →','bp-gold')}<small>奖励已入账，结算不会重复领取。</small></div>`}
+  reward(s){const r=s.roundReward;return `<div class="bp-result"><span class="bp-eyebrow">BLIND DEFEATED</span><h2>盲注击破</h2><div class="bp-result-score">${num(s.score)} <small>分</small></div><div class="bp-receipt"><div><span>盲注奖励</span><b>$${r.reward}</b></div><div><span>剩余出牌</span><b>$${r.hands}</b></div><div><span>利息</span><b>$${r.interest}</b></div>${r.extra?`<div><span>卡牌与牌组奖励</span><b>$${r.extra}</b></div>`:''}<div class="bp-receipt-total"><span>本轮收入</span><b>$${r.total}</b></div></div>${r.blueSealPlanets?`<p>蓝色蜡封留在手牌中：本轮结束获得 ${r.blueSealPlanets} 张星球牌。</p>`:''}${button('cash','领取奖励 →','bp-gold')}<small>奖励已入账，结算不会重复领取。</small></div>`}
   shop(s){
     if(s.pack){
       const pack=boosterPack(s.pack.id||s.pack.kind),picksLeft=s.pack.picksLeft||pack.choose,picksMade=s.pack.picksMade||0,instruction=pack.action.includes('加入')?`选择 ${picksLeft} 张加入牌组`:`选择 ${picksLeft} 张立即使用`
@@ -674,7 +673,7 @@ export default class PokerTable {
     const s=this.state
     if(m.type==='help'){
       title='怎么玩'
-      body=`<div class="bp-help-grid"><section><b>01 · 打出牌型</b><p>从手牌选 1～5 张。对子、同花、顺子等决定基础筹码和倍率。只有参与牌型的牌计分；A 为 11 筹码，人头牌为 10。</p></section><section><b>02 · 筹码 × 倍率</b><p>先结算打出的牌，再结算留手效果，最后从左到右触发小丑。把加倍率的小丑放在乘倍率的小丑前面，得分会不同。</p></section><section><b>03 · 卡包里有什么</b><p>补充包分普通、巨型和超级三种：巨型包提供更多选项，超级包可选两张。小丑包获得持续能力；天体包升级牌型；秘术包改变或强化手牌；幻灵包是强力的一次性效果。点开卡包详情可查看本包张数、选择数和卡牌用途。</p></section><section><b>04 · 连过 8 个底注</b><p>每个底注有小盲注、大盲注、Boss 盲注。前两个可跳过领取标签，Boss 不能跳过。出牌耗尽且分数不够则本局结束。</p></section><section class="bp-help-seals"><b>05 · 四种蜡封效果</b><div class="bp-seal-legend"><p><strong>红色蜡封</strong>：触发时，这张牌的效果额外触发一次。</p><p><strong>蓝色蜡封</strong>：击败盲注时若留在手牌中，生成上一手牌型对应的星球牌。</p><p><strong>金色蜡封</strong>：这张牌打出计分时，每次触发获得 $3。</p><p><strong>紫色蜡封</strong>：弃掉这张牌时生成一张塔罗牌。</p></div></section></div><div class="bp-help-note"><b>操作</b><p>单击选牌；再次单击取消。星球牌可快速双点使用。键盘 1～8 选牌，Enter 出牌，D 弃牌。拖动小丑牌可调整结算顺序，也可打开详情使用左右移牌。改牌类消耗牌须先选择手牌目标。</p><p>开始自动请求全屏；不支持系统全屏的设备使用网页全屏。iPhone Safari 普通标签页仍保留系统地址栏，添加到主屏幕后可使用独立窗口。关闭页面后可从首页继续。</p></div>`
+      body=`<div class="bp-help-grid"><section><b>01 · 打出牌型</b><p>从手牌选 1～5 张。对子、同花、顺子等决定基础筹码和倍率。只有参与牌型的牌计分；A 为 11 筹码，人头牌为 10。</p></section><section><b>02 · 筹码 × 倍率</b><p>先结算打出的牌，再结算留手效果，最后从左到右触发小丑。把加倍率的小丑放在乘倍率的小丑前面，得分会不同。</p></section><section><b>03 · 卡包里有什么</b><p>补充包分普通、巨型和超级三种：巨型包提供更多选项，超级包可选两张。小丑包获得持续能力；天体包升级牌型；秘术包改变或强化手牌；幻灵包是强力的一次性效果。点开卡包详情可查看本包张数、选择数和卡牌用途。</p></section><section><b>04 · 连过 8 个底注</b><p>每个底注有小盲注、大盲注、Boss 盲注。前两个可跳过领取标签，Boss 不能跳过。出牌耗尽且分数不够则本局结束。</p></section><section class="bp-help-seals"><b>05 · 四种蜡封效果</b><div class="bp-seal-legend"><p><strong>红色蜡封</strong>：触发时，这张牌的效果额外触发一次。</p><p><strong>蓝色蜡封</strong>：击败盲注时若留在手牌中，生成上一手牌型对应的星球牌。</p><p><strong>金色蜡封</strong>：这张牌打出计分时，每次触发获得 $3。</p><p><strong>紫色蜡封</strong>：弃掉这张牌时生成一张塔罗牌。</p></div></section></div><div class="bp-help-note"><b>操作</b><p>单击选牌；再次单击取消。开包和商店选牌时可查看增强、版本和封蜡说明；对局中牌面不显示额外详情按钮。拖动手牌可调整计分顺序。星球牌可快速双点使用。键盘 1～8 选牌，Enter 出牌，D 弃牌。拖动小丑牌可调整结算顺序，也可打开详情使用左右移牌。改牌类消耗牌须先选择手牌目标。</p><p>开始自动请求全屏；不支持系统全屏的设备使用网页全屏。iPhone Safari 普通标签页仍保留系统地址栏，添加到主屏幕后可使用独立窗口。关闭页面后可从首页继续。</p></div>`
     }
     if(m.type==='stakes'){
       title='选择起始赌注';cls='bp-stake-dialog'

@@ -5,6 +5,7 @@ import * as E from '../.vuepress/components/balatro/engine.mjs'
 import { HANDS,JOKERS,TAROTS,SPECTRALS,VOUCHERS,BOSSES,DECKS,BOOSTER_PACKS } from '../.vuepress/components/balatro/catalog.mjs'
 import { cardCue } from '../.vuepress/components/balatro/cues.mjs'
 import { playingCardDetails, playingCardSummary } from '../.vuepress/components/balatro/card-details.mjs'
+import { playingCard } from '../.vuepress/components/balatro/art.mjs'
 import PokerTable from '../.vuepress/components/balatro/ui.js'
 
 const cards=(ranks,suits=[])=>ranks.map((rank,i)=>({uid:i+1,rank,suit:suits[i]===undefined?i%4:suits[i],enh:null,edition:null,seal:null}))
@@ -19,6 +20,23 @@ const play=(s,ids)=>{s.selected=ids;return E.play(s)}
 test('all catalog identifiers are unique, full core card sets are present',()=>{
  assert.equal(JOKERS.length,150);assert.equal(TAROTS.length,22);assert.equal(SPECTRALS.length,18);assert.equal(VOUCHERS.length,32);assert.equal(DECKS.length,15);assert.equal(Object.keys(BOOSTER_PACKS).length,15)
  for(const list of [JOKERS,TAROTS,SPECTRALS,VOUCHERS,BOSSES,DECKS,HANDS])assert.equal(new Set(list.map(c=>c.id)).size,list.length)
+})
+test('J, Q and K have distinct double-ended art while indices and seals remain legible',()=>{
+ const names={11:'jack',12:'queen',13:'king'}
+ for(const suit of [0,1,2,3])for(const rank of [11,12,13]){
+  const art=playingCard({rank,suit,enh:null,edition:null,seal:'blue'})
+  assert.match(art,new RegExp(`class="bp-court-${names[rank]}"`))
+  assert.equal((art.match(new RegExp(`class="bp-court-${names[rank]}"`,'g'))||[]).length,2,'court art stays double-ended')
+  assert.match(art,/>[JQK]<\/text>/,'the large rank emblem stays visible')
+  assert.match(art,/>P<\/text>/,'a Blue Seal remains on the card')
+  const stack=[]
+  for(const [,closing,tag,attrs] of art.matchAll(/<(\/)?([a-z][\w-]*)\b([^>]*)>/g)){
+   if(closing)assert.equal(stack.pop(),tag,`${names[rank]} SVG has mismatched tags`)
+   else if(!attrs.trimEnd().endsWith('/'))stack.push(tag)
+  }
+  assert.deepEqual(stack,[],`${names[rank]} SVG has unclosed tags`)
+ }
+ for(const rank of [11,12,13])assert.doesNotMatch(playingCard({rank,suit:0,seal:'blue'},true),/bp-court-|>P<\/text>/,'face-down cards reveal no court identity or seal')
 })
 const examples=[['high',[14,11,9,5,2]],['pair',[8,8,13,5,2]],['two',[8,8,4,4,2]],['three',[8,8,8,5,2]],['straight',[14,2,3,4,5]],['flush',[14,11,9,5,2],[1,1,1,1,1]],['full',[8,8,8,5,5]],['four',[8,8,8,8,2]],['sf',[5,6,7,8,9],[2,2,2,2,2]],['five',[8,8,8,8,8]],['ffull',[8,8,8,5,5],[1,1,1,1,1]],['ffive',[8,8,8,8,8],[0,0,0,0,0]]]
 for(const [id,ranks,suits]of examples)test(`poker classification: ${id}`,()=>assert.equal(E.evaluate(cards(ranks,suits)).id,id))
@@ -215,6 +233,25 @@ test('Hanging Joker follows played card order, skipping non-scoring kickers',()=
  assert.equal(result.chips,42,'the first card used in scoring, not the unscored kicker, is retriggered')
  assert.deepEqual(result.events.filter(event=>['扑克牌','再次触发'].includes(event.source)).map(event=>event.uid),[2,2,2,3])
 })
+test('a lone Eight Ball rolls once for one 8 in a straight; retriggering that 8 can generate twice',()=>{
+ const setup=(seed,hanging=false)=>{
+  const s=state([8,9,10,11,12]);add(s,'eightball');if(hanging)add(s,'hanging')
+  s.rng=seed
+  const result=play(s,[1,2,3,4,5])
+  assert.equal(result.id,'straight')
+  const count=s.consumables.filter(c=>c.kind==='tarot').length
+  assert.equal(result.events.filter(event=>event.source.startsWith('八号球：生成')).length,count,'the scoring log identifies each generated Tarot')
+  return count
+ }
+ let generated=false
+ for(let seed=1;seed<=128;seed++){
+  const count=setup(seed)
+  assert.ok(count<=1,`one Eight Ball and one non-retriggered 8 cannot generate two Tarot cards (seed ${seed})`)
+  generated ||= count===1
+ }
+ assert.ok(generated,'the isolated case exercises at least one successful Eight Ball roll')
+ assert.equal(setup(2,true),2,'Hanging Joker retriggers the first scoring 8 twice, so two Tarot cards are valid')
+})
 test('Blueprint repeats compatible stateful Madness and Square triggers',()=>{
  assert.equal(E.blueprintCanCopy('madness','blindStart'),true)
  const entry=E.newRun('BLUEPRINT-MADNESS'),bp=E.makeJoker(entry,'blueprint'),madness=E.makeJoker(entry,'madness')
@@ -328,6 +365,20 @@ test('held steel and Baron precede joker additions',()=>{
 test('red seals retrigger scoring; holographic joker editions add before effects',()=>{
  const s=state([14,2,3,7,9]);s.hand[0].seal=s.deck[0].seal='red';assert.equal(play(s,[1]).chips,27)
  const t=state();add(t,'duo','holo');assert.equal(play(t,[1,2]).mult,24)
+})
+test('Blue Seal creates a Planet only when still held as the blind ends',()=>{
+ const unsealed=state();unsealed.score=E.target(unsealed)-1
+ play(unsealed,[1]);assert.equal(unsealed.phase,'reward');assert.equal(unsealed.consumables.length,0,'winning without any Blue Seal creates no Planet')
+ assert.equal(unsealed.roundReward.blueSealPlanets,0)
+ const held=state();held.hand[0].seal=held.deck[0].seal='blue'
+ play(held,[2]);assert.equal(held.phase,'play');assert.equal(held.consumables.length,0,'a regular play does not trigger the held Blue Seal')
+ held.score=E.target(held)-1;play(held,[3])
+ assert.equal(held.phase,'reward');assert.deepEqual(held.consumables.map(c=>[c.kind,c.id]),[['planet',held.lastResult.id]],'the winning play triggers the Blue Seal still in hand')
+ assert.equal(held.roundReward.blueSealPlanets,1,'the reward records why the Planet appeared')
+
+ const played=state();played.hand[0].seal=played.deck[0].seal='blue';played.score=E.target(played)-1
+ play(played,[1]);assert.equal(played.phase,'reward');assert.equal(played.consumables.length,0,'a Blue Seal played in the winning hand is no longer held')
+ assert.equal(played.roundReward.blueSealPlanets,0)
 })
 test('round stages enforce single cashout, single purchase, no double advancement',()=>{
  const s=state([10,11,12,13,14],[1,1,1,1,1]);play(s,[1,2,3,4,5]);assert.equal(s.phase,'reward');const money=s.money
@@ -531,6 +582,23 @@ test('target rank/suit, limited triggers and copied reminders remain current',()
  const incompatible=state(),blueprint=add(incompatible,'blueprint');add(incompatible,'trading')
  assert.equal(cardCue(incompatible,blueprint).label,'无法复制','the reminder does not advertise a Trading trigger that the engine will not copy')
 })
+test('Hanging Chad reminder matches a numeric first scoring card on every hand',()=>{
+ const s=state([8,9,10,11,12]),j=add(s,'hanging')
+ s.selected=[1,2,3,4,5]
+ assert.equal(E.evaluate(s.hand,s).id,'straight')
+ assert.equal(cardCue(s,j).label,'首张计分牌 +2 次')
+ assert.equal(cardCue(s,j).ready,true,'a numeric 8 can be the first scoring card')
+ s.plays=1
+ assert.equal(cardCue(s,j).ready,true,'Hanging Chad is not limited to the first play of a blind')
+ s.blind=2;s.boss='pillar';s.antePlayed=[1]
+ assert.equal(cardCue(s,j).ready,false,'a debuffed first scoring card does not pass its retriggers to the next card')
+ s.selected=[]
+ assert.equal(cardCue(s,j).ready,false)
+ const copied=state([8,9,10,11,12]),blueprint=add(copied,'blueprint')
+ add(copied,'hanging');copied.selected=[1,2,3,4,5];copied.plays=1
+ assert.equal(cardCue(copied,blueprint).label,'首张计分牌 +2 次')
+ assert.equal(cardCue(copied,blueprint).ready,true,'Blueprint inherits the corrected reminder')
+})
 test('reminders do not leak face-down cards or disabled joker identities',()=>{
  const s=state(),j=add(s,'toDo');j.hand='pair';s.selected=[1,2];s.hand[0].hidden=true;assert.equal(cardCue(s,j).ready,false)
  s.blind=2;s.boss='acorn';assert.equal(cardCue(s,j),null)
@@ -597,4 +665,28 @@ test('moving a Foil card to the first scoring slot raises Hanging Joker score',(
  }
  assert.equal(score(false),92)
  assert.equal(score(true),192)
+})
+test('the play hand has no detail buttons while card acquisition explains a Blue Seal',()=>{
+ const table=Object.create(PokerTable.prototype),s=state([8,11,12])
+ s.hand[0].seal=s.deck[0].seal='blue';s.hand[1].enh=s.deck[1].enh='bonus';s.selected=[1,2]
+ table.state=s;table.sort='rank';table.actionFx=null;table.anim=null;table.busy=false;table.modal=null;table.pendingPlanet=null;table.packFx=null;table.packChoiceFx=null
+ const html=table.hand(s)
+ assert.ok(!html.includes('data-action="card-details"'),'hand cards must not cover adjacent ranks or seals with detail controls')
+ assert.ok(!html.includes('bp-selected-card-details'),'selected cards do not open a second detail row during play')
+ assert.match(html,/蓝封·星球/,'the visible hand card still identifies its Blue Seal')
+ const acquired=table.itemTile({uid:999,kind:'card',rank:8,suit:0,seal:'blue'},'pack')
+ assert.match(acquired,/蓝色蜡封：/,'a card offered by a pack explains the seal before acquisition')
+})
+test('score animation waits until blind reward to reveal Blue Seal Planets',()=>{
+ const before=state(),after=E.clone(before)
+ before.hand[0].seal=before.deck[0].seal=after.hand[0].seal=after.deck[0].seal='blue'
+ after.score=E.target(after)-1;after.selected=[2];E.play(after)
+ assert.equal(after.roundReward.blueSealPlanets,1)
+ const table=Object.create(PokerTable.prototype)
+ table.state=after;table.actionFx=null;table.itemTile=c=>`<i data-consumable="${c.kind}:${c.id}"></i>`
+ table.anim={before}
+ assert.ok(!table.inventory(after).includes('data-consumable="planet:'),'the Planet is not shown before scoring finishes')
+ table.anim=null
+ assert.match(table.inventory(after),/data-consumable="planet:/)
+ assert.match(table.reward(after),/蓝色蜡封留在手牌中：本轮结束获得 1 张星球牌/)
 })

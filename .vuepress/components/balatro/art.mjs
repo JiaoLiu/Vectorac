@@ -12,6 +12,38 @@ const pips = {
   9:[[38,37],[82,37],[38,68],[82,68],[60,84],[38,100],[82,100],[38,131],[82,131]],
   10:[[38,37],[82,37],[60,52],[38,68],[82,68],[38,100],[82,100],[60,116],[38,131],[82,131]]
 }
+const courts = {
+  11:{name:'jack',accent:'#287b75',half:`
+    <path d="M27 82Q31 63 48 60L71 59Q89 62 94 82Z" fill="#287b75" stroke="#2d3941" stroke-width="2"/>
+    <path d="M35 79L48 64 61 79 73 63 86 79M49 61L62 77 73 61" fill="none" stroke="#ecd192" stroke-width="3"/>
+    <path d="M51 53L50 63 61 70 72 62 70 52Z" fill="#e8c7a0" stroke="#37414a" stroke-width="1.5"/>
+    <path d="M47 38Q49 28 61 28Q73 28 76 39L72 54Q62 63 51 54Z" fill="#f1d8b2" stroke="#37414a" stroke-width="1.7"/>
+    <path d="M44 38Q40 27 50 24L71 21Q81 22 79 36L72 38 69 31 53 37Z" fill="#235965" stroke="#d5ad60" stroke-width="2"/>
+    <path d="M53 26Q43 13 32 21Q38 16 47 33" fill="#e7d9a2" stroke="#344b50" stroke-width="1.5"/>
+    <path d="M54 43h5m9 0h5M59 52q5 3 10 0" fill="none" stroke="#353d44" stroke-width="1.7"/>
+    <path d="M31 45L40 76M28 68l15-5" fill="none" stroke="#e8d7ab" stroke-width="3"/>`},
+  12:{name:'queen',accent:'#ad4960',half:`
+    <path d="M27 82Q29 62 47 58L73 58Q91 64 94 82Z" fill="#a83e58" stroke="#4a3443" stroke-width="2"/>
+    <path d="M35 81L46 62 59 77 74 62 86 81M48 64L61 76 73 64" fill="none" stroke="#f0ce8b" stroke-width="3"/>
+    <path d="M43 36Q39 28 48 25Q61 18 73 26Q83 31 79 43L81 65 72 59 71 41 50 43 49 61 40 66Z" fill="#352e3f" stroke="#5b4050" stroke-width="2"/>
+    <path d="M48 37Q51 30 61 30Q72 30 75 38L71 54Q61 64 51 54Z" fill="#f4d9b7" stroke="#4a3d44" stroke-width="1.7"/>
+    <path d="M49 32L52 23 60 28 68 20 74 31Z" fill="#f0ca6e" stroke="#664657" stroke-width="1.6"/>
+    <circle cx="67" cy="28" r="2.5" fill="#c13d55"/>
+    <path d="M53 43h5m9 0h5M58 52q4 3 8 0" fill="none" stroke="#584149" stroke-width="1.5"/>
+    <path d="M86 75L88 45" stroke="#47785c" stroke-width="2.5"/>
+    <path d="M88 39q-12-9-12 2t12 3q11 9 10-3t-10-2Z" fill="#ca4d63" stroke="#8b344b" stroke-width="1.5"/><circle cx="88" cy="41" r="3" fill="#f2cf84"/>`},
+  13:{name:'king',accent:'#594975',half:`
+    <path d="M25 82Q28 59 47 57L74 57Q92 61 96 82Z" fill="#594975" stroke="#2d3341" stroke-width="2"/>
+    <path d="M31 80L43 59 50 78M77 78L83 58 91 80" fill="#f1e9d5" stroke="#c6aa71" stroke-width="2"/>
+    <path d="M43 62L60 78 78 62M35 81H87" fill="none" stroke="#e7bf70" stroke-width="4"/>
+    <path d="M49 48L47 61 60 70 73 60 71 47Z" fill="#2f343e" stroke="#303642" stroke-width="1.5"/>
+    <path d="M47 36Q49 27 61 27Q74 27 76 38L71 52Q62 58 51 51Z" fill="#eecfa8" stroke="#343b44" stroke-width="1.7"/>
+    <path d="M49 47Q53 51 57 48L60 53 64 48Q69 52 73 47L72 60 61 69 50 60Z" fill="#333842" stroke="#222d38" stroke-width="1.5"/>
+    <path d="M53 40h5m9 0h5" stroke="#303741" stroke-width="2"/>
+    <path d="M44 33L42 18 51 25 60 14 69 25 78 18 76 33Z" fill="#e4b958" stroke="#3c3e45" stroke-width="2"/>
+    <path d="M48 33H73" stroke="#fff0be" stroke-width="2"/><circle cx="60" cy="28" r="3" fill="#a34752"/>
+    <path d="M87 77V29M81 49h12" stroke="#d9b65f" stroke-width="4"/><circle cx="87" cy="26" r="5" fill="#e6c978" stroke="#594975" stroke-width="1.5"/>`}
+}
 
 // Standard indices, symmetric suit pips and bespoke, double-ended court illustrations.
 export function playingCard(c,hidden=false) {
@@ -22,14 +54,13 @@ export function playingCard(c,hidden=false) {
   else if(c.rank===14)middle=pip(60,85,suit,60)+text(60,128,c.suit===0?'ACE OF SPADES':'A C E',7,color)
   else if(c.rank<=10)middle=pips[c.rank].map(([x,y])=>pip(x,y,suit,c.rank>=8?21:25,y>84)).join('')
   else {
-    const queen=c.rank===12,king=c.rank===13
-    const half=`<path d="M27 82Q30 65 47 61L70 60Q86 64 94 84" fill="${color}" stroke="#283342" stroke-width="2"/><path d="M37 81L45 65 77 80M64 65L56 84" fill="#dcb657" stroke="#eee0a8" stroke-width="2"/><path d="M46 63L49 51 68 49 74 66 61 76Z" fill="#efd5ac" stroke="#333e49" stroke-width="1.4"/><path d="M46 42Q46 27 61 26Q77 28 75 45L69 56 54 57Z" fill="#efd5ac" stroke="#333e49" stroke-width="1.4"/><path d="M47 40L51 31 72 34 74 43 78 48 69 48" fill="none" stroke="#333e49" stroke-width="2"/><path d="M57 43h4m7 0h3M61 50l6 1" stroke="#333e49" stroke-width="1.5"/>${queen?'<path d="M44 35Q36 48 44 64L49 52M74 33Q84 47 78 63L71 54" fill="#282f38"/>':king?'<path d="M52 50L54 60 65 64 72 52 62 55Z" fill="#333e49"/>':'<path d="M47 34Q40 45 48 54" fill="none" stroke="#333e49" stroke-width="5"/>'}<path d="M45 32L44 22 53 27 60 19 66 27 75 22 73 34Z" fill="#d5a943" stroke="#333e49" stroke-width="1.5"/>${queen?'<path d="M89 42L83 74" stroke="#58856c" stroke-width="2"/><path d="M88 37q-12-11-12 1t11 3q12 10 10-2t-9-2" fill="#bc4950"/><circle cx="88" cy="39" r="3" fill="#dfbd67"/>':`<path d="M${king?86:32} 75V28" stroke="#405d6c" stroke-width="4"/><path d="M${king?79:25} 51h14" stroke="#cb9c37" stroke-width="4"/>`}<path d="M30 83H91" stroke="#e2c469" stroke-width="3"/>`
-    middle=`<rect x="25" y="20" width="70" height="128" fill="#eae3c9" stroke="${color}"/><g>${half}</g><g transform="rotate(180 60 84)">${half}</g>`
+    const court=courts[c.rank]
+    middle=`<rect x="25" y="20" width="70" height="128" fill="#eae3c9" stroke="${court.accent}" stroke-width="2"/><g class="bp-court-${court.name}">${court.half}</g><g transform="rotate(180 60 84)" class="bp-court-${court.name}">${court.half}</g><rect x="25" y="77" width="70" height="14" fill="${court.accent}" stroke="#e9d7a5" stroke-width="1"/>${text(60,88,r,13,'#fff5dd','font-weight="bold"')}`
   }
   const bg={steel:'#c0d4d8',gold:'#f0d28e',glass:'#e7f4f1',lucky:'#f5ebc8',mult:'#f6ded9',bonus:'#e0ecf6',wild:'#e7e6f1',stone:'#d5dfd7'}[c.enh]||'#f6f1df'
-  const indices=c.enh==='stone'?'':`<g>${text(13,24,r,17,color,'font-weight="bold"')}${text(13,42,suit,17,color)}</g><g transform="rotate(180 60 84)">${text(13,24,r,17,color,'font-weight="bold"')}${text(13,42,suit,17,color)}</g>`
+  const indices=c.enh==='stone'?'':`<g>${text(13,24,r,courts[c.rank]?20:17,color,'font-weight="bold"')}${text(13,42,suit,17,color)}</g><g transform="rotate(180 60 84)">${text(13,24,r,courts[c.rank]?20:17,color,'font-weight="bold"')}${text(13,42,suit,17,color)}</g>`
   const sealColor={red:'#b73837',blue:'#3a79ab',gold:'#c89225',purple:'#9862a3'}[c.seal],sealMark={red:'↻',blue:'P',gold:'$',purple:'T'}[c.seal]
-  return svg(`<rect x="1" y="1" width="118" height="166" rx="7" fill="${bg}" stroke="#ded8c8" stroke-width="2"/><rect x="4" y="4" width="112" height="160" rx="5" fill="none" stroke="#fff" stroke-opacity=".6"/><g fill="${color}" color="${color}" class="bp-pips">${middle.replace(/fill="#25282d"/g,`fill="${color}"`)}</g>${indices}${c.seal?`<path d="M101 8l3 3 4-.2.8 3.9 3.2 2.4-1.8 3.7 1.2 3.8-3.7 1.5-1.6 3.7-3.8-1.1-3.4 2.2-2.6-3.1-4-.5.1-4-2.8-2.8 2.5-3.1-.4-4 3.9-.9 2-3.5 3.6 1.5z" fill="${sealColor}" stroke="#f3db9b" stroke-width="1.2"/><circle cx="101" cy="19" r="5.2" fill="#f3d784" opacity=".8"/>${text(101,22,sealMark,8,'#69451c')}</g>`:''}${c.edition?'<path d="M5 52L115 14V39L5 77ZM5 129L115 91V102L5 140Z" fill="#fff" opacity=".18"/>':''}`)
+  return svg(`<rect x="1" y="1" width="118" height="166" rx="7" fill="${bg}" stroke="#ded8c8" stroke-width="2"/><rect x="4" y="4" width="112" height="160" rx="5" fill="none" stroke="#fff" stroke-opacity=".6"/><g fill="${color}" color="${color}" class="bp-pips">${middle.replace(/fill="#25282d"/g,`fill="${color}"`)}</g>${indices}${c.seal?`<path d="M101 8l3 3 4-.2.8 3.9 3.2 2.4-1.8 3.7 1.2 3.8-3.7 1.5-1.6 3.7-3.8-1.1-3.4 2.2-2.6-3.1-4-.5.1-4-2.8-2.8 2.5-3.1-.4-4 3.9-.9 2-3.5 3.6 1.5z" fill="${sealColor}" stroke="#f3db9b" stroke-width="1.2"/><circle cx="101" cy="19" r="5.2" fill="#f3d784" opacity=".8"/>${text(101,22,sealMark,8,'#69451c')}`:''}${c.edition?'<path d="M5 52L115 14V39L5 77ZM5 129L115 91V102L5 140Z" fill="#fff" opacity=".18"/>':''}`)
 }
 const symbols={diamond:'♦',heart:'♥',spade:'♠',club:'♣',eye:'◉',half:'½',flag:'⚑',mountain:'▲',glitch:'!?',fist:'✊',spiral:'φ',skull:'☠',eight:'8',nine:'9',book:'A',business:'$',photo:'◧',smile:'☺',ticket:'★',crown:'♛',shoe:'♜',binary:'01',sunset:'☀',bottle:'♟',mime:'◐',moon:'☽',board:'♠',steel:'⬡',abstract:'◒',nova:'✷',car:'♞',runner:'➶',square:'▦',green:'♣',bus:'▣',trousers:'Ⅱ',stars:'✧',holo:'◈',crystal:'◉',ice:'♧',popcorn:'✹',ramen:'≋',banana:'☽',duo:'Ⅱ',trio:'Ⅲ',family:'Ⅳ',order:'↗',tribe:'♠',acrobat:'✧',stencil:'?',blueprint:'✣',brain:'⚡',splash:'≋',hand:'Ⅳ',stairs:'↗',paint:'◒',mask:'◑',dice:'⚄',credit:'$',egg:'⬭',rocket:'↑',gold:'$',cloud:'☁',bull:'♉',boot:'♞',satellite:'♁',trade:'⇄',fire:'♨',dna:'⧬',beans:'◔',balls:'●',burglar:'◉',knife:'†',vampire:'♜',gem:'◆',arrow:'➤',radio:'▥',rope:'∞',double:'◉',ace:'A',flower:'✿',ancient:'☉',idol:'♟',baseball:'⚾',castle:'♜',stone:'⬡',glass:'◇',tiny:'2',cat:'♧',red:'♥',flash:'⚡',list:'☷',clock:'◷',mail:'✉',parking:'P'}
 export function jokerArt(j,hidden=false) {

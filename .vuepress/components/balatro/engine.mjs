@@ -262,6 +262,10 @@ function scoring(s,cards,e) {
   const add=(source,c=0,m=0,x=1,uid=null)=>{chips+=c;mult=(mult+m)*x;if(c||m||x!==1)events.push({source,chips,mult,c,m,x,uid})}
   events.push({source:byId(HANDS,e.id).name,chips,mult,c:chips,m:mult,x:1})
   const effects=jokerTriggers(s,'scoring')
+  const createTarot=(source,uid)=>{
+    const card=tarot(s)
+    if(addConsumable(s,card))events.push({source:`${source}：生成${byId(TAROTS,card.id).name}`,chips,mult,uid})
+  }
   const scoringCards=e.scoring, held=s.hand.filter(c=>!cards.some(p=>p.uid===c.uid))
   for(const {j} of effects) {
     if(j.id==='green')j.value++
@@ -317,7 +321,7 @@ function scoring(s,cards,e) {
         if(j.id==='ancient'&&matchesSuit(s,c,j.suit))emit(0,0,1.5)
         if(j.id==='idol'&&c.rank===j.rank&&matchesSuit(s,c,j.suit))emit(0,0,2)
         if(j.id==='wee'&&c.enh!=='stone'&&c.rank===2)j.value+=8
-        if(j.id==='eightball'&&c.enh!=='stone'&&c.rank===8&&chance(s,4))addConsumable(s,tarot(s))
+        if(j.id==='eightball'&&c.enh!=='stone'&&c.rank===8&&chance(s,4))createTarot(name,slot.uid)
         if(j.id==='hiker'){c.bonus=(c.bonus||0)+5;s.deck.find(x=>x.uid===c.uid).bonus=c.bonus}
       }
     }
@@ -372,9 +376,9 @@ function scoring(s,cards,e) {
       if(j.id==='swash')emit(0,s.jokers.filter(x=>x.uid!==j.uid).reduce((n,x)=>n+sellValue(x),0))
       if(j.id==='stuntman')emit(250)
       if(j.id==='drivers'&&s.deck.filter(c=>c.enh).length>=16)emit(0,0,3)
-      if(j.id==='superposition'&&e.contains.straight&&cards.some(c=>c.rank===14))addConsumable(s,tarot(s))
+      if(j.id==='superposition'&&e.contains.straight&&cards.some(c=>c.rank===14))createTarot(byId(JOKERS,j.id).name,slot.uid)
       if(j.id==='seance'&&e.id==='sf')addConsumable(s,spectral(s))
-      if(j.id==='vagabond'&&s.money<=4)addConsumable(s,tarot(s))
+      if(j.id==='vagabond'&&s.money<=4)createTarot(byId(JOKERS,j.id).name,slot.uid)
       if(j.id==='toDo'&&j.hand===e.id)s.money+=4
       if(j.id==='DNA'&&s.plays===0&&cards.length===1)s.hand.push(addCard(s,cards[0]))
     }
@@ -437,12 +441,12 @@ export const blindReward = (s,blind=s.blind) => s.stake>=1&&blind===0?0:blind===
 function finishBlind(s) {
   const reward=blindReward(s), hands=s.hands*(s.deckType==='green'?2:1),discardMoney=s.deckType==='green'?s.discards:0
   const interest=s.deckType==='green'?0:Math.min(owns(s,'tree')?20:owns(s,'seed')?10:5,Math.max(0,Math.floor(s.money/5))*(1+count(s,'tomoon')))
-  let extra=0
+  let extra=0,blueSealPlanets=0
   const mimeTriggers=jokerTriggers(s,'scoring').filter(({j})=>j.id==='mime').length
   for(const c of s.hand) if(!debuffed(s,c)) {
     const repeat=1+mimeTriggers+Number(c.seal==='red')
     if(c.enh==='gold')extra+=3*repeat
-    if(c.seal==='blue')for(let i=0;i<repeat;i++)addConsumable(s,item(s,'planet',s.lastResult.id))
+    if(c.seal==='blue')for(let i=0;i<repeat;i++)if(addConsumable(s,item(s,'planet',s.lastResult.id)))blueSealPlanets++
   }
   const rocketProgressed=new Set()
   for(const {slot,j} of jokerTriggers(s,'roundReward')) {
@@ -469,7 +473,7 @@ function finishBlind(s) {
   }
   s.jokers=s.jokers.filter(j=>!j.expired&&!(['popcorn','turtle','banana'].includes(j.id)&&j.value<=0))
   const total=reward+hands+interest+extra+discardMoney
-  s.money+=total;s.earned+=total;s.roundReward={reward,hands,interest,extra:extra+discardMoney,total}
+  s.money+=total;s.earned+=total;s.roundReward={reward,hands,interest,extra:extra+discardMoney,total,blueSealPlanets}
   s.antePlayed=Array.from(new Set(s.antePlayed.concat(s.blindPlayed)))
   if(s.blind===2&&s.deckType==='anaglyph')s.tags.push('double')
   // The hand, draw pile, and played cards are returned to the deck between blinds.

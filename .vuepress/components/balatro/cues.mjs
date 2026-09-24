@@ -57,10 +57,11 @@ export function cardCue(s,card,visited=[]) {
     const label={loyalty:`${card.counter%6+1}/6 · ×4`,yorick:`${card.counter}/23`,invisible:`${Math.min(2,card.value)}/2 轮`,seltzer:`剩 ${card.value} 手`,turtle:`手牌 +${card.value}`,ice:`+${card.value} 筹码`,popcorn:`+${card.value} 倍率`}[card.id]
     return cue(label,byId(JOKERS,card.id).desc,card.id==='loyalty'?active&&card.counter%6===5:card.id==='invisible'&&card.value>=2,'counter')
   }
-  if(['DNA','sixth','trading','burnt','hanging'].includes(card.id)) {
+  if(card.id==='hanging')return cue('首张计分牌 +2 次',byId(JOKERS,card.id).desc,active&&!!hand&&hand.scoring.length>0&&!debuffed(s,hand.scoring[0]))
+  if(['DNA','sixth','trading','burnt'].includes(card.id)) {
     const discard=card.id==='trading'||card.id==='burnt',first=discard?s.discarded===0:s.plays===0
-    const valid=card.id==='burnt'?known:card.id==='hanging'?scoring.some(c=>face(s,c)):known&&selected.length===1&&(card.id!=='sixth'||selected[0].rank===6)
-    const label={DNA:'首手单牌',sixth:'首手单张 6',trading:'首次弃单牌',burnt:'首次弃牌 ↑',hanging:'首手人头牌'}[card.id]
+    const valid=card.id==='burnt'?known:known&&selected.length===1&&(card.id!=='sixth'||selected[0].rank===6)
+    const label={DNA:'首手单牌',sixth:'首手单张 6',trading:'首次弃单牌',burnt:'首次弃牌 ↑'}[card.id]
     return cue(first?label:'下轮恢复',byId(JOKERS,card.id).desc,active&&first&&!!valid&&(!discard||s.discards>0),first?'target':'muted')
   }
   if(['acrobat','dusk'].includes(card.id))return cue(s.hands===1?'最后一手':`余 ${s.hands} 手`,byId(JOKERS,card.id).desc,active&&s.hands===1&&known)
