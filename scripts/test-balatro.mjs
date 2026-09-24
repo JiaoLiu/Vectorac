@@ -66,7 +66,9 @@ test('Blueprint copies supported abilities at scoring, blind entry, discard and 
  const discarded=state([14,13,12,10,8,6,4,2]);add(discarded,'blueprint');const mail=add(discarded,'mail');mail.rank=discarded.hand[0].rank;discarded.money=0;discarded.selected=[discarded.hand[0].uid];E.discard(discarded)
  assert.equal(discarded.money,10,'Mail pays once directly and once through Blueprint')
  const round=state();add(round,'blueprint');add(round,'golden');round.score=E.target(round)-1;round.selected=[round.hand[0].uid];E.play(round)
- assert.equal(round.phase,'reward');assert.equal(round.roundReward.extra,8,'Golden Joker reward is copied for this game')
+ assert.equal(round.phase,'reward');assert.ok(!round.roundReward,'rewards wait for cashout')
+ assert.equal(E.previewReward(round).extra,8,'Golden Joker reward is copied for this game')
+ const paid=E.cashOut(round);assert.equal(paid.extra,8,'the copied reward is paid on cashout');assert.ok(!round.roundReward,'the payment marker clears after cashout')
  assert.equal(E.blueprintCanCopy('golden','roundReward'),true);assert.equal(E.blueprintCanCopy('trading','scoring'),false);assert.equal(E.blueprintCanCopy('trading','discard'),false)
 })
 test('Trading stays native-only for discard while retaining its native $3 trigger',()=>{
@@ -75,10 +77,10 @@ test('Trading stays native-only for discard while retaining its native $3 trigge
  assert.equal(s.deck.some(c=>c.uid===removed),false,'Trading still destroys the discarded card natively')
 })
 test('skipping score stays final and disabled after fullscreen re-render',()=>{
- const skipButton={disabled:false},chips={textContent:''},mult={textContent:''},label={textContent:''}
+ const skipButton={disabled:false},chips={textContent:''},mult={textContent:''},label={textContent:''},roundScore={textContent:''}
  const table=Object.create(PokerTable.prototype)
- table.root={contains:()=>true,querySelector:selector=>({'[data-action="skip-score"]':skipButton,'[data-chips]':chips,'[data-mult]':mult,'[data-score-event]':label}[selector]||null),querySelectorAll:()=>[]}
- table.anim={token:9,skipped:false,event:{chips:5,mult:2,source:'旧计分事件'},result:{name:'对子',cards:[],chips:1324,mult:4,total:5296}}
+ table.root={contains:()=>true,querySelector:selector=>({'[data-action="skip-score"]':skipButton,'[data-chips]':chips,'[data-mult]':mult,'[data-score-event]':label,'[data-round-score]':roundScore}[selector]||null),querySelectorAll:()=>[]}
+ table.anim={token:9,skipped:false,before:{score:40},event:{chips:5,mult:2,source:'旧计分事件'},result:{name:'对子',cards:[],chips:1324,mult:4,total:5296}}
  table.busy=true;table.immersive=false;table.scoreTimer=null;table.timers=new Set();table.audio={fx:()=>{}}
  table.clearScoreTimer=()=>{table.scoreTimer=null};table.later=(fn,ms)=>({fn,ms});table.showEffect=()=>{}
  table.fullscreen=()=>{table.immersive=true};table.render=()=>{table.renderedStage=table.playStage({})}
@@ -90,6 +92,7 @@ test('skipping score stays final and disabled after fullscreen re-render',()=>{
 
  assert.match(table.renderedStage,/data-action="skip-score"[^>]*disabled/,'fullscreen re-render keeps skip unavailable')
  assert.equal(chips.textContent,'1,324');assert.equal(mult.textContent,'4');assert.equal(label.textContent,'+5,296','fullscreen re-render reapplies the final score instead of the last animation tick')
+ assert.equal(roundScore.textContent,'5,336','skipping advances the visible round score before rewards appear')
 })
 const consumableAnimation=(operation,used,{initialState,realCardDetails=false,handSort='rank'}={})=>{
  const table=Object.create(PokerTable.prototype),queue=[],frames=[]
@@ -273,7 +276,7 @@ test('Blueprint only copies Golden Joker among blind-end reward effects',()=>{
   const s=state([14,13,12,11,9,8,4,2]);add(s,'blueprint');add(s,id)
   if(id==='satellite')s.planets=[{},{}]
   s.score=E.target(s)-1;s.selected=[s.hand[0].uid];E.play(s)
-  assert.equal(s.phase,'reward');assert.equal(s.roundReward.extra,expected,`${id} keeps its native single-trigger reward`)
+  assert.equal(s.phase,'reward');assert.equal(E.previewReward(s).extra,expected,`${id} keeps its native single-trigger reward`)
  }
 })
 test('Blueprint and Brainstorm keep their own editions when the copied ability is unavailable',()=>{
@@ -293,7 +296,7 @@ test('Blueprint copies Burglar on blind entry and Space Joker independently befo
 })
 test('Blueprint copies Mime at blind reward and Matador on a blocked Boss hand',()=>{
  const mime=state();add(mime,'blueprint');add(mime,'mime');mime.hand[2].enh=mime.deck[2].enh='gold'
- mime.score=E.target(mime)-1;play(mime,[1]);assert.equal(mime.roundReward.extra,9,'held Gold pays once plus two Mime retriggers')
+ mime.score=E.target(mime)-1;play(mime,[1]);assert.equal(E.previewReward(mime).extra,9,'held Gold pays once plus two Mime retriggers')
  assert.equal(E.blueprintCanCopy('matador','scoring'),true)
  const blocked=state();blocked.blind=2;blocked.boss='psychic';add(blocked,'blueprint');add(blocked,'matador')
  const money=blocked.money;play(blocked,[1]);assert.equal(blocked.money-money,16,'the blocked hand pays both Matador triggers')
@@ -369,32 +372,44 @@ test('red seals retrigger scoring; holographic joker editions add before effects
 test('Blue Seal creates a Planet only when still held as the blind ends',()=>{
  const unsealed=state();unsealed.score=E.target(unsealed)-1
  play(unsealed,[1]);assert.equal(unsealed.phase,'reward');assert.equal(unsealed.consumables.length,0,'winning without any Blue Seal creates no Planet')
- assert.equal(unsealed.roundReward.blueSealPlanets,0)
+ assert.equal(E.previewReward(unsealed).blueSealPlanets,0)
+ E.cashOut(unsealed);assert.equal(unsealed.consumables.length,0)
  const held=state();held.hand[0].seal=held.deck[0].seal='blue'
  play(held,[2]);assert.equal(held.phase,'play');assert.equal(held.consumables.length,0,'a regular play does not trigger the held Blue Seal')
  held.score=E.target(held)-1;play(held,[3])
- assert.equal(held.phase,'reward');assert.deepEqual(held.consumables.map(c=>[c.kind,c.id]),[['planet',held.lastResult.id]],'the winning play triggers the Blue Seal still in hand')
- assert.equal(held.roundReward.blueSealPlanets,1,'the reward records why the Planet appeared')
+ assert.equal(held.phase,'reward');assert.equal(held.consumables.length,0,'the Planet waits for cashout')
+ assert.equal(E.previewReward(held).blueSealPlanets,1,'the preview records why the Planet will appear')
+ const heldReward=E.cashOut(held)
+ assert.deepEqual(held.consumables.map(c=>[c.kind,c.id]),[['planet',held.lastResult.id]],'cashing out triggers the Blue Seal still in hand')
+ assert.equal(heldReward.blueSealPlanets,1,'the reward records why the Planet appeared')
 
  const played=state();played.hand[0].seal=played.deck[0].seal='blue';played.score=E.target(played)-1
  play(played,[1]);assert.equal(played.phase,'reward');assert.equal(played.consumables.length,0,'a Blue Seal played in the winning hand is no longer held')
- assert.equal(played.roundReward.blueSealPlanets,0)
+ assert.equal(E.previewReward(played).blueSealPlanets,0)
 })
 test('round stages enforce single cashout, single purchase, no double advancement',()=>{
- const s=state([10,11,12,13,14],[1,1,1,1,1]);play(s,[1,2,3,4,5]);assert.equal(s.phase,'reward');const money=s.money
- assert.throws(()=>E.play(s));E.cashOut(s);assert.equal(s.phase,'shop');assert.equal(s.money,money);assert.throws(()=>E.cashOut(s))
+ const s=state([10,11,12,13,14],[1,1,1,1,1]);play(s,[1,2,3,4,5]);assert.equal(s.phase,'reward')
+ const unpaid=s.money,preview=E.previewReward(s)
+ assert.ok(!s.roundReward,'rewards are only previewed before cashout')
+ assert.throws(()=>E.play(s))
+ const paidOut=E.cashOut(s);assert.equal(s.phase,'shop');assert.equal(s.money,unpaid+preview.total,'cashout pays the previewed reward exactly once')
+ assert.equal(paidOut.total,preview.total);assert.ok(!s.roundReward,'the marker clears so the next blind re-earns its reward');assert.throws(()=>E.cashOut(s))
  s.money=100;const card=s.shop.cards[0],fee=E.itemCost(s,card);E.buy(s,card.uid);assert.equal(s.money,100-fee);assert.throws(()=>E.buy(s,card.uid))
  E.nextBlind(s);assert.equal(s.phase,'select');assert.equal(s.blind,1);assert.throws(()=>E.nextBlind(s))
 })
 test('blind payout records played cards, then clears the table for the next screen',()=>{
  const s=state([14,14,13,12,10,8,4,2]);const played=s.hand.slice(0,5).map(c=>c.uid);s.score=E.target(s)-1;s.selected=played;E.play(s)
- assert.equal(s.phase,'reward');assert.ok(played.every(uid=>s.antePlayed.includes(uid)))
+ assert.equal(s.phase,'reward');assert.ok(s.hand.length,'the table stays until the player claims the reward')
+ E.cashOut(s)
+ assert.ok(played.every(uid=>s.antePlayed.includes(uid)))
  assert.deepEqual(s.hand,[]);assert.deepEqual(s.draw,[]);assert.deepEqual(s.spent,[]);assert.deepEqual(s.selected,[]);assert.equal(s.forced,null)
 })
 test('Pillar tracks only actually played cards across blinds',()=>{
  const s=state([14,13,12,10,8,6,4,2]),discarded=s.hand[0].uid,firstPlayed=s.hand[1].uid
  s.selected=[discarded];E.discard(s)
  s.score=E.target(s)-1;play(s,[firstPlayed])
+ assert.equal(s.antePlayed.includes(firstPlayed),false,'antePlayed updates only on cashout')
+ E.cashOut(s)
  assert.ok(s.antePlayed.includes(firstPlayed));assert.equal(s.antePlayed.includes(discarded),false)
  s.phase='select';s.blind=1;E.startBlind(s)
  s.phase='select';s.blind=2;s.boss='pillar';E.startBlind(s)
@@ -410,7 +425,8 @@ test('Pillar boss blind does not grey out the hand that defeats it',()=>{
  const before=E.clone(s),result=play(s,[winner])
  assert.equal(s.phase,'reward')
  assert.equal(E.debuffed(before,s.deck.find(c=>c.uid===winner)),false,'the winning hand was never played before this blind, so it scores normally')
- assert.equal(E.debuffed(s,s.deck.find(c=>c.uid===winner)),true,'the engine folds the winning hand into antePlayed once the blind is over')
+ assert.equal(s.antePlayed.includes(winner),false,'the winning hand is not folded into antePlayed before cashout')
+ E.cashOut(s);assert.ok(s.antePlayed.includes(winner),'the engine folds the winning hand into antePlayed once the blind is paid out')
  const table=Object.create(PokerTable.prototype)
  table.state=s;table.anim={before,result}
  const html=table.playStage(s)
@@ -424,7 +440,7 @@ test('actual pre-tracking v3 save resets contaminated Pillar history and resumes
  assert.ok(restored,'original v3 save remains loadable');assert.deepEqual(restored.antePlayed,[]);assert.deepEqual(restored.blindPlayed,[])
  assert.match(restored.notice,/支柱记录已重置/)
  E.cashOut(restored);E.nextBlind(restored);E.startBlind(restored)
- const played=restored.hand[0].uid;restored.score=E.target(restored)-1;restored.selected=[played];E.play(restored)
+ const played=restored.hand[0].uid;restored.score=E.target(restored)-1;restored.selected=[played];E.play(restored);E.cashOut(restored)
  assert.deepEqual(restored.antePlayed,[played],'only plays after migration are tracked for Pillar')
 })
 test('actual pre-tracking v3 mid-blind save warns even before antePlayed was populated',()=>{
@@ -440,7 +456,7 @@ test('Hook-discarded cards are not recorded as played for Pillar',()=>{
  const actuallyPlayed=s.hand[0].uid;play(s,[actuallyPlayed])
  const hookDiscarded=s.spent.map(c=>c.uid).filter(uid=>uid!==actuallyPlayed)
  assert.equal(hookDiscarded.length,2);assert.deepEqual(s.blindPlayed,[actuallyPlayed])
- s.score=E.target(s)-1;const nextPlayed=s.hand[0].uid;play(s,[nextPlayed])
+ s.score=E.target(s)-1;const nextPlayed=s.hand[0].uid;play(s,[nextPlayed]);E.cashOut(s)
  assert.ok(s.antePlayed.includes(actuallyPlayed));assert.ok(s.antePlayed.includes(nextPlayed))
  assert.ok(hookDiscarded.every(uid=>!s.antePlayed.includes(uid)))
 })
@@ -449,7 +465,7 @@ test('finisher Boss blinds pay $8 at every eighth Ante; regular Boss remains $5'
   const s=state();s.ante=ante;s.blind=2;s.stake=stake;s.disabledBoss=true
   assert.equal(E.blindReward(s,2),reward,`sidebar and blind-choice helper: ante ${ante}, stake ${stake}`)
   s.score=E.target(s)-1;play(s,[s.hand[0].uid])
-  assert.equal(s.phase,'reward');assert.equal(s.roundReward.reward,reward,`actual payout: ante ${ante}, stake ${stake}`)
+  assert.equal(s.phase,'reward');assert.equal(E.previewReward(s).reward,reward,`actual payout: ante ${ante}, stake ${stake}`)
  }
 })
 test('Fish hides post-play replacements but not post-discard replacements',()=>{
@@ -681,12 +697,78 @@ test('score animation waits until blind reward to reveal Blue Seal Planets',()=>
  const before=state(),after=E.clone(before)
  before.hand[0].seal=before.deck[0].seal=after.hand[0].seal=after.deck[0].seal='blue'
  after.score=E.target(after)-1;after.selected=[2];E.play(after)
- assert.equal(after.roundReward.blueSealPlanets,1)
+ assert.equal(after.phase,'reward');assert.equal(after.consumables.length,0,'the Planet is not granted before cashout')
+ assert.equal(E.previewReward(after).blueSealPlanets,1)
  const table=Object.create(PokerTable.prototype)
  table.state=after;table.actionFx=null;table.itemTile=c=>`<i data-consumable="${c.kind}:${c.id}"></i>`
  table.anim={before}
  assert.ok(!table.inventory(after).includes('data-consumable="planet:'),'the Planet is not shown before scoring finishes')
  table.anim=null
- assert.match(table.inventory(after),/data-consumable="planet:/)
- assert.match(table.reward(after),/蓝色蜡封留在手牌中：本轮结束获得 1 张星球牌/)
+ assert.match(table.reward(after),/蓝色蜡封留在手牌中：领取后获得 1 张星球牌/,'the reward page previews the pending Planet')
+ E.cashOut(after)
+ assert.match(table.inventory(after),/data-consumable="planet:/,'the Planet appears only after cashing out')
+})
+test('scoring visibly reaches the target before money and Blue Seal rewards appear',()=>{
+ const before=state([14,13,12,10,8]),queue=[]
+ before.money=7;before.hand[0].seal=before.deck[0].seal='blue';before.selected=[2]
+ add(before,'stuntman');add(before,'stuntman');add(before,'golden')
+ const expiring=add(before,'seltzer');expiring.value=1
+ const table=Object.create(PokerTable.prototype)
+ table.state=before;table.sort='custom';table.settings={sound:false,music:false,fast:false}
+ table.anim=null;table.actionFx=null;table.busy=false;table.timers=new Set();table.scoreTimer=null;table.scoreToken=0
+ table.audio={fx:()=>{}};table.persist=()=>{};table.showEffect=()=>{}
+ table.root={querySelector:()=>null,querySelectorAll:()=>[]}
+ table.render=()=>{};table.later=fn=>{const timer={fn};queue.push(timer);return timer}
+ const previousWindow=globalThis.window
+ globalThis.window={matchMedia:()=>({matches:false})}
+ try{table.animatePlay()}finally{globalThis.window=previousWindow}
+ assert.equal(table.state.phase,'reward','the winning play reaches the reward stage before playback')
+ assert.equal(table.anim.displayScore,before.score)
+ assert.equal(table.state.money,before.money,'money waits for cashout')
+ assert.equal(E.previewReward(table.state).blueSealPlanets,1)
+ const pending=table.game()
+ assert.match(pending,/<div class="bp-money">\$7<\/div>/,'the wallet stays at the pre-play amount')
+ assert.match(pending,/<b data-round-score>0<\/b>/,'the score has not started moving')
+ assert.match(pending,new RegExp(`data-visual="${expiring.uid}"`),'a Joker that expires this play remains visible while scoring')
+ assert.doesNotMatch(pending,/盲注击破|蓝色蜡封留在手牌中/,'rewards are not presented early')
+ assert.doesNotMatch(pending,/种子 REGRESSION/,'the deck footer still belongs to the play phase')
+ queue.shift().fn()
+ assert.ok(table.anim.displayScore>before.score,'the first scoring event advances the visible round score')
+ assert.ok(table.anim.displayScore<E.target(before),'the first event has not yet beaten the blind')
+ assert.match(table.game(),/<div class="bp-money">\$7<\/div>/,'scoring events do not reveal final money')
+ let steps=0,reachedTargetBeforeReward=false
+ while(table.anim&&steps++<100){
+  assert.ok(queue.length,'animation has a pending timer');queue.shift().fn()
+  if(table.anim){
+   const frame=table.game()
+   assert.match(frame,/<div class="bp-money">\$7<\/div>/)
+   assert.doesNotMatch(frame,/盲注击破|蓝色蜡封留在手牌中/)
+   if(table.anim.displayScore>=E.target(before))reachedTargetBeforeReward=true
+  }
+ }
+ assert.equal(table.anim,null,'the score animation completes')
+ assert.ok(steps<100,'the score animation terminates')
+ assert.equal(reachedTargetBeforeReward,true,'the target score appears before the reward stage')
+ const settled=table.game()
+ assert.match(settled,/<h2>盲注击破<\/h2>/)
+ assert.ok(settled.includes(`<b data-round-score>${table.state.score.toLocaleString('en-US')}</b>`))
+ assert.ok(settled.includes(`<div class="bp-money">$${table.state.money}</div>`))
+ assert.doesNotMatch(settled,new RegExp(`data-visual="${expiring.uid}"`),'expired Jokers disappear only after scoring completes')
+ assert.match(settled,/蓝色蜡封留在手牌中：领取后获得 1 张星球牌/)
+ E.cashOut(table.state)
+ assert.ok(table.state.money>before.money,'rewards land in the wallet on cashout')
+ assert.equal(table.state.consumables.filter(c=>c.kind==='planet').length,1,'the Blue Seal Planet appears on cashout')
+})
+test('Gold Seal cash stays visually pending even when the blind is not defeated',()=>{
+ const before=state([14,13,12])
+ before.money=7;before.hand[0].seal=before.deck[0].seal='gold';before.selected=[1]
+ const after=E.clone(before)
+ const result=E.play(after)
+ assert.equal(after.phase,'play');assert.equal(after.money,10)
+ const table=Object.create(PokerTable.prototype)
+ table.state=after;table.sort='custom';table.settings={sound:false,music:false};table.busy=true;table.actionFx=null
+ table.anim={before,result,event:result.events[0],displayScore:before.score}
+ assert.match(table.game(),/<div class="bp-money">\$7<\/div>/)
+ table.anim=null;table.busy=false
+ assert.match(table.game(),/<div class="bp-money">\$10<\/div>/)
 })

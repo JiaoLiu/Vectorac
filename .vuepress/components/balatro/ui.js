@@ -357,7 +357,8 @@ export default class PokerTable {
       if(pack){this.animatePackOpening(ops[action],pack);return}
       if(action==='pack-choose'&&used&&['card','joker'].includes(used.kind)){this.animatePackChoice(ops[action],used);return}
       if(used&&(action==='use'&&used.kind!=='planet'||action==='pack-choose'&&['tarot','spectral','planet'].includes(used.kind))){this.animateConsumable(ops[action],used);return}
-      this.transact(ops[action]);this.modal=null;this.audio.fx(action==='use'?used?.kind==='planet'?'planet':'magic':['buy','cash','sell'].includes(action)?'coin':'deal')
+      const transacted=this.transact(ops[action]);this.modal=null;this.audio.fx(action==='use'?used?.kind==='planet'?'planet':'magic':['buy','cash','sell'].includes(action)?'coin':'deal')
+      if(action==='cash'&&transacted&&transacted.total)this.showEffect(`领取奖励 · 入账 $${num(transacted.total)}`)
       if(this.state.notice){this.toast=this.state.notice;delete this.state.notice}
       this.render()
       if(used){
@@ -511,7 +512,7 @@ export default class PokerTable {
     const before=E.clone(this.state);before.hand=E.clone(this.orderedHand())
     const result=this.transact(E.play)
     const token=++this.scoreToken
-    this.busy=true;this.anim={before,result,event:result.events[0],index:0,token,skipped:false};this.render()
+    this.busy=true;this.anim={before,result,event:result.events[0],displayScore:before.score,index:0,token,skipped:false};this.render()
     const events=result.events.length>22?result.events.filter((event,i)=>i===0||i===result.events.length-1||i%Math.ceil(result.events.length/20)===0||event.source.includes('：生成')):result.events
     const reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
     const tickDelay=reduced?95:this.settings.fast?145:280
@@ -554,6 +555,12 @@ export default class PokerTable {
   updateScore(event){
     const chips=this.root.querySelector('[data-chips]'),mult=this.root.querySelector('[data-mult]'),label=this.root.querySelector('[data-score-event]')
     if(chips)chips.textContent=num(event.chips);if(mult)mult.textContent=num(event.mult);if(label)label.textContent=event.source
+    if(this.anim){
+      const progress=Math.max(0,Math.floor(event.chips*event.mult))
+      this.anim.displayScore=this.anim.before.score+Math.min(this.anim.result.total,progress)
+      const roundScore=this.root.querySelector('[data-round-score]')
+      if(roundScore)roundScore.textContent=num(this.anim.displayScore)
+    }
     if(event.uid&&(event.c||event.m||event.x&&event.x!==1))this.showEffect(`${event.source} · ${event.x&&event.x!==1?`倍率 ×${num(event.x)}`:event.m?`倍率 +${num(event.m)}`:`筹码 +${num(event.c)}`}`)
     this.root.querySelectorAll('.bp-trigger').forEach(el=>el.classList.remove('bp-trigger'))
     if(event.uid){const el=this.root.querySelector(`[data-visual="${event.uid}"]`);if(el){void el.offsetWidth;el.classList.add('bp-trigger')}}
@@ -594,7 +601,7 @@ export default class PokerTable {
   }
   art(card,hidden=false){if(card.kind==='joker')return jokerArt(card,hidden);if(card.kind==='pack'){const pack=boosterPack(card.id);return packArt(pack.family,pack.size)}return card.kind==='card'?playingCard(card):consumableArt(card)}
   itemTile(card,mode='owned',options={}){
-    const s=this.state,hidden=mode==='owned'&&s&&s.phase==='play'&&s.blind===2&&s.boss==='acorn'&&!s.disabledBoss&&!E.has(s,'chicot')&&card.kind==='joker',name=hidden?'翻面的小丑':this.itemName(card),description=hidden?'琥珀橡果：本轮小丑翻面并打乱':this.itemDesc(card)
+    const s=this.anim?this.anim.before:this.state,hidden=mode==='owned'&&s&&s.phase==='play'&&s.blind===2&&s.boss==='acorn'&&!s.disabledBoss&&!E.has(s,'chicot')&&card.kind==='joker',name=hidden?'翻面的小丑':this.itemName(card),description=hidden?'琥珀橡果：本轮小丑翻面并打乱':this.itemDesc(card)
     const cost=s?E.itemCost(s,card):0
     const hint=mode==='owned'&&!hidden?cardCue(s,card):null,ready=hint&&hint.ready&&!this.busy
     const jokerFx=this.actionFx?.phase==='after'&&(this.actionFx.changedJokerUIDs?.includes(card.uid)||this.actionFx.addedJokerUIDs?.includes(card.uid))?'bp-fx-joker-upgrade':''
@@ -615,7 +622,7 @@ export default class PokerTable {
     const hiddenPreview=!!(p&&p.unknown)
     const chips=this.anim?this.anim.event.chips:p&&!hiddenPreview?p.chips:0,mult=this.anim?this.anim.event.mult:p&&!hiddenPreview?p.mult:0
     const chipsLabel=hiddenPreview?'?':num(chips),multLabel=hiddenPreview?'?':num(mult)
-    return `<aside class="bp-sidebar"><div class="bp-brand"><b>小丑牌</b><span>BALATRO</span></div><section class="bp-blind-panel"><div class="bp-blind-label"><span class="bp-chip-icon">${s.blind===2?'✦':'$'}</span><b>${blindName}</b></div><small>至少获得</small><strong class="bp-target">${num(E.target(s))}</strong><small>分数 · 奖励 $${E.blindReward(s)}</small>${s.blind===2?`<p class="bp-boss-rule">${esc(boss.desc)}</p>`:''}</section><div class="bp-round-score"><span>本轮得分</span><b>${num(this.anim?this.anim.before.score:s.score)}</b></div><div class="bp-calculator ${hiddenPreview?'bp-calculator-hidden':''}"><div class="bp-hand-name">${p?(hiddenPreview?'暗牌 · 牌型未知':p.name):'选择牌型'} ${p&&!hiddenPreview?`<small>Lv.${s.levels[p.id]}</small>`:''}</div><div class="bp-equation"><strong data-chips>${chipsLabel}</strong><span>×</span><strong data-mult>${multLabel}</strong></div><small>${this.anim?'正在结算…':hiddenPreview?'暗牌信息隐藏':'基础筹码 × 基础倍率'}</small></div><div class="bp-counters"><div><span>出牌</span><b class="bp-blue-text">${s.hands}</b></div><div><span>弃牌</span><b class="bp-red-text">${s.discards}</b></div></div><div class="bp-money">$${num(s.money)}</div><div class="bp-progress"><div><span>底注</span><b>${s.ante}<small>/8</small></b></div><div><span>回合</span><b>${s.round}</b></div></div><div class="bp-side-actions">${button('hands','牌型','bp-blue')}${button('menu','选项','bp-red')}</div></aside>`
+    return `<aside class="bp-sidebar"><div class="bp-brand"><b>小丑牌</b><span>BALATRO</span></div><section class="bp-blind-panel"><div class="bp-blind-label"><span class="bp-chip-icon">${s.blind===2?'✦':'$'}</span><b>${blindName}</b></div><small>至少获得</small><strong class="bp-target">${num(E.target(s))}</strong><small>分数 · 奖励 $${E.blindReward(s)}</small>${s.blind===2?`<p class="bp-boss-rule">${esc(boss.desc)}</p>`:''}</section><div class="bp-round-score"><span>本轮得分</span><b data-round-score>${num(this.anim?this.anim.displayScore:s.score)}</b></div><div class="bp-calculator ${hiddenPreview?'bp-calculator-hidden':''}"><div class="bp-hand-name">${p?(hiddenPreview?'暗牌 · 牌型未知':p.name):'选择牌型'} ${p&&!hiddenPreview?`<small>Lv.${s.levels[p.id]}</small>`:''}</div><div class="bp-equation"><strong data-chips>${chipsLabel}</strong><span>×</span><strong data-mult>${multLabel}</strong></div><small>${this.anim?'正在结算…':hiddenPreview?'暗牌信息隐藏':'基础筹码 × 基础倍率'}</small></div><div class="bp-counters"><div><span>出牌</span><b class="bp-blue-text">${s.hands}</b></div><div><span>弃牌</span><b class="bp-red-text">${s.discards}</b></div></div><div class="bp-money">$${num(s.money)}</div><div class="bp-progress"><div><span>底注</span><b>${s.ante}<small>/8</small></b></div><div><span>回合</span><b>${s.round}</b></div></div><div class="bp-side-actions">${button('hands','牌型','bp-blue')}${button('menu','选项','bp-red')}</div></aside>`
   }
   inventory(s){
     const lost=this.actionFx?.phase==='after'?this.actionFx.removedJokers:[]
@@ -643,7 +650,7 @@ export default class PokerTable {
       const sealTarget=fx?.sealUID===c.uid,fxClass=gather?'bp-fx-gather':deal?'bp-fx-deal':destroy?'bp-fx-destroy':removed?'bp-fx-mark':sealTarget&&fx.phase==='cast'?'bp-fx-seal-pending':changed?fx.phase==='reveal'?'bp-fx-reveal':fx.phase==='cast'?'bp-fx-shake':'' :''
       const sealFx=sealTarget&&fx.phase==='reveal',sealKind=fx?.finalCards?.get(c.uid)?.seal||'gold'
       const destroyDelay=destroy?fx.removedUIDs.indexOf(c.uid)*95:index*65
-      return `<div class="bp-hand-card">${this.cardButton(display,{selected:s.selected.includes(c.uid),disabled:this.busy||s.phase!=='play'&&!s.pack,hidden:c.hidden,fxClass,sealFx,sealKind,fxDelay:`${destroyDelay}ms`})}</div>`
+      return `<div class="bp-hand-card">${this.cardButton(display,{selected:s.selected.includes(c.uid),disabled:this.busy||s.phase!=='play'&&!s.pack,hidden:c.hidden,fxClass,sealFx,sealKind,fxDelay:`${destroyDelay}ms`,state:s})}</div>`
     }).join('')}</div><div class="bp-play-controls">${button('play','出牌','bp-blue',this.busy||s.phase!=='play'||!s.selected.length||!!s.pack)}<span>${this.anim?'正在结算…':this.busy?'正在展示效果…':s.pack?'先选目标，再点击包中的「使用」':'最多选择 5 张牌'}</span>${button('discard','弃牌','bp-red',this.busy||s.phase!=='play'||!s.selected.length||s.discards<=0||!!s.pack)}</div></div>`
   }
   playStage(s){
@@ -652,7 +659,7 @@ export default class PokerTable {
     if(this.anim)return `<div class="bp-play-stage"><div class="bp-score-label" data-score-event>${this.anim.result.name}</div><div class="bp-scoring-cards">${this.anim.result.cards.map(c=>this.cardButton(c,{disabled:true,state:this.anim.before})).join('')}</div><span class="bp-stage-hint">扑克牌 → 留手效果 → 小丑牌</span>${button('skip-score','跳过本次结算','bp-quiet',this.anim.skipped)}</div>`
     return `<div class="bp-play-stage"><div class="bp-table-emblem">♠<span>PLAY YOUR HAND</span></div>${s.lastResult?`<div class="bp-last-hand"><span>上一手 · ${s.lastResult.name}</span><b>+${num(s.lastResult.total)}</b></div>`:`<p class="bp-stage-hint">选择手牌，组合牌型<br>小丑牌让每一手牌都不一样。</p>`}${s.blind===2?`<div class="bp-live-boss">✦ ${esc(byId(BOSSES,s.boss).desc)}</div>`:''}</div>`
   }
-  reward(s){const r=s.roundReward;return `<div class="bp-result"><span class="bp-eyebrow">BLIND DEFEATED</span><h2>盲注击破</h2><div class="bp-result-score">${num(s.score)} <small>分</small></div><div class="bp-receipt"><div><span>盲注奖励</span><b>$${r.reward}</b></div><div><span>剩余出牌</span><b>$${r.hands}</b></div><div><span>利息</span><b>$${r.interest}</b></div>${r.extra?`<div><span>卡牌与牌组奖励</span><b>$${r.extra}</b></div>`:''}<div class="bp-receipt-total"><span>本轮收入</span><b>$${r.total}</b></div></div>${r.blueSealPlanets?`<p>蓝色蜡封留在手牌中：本轮结束获得 ${r.blueSealPlanets} 张星球牌。</p>`:''}${button('cash','领取奖励 →','bp-gold')}<small>奖励已入账，结算不会重复领取。</small></div>`}
+  reward(s){const r=s.roundReward||E.previewReward(s);return `<div class="bp-result"><span class="bp-eyebrow">BLIND DEFEATED</span><h2>盲注击破</h2><div class="bp-result-score">${num(s.score)} <small>分</small></div><div class="bp-receipt"><div><span>盲注奖励</span><b>$${r.reward}</b></div><div><span>剩余出牌</span><b>$${r.hands}</b></div><div><span>利息</span><b>$${r.interest}</b></div>${r.extra?`<div><span>卡牌与牌组奖励</span><b>$${r.extra}</b></div>`:''}<div class="bp-receipt-total"><span>本轮收入</span><b>$${r.total}</b></div></div>${r.blueSealPlanets?`<p>蓝色蜡封留在手牌中：领取后获得 ${r.blueSealPlanets} 张星球牌。</p>`:''}${button('cash','领取奖励 →','bp-gold')}<small>领取后奖励入账，进入商店。</small></div>`}
   shop(s){
     if(s.pack){
       const pack=boosterPack(s.pack.id||s.pack.kind),picksLeft=s.pack.picksLeft||pack.choose,picksMade=s.pack.picksMade||0,instruction=pack.action.includes('加入')?`选择 ${picksLeft} 张加入牌组`:`选择 ${picksLeft} 张立即使用`
@@ -662,7 +669,7 @@ export default class PokerTable {
   }
   end(s){const win=s.phase==='won';return `<div class="bp-result"><span class="bp-eyebrow">${win?'YOU WIN!':'GAME OVER'}</span><h2>${win?'底注 8 · 通关！':'本局结束'}</h2><div class="bp-result-score">${num(s.best)}<small>最高单手</small></div><p>${win?'继续挑战无尽模式，看看这副牌的极限。':`本轮得到 ${num(s.score)} 分，还差 ${num(E.target(s)-s.score)} 分。`}</p><div class="bp-receipt"><div><span>底注 / 回合</span><b>${s.ante} / ${s.round}</b></div><div><span>累计出牌</span><b>${s.totalHands}</b></div><div><span>种子</span><b>${esc(s.seed)}</b></div></div>${win?button('endless','继续无尽模式','bp-blue'):''}${button('restart','再来一局','bp-red')}</div>`}
   game(){
-    const s=this.state,withHand=(s.phase==='play'||s.pack&&['tarot','spectral'].includes(s.pack.kind)||!!this.anim)
+    const s=this.anim?this.anim.before:this.state,withHand=(s.phase==='play'||s.pack&&['tarot','spectral'].includes(s.pack.kind)||!!this.anim)
     const stage=this.anim?this.playStage(s):s.phase==='select'?this.blindSelection(s):s.phase==='play'?this.playStage(s):s.phase==='reward'?this.reward(s):s.phase==='shop'?this.shop(s):this.end(s)
     return `<div class="bp-game"><div class="bp-topbar"><span>♠ <b>小丑牌</b> <small>${esc(byId(DECKS,s.deckType).name)}</small></span><div>${button('menu','≡','bp-icon',false,'aria-label="游戏选项"')}${button('help','?','bp-icon',false,'aria-label="玩法帮助"')}${button('sound',this.settings.sound?'音效 开':'音效 关','bp-quiet')}${button('music',this.settings.music?'♫ 开':'♫ 关','bp-quiet',false,'aria-label="切换音乐"')}${button('fullscreen',this.immersive?'退出全屏':'进入全屏','bp-quiet')}</div></div><div class="bp-table">${this.sidebar(s)}<main class="bp-main">${this.inventory(s)}${this.cueStrip(s)}<div class="bp-stage ${withHand?'bp-has-hand':''}">${stage}</div>${withHand?this.hand(s):''}<footer class="bp-table-footer"><span data-deck-pile>${s.phase==='play'?`牌库 ${s.draw.length} · 已出 ${s.spent.length}`:`种子 ${esc(s.seed)}`}<small> · 自动保存</small></span>${button('deck',`查看牌组 ${s.deck.length} 张`,'bp-quiet')}</footer></main></div></div>`
   }

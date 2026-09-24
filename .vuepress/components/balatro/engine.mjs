@@ -126,29 +126,60 @@ export function makeJoker(s,id,ed=null) {
   const values={ice:100,popcorn:20,ramen:2,banana:3,constellation:1,hologram:1,vampire:1,glass:1,luckycat:1,wee:10,turtle:5,rocket:1,seltzer:10,madness:1,obelisk:1,campfire:1,hitroad:1,canio:1,yorick:1}
   return {uid:++s.uid,id,kind:'joker',edition:ed,value:values[id]||0,counter:0,suit:Math.floor(random(s)*4),rank:2+Math.floor(random(s)*13),hand:pick(s,HANDS.slice(0,9)).id,disabled:false}
 }
-function randomJoker(s,rarity) {
+function randomJoker(s,rarity,excluded=new Set()) {
   const roll=random(s), r=rarity || (roll<.7?1:roll<.95?2:3)
-  const pool=JOKERS.filter(j=>j.rarity===r&&(j.id!=='banana'||s.grosGone)&&(has(s,'showman')||!s.jokers.some(x=>x.id===j.id)))
-  return makeJoker(s,pick(s,pool.length?pool:JOKERS.filter(j=>j.rarity===r)).id,edition(s))
+  const repeat=has(s,'showman'), eligible=j=>(j.id!=='banana'||s.grosGone)&&(repeat||!s.jokers.some(x=>x.id===j.id)&&!excluded.has(j.id))
+  let pool=JOKERS.filter(j=>j.rarity===r&&eligible(j))
+  if(!pool.length)pool=JOKERS.filter(eligible)
+  if(!pool.length)pool=JOKERS.filter(j=>j.id!=='banana'||s.grosGone)
+  return makeJoker(s,pick(s,pool).id,edition(s))
 }
 function planet(s, excluded = new Set()) {
   const held = new Set(s.consumables.filter(c=>c.kind==='planet').map(c=>c.id))
-  const available = HANDS.filter(h=>!excluded.has(h.id)&&(has(s,'showman')||!held.has(h.id)))
+  const repeat=has(s,'showman')
+  let available = HANDS.filter(h=>repeat||!excluded.has(h.id)&&!held.has(h.id))
+  if(!available.length)available=HANDS.filter(h=>repeat||!excluded.has(h.id))
+  if(!available.length)available=HANDS
   const playable = available.filter(h=>HANDS.indexOf(h)<9||s.played[h.id]>0)
-  const chosen = pick(s,playable.length?playable:available.length?available:HANDS.filter(h=>!excluded.has(h.id)))
+  const chosen = pick(s,playable.length?playable:available)
   excluded.add(chosen.id)
   return item(s,'planet',chosen.id)
 }
-function tarot(s) { const pool=TAROTS.filter(t=>has(s,'showman')||!s.consumables.some(c=>c.kind==='tarot'&&c.id===t.id));return item(s,'tarot',pick(s,pool.length?pool:TAROTS).id) }
-function spectral(s) { return item(s,'spectral',pick(s,SPECTRALS.filter(x=>!['soul','blackhole'].includes(x.id))).id) }
+function tarot(s,excluded=new Set()) {
+  const repeat=has(s,'showman'),held=new Set(s.consumables.filter(c=>c.kind==='tarot').map(c=>c.id))
+  let pool=TAROTS.filter(t=>repeat||!held.has(t.id)&&!excluded.has(t.id))
+  if(!pool.length)pool=TAROTS.filter(t=>repeat||!excluded.has(t.id))
+  if(!pool.length)pool=TAROTS
+  return item(s,'tarot',pick(s,pool).id)
+}
+function spectral(s,excluded=new Set(),includeSpecial=false) {
+  const repeat=has(s,'showman'),held=new Set(s.consumables.filter(c=>c.kind==='spectral').map(c=>c.id))
+  const inScope=x=>includeSpecial||!['soul','blackhole'].includes(x.id)
+  let pool=SPECTRALS.filter(x=>inScope(x)&&(repeat||!held.has(x.id)&&!excluded.has(x.id)))
+  if(!pool.length)pool=SPECTRALS.filter(x=>inScope(x)&&(repeat||!excluded.has(x.id)))
+  if(!pool.length)pool=SPECTRALS.filter(inScope)
+  return item(s,'spectral',pick(s,pool).id)
+}
+function specialSpectral(s,excluded=new Set()) {
+  const repeat=has(s,'showman'),held=new Set(s.consumables.filter(c=>c.kind==='spectral').map(c=>c.id))
+  let pool=SPECTRALS.filter(x=>['soul','blackhole'].includes(x.id)&&(repeat||!held.has(x.id)&&!excluded.has(x.id)))
+  if(!pool.length)pool=SPECTRALS.filter(x=>repeat||!held.has(x.id)&&!excluded.has(x.id))
+  if(!pool.length)pool=SPECTRALS.filter(x=>['soul','blackhole'].includes(x.id))
+  return item(s,'spectral',pick(s,pool).id)
+}
 function packCardKey(c) {
   if(c.kind==='card')return `card:${c.rank}:${c.suit}:${c.enh||''}:${c.edition||''}:${c.seal||''}`
   return `${c.kind}:${c.id}`
 }
+function packUsedIds(used,kind) { const prefix=`${kind}:`;return new Set([...used].filter(key=>key.startsWith(prefix)).map(key=>key.slice(prefix.length))) }
 function distinctPackDraw(s,used,draw) {
-  if(has(s,'showman'))return draw()
   let card
-  do { card=draw() } while(used.has(packCardKey(card)))
+  for(let attempt=0;attempt<64;attempt++) {
+    card=draw(used)
+    const key=packCardKey(card)
+    if(has(s,'showman')&&['joker','tarot','planet','spectral'].includes(card.kind)||!used.has(key)) {used.add(key);return card}
+  }
+  // If a pool is genuinely exhausted, allow a duplicate instead of looping forever.
   used.add(packCardKey(card))
   return card
 }
@@ -409,8 +440,10 @@ export function play(s) {
   s.jokers=s.jokers.filter(j=>!(['ice','seltzer'].includes(j.id)&&j.value<=0))
   removeCards(s,result.destroy)
   s.lastResult=result
-  if(s.score>=target(s)){finishBlind(s);return result}
-  if(s.hands<=0||!s.hand.length&&!s.draw.length){if(has(s,'mrbones')&&s.score>=target(s)*.25){s.jokers.splice(s.jokers.findIndex(j=>j.id==='mrbones'),1);finishBlind(s)}else s.phase='lost';return result}
+  // 分数达标只切到结算页（phase='reward'），奖励在玩家点「领取奖励」（cashOut）时才入账，
+  // 避免结算动画还没播完，钱、星球牌等奖励就已提前到账。
+  if(s.score>=target(s)){s.phase='reward';return result}
+  if(s.hands<=0||!s.hand.length&&!s.draw.length){if(has(s,'mrbones')&&s.score>=target(s)*.25){s.jokers.splice(s.jokers.findIndex(j=>j.id==='mrbones'),1);s.phase='reward'}else s.phase='lost';return result}
   if(bossActive(s,'hook')){const discard=shuffle(s,s.hand).slice(0,2);s.spent.push(...discard);s.hand=s.hand.filter(c=>!discard.includes(c))}
   drawCards(s,bossActive(s,'serpent')?3:Math.max(0,handSize(s)-s.hand.length),'play')
   return result
@@ -438,27 +471,47 @@ export function discard(s) {
   if(!s.hand.length&&!s.draw.length)s.phase='lost'
 }
 export const blindReward = (s,blind=s.blind) => s.stake>=1&&blind===0?0:blind===2&&s.ante%8===0?8:([3,4,5][blind]||0)
-function finishBlind(s) {
+// 击败盲注后的奖励预览：纯计算、不改动 state。
+// 结算页（phase='reward'）在玩家点「领取奖励」前用它展示即将获得的奖励；
+// 真正入账发生在 cashOut → finishBlind，两处共用此函数保证数值一致。
+export function previewReward(s) {
   const reward=blindReward(s), hands=s.hands*(s.deckType==='green'?2:1),discardMoney=s.deckType==='green'?s.discards:0
   const interest=s.deckType==='green'?0:Math.min(owns(s,'tree')?20:owns(s,'seed')?10:5,Math.max(0,Math.floor(s.money/5))*(1+count(s,'tomoon')))
-  let extra=0,blueSealPlanets=0
+  let extra=0,blueSealPlanets=0,planetRoom=Math.max(0,consumableSlots(s)-s.consumables.length)
   const mimeTriggers=jokerTriggers(s,'scoring').filter(({j})=>j.id==='mime').length
   for(const c of s.hand) if(!debuffed(s,c)) {
     const repeat=1+mimeTriggers+Number(c.seal==='red')
     if(c.enh==='gold')extra+=3*repeat
-    if(c.seal==='blue')for(let i=0;i<repeat;i++)if(addConsumable(s,item(s,'planet',s.lastResult.id)))blueSealPlanets++
+    if(c.seal==='blue')for(let i=0;i<repeat;i++)if(planetRoom-->0)blueSealPlanets++
   }
   const rocketProgressed=new Set()
   for(const {slot,j} of jokerTriggers(s,'roundReward')) {
     if(!s.jokers.includes(slot)||!s.jokers.includes(j)||j.perished)continue
     if(j.id==='golden')extra+=4
-    if(j.id==='rocket'){if(s.blind===2&&!rocketProgressed.has(j.uid)){j.value+=2;rocketProgressed.add(j.uid)}extra+=j.value}
+    if(j.id==='rocket'){let v=j.value;if(s.blind===2&&!rocketProgressed.has(j.uid)){v+=2;rocketProgressed.add(j.uid)}extra+=v}
     if(j.id==='cloud')extra+=s.deck.filter(c=>c.rank===9&&c.enh!=='stone').length
     if(j.id==='satellite')extra+=s.planets.length
     if(j.id==='delayed'&&s.discarded===0)extra+=s.discards*2
   }
+  for(const j of s.jokers) if(j.rental)extra-=3
+  const total=reward+hands+interest+extra+discardMoney
+  return {reward,hands,interest,extra:extra+discardMoney,total,blueSealPlanets}
+}
+function finishBlind(s) {
+  const r=previewReward(s)
+  // 火箭在 Boss 盲注后成长（预览已按成长后数值计入奖励）。
+  const rocketProgressed=new Set()
+  for(const {slot,j} of jokerTriggers(s,'roundReward')) {
+    if(!s.jokers.includes(slot)||!s.jokers.includes(j)||j.perished)continue
+    if(j.id==='rocket'&&s.blind===2&&!rocketProgressed.has(j.uid)){j.value+=2;rocketProgressed.add(j.uid)}
+  }
+  // 蓝蜡封留手生成星球牌（数量已在预览中按槽位上限计算）。
+  const mimeTriggers=jokerTriggers(s,'scoring').filter(({j})=>j.id==='mime').length
+  for(const c of s.hand) if(!debuffed(s,c)&&c.seal==='blue') {
+    const repeat=1+mimeTriggers+Number(c.seal==='red')
+    for(let i=0;i<repeat;i++)addConsumable(s,item(s,'planet',s.lastResult.id))
+  }
   for(const j of s.jokers) {
-    if(j.rental)extra-=3
     if(j.perished)continue
     if(j.id==='egg')j.value+=3
     if(j.id==='popcorn')j.value-=4
@@ -472,8 +525,7 @@ function finishBlind(s) {
     j.suit=Math.floor(random(s)*4);j.rank=s.deck.length?pick(s,s.deck).rank:14;j.hand=pick(s,HANDS.slice(0,9)).id;j.disabled=false
   }
   s.jokers=s.jokers.filter(j=>!j.expired&&!(['popcorn','turtle','banana'].includes(j.id)&&j.value<=0))
-  const total=reward+hands+interest+extra+discardMoney
-  s.money+=total;s.earned+=total;s.roundReward={reward,hands,interest,extra:extra+discardMoney,total,blueSealPlanets}
+  s.money+=r.total;s.earned+=r.total;s.roundReward=r
   s.antePlayed=Array.from(new Set(s.antePlayed.concat(s.blindPlayed)))
   if(s.blind===2&&s.deckType==='anaglyph')s.tags.push('double')
   // The hand, draw pile, and played cards are returned to the deck between blinds.
@@ -483,8 +535,14 @@ function finishBlind(s) {
 }
 export function cashOut(s) {
   assert(s.phase==='reward','当前不能结算')
-  if(s.ante===8&&s.blind===2&&!s.endless){s.won=true;s.phase='won';return}
+  // 奖励在此刻才入账；旧存档在出牌时已入账（roundReward 存在），跳过避免重复领取。
+  if(!s.roundReward)finishBlind(s)
+  const r=s.roundReward
+  // 入账标记随结算完成清除，下一轮盲注的奖励重新累积。
+  s.roundReward=null
+  if(s.ante===8&&s.blind===2&&!s.endless){s.won=true;s.phase='won';return r}
   openShop(s)
+  return r
 }
 export function continueEndless(s) {assert(s.phase==='won','尚未通关');s.endless=true;openShop(s)}
 function cost(s,n) {return Math.max(1,Math.floor(n*(owns(s,'liquidation')?.5:owns(s,'clearance')?.75:1)))}
