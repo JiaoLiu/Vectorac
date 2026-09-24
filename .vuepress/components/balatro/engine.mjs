@@ -171,13 +171,14 @@ function packCardKey(c) {
   if(c.kind==='card')return `card:${c.rank}:${c.suit}:${c.enh||''}:${c.edition||''}:${c.seal||''}`
   return `${c.kind}:${c.id}`
 }
+const showmanRepeatKinds=new Set(['joker','tarot','planet','spectral'])
 function packUsedIds(used,kind) { const prefix=`${kind}:`;return new Set([...used].filter(key=>key.startsWith(prefix)).map(key=>key.slice(prefix.length))) }
 function distinctPackDraw(s,used,draw) {
   let card
   for(let attempt=0;attempt<64;attempt++) {
     card=draw(used)
     const key=packCardKey(card)
-    if(has(s,'showman')&&['joker','tarot','planet','spectral'].includes(card.kind)||!used.has(key)) {used.add(key);return card}
+    if(has(s,'showman')&&showmanRepeatKinds.has(card.kind)||!used.has(key)) {used.add(key);return card}
   }
   // If a pool is genuinely exhausted, allow a duplicate instead of looping forever.
   used.add(packCardKey(card))
@@ -563,7 +564,9 @@ function shopCards(s) {
       if(s.stake>=6&&!card.eternal&&random(s)<.3)card.perishable=5
       if(s.stake>=7&&random(s)<.3)card.rental=true
     }
-    if(!has(s,'showman')&&result.some(x=>x.id===card.id&&x.kind===card.kind)){i--;continue}
+    const duplicateNamedCard=showmanRepeatKinds.has(card.kind)&&!has(s,'showman')&&result.some(x=>x.kind===card.kind&&x.id===card.id)
+    const duplicatePlayingCard=card.kind==='card'&&result.some(x=>packCardKey(x)===packCardKey(card))
+    if(duplicateNamedCard||duplicatePlayingCard){i--;continue}
     result.push(card)
   }
   if(s.tags.includes('rare')){result[0]=randomJoker(s,3);result[0].free=true;s.tags.splice(s.tags.indexOf('rare'),1)}

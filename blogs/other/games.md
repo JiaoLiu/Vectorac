@@ -41,10 +41,10 @@
   </a>
 
   <a href="/blogs/other/cardforge.html" class="game-card">
-    <div class="game-card-cover"><img src="/img/games/balatro-cover.svg" alt="小丑牌：扑克、小丑与筹码倍率的组合" loading="lazy"></div>
+    <div class="game-card-cover"><img src="/img/games/balatro-cover.svg" alt="小丑牌：新版双面 J、Q、K 人头牌与筹码倍率" loading="lazy"></div>
     <div class="game-card-body">
       <div class="game-card-title">小丑牌</div>
-      <div class="game-card-desc">扑克 Roguelike · 小丑组合 · 盲注挑战 · 塔罗与星球</div>
+      <div class="game-card-desc">扑克 Roguelike · 双面 J/Q/K 人头牌 · 小丑组合 · 盲注挑战</div>
       <span class="game-card-btn">开始游戏</span>
     </div>
   </a>

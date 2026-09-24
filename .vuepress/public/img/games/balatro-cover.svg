@@ -1,22 +1,115 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540" role="img" aria-labelledby="title desc">
-<title id="title">小丑牌</title><desc id="desc">深绿牌桌上的黑桃 A、红桃 K 和小丑，构筑你的致胜牌组。</desc>
-<defs><radialGradient id="felt"><stop stop-color="#3f7159"/><stop offset="1" stop-color="#153c35"/></radialGradient><radialGradient id="glow"><stop stop-color="#e8bc77" stop-opacity=".25"/><stop offset="1" stop-color="#e8bc77" stop-opacity="0"/></radialGradient><filter id="shadow" x="-40%" y="-40%" width="190%" height="200%"><feDropShadow dx="6" dy="15" stdDeviation="10" flood-color="#092824" flood-opacity=".65"/></filter><pattern id="grain" width="5" height="5" patternUnits="userSpaceOnUse"><path d="M0 0H5M0 0V5" stroke="#e2dec0" stroke-opacity=".035"/></pattern></defs>
+<title id="title">小丑牌 · 双面 J、Q、K 人头牌</title>
+<desc id="desc">深绿色牌桌上展示新版双面杰克、皇后与国王牌面，构筑你的致胜牌组。</desc>
+<defs>
+  <radialGradient id="felt"><stop stop-color="#3f7159"/><stop offset="1" stop-color="#153c35"/></radialGradient>
+  <radialGradient id="glow"><stop stop-color="#e8bc77" stop-opacity=".25"/><stop offset="1" stop-color="#e8bc77" stop-opacity="0"/></radialGradient>
+  <filter id="shadow" x="-40%" y="-40%" width="190%" height="200%"><feDropShadow dx="6" dy="15" stdDeviation="10" flood-color="#092824" flood-opacity=".65"/></filter>
+  <pattern id="grain" width="5" height="5" patternUnits="userSpaceOnUse"><path d="M0 0H5M0 0V5" stroke="#e2dec0" stroke-opacity=".035"/></pattern>
+  <symbol id="court-jack" viewBox="0 0 120 168">
+    <rect x="1" y="1" width="118" height="166" rx="7" fill="#f6f1df" stroke="#ded8c8" stroke-width="2"/>
+    <rect x="4" y="4" width="112" height="160" rx="5" fill="none" stroke="#fff" stroke-opacity=".6"/>
+    <rect x="25" y="20" width="70" height="128" fill="#eae3c9" stroke="#287b75" stroke-width="2"/>
+    <g>
+      <path d="M27 82Q31 63 48 60L71 59Q89 62 94 82Z" fill="#287b75" stroke="#2d3941" stroke-width="2"/>
+      <path d="M35 79L48 64 61 79 73 63 86 79M49 61L62 77 73 61" fill="none" stroke="#ecd192" stroke-width="3"/>
+      <path d="M51 53L50 63 61 70 72 62 70 52Z" fill="#e8c7a0" stroke="#37414a" stroke-width="1.5"/>
+      <path d="M47 38Q49 28 61 28Q73 28 76 39L72 54Q62 63 51 54Z" fill="#f1d8b2" stroke="#37414a" stroke-width="1.7"/>
+      <path d="M44 38Q40 27 50 24L71 21Q81 22 79 36L72 38 69 31 53 37Z" fill="#235965" stroke="#d5ad60" stroke-width="2"/>
+      <path d="M53 26Q43 13 32 21Q38 16 47 33" fill="#e7d9a2" stroke="#344b50" stroke-width="1.5"/>
+      <path d="M54 43h5m9 0h5M59 52q5 3 10 0" fill="none" stroke="#353d44" stroke-width="1.7"/>
+      <path d="M31 45L40 76M28 68l15-5" fill="none" stroke="#e8d7ab" stroke-width="3"/>
+    </g>
+    <g transform="rotate(180 60 84)">
+      <path d="M27 82Q31 63 48 60L71 59Q89 62 94 82Z" fill="#287b75" stroke="#2d3941" stroke-width="2"/>
+      <path d="M35 79L48 64 61 79 73 63 86 79M49 61L62 77 73 61" fill="none" stroke="#ecd192" stroke-width="3"/>
+      <path d="M51 53L50 63 61 70 72 62 70 52Z" fill="#e8c7a0" stroke="#37414a" stroke-width="1.5"/>
+      <path d="M47 38Q49 28 61 28Q73 28 76 39L72 54Q62 63 51 54Z" fill="#f1d8b2" stroke="#37414a" stroke-width="1.7"/>
+      <path d="M44 38Q40 27 50 24L71 21Q81 22 79 36L72 38 69 31 53 37Z" fill="#235965" stroke="#d5ad60" stroke-width="2"/>
+      <path d="M53 26Q43 13 32 21Q38 16 47 33" fill="#e7d9a2" stroke="#344b50" stroke-width="1.5"/>
+      <path d="M54 43h5m9 0h5M59 52q5 3 10 0" fill="none" stroke="#353d44" stroke-width="1.7"/>
+      <path d="M31 45L40 76M28 68l15-5" fill="none" stroke="#e8d7ab" stroke-width="3"/>
+    </g>
+    <rect x="25" y="77" width="70" height="14" fill="#287b75" stroke="#e9d7a5"/>
+    <text x="60" y="88" text-anchor="middle" fill="#fff5dd" font-family="Georgia,serif" font-size="13" font-weight="bold">J</text>
+    <g fill="#232d35" font-family="Georgia,serif" text-anchor="middle"><text x="13" y="24" font-size="20" font-weight="bold">J</text><text x="13" y="42" font-size="17">♣</text></g>
+    <g transform="rotate(180 60 84)" fill="#232d35" font-family="Georgia,serif" text-anchor="middle"><text x="13" y="24" font-size="20" font-weight="bold">J</text><text x="13" y="42" font-size="17">♣</text></g>
+  </symbol>
+  <symbol id="court-queen" viewBox="0 0 120 168">
+    <rect x="1" y="1" width="118" height="166" rx="7" fill="#f6f1df" stroke="#ded8c8" stroke-width="2"/>
+    <rect x="4" y="4" width="112" height="160" rx="5" fill="none" stroke="#fff" stroke-opacity=".6"/>
+    <rect x="25" y="20" width="70" height="128" fill="#eae3c9" stroke="#ad4960" stroke-width="2"/>
+    <g>
+      <path d="M27 82Q29 62 47 58L73 58Q91 64 94 82Z" fill="#a83e58" stroke="#4a3443" stroke-width="2"/>
+      <path d="M35 81L46 62 59 77 74 62 86 81M48 64L61 76 73 64" fill="none" stroke="#f0ce8b" stroke-width="3"/>
+      <path d="M43 36Q39 28 48 25Q61 18 73 26Q83 31 79 43L81 65 72 59 71 41 50 43 49 61 40 66Z" fill="#352e3f" stroke="#5b4050" stroke-width="2"/>
+      <path d="M48 37Q51 30 61 30Q72 30 75 38L71 54Q61 64 51 54Z" fill="#f4d9b7" stroke="#4a3d44" stroke-width="1.7"/>
+      <path d="M49 32L52 23 60 28 68 20 74 31Z" fill="#f0ca6e" stroke="#664657" stroke-width="1.6"/><circle cx="67" cy="28" r="2.5" fill="#c13d55"/>
+      <path d="M53 43h5m9 0h5M58 52q4 3 8 0" fill="none" stroke="#584149" stroke-width="1.5"/>
+      <path d="M86 75L88 45" stroke="#47785c" stroke-width="2.5"/><path d="M88 39q-12-9-12 2t12 3q11 9 10-3t-10-2Z" fill="#ca4d63" stroke="#8b344b" stroke-width="1.5"/><circle cx="88" cy="41" r="3" fill="#f2cf84"/>
+    </g>
+    <g transform="rotate(180 60 84)">
+      <path d="M27 82Q29 62 47 58L73 58Q91 64 94 82Z" fill="#a83e58" stroke="#4a3443" stroke-width="2"/>
+      <path d="M35 81L46 62 59 77 74 62 86 81M48 64L61 76 73 64" fill="none" stroke="#f0ce8b" stroke-width="3"/>
+      <path d="M43 36Q39 28 48 25Q61 18 73 26Q83 31 79 43L81 65 72 59 71 41 50 43 49 61 40 66Z" fill="#352e3f" stroke="#5b4050" stroke-width="2"/>
+      <path d="M48 37Q51 30 61 30Q72 30 75 38L71 54Q61 64 51 54Z" fill="#f4d9b7" stroke="#4a3d44" stroke-width="1.7"/>
+      <path d="M49 32L52 23 60 28 68 20 74 31Z" fill="#f0ca6e" stroke="#664657" stroke-width="1.6"/><circle cx="67" cy="28" r="2.5" fill="#c13d55"/>
+      <path d="M53 43h5m9 0h5M58 52q4 3 8 0" fill="none" stroke="#584149" stroke-width="1.5"/>
+      <path d="M86 75L88 45" stroke="#47785c" stroke-width="2.5"/><path d="M88 39q-12-9-12 2t12 3q11 9 10-3t-10-2Z" fill="#ca4d63" stroke="#8b344b" stroke-width="1.5"/><circle cx="88" cy="41" r="3" fill="#f2cf84"/>
+    </g>
+    <rect x="25" y="77" width="70" height="14" fill="#ad4960" stroke="#e9d7a5"/>
+    <text x="60" y="88" text-anchor="middle" fill="#fff5dd" font-family="Georgia,serif" font-size="13" font-weight="bold">Q</text>
+    <g fill="#b63235" font-family="Georgia,serif" text-anchor="middle"><text x="13" y="24" font-size="20" font-weight="bold">Q</text><text x="13" y="42" font-size="17">♥</text></g>
+    <g transform="rotate(180 60 84)" fill="#b63235" font-family="Georgia,serif" text-anchor="middle"><text x="13" y="24" font-size="20" font-weight="bold">Q</text><text x="13" y="42" font-size="17">♥</text></g>
+  </symbol>
+  <symbol id="court-king" viewBox="0 0 120 168">
+    <rect x="1" y="1" width="118" height="166" rx="7" fill="#f6f1df" stroke="#ded8c8" stroke-width="2"/>
+    <rect x="4" y="4" width="112" height="160" rx="5" fill="none" stroke="#fff" stroke-opacity=".6"/>
+    <rect x="25" y="20" width="70" height="128" fill="#eae3c9" stroke="#594975" stroke-width="2"/>
+    <g>
+      <path d="M25 82Q28 59 47 57L74 57Q92 61 96 82Z" fill="#594975" stroke="#2d3341" stroke-width="2"/>
+      <path d="M31 80L43 59 50 78M77 78L83 58 91 80" fill="#f1e9d5" stroke="#c6aa71" stroke-width="2"/>
+      <path d="M43 62L60 78 78 62M35 81H87" fill="none" stroke="#e7bf70" stroke-width="4"/>
+      <path d="M49 48L47 61 60 70 73 60 71 47Z" fill="#2f343e" stroke="#303642" stroke-width="1.5"/>
+      <path d="M47 36Q49 27 61 27Q74 27 76 38L71 52Q62 58 51 51Z" fill="#eecfa8" stroke="#343b44" stroke-width="1.7"/>
+      <path d="M49 47Q53 51 57 48L60 53 64 48Q69 52 73 47L72 60 61 69 50 60Z" fill="#333842" stroke="#222d38" stroke-width="1.5"/>
+      <path d="M53 40h5m9 0h5" stroke="#303741" stroke-width="2"/>
+      <path d="M44 33L42 18 51 25 60 14 69 25 78 18 76 33Z" fill="#e4b958" stroke="#3c3e45" stroke-width="2"/><path d="M48 33H73" stroke="#fff0be" stroke-width="2"/><circle cx="60" cy="28" r="3" fill="#a34752"/>
+      <path d="M87 77V29M81 49h12" stroke="#d9b65f" stroke-width="4"/><circle cx="87" cy="26" r="5" fill="#e6c978" stroke="#594975" stroke-width="1.5"/>
+    </g>
+    <g transform="rotate(180 60 84)">
+      <path d="M25 82Q28 59 47 57L74 57Q92 61 96 82Z" fill="#594975" stroke="#2d3341" stroke-width="2"/>
+      <path d="M31 80L43 59 50 78M77 78L83 58 91 80" fill="#f1e9d5" stroke="#c6aa71" stroke-width="2"/>
+      <path d="M43 62L60 78 78 62M35 81H87" fill="none" stroke="#e7bf70" stroke-width="4"/>
+      <path d="M49 48L47 61 60 70 73 60 71 47Z" fill="#2f343e" stroke="#303642" stroke-width="1.5"/>
+      <path d="M47 36Q49 27 61 27Q74 27 76 38L71 52Q62 58 51 51Z" fill="#eecfa8" stroke="#343b44" stroke-width="1.7"/>
+      <path d="M49 47Q53 51 57 48L60 53 64 48Q69 52 73 47L72 60 61 69 50 60Z" fill="#333842" stroke="#222d38" stroke-width="1.5"/>
+      <path d="M53 40h5m9 0h5" stroke="#303741" stroke-width="2"/>
+      <path d="M44 33L42 18 51 25 60 14 69 25 78 18 76 33Z" fill="#e4b958" stroke="#3c3e45" stroke-width="2"/><path d="M48 33H73" stroke="#fff0be" stroke-width="2"/><circle cx="60" cy="28" r="3" fill="#a34752"/>
+      <path d="M87 77V29M81 49h12" stroke="#d9b65f" stroke-width="4"/><circle cx="87" cy="26" r="5" fill="#e6c978" stroke="#594975" stroke-width="1.5"/>
+    </g>
+    <rect x="25" y="77" width="70" height="14" fill="#594975" stroke="#e9d7a5"/>
+    <text x="60" y="88" text-anchor="middle" fill="#fff5dd" font-family="Georgia,serif" font-size="13" font-weight="bold">K</text>
+    <g fill="#232d35" font-family="Georgia,serif" text-anchor="middle"><text x="13" y="24" font-size="20" font-weight="bold">K</text><text x="13" y="42" font-size="17">♠</text></g>
+    <g transform="rotate(180 60 84)" fill="#232d35" font-family="Georgia,serif" text-anchor="middle"><text x="13" y="24" font-size="20" font-weight="bold">K</text><text x="13" y="42" font-size="17">♠</text></g>
+  </symbol>
+</defs>
 <rect width="960" height="540" fill="url(#felt)"/><rect width="960" height="540" fill="url(#grain)"/>
-<ellipse cx="705" cy="240" rx="310" ry="255" fill="url(#glow)"/>
+<ellipse cx="704" cy="252" rx="320" ry="260" fill="url(#glow)"/>
 <rect x="22" y="22" width="916" height="496" rx="17" fill="none" stroke="#d9c08a" stroke-opacity=".35"/>
-<path d="M39 68V39H68M892 39H921V68M39 472V501H68M892 501H921V472" fill="none" stroke="#dbc595" stroke-width="2"/>
-<g fill="none" stroke="#cbbf8e" stroke-opacity=".13"><ellipse cx="704" cy="272" rx="200" ry="205" transform="rotate(-20 704 272)"/><ellipse cx="704" cy="272" rx="228" ry="229" transform="rotate(-20 704 272)"/></g>
-<g font-family="Georgia, 'PingFang SC', 'Microsoft YaHei', serif">
-<text x="66" y="122" font-size="18" fill="#c1cba9" letter-spacing="5">POKER ROGUELIKE</text>
-<text x="60" y="225" font-size="83" font-weight="900" fill="#f3e3b6" letter-spacing="11">小丑牌</text>
-<text x="65" y="279" font-size="22" fill="#c5d1b5" letter-spacing="4">构筑你的致胜牌组</text>
-<g transform="translate(65 333)"><rect width="130" height="52" rx="8" fill="#367c9b" stroke="#c2d5c0" stroke-opacity=".4"/><text x="65" y="34" text-anchor="middle" font-size="25" fill="#f2e8cd">筹码</text><text x="150" y="36" font-size="34" fill="#e2d7b1">×</text><rect x="181" width="130" height="52" rx="8" fill="#b95345" stroke="#e4bd91" stroke-opacity=".5"/><text x="246" y="34" text-anchor="middle" font-size="25" fill="#f9e4c4">倍率</text></g>
-<text x="67" y="451" font-size="17" fill="#b6c5a6" letter-spacing="3">盲注挑战 · 小丑连锁 · 逆转一手</text>
+<path d="M39 68V39H68M892 39H921V68M39 472V501H68M892 501V472H921" fill="none" stroke="#dbc595" stroke-width="2"/>
+<g fill="none" stroke="#cbbf8e" stroke-opacity=".12"><ellipse cx="704" cy="273" rx="202" ry="204" transform="rotate(-20 704 273)"/><ellipse cx="704" cy="273" rx="231" ry="230" transform="rotate(-20 704 273)"/></g>
+<g font-family="Georgia,'PingFang SC','Microsoft YaHei',serif">
+  <text x="66" y="122" font-size="18" fill="#c1cba9" letter-spacing="5">POKER ROGUELIKE</text>
+  <text x="60" y="225" font-size="83" font-weight="900" fill="#f3e3b6" letter-spacing="11">小丑牌</text>
+  <text x="65" y="279" font-size="22" fill="#c5d1b5" letter-spacing="4">构筑你的致胜牌组</text>
+  <g transform="translate(65 333)"><rect width="130" height="52" rx="8" fill="#367c9b" stroke="#c2d5c0" stroke-opacity=".4"/><text x="65" y="34" text-anchor="middle" font-size="25" fill="#f2e8cd">筹码</text><text x="150" y="36" font-size="34" fill="#e2d7b1">×</text><rect x="181" width="130" height="52" rx="8" fill="#b95345" stroke="#e4bd91" stroke-opacity=".5"/><text x="246" y="34" text-anchor="middle" font-size="25" fill="#f9e4c4">倍率</text></g>
+  <text x="67" y="451" font-size="16" fill="#b6c5a6" letter-spacing="2">盲注挑战 · 小丑连锁 · 双面 J/Q/K</text>
 </g>
 <g filter="url(#shadow)">
-<g transform="translate(465 172) rotate(-17 100 140) scale(1.6)"><rect x="1" y="1" width="118" height="166" rx="7" fill="#f6f1df" stroke="#ded8c8" stroke-width="2"/><rect x="4" y="4" width="112" height="160" rx="5" fill="none" stroke="#fff" stroke-opacity=".6"/><g fill="#232d35" color="#232d35" class="bp-pips"><g ><text x="60" y="104.8" font-family="Georgia, serif" font-size="60" text-anchor="middle" fill="#232d35" >♠</text></g><text x="60" y="128" font-family="Georgia, serif" font-size="7" text-anchor="middle" fill="#232d35" >ACE OF SPADES</text></g><g><text x="13" y="24" font-family="Georgia, serif" font-size="17" text-anchor="middle" fill="#232d35" font-weight="bold">A</text><text x="13" y="42" font-family="Georgia, serif" font-size="17" text-anchor="middle" fill="#232d35" >♠</text></g><g transform="rotate(180 60 84)"><text x="13" y="24" font-family="Georgia, serif" font-size="17" text-anchor="middle" fill="#232d35" font-weight="bold">A</text><text x="13" y="42" font-family="Georgia, serif" font-size="17" text-anchor="middle" fill="#232d35" >♠</text></g></g>
-<g transform="translate(711 163) rotate(17 95 140) scale(1.6)"><rect x="1" y="1" width="118" height="166" rx="7" fill="#f6f1df" stroke="#ded8c8" stroke-width="2"/><rect x="4" y="4" width="112" height="160" rx="5" fill="none" stroke="#fff" stroke-opacity=".6"/><g fill="#b63235" color="#b63235" class="bp-pips"><rect x="25" y="20" width="70" height="128" fill="#eae3c9" stroke="#b63235"/><g><path d="M27 82Q30 65 47 61L70 60Q86 64 94 84" fill="#b63235" stroke="#283342" stroke-width="2"/><path d="M37 81L45 65 77 80M64 65L56 84" fill="#dcb657" stroke="#eee0a8" stroke-width="2"/><path d="M46 63L49 51 68 49 74 66 61 76Z" fill="#efd5ac" stroke="#333e49" stroke-width="1.4"/><path d="M46 42Q46 27 61 26Q77 28 75 45L69 56 54 57Z" fill="#efd5ac" stroke="#333e49" stroke-width="1.4"/><path d="M47 40L51 31 72 34 74 43 78 48 69 48" fill="none" stroke="#333e49" stroke-width="2"/><path d="M57 43h4m7 0h3M61 50l6 1" stroke="#333e49" stroke-width="1.5"/><path d="M52 50L54 60 65 64 72 52 62 55Z" fill="#333e49"/><path d="M45 32L44 22 53 27 60 19 66 27 75 22 73 34Z" fill="#d5a943" stroke="#333e49" stroke-width="1.5"/><path d="M86 75V28" stroke="#405d6c" stroke-width="4"/><path d="M79 51h14" stroke="#cb9c37" stroke-width="4"/><path d="M30 83H91" stroke="#e2c469" stroke-width="3"/></g><g transform="rotate(180 60 84)"><path d="M27 82Q30 65 47 61L70 60Q86 64 94 84" fill="#b63235" stroke="#283342" stroke-width="2"/><path d="M37 81L45 65 77 80M64 65L56 84" fill="#dcb657" stroke="#eee0a8" stroke-width="2"/><path d="M46 63L49 51 68 49 74 66 61 76Z" fill="#efd5ac" stroke="#333e49" stroke-width="1.4"/><path d="M46 42Q46 27 61 26Q77 28 75 45L69 56 54 57Z" fill="#efd5ac" stroke="#333e49" stroke-width="1.4"/><path d="M47 40L51 31 72 34 74 43 78 48 69 48" fill="none" stroke="#333e49" stroke-width="2"/><path d="M57 43h4m7 0h3M61 50l6 1" stroke="#333e49" stroke-width="1.5"/><path d="M52 50L54 60 65 64 72 52 62 55Z" fill="#333e49"/><path d="M45 32L44 22 53 27 60 19 66 27 75 22 73 34Z" fill="#d5a943" stroke="#333e49" stroke-width="1.5"/><path d="M86 75V28" stroke="#405d6c" stroke-width="4"/><path d="M79 51h14" stroke="#cb9c37" stroke-width="4"/><path d="M30 83H91" stroke="#e2c469" stroke-width="3"/></g></g><g><text x="13" y="24" font-family="Georgia, serif" font-size="17" text-anchor="middle" fill="#b63235" font-weight="bold">K</text><text x="13" y="42" font-family="Georgia, serif" font-size="17" text-anchor="middle" fill="#b63235" >♥</text></g><g transform="rotate(180 60 84)"><text x="13" y="24" font-family="Georgia, serif" font-size="17" text-anchor="middle" fill="#b63235" font-weight="bold">K</text><text x="13" y="42" font-family="Georgia, serif" font-size="17" text-anchor="middle" fill="#b63235" >♥</text></g></g>
-<g transform="translate(588 88) rotate(-3 102 143) scale(1.7)"><rect x="1" y="1" width="118" height="166" rx="7" fill="#eee4c7" stroke="#d3c7a9" stroke-width="2"/><rect x="7" y="7" width="106" height="154" rx="3" fill="hsl(3,25%,69%)"/><path d="M8 8L112 160M8 46L85 160M34 8L112 123M8 160L112 8M8 123L86 8M33 160L112 46" stroke="#f5eccc" stroke-width="1" opacity=".23"/><rect x="14" y="24" width="92" height="116" fill="none" stroke="#faf1d6" stroke-width="2"/><text x="60" y="19" font-family="Georgia, serif" font-size="9" text-anchor="middle" fill="#24363c" font-weight="bold">J O K E R</text><path d="M26 68Q14 29 39 43L56 24 73 43Q101 24 95 69L82 56 69 62 55 46 44 67Z" fill="hsl(3,55%,46%)" stroke="#273b43" stroke-width="3"/><circle cx="27" cy="66" r="5" fill="#e9c967"/><circle cx="56" cy="25" r="5" fill="#e9c967"/><circle cx="95" cy="66" r="5" fill="#e9c967"/><path d="M39 61Q33 99 58 115Q85 102 82 60L65 67 55 53 45 70Z" fill="#f0d7af" stroke="#273b43" stroke-width="3"/><path d="M44 80l8-3m15 0 9 3M48 95Q61 106 74 92" fill="none" stroke="#293640" stroke-width="3"/><path d="M58 81L55 91 64 92" fill="none" stroke="#ba6960" stroke-width="2"/><path d="M34 122L43 108 58 118 76 108 87 123 71 121 60 135 46 121Z" fill="hsl(3,50%,42%)" stroke="#273b43" stroke-width="2"/><text x="60" y="153" font-family="Georgia, serif" font-size="8" text-anchor="middle" fill="#273a3b" >COMMON</text></g>
+  <svg x="462" y="152" width="174" height="244" viewBox="0 0 120 168" transform="rotate(-13 549 274)"><use href="#court-jack"/></svg>
+  <svg x="594" y="100" width="174" height="244" viewBox="0 0 120 168" transform="rotate(-1 681 222)"><use href="#court-queen"/></svg>
+  <svg x="728" y="152" width="174" height="244" viewBox="0 0 120 168" transform="rotate(13 815 274)"><use href="#court-king"/></svg>
 </g>
 <g fill="#e9cb7b"><path d="M848 90l4 13 13 4-13 4-4 13-4-13-13-4 13-4Z"/><path d="M515 117l3 9 9 3-9 3-3 9-3-9-9-3 9-3Z"/><circle cx="832" cy="423" r="3"/></g>
 </svg>

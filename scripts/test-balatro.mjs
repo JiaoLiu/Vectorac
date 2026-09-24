@@ -16,6 +16,21 @@ const state=(ranks=[14,14,13,12,10,8,4,2],suits=[])=>{
 }
 const add=(s,id,edition)=>{const j=E.makeJoker(s,id,edition);s.jokers.push(j);return j}
 const play=(s,ids)=>{s.selected=ids;return E.play(s)}
+const cardIdentity=c=>c.kind==='card'?`card:${c.rank}:${c.suit}:${c.enh||''}:${c.edition||''}:${c.seal||''}`:`${c.kind}:${c.id}`
+const boosterOffers=(seed,family,{showman=false,held=null}={})=>{
+ const s=E.newRun(seed);s.phase='shop';s.money=100
+ if(held){if(family==='joker')s.jokers.push({uid:900,kind:'joker',id:held});else s.consumables.push({uid:900,kind:family,id:held})}
+ if(showman)s.jokers.push({uid:901,kind:'joker',id:'showman'})
+ s.shop={cards:[],packs:[{uid:902,kind:'pack',id:`${family}-mega`}],voucher:null,rerolls:0,freeUsed:false}
+ E.buy(s,902);return s.pack.cards
+}
+const shopOffers=(seed,family,{showman=false,held=null,magicTrick=false}={})=>{
+ const s=E.newRun(seed,family==='spectral'?'ghost':'red');s.phase='shop';s.money=100;s.vouchers.push('overstock','plus')
+ if(magicTrick)s.vouchers.push('magictrick')
+ if(held&&!(family==='spectral'&&s.consumables.some(c=>c.kind===family&&c.id===held))){if(family==='joker')s.jokers.push({uid:900,kind:'joker',id:held});else s.consumables.push({uid:900,kind:family,id:held})}
+ if(showman)s.jokers.push({uid:901,kind:'joker',id:'showman'})
+ s.shop={cards:[],packs:[],voucher:null,rerolls:0,freeUsed:false};E.rerollShop(s);return s.shop.cards
+}
 
 test('all catalog identifiers are unique, full core card sets are present',()=>{
  assert.equal(JOKERS.length,150);assert.equal(TAROTS.length,22);assert.equal(SPECTRALS.length,18);assert.equal(VOUCHERS.length,32);assert.equal(DECKS.length,15);assert.equal(Object.keys(BOOSTER_PACKS).length,15)
@@ -37,6 +52,14 @@ test('J, Q and K have distinct double-ended art while indices and seals remain l
   assert.deepEqual(stack,[],`${names[rank]} SVG has unclosed tags`)
  }
  for(const rank of [11,12,13])assert.doesNotMatch(playingCard({rank,suit:0,seal:'blue'},true),/bp-court-|>P<\/text>/,'face-down cards reveal no court identity or seal')
+})
+test('the game introduction and gallery cover describe and show the refreshed J, Q and K art',()=>{
+ const cover=readFileSync(new URL('../.vuepress/public/img/games/balatro-cover.svg',import.meta.url),'utf8')
+ const intro=readFileSync(new URL('../blogs/other/cardforge.md',import.meta.url),'utf8')
+ const gallery=readFileSync(new URL('../blogs/other/games.md',import.meta.url),'utf8')
+ for(const court of ['jack','queen','king'])assert.match(cover,new RegExp(`id="court-${court}"`),`${court} appears in the cover`)
+ assert.match(cover,/新版双面杰克、皇后与国王牌面/);assert.match(intro,/新版双面人像牌面/)
+ assert.match(intro,/牌桌中央会显示它的效果与触发时机/);assert.match(gallery,/双面 J\/Q\/K 人头牌/)
 })
 const examples=[['high',[14,11,9,5,2]],['pair',[8,8,13,5,2]],['two',[8,8,4,4,2]],['three',[8,8,8,5,2]],['straight',[14,2,3,4,5]],['flush',[14,11,9,5,2],[1,1,1,1,1]],['full',[8,8,8,5,5]],['four',[8,8,8,8,2]],['sf',[5,6,7,8,9],[2,2,2,2,2]],['five',[8,8,8,8,8]],['ffull',[8,8,8,5,5],[1,1,1,1,1]],['ffive',[8,8,8,8,8],[0,0,0,0,0]]]
 for(const [id,ranks,suits]of examples)test(`poker classification: ${id}`,()=>assert.equal(E.evaluate(cards(ranks,suits)).id,id))
@@ -336,6 +359,19 @@ test('playing-card details share complete face, enhancement, edition and seal tr
  }
  assert.deepEqual(playingCardDetails({rank:14,suit:0,hidden:true}),[],'face-down cards reveal no card facts')
 })
+test('selected enhanced hand cards show concise effect reminders in the empty center table area',()=>{
+ const s=state([12,10,8],[1,0,2]);s.hand[0].enh=s.deck[0].enh='bonus';s.hand[0].seal=s.deck[0].seal='blue';s.selected=[s.hand[0].uid]
+ const table=Object.create(PokerTable.prototype);table.anim=null;table.busy=false
+ const stage=table.playStage(s)
+ assert.match(stage,/bp-selected-card-effects/);assert.match(stage,/红桃 Q/);assert.match(stage,/奖励牌/);assert.match(stage,/额外获得 30 筹码/)
+ assert.match(stage,/蓝色蜡封/);assert.match(stage,/生成一张对应上一手牌型的星球牌/)
+ assert.doesNotMatch(stage,/bp-last-hand/,'the table center uses its otherwise empty space for the selected card details')
+ s.hand[0].hidden=true
+ const concealed=table.playStage(s)
+ assert.doesNotMatch(concealed,/bp-selected-card-effects|蓝色蜡封|奖励牌/,'a face-down card never leaks its effects in the center reminder')
+ s.hand[0].hidden=false;s.hand[0].enh=null;s.hand[0].seal=null
+ assert.doesNotMatch(table.playStage(s),/bp-selected-card-effects/,'unmodified selected cards keep the table center clear')
+})
 test('pack and shop card descriptions spell out seal effects instead of bare names',()=>{
  assert.equal(playingCardSummary({rank:10,suit:1}),'标准扑克牌','plain cards stay short')
  const blue=playingCardSummary({rank:10,suit:1,seal:'blue'})
@@ -551,6 +587,35 @@ test('booster offer choices do not repeat the same card identity',()=>{
   const keys=s.pack.cards.map(c=>c.kind==='card'?`card:${c.rank}:${c.suit}:${c.enh||''}:${c.edition||''}:${c.seal||''}`:`${c.kind}:${c.id}`)
   assert.equal(new Set(keys).size,keys.length,`${pack.id}, seed ${seed}`)
  }
+})
+test('Showman allows held Jokers and consumables to return in shops, without affecting playing cards',()=>{
+ const showmanText=JOKERS.find(j=>j.id==='showman').desc
+ assert.match(showmanText,/小丑、塔罗、星球和幻灵牌/);assert.match(showmanText,/商店与补充包/);assert.match(showmanText,/不保证出现/)
+ const fixtures=[
+  ['joker','joker','SHOP-joker-32'],['tarot','fool','SHOP-tarot-34'],
+  ['planet','pair','SHOP-planet-24'],['spectral','hex','SHOP-spectral-1']
+ ]
+ for(const [kind,held,seed] of fixtures){
+  const repeated=shopOffers(seed,kind,{showman:true,held}).some(card=>card.kind===kind&&card.id===held)
+  const distinct=shopOffers(seed,kind,{held}).some(card=>card.kind===kind&&card.id===held)
+  assert.equal(repeated,true,`${kind} may reappear with Showman`);assert.equal(distinct,false,`${kind} held without Showman stays out of this shop`)
+ }
+ const withShowman=shopOffers('STANDARD-SHOP-0','joker',{showman:true,magicTrick:true}).filter(card=>card.kind==='card').map(cardIdentity)
+ const without=shopOffers('STANDARD-SHOP-0','joker',{magicTrick:true}).filter(card=>card.kind==='card').map(cardIdentity)
+ assert.deepEqual(withShowman,without,'Showman must not enable or suppress regular playing-card offers')
+ assert.equal(without.length,3,'different playing cards remain separate shop offers')
+})
+test('Showman permits named repeats inside matching Mega packs, but does not affect Standard packs',()=>{
+ const fixtures=[['joker','SHOWMAN-joker-6'],['tarot','SHOWMAN-tarot-0'],['planet','SHOWMAN-planet-1'],['spectral','SHOWMAN-spectral-0']]
+ for(const [kind,seed] of fixtures){
+  const repeated=boosterOffers(seed,kind,{showman:true}).map(cardIdentity)
+  const distinct=boosterOffers(seed,kind).map(cardIdentity)
+  assert.ok(new Set(repeated).size<repeated.length,`${kind} Mega pack can contain a repeated named card with Showman`)
+  assert.equal(new Set(distinct).size,distinct.length,`${kind} Mega pack stays distinct without Showman`)
+ }
+ const withShowman=boosterOffers('SHOWMAN-standard-48','standard',{showman:true}).map(cardIdentity)
+ const without=boosterOffers('SHOWMAN-standard-48','standard').map(cardIdentity)
+ assert.deepEqual(withShowman,without,'Showman has no effect on standard playing-card identities')
 })
 test('Mega booster packs allow two sequential picks across all five pack families',()=>{
  const fixtures={
