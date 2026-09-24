@@ -1873,7 +1873,10 @@ export default class ScmjUI {
     const w = slot.clientWidth
     const h = slot.clientHeight
     if (!w || !h) return
-    const size = Math.max(0, Math.min(w, h))
+    // 横屏矮屏：对家面板/操作栏改为浮层盖在中央区上下缘（见横屏断点），
+    // 牌墙让出顶 48（对家浮层）底 8（操作栏浮层），配合 CSS margin-top:40 定位
+    const landscapeShort = window.innerWidth > window.innerHeight && window.innerHeight <= 540
+    const size = Math.max(0, Math.min(w, h - (landscapeShort ? 56 : 0)))
     if (!size) return
     box.style.width = size + 'px'
     box.style.height = size + 'px'
@@ -1910,11 +1913,11 @@ export default class ScmjUI {
     const tileH = Math.max(8, Math.floor((size - 8 * GAP) / (COLS + 4 / TILE_ASPECT)))
     const tileW = Math.max(5, Math.floor(tileH / TILE_ASPECT))
     const inset = 2 * tileW + GAP
-    // 罗盘（含探出的风位圆牌）同比缩放，限制在内圈里且封顶 96px。
-    // 弃牌收进内圈后罗盘调小（0.34），给四堆弃牌留出平铺空间，
+    // 罗盘（含探出的风位圆牌）同比缩放，限制在内圈里且封顶 76px。
+    // 弃牌收进内圈后罗盘调小（0.30），给四堆弃牌留出平铺空间，
     // 弃牌多了自然伸到罗盘底下被盖住（z-index 罗盘 4 > 弃牌最高 3）。
     const inner = Math.max(0, size - 2 * inset)
-    const compass = Math.max(38, Math.min(88, Math.round(size * 0.34), inner))
+    const compass = Math.max(36, Math.min(76, Math.round(size * 0.30), inner))
     const left = Math.round((w - size) / 2)
     const top = Math.round((h - size) / 2)
     ring.style.left = left + 'px'

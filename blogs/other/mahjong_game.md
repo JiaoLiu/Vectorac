@@ -1830,22 +1830,32 @@ body.scmj-lock #cw-panel { display: none !important; }
   #scmjGame.scmj-fullscreen {
     padding: max(6px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
   }
-  #scmjGame .scmj-topbar { margin-bottom: 2px; }
-  #scmjGame .scmj-topbar-title { font-size: 12px; }
-  #scmjGame .scmj-topbar-btns .scmj-btn { min-height: 30px; padding: 3px 9px; font-size: 11.5px; }
+  #scmjGame .scmj-topbar { margin-bottom: 1px; }
+  #scmjGame .scmj-topbar-title { font-size: 11.5px; }
+  #scmjGame .scmj-topbar-btns .scmj-btn { min-height: 26px; padding: 2px 8px; font-size: 11.5px; }
   #scmjGame .scmj-portrait-tip { display: none !important; }
-  /* 中央行给个下限：屏幕再矮也不能把牌墙压成看不见的一条缝 */
-  /* 横屏矮屏最省竖向空间的排法：两侧收窄并贯穿到底，中央区两行全高
-     （弃牌已收进中央桌布，不再有自己的弃牌行）。 */
+  /* 横屏矮屏布局大改（2026-09-25）：对家面板行与操作栏都改为浮层，
+     中央区只留一行且吃满全部剩余高度——牌墙边长 110→200+，
+     桌心弃牌区（felt）随之翻倍，四家弃牌才摆得开、不互叠。 */
   #scmjGame .scmj-board {
+    position: relative; /* 对家浮层的定位基准 */
     grid-template-columns: 116px minmax(0, 1fr) 116px;
-    /* 中央行吃掉剩余空间，碰/杠出现副露时也不会把牌桌压扁 */
-    grid-template-rows: auto minmax(110px, 1fr);
-    grid-template-areas:
-      "side2 side2 side2"
-      "side3 center side1";
+    grid-template-rows: minmax(110px, 1fr);
+    grid-template-areas: "side3 center side1";
     min-height: 0;
-    gap: 5px;
+    gap: 4px;
+  }
+  /* 对家面板+副露+牌背：浮在中央区顶缘（真实牌桌对家坐在牌墙后的视角），
+     牌墙顶部让位由 fitCenterBox 留 48px（size=h-56 + centerbox margin-top:40） */
+  #scmjGame .scmj-side-2 {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(320px, 62%);
+    z-index: 4;
+    padding-top: 12px;
+    box-sizing: border-box;
   }
   #scmjGame .scmj-seat { padding: 3px 6px; gap: 5px; border-radius: 10px; }
   #scmjGame .scmj-avatar { width: 24px; height: 24px; font-size: 13px; border-width: 1px; }
@@ -1874,7 +1884,10 @@ body.scmj-lock #cw-panel { display: none !important; }
   }
   #scmjGame .scmj-seat-hand { right: -6px; bottom: -4px; height: 14px; min-width: 14px; font-size: 9px; padding: 0 3px; }
   #scmjGame .scmj-windtag { width: 20px; height: 20px; font-size: 12px; border-radius: 6px; }
-  #scmjGame .scmj-centerbox { border-radius: 10px; }
+  /* 牌墙向下偏：顶留 48（对家浮层）底留 8（操作栏浮层），与 fitCenterBox h-56 配套 */
+  #scmjGame .scmj-centerbox { border-radius: 10px; margin-top: 40px; }
+  /* 对家浮层内的面板宽度拉满（基础样式 min(300px,60%) 是为 grid 行内布局定的） */
+  #scmjGame .scmj-side-2 .scmj-seatwrap { width: 100%; }
   /* 横屏矮屏：中央区文字改为左右两侧浮层，整块中央区让给正方形牌墙。
      竖屏/桌面仍走上面的三行结构（文字上下、牌墙居中），互不影响。
      横屏下中央区很宽，牌墙边长受屏幕高度限制，文字若仍占上下两行，
@@ -1912,8 +1925,7 @@ body.scmj-lock #cw-panel { display: none !important; }
   }
   #scmjGame .scmj-side-3 > .scmj-seatwrap,
   #scmjGame .scmj-side-1 > .scmj-seatwrap { flex: none; }
-  /* 对家顶栏压缩：牌背改小、腾位 22→16，中央行多约 6px 给牌墙 */
-  #scmjGame .scmj-side-2 { padding-top: 16px; }
+  /* 对家牌背改小（浮层内顶部摆放） */
   #scmjGame .scmj-handbacks-2 { top: 0; }
   #scmjGame .scmj-handbacks-2 .scmj-handback { width: 13px; height: 17px; }
   /* 横屏：左右牌背收进列内、座位面板正下方横排（基础样式里 left/right: calc(100%+4px)
@@ -1934,19 +1946,24 @@ body.scmj-lock #cw-panel { display: none !important; }
   #scmjGame .scmj-handbacks-3 .scmj-handback + .scmj-handback,
   #scmjGame .scmj-handbacks-1 .scmj-handback + .scmj-handback { margin-top: 0; margin-left: -8px; }
   #scmjGame .scmj-tile-disc { width: 20px; height: 22px; }
-  #scmjGame .scmj-player { margin-top: 2px; }
-  /* 操作栏左右收窄成居中胶囊，且固定单行：碰/杠后按钮变多也不换行，
-     不额外吃掉下方弃牌区的高度（按钮过多时横向滚动）。
-     左对齐原因同上：center 溢出会永久截断最左边的按钮。 */
+  #scmjGame .scmj-player { margin-top: 2px; position: relative; }
+  /* 操作栏浮层化：absolute 浮在 player 区顶缘（向中央区探出），平时不占布局高度，
+     中央行因此多出 ~36px 给牌墙。盖到牌墙下边缘少量牌背，仅视觉无交互影响。
+     固定单行不换行（按钮过多时横向滚动），左对齐防 center 溢出截断。 */
   #scmjGame .scmj-actionbar {
-    position: relative;
-    z-index: 2;
-    min-height: 32px;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: calc(100% - 0px);
+    z-index: 5;
+    min-height: 28px;
     padding: 2px 8px;
     gap: 6px;
-    width: fit-content;
+    /* 不能 width:fit-content：left:50% 时 shrink-to-fit 的可用宽度只剩右半屏，
+       内容稍宽就被压窄触发 overflow 裁切（定缺按钮中心点被裁无法点击）；
+       max-content 显式按内容定宽，超出时再由 max-width+overflow-x 兜底 */
+    width: max-content;
     max-width: 100%;
-    margin: 0 auto;
     justify-content: flex-start;
     flex-wrap: nowrap;
     overflow-x: auto;
@@ -1957,8 +1974,8 @@ body.scmj-lock #cw-panel { display: none !important; }
   /* 横屏矮屏：提示条整条隐藏（纯提示元素，与竖屏同理省略），省 ~21px 给中央牌墙 */
   #scmjGame .scmj-hintrow { display: none; }
   /* 副露排压缩：碰牌后出现副露也不多吃中央高度 */
-  #scmjGame .scmj-mymelds { min-height: 22px; margin-bottom: 2px; gap: 6px; }
-  #scmjGame .scmj-mymelds .scmj-tile-disc { width: 17px; height: 20px; }
+  #scmjGame .scmj-mymelds { min-height: 20px; margin-bottom: 1px; gap: 6px; }
+  #scmjGame .scmj-mymelds .scmj-tile-disc { width: 15px; height: 18px; }
   #scmjGame .scmj-hand { min-height: 42px; padding: 4px 4px 2px; gap: 4px 0; }
   #scmjGame .scmj-tile-hand { width: var(--scmj-hand-tile-w, 33px); height: var(--scmj-hand-tile-h, 45px); }
   #scmjGame .scmj-ting { flex: none; flex-wrap: nowrap; }
@@ -1979,13 +1996,13 @@ body.scmj-lock #cw-panel { display: none !important; }
     padding: calc(2px + env(safe-area-inset-top, 0px)) calc(8px + env(safe-area-inset-right, 0px)) calc(2px + env(safe-area-inset-bottom, 0px)) calc(8px + env(safe-area-inset-left, 0px));
   }
   #scmjGame .scmj-topbar { margin-bottom: 0; }
-  #scmjGame .scmj-board { grid-template-rows: auto minmax(92px, 1fr); gap: 4px; }
+  /* 与主横屏断点同步：中央区一行（对家面板已是浮层），提示条保持隐藏 */
+  #scmjGame .scmj-board { grid-template-rows: minmax(92px, 1fr); gap: 4px; }
   #scmjGame .scmj-actionbar { min-height: 28px; padding: 1px 5px; }
   #scmjGame .scmj-actionbar .scmj-btn { min-height: 28px; padding: 3px 9px; font-size: 11.5px; }
-  /* 极矮横屏也不写死高度：胶囊固定行高后最大 16px（含番数标签描边），17px 足够放下 */
-  #scmjGame .scmj-hintrow { min-height: 17px; margin: 1px 0; }
-  #scmjGame .scmj-mymelds { min-height: 22px; margin-bottom: 1px; }
-  #scmjGame .scmj-mymelds .scmj-tile-disc { width: 17px; height: 21px; }
+  #scmjGame .scmj-hintrow { display: none; }
+  #scmjGame .scmj-mymelds { min-height: 20px; margin-bottom: 1px; }
+  #scmjGame .scmj-mymelds .scmj-tile-disc { width: 15px; height: 18px; }
   #scmjGame .scmj-hand { min-height: 38px; padding: 2px 4px 0; }
   #scmjGame .scmj-tile-hand { width: var(--scmj-hand-tile-w, 28px); height: var(--scmj-hand-tile-h, 38px); }
   #scmjGame .scmj-tile-disc { width: 18px; height: 20px; }
