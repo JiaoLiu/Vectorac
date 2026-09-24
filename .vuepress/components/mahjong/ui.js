@@ -1133,10 +1133,13 @@ export default class ScmjUI {
     else if (ev && (ev.type === 'peng' || ev.type === 'draw')) this.sound('draw')
     else if (ev && ev.type === 'gang') this.sound('gang')
     else if (ev && ev.type === 'hu') this.sound('hu')
-    // 碰/杠/胡同步语音播报（自己与他人都报；自摸单独播报）
+    // 碰/杠/胡同步语音播报（自己与他人都报；自摸单独播报）；出牌播报牌名
     if (ev && ev.type === 'peng') this.speak('peng')
     else if (ev && ev.type === 'gang') this.speak('gang')
     else if (ev && ev.type === 'hu') this.speak(ev.data && ev.data.how === 'zimo' ? 'zimo' : 'hu')
+    else if (ev && ev.type === 'discard' && ev.data && ev.data.tile != null) {
+      this.speak(`${tileSuit(ev.data.tile)}${tileRank(ev.data.tile)}`, tileName(ev.data.tile))
+    }
     // 全量重渲染：数据量小，简单可靠
     this.render()
   }
@@ -2574,14 +2577,15 @@ export default class ScmjUI {
   }
 
   /**
-   * 碰/杠/胡语音播报。
-   * 真人录音（四川话语音包）优先：/audio/mahjong/{peng,gang,hu,zimo}.mp3 存在即播放；
-   * 文件缺失时该词条自动回退浏览器语音合成（普通话高音调近似俏皮川话），互不影响。
+   * 语音播报（动作与报牌）。
+   * 真人录音优先：/audio/mahjong/{key}.mp3 存在即播放（key 如 peng/gang/hu/zimo 或
+   * 牌名 wan1..9 / tong1..9 / tiao1..9）；文件缺失时该词条自动回退浏览器语音合成。
+   * 快速连续播报时停掉上一条，避免叠音。
    */
-  speak(key) {
+  speak(key, text) {
     if (this.settings.sound === false || typeof window === 'undefined') return
-    const text = { peng: '碰！', gang: '杠！', hu: '胡了！', zimo: '自摸！' }[key]
-    if (!text) return
+    const say = text || { peng: '碰！', gang: '杠！', hu: '胡喽！', zimo: '自摸！' }[key]
+    if (!say) return
     if (!this._voiceCache) this._voiceCache = {}
     let clip = this._voiceCache[key]
     if (!clip) {
@@ -2591,21 +2595,26 @@ export default class ScmjUI {
         clip.addEventListener('error', () => { clip._broken = true })
         this._voiceCache[key] = clip
       } catch (e) {
-        this._speakSynth(text)
+        this._speakSynth(say)
         return
       }
+    }
+    // 停掉上一条播报（文件与合成互斥：合成 cancel 在 _speakSynth 里做）
+    if (this._voicePlaying && !this._voicePlaying.paused && this._voicePlaying !== clip) {
+      try { this._voicePlaying.pause(); this._voicePlaying.currentTime = 0 } catch (e) { /* 忽略 */ }
     }
     if (!clip._broken) {
       try {
         clip.currentTime = 0
         const p = clip.play()
-        if (p && p.catch) p.catch(() => { clip._broken = true; this._speakSynth(text) })
+        this._voicePlaying = clip
+        if (p && p.catch) p.catch(() => { clip._broken = true; this._speakSynth(say) })
         return
       } catch (e) {
         clip._broken = true
       }
     }
-    this._speakSynth(text)
+    this._speakSynth(say)
   }
 
   _speakSynth(text) {
