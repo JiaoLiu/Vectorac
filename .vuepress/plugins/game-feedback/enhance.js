@@ -32,6 +32,7 @@
     '#game-feedback-modal .gf-copy{margin:0 0 8px;color:#5d6a77;font-size:14px;line-height:1.65}',
     '#game-feedback-modal .gf-archive{margin:0 0 16px;padding:9px 11px;border-radius:10px;background:#eff8f4;color:#32745f;font-size:12px;line-height:1.55}',
     '#game-feedback-modal .gf-error{min-height:1.4em;margin:6px 0 0;color:#b42318;font-size:13px;line-height:1.4}',
+    '#game-feedback-modal .gf-error:empty{display:none}',
     '#game-feedback-modal .gf-valine{min-height:190px}',
     '#game-feedback-modal .vheader,#game-feedback-modal .vinfo,#game-feedback-modal .vcards,#game-feedback-modal .vpage,#game-feedback-modal .vcount{display:none!important}',
     '#game-feedback-modal .vwrap{border:1px solid #dce3e8!important;border-radius:12px!important;background:#fff!important}',
@@ -44,7 +45,25 @@
     '@media(max-width:640px),(max-height:500px){#game-feedback-modal{padding:0;align-items:stretch;justify-content:stretch}#game-feedback-modal .gf-dialog{width:100%;max-width:none;height:100%;max-height:none;border:0;border-radius:0;padding:calc(14px + env(safe-area-inset-top,0px)) calc(16px + env(safe-area-inset-right,0px)) calc(14px + env(safe-area-inset-bottom,0px)) calc(16px + env(safe-area-inset-left,0px));display:flex;flex-direction:column;overflow:hidden;animation:gf-rise .32s cubic-bezier(.22,1,.36,1)}#game-feedback-modal .gf-head{flex:none;margin-bottom:6px}#game-feedback-modal .gf-eyebrow{font-size:11px}#game-feedback-modal .gf-title{font-size:19px}#game-feedback-modal .gf-close{flex:none;width:44px;height:44px;border-radius:13px;font-size:26px}#game-feedback-modal .gf-copy{flex:none;margin-bottom:6px;font-size:13px}#game-feedback-modal .gf-archive{flex:none;margin-bottom:10px;font-size:11.5px}#game-feedback-modal .gf-valine{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}#game-feedback-modal input,#game-feedback-modal textarea{font-size:16px!important}#game-feedback-modal .veditor{min-height:116px;max-height:none;padding:12px!important;font-size:16px!important;line-height:1.6!important}#game-feedback-modal .vrow{padding:6px 0 8px}#game-feedback-modal .vsubmit{min-width:112px;min-height:44px;border-radius:11px!important;font-size:15px!important}#game-feedback-modal .gf-error{flex:none;margin-top:4px;font-size:12.5px}}',
     '@keyframes gf-rise{from{transform:translateY(100%)}to{transform:translateY(0)}}',
     // 横屏矮屏下隐藏两段说明文字与 Valine 署名，把空间留给输入区（软键盘弹出后可视区域更小）。
-    '@media(max-height:500px){#game-feedback-modal .gf-copy,#game-feedback-modal .gf-archive,#game-feedback-modal .vpower{display:none!important}#game-feedback-modal .gf-head{margin-bottom:4px}}'
+    '@media(max-height:500px){#game-feedback-modal .gf-copy,#game-feedback-modal .gf-archive,#game-feedback-modal .vpower{display:none!important}#game-feedback-modal .gf-head{margin-bottom:4px}}',
+    // 键盘紧凑模式：可视高度 <=220px 时由 syncViewport 加 gf-kb 类，
+    // 压缩标题栏/编辑器/按钮，保证标题 + 输入框 + 提交按钮完整塞进可视区。
+    '#game-feedback-modal.gf-kb .gf-dialog{padding-top:calc(6px + env(safe-area-inset-top,0px));padding-bottom:calc(6px + env(safe-area-inset-bottom,0px))}',
+    '#game-feedback-modal.gf-kb .gf-head{position:relative;margin-bottom:4px;min-height:18px}',
+    '#game-feedback-modal.gf-kb .gf-eyebrow{display:none}',
+    '#game-feedback-modal.gf-kb .gf-title{font-size:14px}',
+    // 关闭按钮改为浮动，不再撑高标题栏（否则 30px 的按钮会把整行撑到 30px）。
+    '#game-feedback-modal.gf-kb .gf-close{position:absolute;top:0;right:0;width:28px;height:28px;border-radius:9px;font-size:18px}',
+    '#game-feedback-modal.gf-kb .gf-copy,#game-feedback-modal.gf-kb .gf-archive,#game-feedback-modal.gf-kb .vpower{display:none!important}',
+    // Valine 内置 autosize 会给 veditor 写内联 height（按预填内容算出 ~116px），
+    // 内联样式会压过 min-height，必须用 !important 固定高度才能在 160px 可视区里塞下全部控件。
+    // 同时隐藏对反馈无用的表情/预览工具行，把垂直空间留给输入框和提交按钮。
+    '#game-feedback-modal.gf-kb .vwrap{padding:6px!important;margin-bottom:0!important}',
+    '#game-feedback-modal.gf-kb .vedit > .vrow{display:none}',
+    '#game-feedback-modal.gf-kb .vrow > .vcol-30{display:none}',
+    '#game-feedback-modal.gf-kb .veditor{min-height:0;height:60px!important;padding:8px 10px!important;resize:none!important}',
+    '#game-feedback-modal.gf-kb .vrow{padding:2px 0}',
+    '#game-feedback-modal.gf-kb .vsubmit{min-height:38px}'
   ].join('')
 
   function normalizedPath () {
@@ -73,11 +92,15 @@
       dialog.style.top = ''
       dialog.style.bottom = ''
       dialog.style.height = ''
+      dialog.classList.remove('gf-kb')
       return
     }
     dialog.style.top = viewport.offsetTop + 'px'
     dialog.style.height = viewport.height + 'px'
     dialog.style.bottom = 'auto'
+    // 虚拟键盘弹出后可视高度可能只剩 150-170px（横屏尤其明显），
+    // 标题 + 编辑器最小高度就超出可视区，提交按钮被裁掉。进入紧凑模式。
+    dialog.classList.toggle('gf-kb', viewport.height <= 220)
   }
 
   function revealEditor (field) {
@@ -86,6 +109,8 @@
       if (!modal() || modal().hidden || document.activeElement !== field) return
       var viewport = window.visualViewport
       if (!viewport || viewport.height >= window.innerHeight - 80) return
+      // 紧凑模式下整个弹窗就是可视区，scrollIntoView 反而会把提交按钮滚出去。
+      if (viewport.height <= 220) return
       try { field.scrollIntoView({ block: 'center', behavior: 'smooth' }) } catch (_) { field.scrollIntoView() }
     }, 320)
   }
