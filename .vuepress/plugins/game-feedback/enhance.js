@@ -46,23 +46,30 @@
     '@keyframes gf-rise{from{transform:translateY(100%)}to{transform:translateY(0)}}',
     // 横屏矮屏下隐藏两段说明文字与 Valine 署名，把空间留给输入区（软键盘弹出后可视区域更小）。
     '@media(max-height:500px){#game-feedback-modal .gf-copy,#game-feedback-modal .gf-archive,#game-feedback-modal .vpower{display:none!important}#game-feedback-modal .gf-head{margin-bottom:4px}}',
-    // 键盘紧凑模式：可视高度 <=220px 时由 syncViewport 加 gf-kb 类，
-    // 压缩标题栏/编辑器/按钮，保证标题 + 输入框 + 提交按钮完整塞进可视区。
-    '#game-feedback-modal.gf-kb .gf-dialog{padding-top:calc(6px + env(safe-area-inset-top,0px));padding-bottom:calc(6px + env(safe-area-inset-bottom,0px))}',
-    '#game-feedback-modal.gf-kb .gf-head{position:relative;margin-bottom:4px;min-height:18px}',
+    // 键盘紧凑模式：虚拟键盘弹出时由 syncViewport 加 gf-kb 类并设置 padding-bottom，
+    // 把内容区压回可视高度；压缩标题栏/编辑器/按钮，保证标题 + 输入框 + 提交按钮完整塞进可视区。
+    '#game-feedback-modal.gf-kb .gf-dialog{padding-top:calc(6px + env(safe-area-inset-top,0px))}',
+    // 移动端全屏下弹窗白底延伸满屏（高度不被压缩），内容区由 padding-bottom 限高贴键盘上方；
+    // dialog 改为 flex 列，Valine 链可拉伸填满内容区。桌面卡片模式不套这些规则。
+    '@media(max-width:640px),(max-height:500px){#game-feedback-modal.gf-kb .gf-dialog{display:flex;flex-direction:column;height:100%;overflow:hidden}}',
+    '#game-feedback-modal.gf-kb .gf-head{position:relative;margin-bottom:4px;min-height:18px;flex:none}',
     '#game-feedback-modal.gf-kb .gf-eyebrow{display:none}',
     '#game-feedback-modal.gf-kb .gf-title{font-size:14px}',
     // 关闭按钮改为浮动，不再撑高标题栏（否则 30px 的按钮会把整行撑到 30px）。
     '#game-feedback-modal.gf-kb .gf-close{position:absolute;top:0;right:0;width:28px;height:28px;border-radius:9px;font-size:18px}',
     '#game-feedback-modal.gf-kb .gf-copy,#game-feedback-modal.gf-kb .gf-archive,#game-feedback-modal.gf-kb .vpower{display:none!important}',
     // Valine 内置 autosize 会给 veditor 写内联 height（按预填内容算出 ~116px），
-    // 内联样式会压过 min-height，必须用 !important 固定高度才能在 160px 可视区里塞下全部控件。
-    // 同时隐藏对反馈无用的表情/预览工具行，把垂直空间留给输入框和提交按钮。
-    '#game-feedback-modal.gf-kb .vwrap{padding:6px!important;margin-bottom:0!important}',
+    // 内联样式会压过 min-height，必须用 !important 才能接管高度。
+    // 紧凑模式下整条 Valine 容器链改为 flex，编辑器拉伸填满键盘上方的全部剩余空间；
+    // 同时隐藏对反馈无用的表情/预览工具行。
+    '#game-feedback-modal.gf-kb .gf-valine{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}',
+    '#game-feedback-modal.gf-kb .gf-valine > .vpanel{flex:1 1 auto;display:flex;flex-direction:column;min-height:0}',
+    '#game-feedback-modal.gf-kb .vwrap{padding:6px!important;margin-bottom:0!important;flex:1 1 auto;display:flex;flex-direction:column;min-height:0}',
+    '#game-feedback-modal.gf-kb .vedit{flex:1 1 auto;display:flex;flex-direction:column;min-height:0}',
     '#game-feedback-modal.gf-kb .vedit > .vrow{display:none}',
     '#game-feedback-modal.gf-kb .vrow > .vcol-30{display:none}',
-    '#game-feedback-modal.gf-kb .veditor{min-height:0;height:60px!important;padding:8px 10px!important;resize:none!important}',
-    '#game-feedback-modal.gf-kb .vrow{padding:2px 0}',
+    '#game-feedback-modal.gf-kb .veditor{flex:1 1 auto;min-height:60px;height:auto!important;padding:8px 10px!important;resize:none!important}',
+    '#game-feedback-modal.gf-kb .vrow{padding:2px 0;flex:none}',
     '#game-feedback-modal.gf-kb .vsubmit{min-height:38px}'
   ].join('')
 
@@ -82,25 +89,45 @@
     }
   }
 
-  // iOS 弹出软键盘时只改变 visualViewport，position:fixed 的参考框不变，
-  // 因此把遮罩层锁到可视区域，弹窗与提交按钮才会留在键盘之上。
+  // iOS 弹出软键盘时只改变 visualViewport，position:fixed 的参考框（layout viewport）不变，
+  // 且键盘上方还可能留出一截既不算可视区、又透出页面的缝（Safari 底部工具栏区域）。
+  // 因此遮罩层始终保持 inset:0 满屏，弹窗白底也延伸满屏，只用 padding-bottom 把
+  // 内容区压回 visualViewport 高度：内容完整贴键盘上方，缝隙处是弹窗白底而非游戏画面。
   function syncViewport () {
-    var dialog = modal()
-    if (!dialog) return
+    var overlay = modal()
+    if (!overlay) return
+    var dialog = overlay.querySelector('.gf-dialog')
+    // 清掉旧版本可能残留在遮罩上的内联尺寸（旧实现会把遮罩缩到可视区，露出下半屏）。
+    overlay.style.top = ''
+    overlay.style.bottom = ''
+    overlay.style.height = ''
     var viewport = window.visualViewport
-    if (!viewport || dialog.hidden) {
-      dialog.style.top = ''
-      dialog.style.bottom = ''
-      dialog.style.height = ''
-      dialog.classList.remove('gf-kb')
+    if (!viewport || overlay.hidden || !dialog) {
+      if (dialog) dialog.style.paddingBottom = ''
+      overlay.classList.remove('gf-kb')
       return
     }
-    dialog.style.top = viewport.offsetTop + 'px'
-    dialog.style.height = viewport.height + 'px'
-    dialog.style.bottom = 'auto'
-    // 虚拟键盘弹出后可视高度可能只剩 150-170px（横屏尤其明显），
-    // 标题 + 编辑器最小高度就超出可视区，提交按钮被裁掉。进入紧凑模式。
-    dialog.classList.toggle('gf-kb', viewport.height <= 220)
+    // 虚拟键盘弹出即进入紧凑模式（可视高度明显小于布局高度，或极端 <=220px），
+    // 否则标题 + 说明文字 + 编辑器最小高度就超出可视区，下半部分被键盘裁掉。
+    var compact = viewport.height <= 220 || viewport.height < window.innerHeight * 0.62
+    overlay.classList.toggle('gf-kb', compact)
+    // padding-bottom 限高只适用于移动端全屏弹窗；桌面卡片模式（如 pinch-zoom 触发紧凑）不干预。
+    var fullscreen = window.matchMedia && window.matchMedia('(max-width: 640px), (max-height: 500px)').matches
+    if (compact && fullscreen) {
+      // 被键盘等占掉的底部高度；内容区 = innerHeight - gap ≈ 可视区，其余由白底填满。
+      var gap = window.innerHeight - viewport.height - viewport.offsetTop
+      dialog.style.paddingBottom = Math.max(0, Math.round(gap)) + 'px'
+    } else {
+      dialog.style.paddingBottom = ''
+    }
+  }
+
+  // 键盘动画期间 iOS 的 visualViewport 会多次变化，且 focus 早于 resize 事件；
+  // 延时补几次同步，保证弹窗最终锁到键盘上方。
+  function syncViewportSoon () {
+    window.setTimeout(syncViewport, 60)
+    window.setTimeout(syncViewport, 320)
+    window.setTimeout(syncViewport, 700)
   }
 
   function revealEditor (field) {
@@ -110,7 +137,7 @@
       var viewport = window.visualViewport
       if (!viewport || viewport.height >= window.innerHeight - 80) return
       // 紧凑模式下整个弹窗就是可视区，scrollIntoView 反而会把提交按钮滚出去。
-      if (viewport.height <= 220) return
+      if (modal() && modal().classList.contains('gf-kb')) return
       try { field.scrollIntoView({ block: 'center', behavior: 'smooth' }) } catch (_) { field.scrollIntoView() }
     }, 320)
   }
@@ -315,7 +342,10 @@
         if (error) error.textContent = ''
       }, true)
       dialog.addEventListener('focusin', function (event) {
-        if (event.target.matches && event.target.matches('.veditor')) revealEditor(event.target)
+        if (event.target.matches && event.target.matches('.veditor')) {
+          syncViewportSoon()
+          revealEditor(event.target)
+        }
       })
       dialog.addEventListener('input', function (event) {
         if (event.target.matches('.veditor')) {
