@@ -1911,10 +1911,10 @@ export default class ScmjUI {
     const tileW = Math.max(5, Math.floor(tileH / TILE_ASPECT))
     const inset = 2 * tileW + GAP
     // 罗盘（含探出的风位圆牌）同比缩放，限制在内圈里且封顶 96px。
-    // 弃牌收进内圈后罗盘适当调小（0.62→0.42），给四堆弃牌留出生长空间，
+    // 弃牌收进内圈后罗盘调小（0.34），给四堆弃牌留出平铺空间，
     // 弃牌多了自然伸到罗盘底下被盖住（z-index 罗盘 4 > 弃牌最高 3）。
     const inner = Math.max(0, size - 2 * inset)
-    const compass = Math.max(40, Math.min(96, Math.round(size * 0.42), inner))
+    const compass = Math.max(38, Math.min(88, Math.round(size * 0.34), inner))
     const left = Math.round((w - size) / 2)
     const top = Math.round((h - size) / 2)
     ring.style.left = left + 'px'
@@ -1927,12 +1927,13 @@ export default class ScmjUI {
     box.style.setProperty('--scmj-wall-inset', inset + 'px')
     box.style.setProperty('--scmj-compass-size', compass + 'px')
     // 内圈弃牌（.scmj-felt）：区域 = 牌墙内圈再缩 2px；牌尺寸按内圈边长分档，
-    // 别家小牌（约 inner/8 高，每方两行放得下 8+ 张），自己放大 1.3 倍近大远小。
+    // 别家小牌（约 inner/9 高，四堆向心平铺放得下），自己放大 1.25 倍近大远小。
+    // 下限放到 12/15：横屏矮屏内圈仅 ~90-130，硬下限 18/24 必然互相叠压（实测教训）。
     box.style.setProperty('--scmj-felt-inset', (inset + 2) + 'px')
-    const feltH = Math.max(18, Math.min(30, Math.round(inner / 8)))
-    const feltW = Math.max(13, Math.round(feltH / TILE_ASPECT))
-    const felt0H = Math.max(24, Math.min(40, Math.round(feltH * 1.3)))
-    const felt0W = Math.max(17, Math.round(felt0H / TILE_ASPECT))
+    const feltH = Math.max(12, Math.min(30, Math.round(inner / 9)))
+    const feltW = Math.max(9, Math.round(feltH / TILE_ASPECT))
+    const felt0H = Math.max(15, Math.min(38, Math.round(feltH * 1.25)))
+    const felt0W = Math.max(11, Math.round(felt0H / TILE_ASPECT))
     box.style.setProperty('--scmj-felt-tile-w', feltW + 'px')
     box.style.setProperty('--scmj-felt-tile-h', feltH + 'px')
     box.style.setProperty('--scmj-felt-tile0-w', felt0W + 'px')
@@ -1960,7 +1961,10 @@ export default class ScmjUI {
     const slots = handSlotsPerRow() // 每行几张
     // 横向要留出：新摸牌那道正间距 + 4px 余量（避免临界时折行）
     const byWidth = (avail - gap - 4) / slots
-    const byHeight = HAND_MAX_TILE_H / TILE_ASPECT
+    // 横屏矮屏手牌上限压到 60：中央牌墙/弃牌区被手牌区挤到 110px 以下时，
+    // 桌心弃牌必然互相叠压（实测教训），手牌少 8px 换桌心平铺值得
+    const landscapeShort = window.innerWidth > window.innerHeight && window.innerHeight <= 540
+    const byHeight = (landscapeShort ? 60 : HAND_MAX_TILE_H) / TILE_ASPECT
     const w = Math.max(MIN_HAND_TILE_W, Math.min(byHeight, byWidth))
     const h = w * TILE_ASPECT
     const rows = Math.ceil(HAND_SLOTS_REF / slots)
