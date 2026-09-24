@@ -1202,7 +1202,7 @@ async function suiteHttp() {
 }
 
 // ============================================================
-// [十三] 房间交流转发（VOICE_MSG / CHAT_MSG：纯转发、排除发件人、限流、校验）
+// [十三] 房间交流转发（VOICE_MSG / CHAT_MSG：纯转发、排除发件人、限流、白名单校验）
 // ============================================================
 
 async function suiteChatRelay() {
@@ -1253,14 +1253,15 @@ async function suiteChatRelay() {
     return { base, a, b, wsA, wsB }
   }
 
-  await test('短语：对方收到（含座位号）', () =>
+  await test('短语：对方收到（序号 + 座位号）', () =>
     withServer(async s => {
       const { wsA, wsB } = await twoPlayerRoom(s)
       const got = waitMsg(wsB, 'CHAT_MSG')
-      wsA.send(JSON.stringify({ type: 'CHAT_MSG', text: '快点啊', requestId: 'c1' }))
+      wsA.send(JSON.stringify({ type: 'CHAT_MSG', phrase: 2, requestId: 'c1' }))
       const msg = await got
-      eq(msg.payload.text, '快点啊', '短语内容')
+      eq(msg.payload.phrase, 2, '短语序号原样')
       eq(msg.payload.seatIndex, 0, '发送者座位号')
+      assert(msg.payload.text === undefined, '服务端不携带文本')
       wsA.close(); wsB.close()
     })
   )
@@ -1271,7 +1272,7 @@ async function suiteChatRelay() {
       const bagA = []
       collect(wsA, bagA)
       const got = waitMsg(wsB, 'CHAT_MSG')
-      wsA.send(JSON.stringify({ type: 'CHAT_MSG', text: '稳一手', requestId: 'c2' }))
+      wsA.send(JSON.stringify({ type: 'CHAT_MSG', phrase: 5, requestId: 'c2' }))
       await got
       await new Promise(r => setTimeout(r, 200))
       assert(!bagA.some(m => m.type === 'CHAT_MSG'), '发件人无回环')
@@ -1294,7 +1295,7 @@ async function suiteChatRelay() {
     })
   )
 
-  await test('校验：非法语音（mime / 超长 / 非 base64）与超长短语一律拒绝', () =>
+  await test('校验：非法语音（mime / 超长 / 非 base64）与非法短语序号一律拒绝', () =>
     withServer(async s => {
       const { wsA, wsB } = await twoPlayerRoom(s)
       const bagB = []
@@ -1308,8 +1309,12 @@ async function suiteChatRelay() {
       await expectError({ type: 'VOICE_MSG', mime: 'video/mp4', data: 'AAAA', duration: 1 })
       await expectError({ type: 'VOICE_MSG', mime: 'audio/webm', data: 'A'.repeat(280001), duration: 1 })
       await expectError({ type: 'VOICE_MSG', mime: 'audio/webm', data: '!!!not-base64!!!', duration: 1 })
-      await expectError({ type: 'CHAT_MSG', text: 'x'.repeat(31) })
-      await expectError({ type: 'CHAT_MSG', text: '   ' })
+      await expectError({ type: 'CHAT_MSG', phrase: -1 })
+      await expectError({ type: 'CHAT_MSG', phrase: 8 })
+      await expectError({ type: 'CHAT_MSG', phrase: 'abc' })
+      await expectError({ type: 'CHAT_MSG', phrase: null })
+      await expectError({ type: 'CHAT_MSG', phrase: 1.5 })
+      await expectError({ type: 'CHAT_MSG' })
       await new Promise(r => setTimeout(r, 200))
       assert(!bagB.some(m => m.type === 'VOICE_MSG' || m.type === 'CHAT_MSG'), '非法消息均未转发')
       wsA.close(); wsB.close()
@@ -1320,10 +1325,10 @@ async function suiteChatRelay() {
     withServer(async s => {
       const { wsA, wsB } = await twoPlayerRoom(s)
       const got = waitMsg(wsB, 'CHAT_MSG')
-      wsA.send(JSON.stringify({ type: 'CHAT_MSG', text: '快点啊', requestId: 'r1' }))
+      wsA.send(JSON.stringify({ type: 'CHAT_MSG', phrase: 0, requestId: 'r1' }))
       await got
       const p = waitMsg(wsA, 'ERROR')
-      wsA.send(JSON.stringify({ type: 'CHAT_MSG', text: '等等', requestId: 'r2' }))
+      wsA.send(JSON.stringify({ type: 'CHAT_MSG', phrase: 1, requestId: 'r2' }))
       const err = await p
       eq(err.errorCode, ERR.INVALID_ACTION, '1s 内第二条被拒')
       wsA.close(); wsB.close()
@@ -1337,7 +1342,7 @@ async function suiteChatRelay() {
       const ws = new WebSocket(base.replace('http://', 'ws://') + '/mahjong-ws')
       await new Promise((resolve, reject) => { ws.once('open', resolve); ws.once('error', reject) })
       const p = waitMsg(ws, 'ERROR')
-      ws.send(JSON.stringify({ type: 'CHAT_MSG', text: '快点啊' }))
+      ws.send(JSON.stringify({ type: 'CHAT_MSG', phrase: 0 }))
       const err = await p
       eq(err.errorCode, ERR.INVALID_RESUME_TOKEN, '未绑定即拒')
       ws.close()

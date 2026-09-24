@@ -302,6 +302,9 @@ export default class ScmjUI {
       seat1: q('[data-scmj-seat1]'),
       seat2: q('[data-scmj-seat2]'),
       seat3: q('[data-scmj-seat3]'),
+      backs1: q('[data-scmj-backs1]'),
+      backs2: q('[data-scmj-backs2]'),
+      backs3: q('[data-scmj-backs3]'),
       pop: q('[data-scmj-pop]'),
       chat: q('[data-scmj-chat]'),
       chatMic: q('[data-scmj-chat-mic]'),
@@ -378,9 +381,7 @@ export default class ScmjUI {
     }
     this.music(false)
     if (this._bgm) { this._bgm.pause(); this._bgm.removeAttribute('src'); this._bgm = null }
-    this._voiceQueue = []
-    if (this._voicePlaying) { try { this._voicePlaying.pause() } catch (e) { /* 忽略 */ } this._voicePlaying = null }
-    try { if (window.speechSynthesis) window.speechSynthesis.cancel() } catch (e) { /* 忽略 */ }
+    this._stopVoiceNow() // 掐断当前播报 + speechSynthesis.cancel
     if (this._ac && this._ac.state !== 'closed') { this._ac.close().catch(() => {}); this._ac = null }
     this.hideOpening()
     this.exitFullscreen()
@@ -730,9 +731,9 @@ export default class ScmjUI {
     const listen = (el, ev, fn) => {
       if (el) el.addEventListener(ev, fn)
     }
-    // 固定短语面板（一次性渲染）
+    // 固定短语面板（一次性渲染）：点击发 phrase 序号，全员播报对应预生成语音
     if (e.chatPanel) {
-      CHAT_PHRASES.forEach(text => {
+      CHAT_PHRASES.forEach((text, idx) => {
         const b = document.createElement('button')
         b.type = 'button'
         b.className = 'scmj-chat-phrase'
@@ -741,9 +742,11 @@ export default class ScmjUI {
           this.sound('click')
           e.chatPanel.hidden = true
           if (!this.isOnline || !this.net) return
-          // 本地即时回显（服务端不回环发件人）
-          if (this.net.sendChat({ text })) this.showChatBubble(0, { text })
-          else this.toast('连接已断开，短语未发出')
+          // 本地即时播报 + 气泡（服务端不回环发件人）
+          if (this.net.sendChat({ phrase: idx })) {
+            this.speak('phrase-' + idx, text)
+            this.showChatBubble(0, { phrase: idx, text })
+          } else this.toast('连接已断开，短语未发出')
         })
         e.chatPanel.appendChild(b)
       })
@@ -785,8 +788,11 @@ export default class ScmjUI {
     // 服务端发的是绝对座位号，转成视角座位（自己永远 0 号位）
     const viewSeat = (p.seatIndex - mySeat + 4) % 4
     if (msg.type === 'CHAT_MSG') {
-      this.showChatBubble(viewSeat, { text: String(p.text == null ? '' : p.text).slice(0, 30) })
-      this.sound('click')
+      // 固定短语：服务端只转发白名单序号，查表播报预生成语音
+      const text = CHAT_PHRASES[p.phrase]
+      if (text == null) return
+      this.showChatBubble(viewSeat, { phrase: p.phrase, text })
+      this.speak('phrase-' + p.phrase, text)
       return
     }
     const duration = Math.min(20, Math.max(1, Math.round(Number(p.duration) || 0)))
@@ -817,6 +823,16 @@ export default class ScmjUI {
         this._playVoiceData(msg.mime, msg.data)
       })
       hideAfter = Math.min(12000, 3000 + (msg.duration || 1) * 1000)
+    } else if (msg.phrase != null) {
+      // 短语语音气泡：🔊 + 文字（文字仅作视觉辅助，点击重播语音）
+      el.classList.add('scmj-bubble-voice')
+      el.textContent = '🔊 ' + msg.text
+      el.title = '点击重播'
+      el.addEventListener('click', () => {
+        this.sound('click')
+        this.speak('phrase-' + msg.phrase, msg.text)
+      })
+      hideAfter = 4500
     } else {
       el.textContent = msg.text
     }
@@ -1228,6 +1244,7 @@ export default class ScmjUI {
     if (this._countdownTimer) clearInterval(this._countdownTimer)
     this._countdownTimer = null
     this._lastTickSec = null
+    this._duckBgm(false) // 读秒结束还原 BGM 音量
     if (this._els.countdown) {
       this._els.countdown.textContent = ''
       this._els.countdown.hidden = true
@@ -1242,17 +1259,27 @@ export default class ScmjUI {
     if (!this.isOnline || !meta || !meta.deadlineAt || v.phase === 'finished' || !v.legal || !v.legal.length) {
       el.textContent = ''
       el.hidden = true
+      this._duckBgm(false) // 倒计时消失（轮完/无期限）同样还原 BGM
       return
     }
     const left = Math.max(0, Math.round((meta.deadlineAt - (Date.now() - this._clockSkew)) / 1000))
     el.hidden = false
     el.textContent = '⏳ ' + left + 's'
     el.classList.toggle('scmj-countdown-urgent', left <= 5)
+    // 读秒阶段压低背景音乐，让提醒音盖过 BGM；离开读秒区间即还原
+    this._duckBgm(left >= 1 && left <= 5)
     // 读秒提醒：最后 5 秒每到新的一秒滴一声（仅轮到自己操作时倒计时会显示）
     if (left >= 1 && left <= 5 && this.settings.sound !== false && this._lastTickSec !== left) {
       this._lastTickSec = left
-      if (this._ensureAudio()) this._note(990, 0.09, 0.2, 'sine')
+      if (this._ensureAudio()) this._note(990, 0.12, 0.4, 'triangle')
     }
+  }
+
+  /** 读秒 ducking：BGM 音量临时压到 0.1，提醒音更突出；结束后还原 0.5 */
+  _duckBgm(on) {
+    if (this._bgmDucked === on) return
+    this._bgmDucked = on
+    if (this._bgm) this._bgm.volume = on ? 0.1 : 0.5
   }
 
   // ==================== 对局控制 ====================
@@ -1331,6 +1358,7 @@ export default class ScmjUI {
     void e.dice.offsetWidth
     e.dice.classList.add('scmj-dice-show')
     this._diceVisible = true
+    this.sound('dice') // 掷骰音效：一串咔哒 + 落定
 
     const settle = () => {
       clearInterval(this._diceTimer)
@@ -1612,6 +1640,21 @@ export default class ScmjUI {
         '（张数越少越接近听牌）'
       av.appendChild(handBadge)
       el.appendChild(av)
+      // 手牌牌背堆叠：对家横排在面板上方、左右两家竖排在面板内侧（竖屏改面板下横排），
+      // 与牌墙同张贴图，牌数与 handCount 一致；数量不变时跳过重建（每帧 render 都走这里）
+      const backs = this._els['backs' + s]
+      if (backs) {
+        const n = Math.max(0, Math.min(14, p.handCount || 0))
+        if (backs._n !== n) {
+          backs._n = n
+          backs.innerHTML = ''
+          for (let i = 0; i < n; i++) {
+            const b = document.createElement('i')
+            b.className = 'scmj-handback'
+            backs.appendChild(b)
+          }
+        }
+      }
       const meta = document.createElement('div')
       meta.className = 'scmj-seat-meta'
       const name = document.createElement('div')
@@ -2826,10 +2869,19 @@ export default class ScmjUI {
       this._note(630, 0.16, 0.06, 'triangle', 0.03)
     } else if (type === 'hu') {
       ;[660, 880, 1108.7].forEach((f, i) => this._note(f, 0.2, 0.1, 'triangle', i * 0.06))
+    } else if (type === 'draw') {
+      // 抓牌：短促上扬双音，模拟牌张从牌墙上被抹走的摩擦感
+      this._note(330, 0.045, 0.1, 'triangle')
+      this._note(590, 0.06, 0.11, 'triangle', 0.032)
+    } else if (type === 'dice') {
+      // 掷骰：一串随机音高的短咔哒（骰子乱跳碰撞），最后一记低频落定
+      for (let i = 0; i < 6; i++) {
+        this._note(680 + Math.random() * 520, 0.035, 0.075, 'square', i * 0.085)
+      }
+      this._note(230, 0.15, 0.12, 'triangle', 6 * 0.085 + 0.04)
     } else {
       const conf = {
         click: [660, 0.05, 0.07],
-        draw: [500, 0.06, 0.07],
         discard: [320, 0.09, 0.09],
         deal: [440, 0.12, 0.08]
       }[type] || [600, 0.05, 0.06]
@@ -2896,37 +2948,45 @@ export default class ScmjUI {
   }
 
   /**
-   * 语音播报（动作与报牌），串行队列：一条播完再播下一条，避免快速出牌时互相截断。
-   * 待播上限 2 条：报牌类（牌名）满了直接丢弃；动作类（碰/杠/胡/自摸）会挤掉
-   * 队列里最旧的报牌，保证关键播报不漏。
-   * 真人录音优先：/audio/mahjong/{key}.mp3 存在即播放（key 如 peng/gang/hu/zimo 或
-   * 牌名 wan1..9 / tong1..9 / tiao1..9）；文件缺失时该词条回退浏览器语音合成。
+   * 语音播报（动作/报牌/短语），抢占式：新播报立即顶替旧的，保证「打哪张报哪张」零延迟。
+   * 优先级：报牌（牌名 wan/tong/tiao）为低；碰/杠/胡/自摸/短语（peng/gang/hu/zimo/phrase）
+   * 为高。高优先级播报期间新来的报牌直接丢弃（不排队不补播）；其余情况一律掐旧播新
+   * （连打只报最新一张；杠上花「杠」→「自摸」也能及时接上）。
+   * 真人录音优先：/audio/mahjong/{key}.mp3 存在即播放；文件缺失时回退浏览器语音合成。
    */
   speak(key, text) {
     if (this.settings.sound === false || typeof window === 'undefined') return
     const say = text || { peng: '碰！', gang: '杠！', hu: '胡喽！', zimo: '自摸！' }[key]
     if (!say) return
-    if (!this._voiceQueue) this._voiceQueue = []
-    const isTile = /^(wan|tong|tiao)/.test(key)
-    if (this._voiceQueue.length >= 2) {
-      if (isTile) return // 报牌可弃
-      const idx = this._voiceQueue.findIndex(item => item.isTile)
-      if (idx >= 0) this._voiceQueue.splice(idx, 1)
-      else return // 队列全是动作播报（罕见），丢弃新条目
-    }
-    this._voiceQueue.push({ key, say, isTile })
-    if (!this._voiceBusy) this._playNextVoice()
+    const lowPrio = /^(wan|tong|tiao)/.test(key) // 仅报牌为低优先级
+    const now = this._voiceNow
+    if (now && !now.lowPrio && lowPrio) return // 高优先级播报中，报牌让路
+    this._stopVoiceNow()
+    const item = { key, say, lowPrio }
+    this._voiceNow = item
+    this._playVoiceItem(item)
   }
 
-  _playNextVoice() {
-    const item = this._voiceQueue && this._voiceQueue.shift()
-    if (!item) {
-      this._voiceBusy = false
-      this._voicePlaying = null
-      return
+  /** 掐断当前播报（抢占或销毁时用）；不清 _voiceCache（复用已加载音频） */
+  _stopVoiceNow() {
+    const clip = this._voicePlaying
+    if (clip) {
+      try { clip.pause() } catch (e) { /* 忽略 */ }
     }
-    this._voiceBusy = true
-    const { key, say } = item
+    this._voicePlaying = null
+    try {
+      const synth = window.speechSynthesis
+      if (synth) synth.cancel()
+    } catch (e) { /* 忽略 */ }
+    this._voiceNow = null
+  }
+
+  _playVoiceItem(item) {
+    const { key } = item
+    // 播完/失败/超时统一收尾：只有没被更新的播报顶替时才释放占用标记
+    const done = () => {
+      if (this._voiceNow === item) this._voiceNow = null
+    }
     if (!this._voiceCache) this._voiceCache = {}
     let clip = this._voiceCache[key]
     if (!clip) {
@@ -2936,73 +2996,75 @@ export default class ScmjUI {
         clip.addEventListener('error', () => { clip._broken = true })
         this._voiceCache[key] = clip
       } catch (e) {
-        this._speakSynth(say)
+        this._speakSynth(item)
         return
       }
     }
     if (clip._broken) {
-      this._speakSynth(say)
+      this._speakSynth(item)
       return
     }
     try {
       clip.currentTime = 0
-      let advanced = false
-      const timer = setTimeout(() => next(), 5000) // 加载异常卡住时兜底跳过
-      const next = () => {
-        if (advanced) return
-        advanced = true
+      let settled = false
+      const timer = setTimeout(() => finish(), 5000) // 加载卡死兜底，防占用标记永不释放
+      const finish = () => {
+        if (settled) return
+        settled = true
         clearTimeout(timer)
-        clip.removeEventListener('ended', next)
+        clip.removeEventListener('ended', finish)
         clip.removeEventListener('error', onErr)
-        this._playNextVoice()
+        if (this._voicePlaying === clip) this._voicePlaying = null
+        done()
       }
-      const onErr = () => { clip._broken = true; next() }
-      clip.addEventListener('ended', next, { once: true })
+      const onErr = () => { clip._broken = true; finish() }
+      clip.addEventListener('ended', finish, { once: true })
       clip.addEventListener('error', onErr, { once: true })
       const p = clip.play()
       this._voicePlaying = clip
       if (p && p.catch) {
         p.catch(() => {
-          if (advanced) return
-          advanced = true
+          if (settled) return
+          settled = true
           clearTimeout(timer)
-          clip.removeEventListener('ended', next)
+          clip.removeEventListener('ended', finish)
           clip.removeEventListener('error', onErr)
           clip._broken = true
-          this._speakSynth(say)
+          if (this._voicePlaying === clip) this._voicePlaying = null
+          // 文件加载失败回退合成；若该条已被顶替则无需再播
+          if (this._voiceNow === item) this._speakSynth(item)
+          else done()
         })
       }
     } catch (e) {
       clip._broken = true
-      this._speakSynth(say)
+      this._speakSynth(item)
     }
   }
 
-  _speakSynth(text) {
-    let advanced = false
-    const next = () => {
-      if (advanced) return
-      advanced = true
-      this._playNextVoice()
+  _speakSynth(item) {
+    const say = item.say
+    const done = () => {
+      if (this._voiceNow === item) this._voiceNow = null
     }
     try {
       const synth = window.speechSynthesis
       if (!synth || typeof SpeechSynthesisUtterance === 'undefined') {
-        next()
+        done()
         return
       }
-      const u = new SpeechSynthesisUtterance(text)
+      const u = new SpeechSynthesisUtterance(say)
       u.lang = 'zh-CN'
       u.pitch = 1.4
       u.rate = 1.15
       u.volume = 0.9
-      u.onend = next
-      u.onerror = next
+      u.onend = done
+      u.onerror = done
       synth.speak(u)
-      // 合成不可用手势/无声环境时兜底跳过，防队列卡死
-      setTimeout(next, 5000)
+      // 合成不可用手势/无声环境时兜底跳过，防占用标记卡死
+      setTimeout(done, 5000)
     } catch (e) {
-      next()
+      done()
     }
   }
 }

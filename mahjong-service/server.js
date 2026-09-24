@@ -227,6 +227,7 @@ export function createServer({ logger } = {}) {
   // ---- 房间交流（语音 / 快捷短语）----
   // 纯内存转发、绝不落盘：收到即校验并广播给房间内其他真人（不回环发件人），
   // 服务端不保存任何语音/文字内容。限流防刷屏：语音 2s/条、短语 1s/条（按玩家）。
+  const CHAT_PHRASE_COUNT = 8 // 固定短语白名单条数（与客户端 CHAT_PHRASES 保持一致）
   const chatRate = new Map() // playerId -> lastAt(ms)
   function handleChatRelay(ws, msg) {
     const { playerId, room } = requireBound(ws)
@@ -250,9 +251,12 @@ export function createServer({ logger } = {}) {
       const dur = Math.min(20, Math.max(0, Number(duration) || 0))
       payload = { seatIndex: ws.seatIndex, mime, data, duration: dur }
     } else {
-      const text = String(msg.text == null ? '' : msg.text).trim()
-      if (!text || text.length > 30) fail(ERR.INVALID_ACTION, '短语为空或过长')
-      payload = { seatIndex: ws.seatIndex, text }
+      // 固定短语：只转发白名单序号（语音文件由客户端按序号本地播放，服务端不存文本）
+      const idx = msg.phrase
+      if (typeof idx !== 'number' || !Number.isInteger(idx) || idx < 0 || idx >= CHAT_PHRASE_COUNT) {
+        fail(ERR.INVALID_ACTION, '短语非法')
+      }
+      payload = { seatIndex: ws.seatIndex, phrase: idx }
     }
     chatRate.set(playerId, now)
 

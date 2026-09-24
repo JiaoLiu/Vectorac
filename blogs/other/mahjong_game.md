@@ -74,6 +74,7 @@ meta:
 <div class="scmj-portrait-tip">📱 当前为竖屏，建议横屏获得完整牌桌体验</div>
 <div class="scmj-board">
 <div class="scmj-side scmj-side-2">
+<div class="scmj-handbacks scmj-handbacks-2" data-scmj-backs2></div>
 <div class="scmj-seatwrap">
 <div class="scmj-seatpend" data-scmj-seat2pend hidden>定缺中…</div>
 <div class="scmj-seat" data-scmj-seat2></div>
@@ -86,6 +87,7 @@ meta:
 </div>
 <div class="scmj-side scmj-side-3">
 <div class="scmj-seatwrap">
+<div class="scmj-handbacks scmj-handbacks-3" data-scmj-backs3></div>
 <div class="scmj-seatpend" data-scmj-seat3pend hidden>定缺中…</div>
 <div class="scmj-seat" data-scmj-seat3></div>
 <div class="scmj-seatmelds" data-scmj-seat3melds></div>
@@ -114,6 +116,7 @@ meta:
 </div>
 <div class="scmj-side scmj-side-1">
 <div class="scmj-seatwrap">
+<div class="scmj-handbacks scmj-handbacks-1" data-scmj-backs1></div>
 <div class="scmj-seatpend" data-scmj-seat1pend hidden>定缺中…</div>
 <div class="scmj-seat" data-scmj-seat1></div>
 <div class="scmj-seatmelds" data-scmj-seat1melds></div>
@@ -1411,6 +1414,40 @@ meta:
 }
 #scmjGame .scmj-toast-show { opacity: 1; transform: translate(-50%, 0); }
 
+/* ============ 对手手牌牌背堆叠（假 3D：与牌墙同张贴图，直观看到各家剩余牌数） ============ */
+/* 对家：横排在座位面板正上方（side-2 顶部 padding 腾位，不占交互区） */
+#scmjGame .scmj-side-2 { position: relative; padding-top: 22px; box-sizing: border-box; }
+#scmjGame .scmj-handbacks { display: flex; pointer-events: none; z-index: 3; }
+#scmjGame .scmj-handbacks-2 {
+  position: absolute;
+  top: 1px;
+  left: 50%;
+  transform: translateX(-50%);
+  justify-content: center;
+}
+/* 左右两家：竖排在座位面板靠中央一侧的边缘（立牌感，呼应实体牌桌） */
+#scmjGame .scmj-handbacks-3,
+#scmjGame .scmj-handbacks-1 {
+  position: absolute;
+  top: 4px;
+  flex-direction: column;
+  align-items: center;
+}
+#scmjGame .scmj-handbacks-3 { left: calc(100% + 4px); }
+#scmjGame .scmj-handbacks-1 { right: calc(100% + 4px); }
+#scmjGame .scmj-handback {
+  display: block;
+  width: 17px;
+  height: 22px; /* 与 back.png 158×200 同比例 */
+  background: url(/mahjong/tiles/back.png) center / cover no-repeat;
+  border-radius: 2px;
+  filter: drop-shadow(1px 1px 1px rgba(0, 0, 0, 0.45));
+}
+/* 重叠堆叠：省空间且更像一摞真实手牌 */
+#scmjGame .scmj-handbacks-2 .scmj-handback + .scmj-handback { margin-left: -8px; }
+#scmjGame .scmj-handbacks-3 .scmj-handback + .scmj-handback,
+#scmjGame .scmj-handbacks-1 .scmj-handback + .scmj-handback { margin-top: -13px; }
+
 /* ============ 联机交流：右下浮动入口 + 座位气泡 ============ */
 /* 入口定位在右缘偏下（top:56%），避开手牌/操作条/弃牌等可交互区。
    z-index 65：高于结算覆盖层（60），局间等待时也能收发；低于 toast(80)/弹窗(95)。 */
@@ -1593,10 +1630,25 @@ meta:
   #scmjGame .scmj-action-explain { display: none; }
   #scmjGame .scmj-board {
     grid-template-columns: 76px minmax(0, 1fr) 76px;
-    grid-template-rows: 64px minmax(0, 1fr) 62px;
+    /* 第一行 86px = 对家牌背 22px + 座位/弃牌行 64px */
+    grid-template-rows: 86px minmax(0, 1fr) 62px;
     gap: 5px;
     min-height: 0;
   }
+  /* 竖屏两侧列窄且有 overflow:hidden：左右两家的牌背改为面板下方横排（小尺寸），
+     避免竖排越界被裁；座位面板下方腾 18px 放牌背 */
+  #scmjGame .scmj-handbacks-3,
+  #scmjGame .scmj-handbacks-1 {
+    left: 50%;
+    right: auto;
+    top: calc(100% + 2px);
+    transform: translateX(-50%);
+    flex-direction: row;
+  }
+  #scmjGame .scmj-handbacks-3 .scmj-handback,
+  #scmjGame .scmj-handbacks-1 .scmj-handback { width: 11px; height: 15px; }
+  #scmjGame .scmj-handbacks-3 .scmj-handback + .scmj-handback,
+  #scmjGame .scmj-handbacks-1 .scmj-handback + .scmj-handback { margin-top: 0; margin-left: -5px; }
   /* 对家：面板 + 弃牌并排单行（弃牌横向滚动），整行高度固定不变 */
   #scmjGame .scmj-side-2 {
     flex-direction: row;
@@ -1622,7 +1674,7 @@ meta:
   #scmjGame .scmj-side-3,
   #scmjGame .scmj-side-1 { align-self: stretch; height: 100%; min-height: 0; overflow: hidden; }
   #scmjGame .scmj-side-3 > .scmj-seatwrap,
-  #scmjGame .scmj-side-1 > .scmj-seatwrap { flex: none; padding-top: 10px; }
+  #scmjGame .scmj-side-1 > .scmj-seatwrap { flex: none; padding-top: 10px; margin-bottom: 18px; }
   #scmjGame .scmj-side-3 > .scmj-disc,
   #scmjGame .scmj-side-1 > .scmj-disc { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
   #scmjGame .scmj-side-3 .scmj-disc-tiles,

@@ -362,9 +362,9 @@ export class NetClient {
     return this._sendRaw({ type: 'VOICE_MSG', requestId: randomId(), mime, data, duration })
   }
 
-  /** 房间交流：快捷短语（固定文案，点击即发） */
-  sendChat({ text } = {}) {
-    return this._sendRaw({ type: 'CHAT_MSG', requestId: randomId(), text })
+  /** 房间交流：固定短语（发白名单序号，全员播报对应预生成语音） */
+  sendChat({ phrase } = {}) {
+    return this._sendRaw({ type: 'CHAT_MSG', requestId: randomId(), phrase })
   }
 
   /** 主动退出（永久）：作废 resumeToken */
