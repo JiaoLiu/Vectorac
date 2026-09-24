@@ -354,6 +354,19 @@ export class NetClient {
     return this._sendRaw({ type, requestId: randomId(), ...payload })
   }
 
+  /**
+   * 房间交流：语音消息（按住录音 → base64）。
+   * 服务端纯转发不存储；payload 形如 { mime, data, duration }。
+   */
+  sendVoice({ mime, data, duration } = {}) {
+    return this._sendRaw({ type: 'VOICE_MSG', requestId: randomId(), mime, data, duration })
+  }
+
+  /** 房间交流：快捷短语（固定文案，点击即发） */
+  sendChat({ text } = {}) {
+    return this._sendRaw({ type: 'CHAT_MSG', requestId: randomId(), text })
+  }
+
   /** 主动退出（永久）：作废 resumeToken */
   leaveRoom(reason = 'LEAVE_ROOM') {
     this._sendRaw({ type: 'LEAVE_ROOM', requestId: randomId(), reason })

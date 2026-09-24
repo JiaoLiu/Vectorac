@@ -95,6 +95,9 @@ const TILE_ASPECT = 200 / 158
 // 不再按媒体查询写死小常数（矮横屏曾一路压到 28×38，屏幕宽度却只用掉三分之一）。
 const HAND_SLOTS_REF = 14 // 尺寸按满手 14 张定档：张数变化不改变牌的大小，牌桌不抖
 const HAND_DRAWN_GAP = 12 // 新摸的牌与前排之间的正间距（一眼看出刚摸的是哪张）
+// 联机交流：固定短语（点击即发；服务端限长 30 字，这里的文案都远低于上限）
+const CHAT_PHRASES = ['快点啊', '等等，我想想', '别放炮哦', '这牌打得漂亮', '手气真好', '稳一手', '碰得好！', '承让承让']
+const VOICE_MAX_SEC = 15 // 语音消息最长秒数（按住录音到点自动停）
 const MIN_HAND_TILE_W = 26 // 极窄屏的硬下限，再窄就交给换行
 // 单张手牌的高度上限（宽 = 高 / TILE_ASPECT）。统一给到桌面档，让**宽度**成为
 // 唯一限制：横屏手机横向富余，14 张按可用宽度算出来的牌宽本来就更大，
@@ -223,6 +226,16 @@ export default class ScmjUI {
     this._labels = SEAT_LABELS
     this._shorts = SEAT_SHORT
     this._avatars = SEAT_AVATARS
+    // ---------- 联机交流（语音 / 快捷短语，服务端纯转发不存储）----------
+    this._unsubChat = null // net.subscribe 的取消函数
+    this._bubbles = {} // 视角座位号 -> { el, timer }（每座位同时只留一条气泡）
+    this._recorder = null // MediaRecorder 实例（录音中非 null）
+    this._recStream = null // getUserMedia 流（停止时必须关轨，否则麦克风指示灯常亮）
+    this._recChunks = []
+    this._recMime = ''
+    this._recStartAt = 0
+    this._recTimer = null
+    this._recDiscard = false // 离开/销毁时丢弃录音，不发送
   }
 
   // ==================== 生命周期 ====================
@@ -289,7 +302,12 @@ export default class ScmjUI {
       seat1: q('[data-scmj-seat1]'),
       seat2: q('[data-scmj-seat2]'),
       seat3: q('[data-scmj-seat3]'),
-      pop: q('[data-scmj-pop]')
+      pop: q('[data-scmj-pop]'),
+      chat: q('[data-scmj-chat]'),
+      chatMic: q('[data-scmj-chat-mic]'),
+      chatToggle: q('[data-scmj-chat-toggle]'),
+      chatPanel: q('[data-scmj-chat-panel]'),
+      chatRecTip: q('[data-scmj-chat-rectip]')
     }
     for (let s = 0; s < 4; s++) {
       this._els['discTiles' + s] = q('[data-scmj-disc' + s + 'tiles]')
@@ -345,6 +363,7 @@ export default class ScmjUI {
 
   destroy() {
     this._destroyed = true
+    this._teardownChat()
     if (this.game && this.game.dispose) this.game.dispose()
     this.game = null
     this.view = null
@@ -698,6 +717,272 @@ export default class ScmjUI {
       if (e.modalConfirm) e.modalConfirm.hidden = true
       this._confirmCb = null
     })
+    this.bindChat()
+  }
+
+  // ==================== 联机交流：快捷短语 + 按住说话 ====================
+
+  /** 绑定交流入口（仅联机牌桌显示；单机时元素隐藏，绑了也不会触发） */
+  bindChat() {
+    const e = this._els
+    if (!e.chat) return
+    // 固定短语面板（一次性渲染）
+    if (e.chatPanel) {
+      CHAT_PHRASES.forEach(text => {
+        const b = document.createElement('button')
+        b.type = 'button'
+        b.className = 'scmj-chat-phrase'
+        b.textContent = text
+        b.addEventListener('click', () => {
+          this.sound('click')
+          e.chatPanel.hidden = true
+          if (!this.isOnline || !this.net) return
+          // 本地即时回显（服务端不回环发件人）
+          if (this.net.sendChat({ text })) this.showChatBubble(0, { text })
+          else this.toast('连接已断开，短语未发出')
+        })
+        e.chatPanel.appendChild(b)
+      })
+    }
+    on(e.chatToggle, 'click', () => {
+      this.sound('click')
+      if (e.chatPanel) e.chatPanel.hidden = !e.chatPanel.hidden
+    })
+    // 按住说话：pointerdown 开录、up/cancel/滑出 停并发。用 pointer 系事件同时覆盖
+    // 鼠标与触屏；contextmenu 防 iOS 长按弹系统菜单打断录音。
+    on(e.chatMic, 'pointerdown', ev => {
+      ev.preventDefault()
+      this.startVoiceRec()
+    })
+    on(e.chatMic, 'pointerup', ev => {
+      ev.preventDefault()
+      this.stopVoiceRec()
+    })
+    on(e.chatMic, 'pointercancel', () => this.stopVoiceRec())
+    on(e.chatMic, 'pointerleave', () => this.stopVoiceRec())
+    on(e.chatMic, 'contextmenu', ev => ev.preventDefault())
+  }
+
+  /** 订阅服务端的交流转发（进联机桌时挂；重复进桌先退旧订阅） */
+  _bindChatRelay(net) {
+    if (this._unsubChat) {
+      this._unsubChat()
+      this._unsubChat = null
+    }
+    if (!net || !net.subscribe) return
+    this._unsubChat = net.subscribe(msg => this._onChatMsg(msg))
+  }
+
+  _onChatMsg(msg) {
+    if (!msg || (msg.type !== 'VOICE_MSG' && msg.type !== 'CHAT_MSG')) return
+    const p = msg.payload || {}
+    const mySeat = this.onlinePlayer && this.onlinePlayer.seatIndex
+    if (p.seatIndex == null || mySeat == null) return
+    // 服务端发的是绝对座位号，转成视角座位（自己永远 0 号位）
+    const viewSeat = (p.seatIndex - mySeat + 4) % 4
+    if (msg.type === 'CHAT_MSG') {
+      this.showChatBubble(viewSeat, { text: String(p.text == null ? '' : p.text).slice(0, 30) })
+      this.sound('click')
+      return
+    }
+    const duration = Math.min(20, Math.max(1, Math.round(Number(p.duration) || 0)))
+    this.showChatBubble(viewSeat, { voice: true, duration, mime: p.mime, data: p.data })
+    // 音效开关关=不自动播语音，气泡仍可点按重播
+    if (this.settings.sound !== false) this._playVoiceData(p.mime, p.data)
+  }
+
+  /** 在某座位旁弹气泡（同一座位新消息顶掉旧的；textContent 渲染防注入） */
+  showChatBubble(viewSeat, msg) {
+    const anchor = this._chatAnchor(viewSeat)
+    if (!anchor) return
+    const old = this._bubbles[viewSeat]
+    if (old) {
+      clearTimeout(old.timer)
+      old.el.remove()
+      delete this._bubbles[viewSeat]
+    }
+    const el = document.createElement('div')
+    el.className = 'scmj-bubble scmj-bubble-' + viewSeat
+    let hideAfter = 3500
+    if (msg.voice) {
+      el.classList.add('scmj-bubble-voice')
+      el.textContent = '🔊 ' + (msg.duration || 1) + '″'
+      el.title = '点击重播'
+      el.addEventListener('click', () => {
+        this.sound('click')
+        this._playVoiceData(msg.mime, msg.data)
+      })
+      hideAfter = Math.min(12000, 3000 + (msg.duration || 1) * 1000)
+    } else {
+      el.textContent = msg.text
+    }
+    anchor.appendChild(el)
+    const timer = setTimeout(() => {
+      el.classList.add('scmj-bubble-out')
+      setTimeout(() => el.remove(), 240)
+      delete this._bubbles[viewSeat]
+    }, hideAfter)
+    this._bubbles[viewSeat] = { el, timer }
+  }
+
+  /** 气泡锚点：对手挂座位面板的 seatwrap，自己挂玩家区域 */
+  _chatAnchor(viewSeat) {
+    if (viewSeat === 0) return this.root.querySelector('.scmj-player')
+    const seat = this._els['seat' + viewSeat]
+    return seat && seat.closest ? seat.closest('.scmj-seatwrap') : null
+  }
+
+  /** base64 → Blob URL 播放（iOS Safari 对 data: 音频兼容性差，走 Blob 更稳） */
+  _playVoiceData(mime, data) {
+    if (!mime || !data) return
+    try {
+      const bin = atob(data)
+      const bytes = new Uint8Array(bin.length)
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+      const url = URL.createObjectURL(new Blob([bytes], { type: mime }))
+      const a = new Audio(url)
+      const release = () => URL.revokeObjectURL(url)
+      a.onended = release
+      a.onerror = release
+      a.play().catch(release)
+    } catch (err) {
+      /* 非法数据忽略 */
+    }
+  }
+
+  async startVoiceRec() {
+    if (this._recorder) return // 已在录
+    if (!this.isOnline || !this.net) return
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || typeof MediaRecorder === 'undefined') {
+      this.toast('当前浏览器不支持录音，可改用快捷短语')
+      return
+    }
+    let stream
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+    } catch (err) {
+      this.toast('无法使用麦克风，请检查系统授权')
+      return
+    }
+    const mimes = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4']
+    const mime =
+      mimes.find(m => {
+        try {
+          return MediaRecorder.isTypeSupported(m)
+        } catch (err) {
+          return false
+        }
+      }) || ''
+    let rec
+    try {
+      rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined)
+    } catch (err) {
+      stream.getTracks().forEach(t => t.stop())
+      this.toast('录音初始化失败')
+      return
+    }
+    this._recChunks = []
+    this._recMime = rec.mimeType || mime || 'audio/webm'
+    this._recStartAt = Date.now()
+    this._recDiscard = false
+    this._recorder = rec
+    this._recStream = stream
+    rec.ondataavailable = ev => {
+      if (ev.data && ev.data.size) this._recChunks.push(ev.data)
+    }
+    rec.onstop = () => this._finishVoiceRec()
+    try {
+      rec.start()
+    } catch (err) {
+      this._recorder = null
+      this._recStream = null
+      this._recStartAt = 0
+      stream.getTracks().forEach(t => t.stop())
+      this.toast('录音启动失败')
+      return
+    }
+    if (this._els.chatMic) this._els.chatMic.classList.add('scmj-chat-mic-on')
+    if (this._els.chatRecTip) this._els.chatRecTip.hidden = false
+    // 到最长时限自动停（走正常发送流程）
+    clearTimeout(this._recTimer)
+    this._recTimer = setTimeout(() => this.stopVoiceRec(), VOICE_MAX_SEC * 1000)
+  }
+
+  stopVoiceRec() {
+    const rec = this._recorder
+    if (!rec) return
+    this._recorder = null // 先置空防重入；收尾在 onstop → _finishVoiceRec
+    clearTimeout(this._recTimer)
+    try {
+      if (rec.state !== 'inactive') rec.stop()
+      else this._finishVoiceRec()
+    } catch (err) {
+      this._finishVoiceRec()
+    }
+  }
+
+  /** 录音结束收尾：关轨、复位 UI、编码发送（或按场景丢弃） */
+  _finishVoiceRec() {
+    if (!this._recStartAt) return // 已收尾过
+    const durMs = Date.now() - this._recStartAt
+    this._recStartAt = 0
+    clearTimeout(this._recTimer)
+    if (this._recStream) {
+      this._recStream.getTracks().forEach(t => t.stop())
+      this._recStream = null
+    }
+    if (this._els.chatMic) this._els.chatMic.classList.remove('scmj-chat-mic-on')
+    if (this._els.chatRecTip) this._els.chatRecTip.hidden = true
+    const chunks = this._recChunks
+    this._recChunks = []
+    const mime = this._recMime
+    if (this._recDiscard) {
+      this._recDiscard = false
+      return
+    }
+    if (!chunks.length) return
+    if (durMs < 800) {
+      this.toast('说话时间太短')
+      return
+    }
+    const blob = new Blob(chunks, { type: mime })
+    if (blob.size > 200 * 1024) {
+      this.toast('语音太长了，控制在 ' + VOICE_MAX_SEC + ' 秒内')
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = () => {
+      const url = String(reader.result || '')
+      const base64 = url.slice(url.indexOf(',') + 1)
+      if (!base64) return
+      const seconds = Math.min(VOICE_MAX_SEC, Math.max(1, Math.round(durMs / 1000)))
+      if (this.net && this.net.sendVoice({ mime, data: base64, duration: seconds })) {
+        // 本地即时回显（服务端不回环发件人）
+        this.showChatBubble(0, { voice: true, duration: seconds, mime, data: base64 })
+      } else {
+        this.toast('连接已断开，语音未发出')
+      }
+    }
+    reader.readAsDataURL(blob)
+  }
+
+  /** 离开/销毁时：退订阅、丢弃进行中的录音、清空气泡 */
+  _teardownChat() {
+    if (this._unsubChat) {
+      this._unsubChat()
+      this._unsubChat = null
+    }
+    if (this._recorder) {
+      this._recDiscard = true
+      this.stopVoiceRec()
+    }
+    for (const k of Object.keys(this._bubbles)) {
+      clearTimeout(this._bubbles[k].timer)
+      this._bubbles[k].el.remove()
+      delete this._bubbles[k]
+    }
+    if (this._els.chat) this._els.chat.hidden = true
+    if (this._els.chatPanel) this._els.chatPanel.hidden = true
   }
 
   showEntry() {
@@ -811,6 +1096,9 @@ export default class ScmjUI {
     this.syncSession()
     this.showTable()
     this.enterFullscreen()
+    // 联机交流：显示右下入口并订阅服务端转发（重进桌时 _bindChatRelay 会先退旧订阅）
+    if (this._els.chat) this._els.chat.hidden = false
+    this._bindChatRelay(net)
     this.render()
     this.sound('deal')
     this.playOpening()
@@ -856,6 +1144,7 @@ export default class ScmjUI {
 
   leaveOnline() {
     this.stopCountdown()
+    this._teardownChat()
     if (this.game && this.game.dispose) this.game.dispose()
     this.game = null
     this.view = null
@@ -877,6 +1166,7 @@ export default class ScmjUI {
   onlineAborted(reason) {
     if (!this.isOnline) return
     this.stopCountdown()
+    this._teardownChat()
     if (this.game && this.game.dispose) this.game.dispose()
     this.game = null
     this.view = null

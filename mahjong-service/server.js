@@ -18,7 +18,7 @@ import { AiService } from './rooms/ai-jobs.js'
 import { Hub } from './rooms/hub.js'
 import { PlayerSessionManager } from './rooms/sessions.js'
 import { RoomManager, normalizeRoomCode } from './rooms/room-manager.js'
-import { ROOM_STATUS } from './rooms/seat.js'
+import { ROOM_STATUS, OCCUPANT } from './rooms/seat.js'
 
 /** 结构化日志（文档 §52）：一行一条 JSON，字段固定便于检索 */
 function createLogger(minLevel = 'info') {
@@ -210,6 +210,10 @@ export function createServer({ logger } = {}) {
       case 'LEAVE_ROOM':
         return handleLeave(ws, msg)
 
+      case 'VOICE_MSG':
+      case 'CHAT_MSG':
+        return handleChatRelay(ws, msg)
+
       default:
         return safeSend(ws, {
           type: 'ERROR',
@@ -218,6 +222,47 @@ export function createServer({ logger } = {}) {
           requestId: msg.requestId || null
         })
     }
+  }
+
+  // ---- 房间交流（语音 / 快捷短语）----
+  // 纯内存转发、绝不落盘：收到即校验并广播给房间内其他真人（不回环发件人），
+  // 服务端不保存任何语音/文字内容。限流防刷屏：语音 2s/条、短语 1s/条（按玩家）。
+  const chatRate = new Map() // playerId -> lastAt(ms)
+  function handleChatRelay(ws, msg) {
+    const { playerId, room } = requireBound(ws)
+    const isVoice = msg.type === 'VOICE_MSG'
+    const now = Date.now()
+    const minGap = isVoice ? 2000 : 1000
+    if (now - (chatRate.get(playerId) || 0) < minGap) {
+      return safeSend(ws, { type: 'ERROR', errorCode: ERR.INVALID_ACTION, message: '发送太频繁，请稍候', requestId: msg.requestId || null })
+    }
+
+    let payload
+    if (isVoice) {
+      const { mime, data, duration } = msg
+      if (typeof mime !== 'string' || !/^audio\/[\w.+-]+(;\s*codecs=[\w.+-]+)?$/.test(mime) || mime.length > 64) {
+        fail(ERR.INVALID_ACTION, '语音格式不支持')
+      }
+      // base64 上限 280KB（约 200KB 音频，足够 15~30 秒语音消息）
+      if (typeof data !== 'string' || data.length === 0 || data.length > 280000 || !/^[A-Za-z0-9+/]+={0,2}$/.test(data)) {
+        fail(ERR.INVALID_ACTION, '语音数据非法或过大')
+      }
+      const dur = Math.min(20, Math.max(0, Number(duration) || 0))
+      payload = { seatIndex: ws.seatIndex, mime, data, duration: dur }
+    } else {
+      const text = String(msg.text == null ? '' : msg.text).trim()
+      if (!text || text.length > 30) fail(ERR.INVALID_ACTION, '短语为空或过长')
+      payload = { seatIndex: ws.seatIndex, text }
+    }
+    chatRate.set(playerId, now)
+
+    let delivered = 0
+    for (const seat of room.seats) {
+      if (seat.occupantType !== OCCUPANT.HUMAN || !seat.humanPlayerId) continue
+      if (seat.humanPlayerId === playerId) continue // 发件人本地已即时显示，不回环
+      if (hub.send(seat.humanPlayerId, room, msg.type, payload)) delivered++
+    }
+    log('chat-relay', { roomId: room.roomId, seatIndex: ws.seatIndex, kind: msg.type, delivered })
   }
 
   // ---- RECONNECT（文档 §42 / §43）----

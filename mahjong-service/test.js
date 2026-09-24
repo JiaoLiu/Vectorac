@@ -14,6 +14,7 @@ import { OCCUPANT, ROOM_STATUS, humanCount } from './rooms/seat.js'
 import { config } from './config.js'
 import { createGame, legalActions } from './engine/engine.js'
 import { matchesLegalOption } from './rooms/action-window.js'
+import WebSocket from 'ws'
 
 // ---------- 迷你测试框架 ----------
 
@@ -1201,6 +1202,150 @@ async function suiteHttp() {
 }
 
 // ============================================================
+// [十三] 房间交流转发（VOICE_MSG / CHAT_MSG：纯转发、排除发件人、限流、校验）
+// ============================================================
+
+async function suiteChatRelay() {
+  console.log('\n[十三] 房间交流转发（语音 / 快捷短语）')
+
+  const post = (base, path, body) =>
+    fetch(base + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(r => r.json())
+
+  /** WS 等待指定类型消息（其余消息忽略） */
+  function waitMsg(ws, type, timeout = 3000) {
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => { cleanup(); reject(new Error('等待消息超时: ' + type)) }, timeout)
+      const onMsg = raw => {
+        let m
+        try { m = JSON.parse(raw.toString()) } catch (_) { return }
+        if (m.type === type) { cleanup(); resolve(m) }
+      }
+      const cleanup = () => { clearTimeout(timer); ws.off('message', onMsg) }
+      ws.on('message', onMsg)
+    })
+  }
+
+  /** 收集指定类型消息到数组（不过滤，测试自行断言） */
+  function collect(ws, bag) {
+    ws.on('message', raw => {
+      try { bag.push(JSON.parse(raw.toString())) } catch (_) { /* 忽略 */ }
+    })
+  }
+
+  /** 真 WS 连接并完成 RECONNECT 绑定 */
+  async function bind(base, cred, reqId) {
+    const ws = new WebSocket(base.replace('http://', 'ws://') + '/mahjong-ws')
+    await new Promise((resolve, reject) => { ws.once('open', resolve); ws.once('error', reject) })
+    const p = waitMsg(ws, 'RECONNECTED')
+    ws.send(JSON.stringify({ type: 'RECONNECT', roomId: cred.roomId, resumeToken: cred.resumeToken, requestId: reqId }))
+    await p
+    return ws
+  }
+
+  /** 两人房 + 双 WS 绑定 */
+  async function twoPlayerRoom(s) {
+    await new Promise(resolve => s.server.listen(0, '127.0.0.1', resolve))
+    const base = 'http://127.0.0.1:' + s.server.address().port
+    const a = (await post(base, '/api/rooms', { displayName: '张三' })).data
+    const b = (await post(base, '/api/rooms/join', { roomCode: a.room.roomCode, displayName: '李四' })).data
+    const wsA = await bind(base, { roomId: a.room.roomId, resumeToken: a.player.resumeToken }, 'ra')
+    const wsB = await bind(base, { roomId: b.room.roomId, resumeToken: b.player.resumeToken }, 'rb')
+    return { base, a, b, wsA, wsB }
+  }
+
+  await test('短语：对方收到（含座位号）', () =>
+    withServer(async s => {
+      const { wsA, wsB } = await twoPlayerRoom(s)
+      const got = waitMsg(wsB, 'CHAT_MSG')
+      wsA.send(JSON.stringify({ type: 'CHAT_MSG', text: '快点啊', requestId: 'c1' }))
+      const msg = await got
+      eq(msg.payload.text, '快点啊', '短语内容')
+      eq(msg.payload.seatIndex, 0, '发送者座位号')
+      wsA.close(); wsB.close()
+    })
+  )
+
+  await test('短语：发件人收不到自己的消息', () =>
+    withServer(async s => {
+      const { wsA, wsB } = await twoPlayerRoom(s)
+      const bagA = []
+      collect(wsA, bagA)
+      const got = waitMsg(wsB, 'CHAT_MSG')
+      wsA.send(JSON.stringify({ type: 'CHAT_MSG', text: '稳一手', requestId: 'c2' }))
+      await got
+      await new Promise(r => setTimeout(r, 200))
+      assert(!bagA.some(m => m.type === 'CHAT_MSG'), '发件人无回环')
+      wsA.close(); wsB.close()
+    })
+  )
+
+  await test('语音：合法 base64 原样转发（mime / data / duration）', () =>
+    withServer(async s => {
+      const { wsA, wsB } = await twoPlayerRoom(s)
+      const got = waitMsg(wsB, 'VOICE_MSG')
+      const data = Buffer.from('fake-opus-audio-frame').toString('base64')
+      wsA.send(JSON.stringify({ type: 'VOICE_MSG', mime: 'audio/webm;codecs=opus', data, duration: 3.2, requestId: 'v1' }))
+      const msg = await got
+      eq(msg.payload.data, data, '语音数据原样')
+      eq(msg.payload.mime, 'audio/webm;codecs=opus', 'mime 原样')
+      eq(msg.payload.duration, 3.2, '时长原样')
+      eq(msg.payload.seatIndex, 0, '座位号')
+      wsA.close(); wsB.close()
+    })
+  )
+
+  await test('校验：非法语音（mime / 超长 / 非 base64）与超长短语一律拒绝', () =>
+    withServer(async s => {
+      const { wsA, wsB } = await twoPlayerRoom(s)
+      const bagB = []
+      collect(wsB, bagB)
+      const expectError = async msg => {
+        const p = waitMsg(wsA, 'ERROR')
+        wsA.send(JSON.stringify(msg))
+        const err = await p
+        eq(err.errorCode, ERR.INVALID_ACTION, '错误码（' + msg.type + '）')
+      }
+      await expectError({ type: 'VOICE_MSG', mime: 'video/mp4', data: 'AAAA', duration: 1 })
+      await expectError({ type: 'VOICE_MSG', mime: 'audio/webm', data: 'A'.repeat(280001), duration: 1 })
+      await expectError({ type: 'VOICE_MSG', mime: 'audio/webm', data: '!!!not-base64!!!', duration: 1 })
+      await expectError({ type: 'CHAT_MSG', text: 'x'.repeat(31) })
+      await expectError({ type: 'CHAT_MSG', text: '   ' })
+      await new Promise(r => setTimeout(r, 200))
+      assert(!bagB.some(m => m.type === 'VOICE_MSG' || m.type === 'CHAT_MSG'), '非法消息均未转发')
+      wsA.close(); wsB.close()
+    })
+  )
+
+  await test('限流：短语 1s / 语音 2s 内重复发送被拒', () =>
+    withServer(async s => {
+      const { wsA, wsB } = await twoPlayerRoom(s)
+      const got = waitMsg(wsB, 'CHAT_MSG')
+      wsA.send(JSON.stringify({ type: 'CHAT_MSG', text: '快点啊', requestId: 'r1' }))
+      await got
+      const p = waitMsg(wsA, 'ERROR')
+      wsA.send(JSON.stringify({ type: 'CHAT_MSG', text: '等等', requestId: 'r2' }))
+      const err = await p
+      eq(err.errorCode, ERR.INVALID_ACTION, '1s 内第二条被拒')
+      wsA.close(); wsB.close()
+    })
+  )
+
+  await test('未绑定连接的交流消息被拒（INVALID_RESUME_TOKEN）', () =>
+    withServer(async s => {
+      await new Promise(resolve => s.server.listen(0, '127.0.0.1', resolve))
+      const base = 'http://127.0.0.1:' + s.server.address().port
+      const ws = new WebSocket(base.replace('http://', 'ws://') + '/mahjong-ws')
+      await new Promise((resolve, reject) => { ws.once('open', resolve); ws.once('error', reject) })
+      const p = waitMsg(ws, 'ERROR')
+      ws.send(JSON.stringify({ type: 'CHAT_MSG', text: '快点啊' }))
+      const err = await p
+      eq(err.errorCode, ERR.INVALID_RESUME_TOKEN, '未绑定即拒')
+      ws.close()
+    })
+  )
+}
+
+// ============================================================
 // 合法选项结构：引擎产出的 legal ↔ 服务端 matchesLegalOption 的契约
 // ============================================================
 
@@ -1288,6 +1433,7 @@ async function main() {
   await suiteHttp()
   await suiteTurnTimeout()
   await suiteLegalOptions()
+  await suiteChatRelay()
 
   const elapsed = Date.now() - t0
   console.log('\n=== 测试结束 ===')

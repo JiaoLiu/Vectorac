@@ -179,6 +179,14 @@ meta:
 </div>
 </div>
 <div class="scmj-settle" data-scmj-settle hidden></div>
+<div class="scmj-chat" data-scmj-chat hidden>
+<div class="scmj-chat-rectip" data-scmj-chat-rectip hidden>🎙 正在录音…松开发送</div>
+<div class="scmj-chat-panel" data-scmj-chat-panel hidden></div>
+<div class="scmj-chat-btns">
+<button type="button" class="scmj-chat-btn" data-scmj-chat-toggle title="快捷短语">💬</button>
+<button type="button" class="scmj-chat-btn scmj-chat-mic" data-scmj-chat-mic title="按住说话">🎤</button>
+</div>
+</div>
 <div class="scmj-dice" data-scmj-dice hidden>
 <div class="scmj-dice-card">
 <div class="scmj-dice-title" data-scmj-dice-title>掷骰定庄</div>
@@ -206,6 +214,7 @@ meta:
 <li>点击任意对手头像，可查看其积分、手牌数、缺门、副露与本局得失</li>
 <li>电脑端鼠标点击，移动端触控操作，所有按钮均已做触控友好处理</li>
 <li>联机对局：房主（头像旁 👑）可改规则、加 / 移除 AI、开始游戏；轮到你的操作会在顶栏显示剩余秒数，超时由 AI 代打一手，不会卡住牌局</li>
+<li>联机对局：右侧 💬 发快捷短语、🎤 按住说话发语音，同桌即时收到（服务器只转发不存储），气泡点 🔊 可重播</li>
 </ul>
 <p><small>背景音乐：Ishikari Lore · Kevin MacLeod（incompetech.com），CC-BY 4.0 授权；报牌与碰 / 杠 / 胡播报为 AI 合成语音。</small></p>
 </div>
@@ -1401,6 +1410,106 @@ meta:
   transition: opacity 0.18s ease, transform 0.18s ease;
 }
 #scmjGame .scmj-toast-show { opacity: 1; transform: translate(-50%, 0); }
+
+/* ============ 联机交流：右下浮动入口 + 座位气泡 ============ */
+/* 入口定位在右缘偏下（top:56%），避开手牌/操作条/弃牌等可交互区。
+   z-index 65：高于结算覆盖层（60），局间等待时也能收发；低于 toast(80)/弹窗(95)。 */
+#scmjGame .scmj-chat {
+  position: absolute;
+  right: 8px;
+  top: 56%;
+  z-index: 65;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+#scmjGame .scmj-chat-btns { display: flex; flex-direction: column; gap: 8px; }
+#scmjGame .scmj-chat-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(212, 175, 55, 0.65);
+  background: rgba(9, 40, 21, 0.92);
+  color: #f3ead8;
+  font-size: 19px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4);
+  touch-action: none; /* 按住录音不被滚动/捏合手势打断 */
+}
+#scmjGame .scmj-chat-btn:active { transform: scale(0.94); }
+#scmjGame .scmj-chat-mic-on {
+  background: rgba(140, 24, 24, 0.95);
+  border-color: #ff8a7a;
+  animation: scmjMicPulse 1s ease-in-out infinite;
+}
+@keyframes scmjMicPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 90, 70, 0.55); }
+  50% { box-shadow: 0 0 0 9px rgba(255, 90, 70, 0); }
+}
+#scmjGame .scmj-chat-rectip {
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(140, 24, 24, 0.95);
+  border: 1px solid rgba(255, 138, 122, 0.7);
+  color: #ffe9e6;
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+#scmjGame .scmj-chat-panel {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 14px;
+  background: rgba(9, 40, 21, 0.96);
+  border: 1px solid rgba(212, 175, 55, 0.55);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.5);
+  max-width: 240px;
+}
+#scmjGame .scmj-chat-phrase {
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  background: rgba(23, 77, 46, 0.85);
+  color: #f3ead8;
+  font-size: 13px;
+  white-space: nowrap;
+}
+#scmjGame .scmj-chat-phrase:active { background: rgba(212, 175, 55, 0.3); }
+/* 座位气泡：挂在座位面板（seatwrap，position:relative）或自己区域（.scmj-player）上 */
+#scmjGame .scmj-player { position: relative; }
+#scmjGame .scmj-bubble {
+  position: absolute;
+  z-index: 65;
+  max-width: 180px;
+  padding: 7px 12px;
+  border-radius: 12px;
+  background: rgba(9, 40, 21, 0.96);
+  border: 1px solid rgba(212, 175, 55, 0.6);
+  color: #f3ead8;
+  font-size: 13px;
+  line-height: 1.35;
+  word-break: break-word;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+  animation: scmjBubbleIn 0.18s ease-out;
+}
+@keyframes scmjBubbleIn {
+  from { opacity: 0; transform: translateY(4px) scale(0.92); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+#scmjGame .scmj-bubble-out { opacity: 0; transition: opacity 0.22s ease; }
+#scmjGame .scmj-bubble-voice { cursor: pointer; color: #ffd968; font-weight: 700; }
+/* 对家（顶）：气泡落在面板下方 */
+#scmjGame .scmj-bubble-2 { top: calc(100% + 4px); left: 0; }
+/* 上家（左）：气泡在面板右侧 */
+#scmjGame .scmj-bubble-3 { left: calc(100% + 6px); top: 0; }
+/* 下家（右）：气泡在面板左侧 */
+#scmjGame .scmj-bubble-1 { right: calc(100% + 6px); top: 0; }
+/* 自己：气泡在自己区域左上方（压在弃牌展示上，不挡交互） */
+#scmjGame .scmj-bubble-0 { left: 4px; bottom: 100%; }
 
 /* ============ 杠特效：刮风（明杠）/ 下雨（暗杠 · 补杠），约 1s ============ */
 #scmjGame .scmj-fx {
