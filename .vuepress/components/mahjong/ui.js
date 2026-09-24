@@ -358,6 +358,8 @@ export default class ScmjUI {
     }
     this.music(false)
     if (this._bgm) { this._bgm.pause(); this._bgm.removeAttribute('src'); this._bgm = null }
+    this._voiceQueue = []
+    if (this._voicePlaying) { try { this._voicePlaying.pause() } catch (e) { /* 忽略 */ } this._voicePlaying = null }
     try { if (window.speechSynthesis) window.speechSynthesis.cancel() } catch (e) { /* 忽略 */ }
     if (this._ac && this._ac.state !== 'closed') { this._ac.close().catch(() => {}); this._ac = null }
     this.hideOpening()
@@ -2577,15 +2579,37 @@ export default class ScmjUI {
   }
 
   /**
-   * 语音播报（动作与报牌）。
+   * 语音播报（动作与报牌），串行队列：一条播完再播下一条，避免快速出牌时互相截断。
+   * 待播上限 2 条：报牌类（牌名）满了直接丢弃；动作类（碰/杠/胡/自摸）会挤掉
+   * 队列里最旧的报牌，保证关键播报不漏。
    * 真人录音优先：/audio/mahjong/{key}.mp3 存在即播放（key 如 peng/gang/hu/zimo 或
-   * 牌名 wan1..9 / tong1..9 / tiao1..9）；文件缺失时该词条自动回退浏览器语音合成。
-   * 快速连续播报时停掉上一条，避免叠音。
+   * 牌名 wan1..9 / tong1..9 / tiao1..9）；文件缺失时该词条回退浏览器语音合成。
    */
   speak(key, text) {
     if (this.settings.sound === false || typeof window === 'undefined') return
     const say = text || { peng: '碰！', gang: '杠！', hu: '胡喽！', zimo: '自摸！' }[key]
     if (!say) return
+    if (!this._voiceQueue) this._voiceQueue = []
+    const isTile = /^(wan|tong|tiao)/.test(key)
+    if (this._voiceQueue.length >= 2) {
+      if (isTile) return // 报牌可弃
+      const idx = this._voiceQueue.findIndex(item => item.isTile)
+      if (idx >= 0) this._voiceQueue.splice(idx, 1)
+      else return // 队列全是动作播报（罕见），丢弃新条目
+    }
+    this._voiceQueue.push({ key, say, isTile })
+    if (!this._voiceBusy) this._playNextVoice()
+  }
+
+  _playNextVoice() {
+    const item = this._voiceQueue && this._voiceQueue.shift()
+    if (!item) {
+      this._voiceBusy = false
+      this._voicePlaying = null
+      return
+    }
+    this._voiceBusy = true
+    const { key, say } = item
     if (!this._voiceCache) this._voiceCache = {}
     let clip = this._voiceCache[key]
     if (!clip) {
@@ -2599,37 +2623,69 @@ export default class ScmjUI {
         return
       }
     }
-    // 停掉上一条播报（文件与合成互斥：合成 cancel 在 _speakSynth 里做）
-    if (this._voicePlaying && !this._voicePlaying.paused && this._voicePlaying !== clip) {
-      try { this._voicePlaying.pause(); this._voicePlaying.currentTime = 0 } catch (e) { /* 忽略 */ }
+    if (clip._broken) {
+      this._speakSynth(say)
+      return
     }
-    if (!clip._broken) {
-      try {
-        clip.currentTime = 0
-        const p = clip.play()
-        this._voicePlaying = clip
-        if (p && p.catch) p.catch(() => { clip._broken = true; this._speakSynth(say) })
-        return
-      } catch (e) {
-        clip._broken = true
+    try {
+      clip.currentTime = 0
+      let advanced = false
+      const timer = setTimeout(() => next(), 5000) // 加载异常卡住时兜底跳过
+      const next = () => {
+        if (advanced) return
+        advanced = true
+        clearTimeout(timer)
+        clip.removeEventListener('ended', next)
+        clip.removeEventListener('error', onErr)
+        this._playNextVoice()
       }
+      const onErr = () => { clip._broken = true; next() }
+      clip.addEventListener('ended', next, { once: true })
+      clip.addEventListener('error', onErr, { once: true })
+      const p = clip.play()
+      this._voicePlaying = clip
+      if (p && p.catch) {
+        p.catch(() => {
+          if (advanced) return
+          advanced = true
+          clearTimeout(timer)
+          clip.removeEventListener('ended', next)
+          clip.removeEventListener('error', onErr)
+          clip._broken = true
+          this._speakSynth(say)
+        })
+      }
+    } catch (e) {
+      clip._broken = true
+      this._speakSynth(say)
     }
-    this._speakSynth(say)
   }
 
   _speakSynth(text) {
+    let advanced = false
+    const next = () => {
+      if (advanced) return
+      advanced = true
+      this._playNextVoice()
+    }
     try {
       const synth = window.speechSynthesis
-      if (!synth || typeof SpeechSynthesisUtterance === 'undefined') return
-      synth.cancel() // 新播报顶掉未播完的，避免叠音
+      if (!synth || typeof SpeechSynthesisUtterance === 'undefined') {
+        next()
+        return
+      }
       const u = new SpeechSynthesisUtterance(text)
       u.lang = 'zh-CN'
       u.pitch = 1.4
       u.rate = 1.15
       u.volume = 0.9
+      u.onend = next
+      u.onerror = next
       synth.speak(u)
+      // 合成不可用手势/无声环境时兜底跳过，防队列卡死
+      setTimeout(next, 5000)
     } catch (e) {
-      /* 语音不可用时静默 */
+      next()
     }
   }
 }
