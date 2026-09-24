@@ -189,7 +189,13 @@
 #balatro-game .bp-hand-caption .bp-sort-active { background: #ab8d49; color: #fff1c6; }
 #balatro-game .bp-hand { display: flex; justify-content: center; align-items: end; gap: clamp(2px,.5vw,8px); padding: 12px 4px 9px; min-height: 116px; }
 #balatro-game .bp-hand-card { position: relative; flex: 0 1 108px; width: min(108px, calc((100% - (var(--hand-count) - 1) * 6px) / var(--hand-count))); min-width: 0; }
-#balatro-game .bp-hand-card > .bp-playing { width: 100%; }
+#balatro-game .bp-hand-card > .bp-playing { width: 100%; touch-action: none; cursor: grab; -webkit-user-drag: none; }
+#balatro-game .bp-hand-card.bp-hand-dragging { z-index: 30; transform: translate3d(var(--hand-drag-x,0px),var(--hand-drag-y,0px),0); pointer-events: none; }
+#balatro-game .bp-hand-card.bp-hand-dragging > .bp-playing { cursor: grabbing; }
+#balatro-game .bp-hand-card.bp-hand-drop-before::before,
+#balatro-game .bp-hand-card.bp-hand-drop-after::after { content: ''; position: absolute; z-index: 20; top: -7px; bottom: -7px; width: 3px; border-radius: 3px; background: #f6d46b; box-shadow: 0 0 8px #f6d46b; pointer-events: none; }
+#balatro-game .bp-hand-card.bp-hand-drop-before::before { left: -4px; }
+#balatro-game .bp-hand-card.bp-hand-drop-after::after { right: -4px; }
 #balatro-game .bp-card-detail-button { position: absolute; z-index: 12; top: -8px; right: -3px; display: grid; place-items: center; width: 23px; height: 23px; padding: 0; border: 1px solid #f1e4c4a8; border-radius: 50%; color: #243a35; background: #f0e6cf; box-shadow: 0 2px 5px #0a1c1b8c; font: 800 13px/1 Arial,sans-serif; cursor: pointer; }
 #balatro-game .bp-hand-card > .bp-playing.bp-selected + .bp-card-detail-button { transform: translateY(-18px); }
 #balatro-game .bp-card-detail-button:disabled { opacity: .45; }

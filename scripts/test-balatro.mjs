@@ -73,14 +73,16 @@ test('skipping score stays final and disabled after fullscreen re-render',()=>{
  assert.match(table.renderedStage,/data-action="skip-score"[^>]*disabled/,'fullscreen re-render keeps skip unavailable')
  assert.equal(chips.textContent,'1,324');assert.equal(mult.textContent,'4');assert.equal(label.textContent,'+5,296','fullscreen re-render reapplies the final score instead of the last animation tick')
 })
-const consumableAnimation=(operation,used)=>{
+const consumableAnimation=(operation,used,{initialState,realCardDetails=false,handSort='rank'}={})=>{
  const table=Object.create(PokerTable.prototype),queue=[],frames=[]
- table.state=state();table.sort='rank';table.settings={fast:false};table.audio={fx:()=>{}}
+ table.state=initialState||state();table.sort=handSort;table.settings={fast:false};table.audio={fx:()=>{}}
  table.destroyed=false;table.anim=null;table.actionFx=null;table.busy=false
- table.itemName=()=>used.id;table.itemDesc=()=>used.id;table.persist=()=>{};table.showEffect=()=>{}
- table.orderedHand=()=>table.state.hand.slice().sort((a,b)=>b.rank-a.rank||a.suit-b.suit)
+ if(!realCardDetails){table.itemName=()=>used.id;table.itemDesc=()=>used.id}
+ table.persist=()=>{};table.showEffect=()=>{}
+ table.root={clientWidth:800}
+ table.orderedHand=()=>handSort==='custom'?table.state.hand.slice():table.state.hand.slice().sort((a,b)=>b.rank-a.rank||a.suit-b.suit)
  table.cardButton=(card,{fxClass})=>`<i data-card="${card.uid}" data-edition="${card.edition||''}" data-fx="${fxClass}"></i>`
- table.render=()=>frames.push(table.hand(table.state))
+ table.render=()=>frames.push(table.hand(table.state)+table.addedCardsOverlay())
  table.later=fn=>queue.push(fn)
  const priorWindow=globalThis.window
  globalThis.window={matchMedia:()=>({matches:false})}
@@ -134,6 +136,49 @@ test('a genuinely added card still deals into the hand',()=>{
  assert.match(fx.frames.at(-1),/bp-fx-deal/)
  fx.next();assert.equal(fx.table.actionFx,null)
 })
+test('Familiar from a Spectral pack reveals and commits all three enhanced cards',()=>{
+ const packed=state(),familiar={uid:++packed.uid,id:'familiar',kind:'spectral'}
+ packed.phase='shop';packed.pack={id:'spectral',kind:'spectral',cards:[familiar],choose:1,picksLeft:1,picksMade:0,handBefore:E.clone(packed.hand)}
+ const originalUIDs=new Set(packed.deck.map(c=>c.uid))
+ const fx=consumableAnimation(s=>E.choosePack(s,familiar.uid),familiar,{initialState:packed,realCardDetails:true})
+ assert.equal(fx.table.actionFx.addedUIDs.length,3)
+ fx.next();fx.next();fx.next()
+ assert.equal(fx.table.actionFx.phase,'added','the reveal renders without throwing before the state commits')
+ assert.match(fx.frames.at(-1),/获得 3 张增强人头牌/)
+ while(fx.pending())fx.next()
+ assert.equal(fx.table.state.pack,null)
+ assert.equal(fx.table.state.deck.filter(c=>!originalUIDs.has(c.uid)).length,3)
+ assert.ok(fx.table.state.deck.filter(c=>!originalUIDs.has(c.uid)).every(c=>c.enh),'every generated card is enhanced')
+ assert.equal(fx.table.state.deck.filter(c=>originalUIDs.has(c.uid)).length,originalUIDs.size-1,'one original card is destroyed')
+ assert.equal(fx.table.actionFx,null)
+ assert.equal(fx.table.busy,false)
+})
+test('Familiar used during play replaces one card with three enhanced cards in hand',()=>{
+ const playing=state(),familiar={uid:++playing.uid,id:'familiar',kind:'spectral'}
+ playing.consumables.push(familiar)
+ const originalUIDs=new Set(playing.deck.map(c=>c.uid))
+ const fx=consumableAnimation(s=>E.use(s,familiar.uid),familiar,{initialState:playing,realCardDetails:true})
+ fx.next();fx.next();fx.next()
+ const created=fx.table.state.hand.filter(c=>!originalUIDs.has(c.uid))
+ assert.equal(created.length,3)
+ assert.ok(created.every(c=>c.enh))
+ assert.equal(fx.table.state.hand.length,playing.hand.length+2)
+ assert.deepEqual(new Set(fx.table.actionFx.dealUIDs),new Set(created.map(c=>c.uid)))
+ while(fx.pending())fx.next()
+ assert.equal(fx.table.actionFx,null)
+ assert.equal(fx.table.busy,false)
+})
+test('a consumable keeps the manually arranged hand order through its animation',()=>{
+ const arranged=state();arranged.hand.reverse()
+ const orderedUIDs=arranged.hand.map(c=>c.uid)
+ const fx=consumableAnimation(s=>{
+  const uid=s.hand[0].uid
+  s.hand[0].edition='poly';s.deck.find(c=>c.uid===uid).edition='poly'
+ },{id:'aura',kind:'spectral'},{initialState:arranged,handSort:'custom'})
+ assert.deepEqual(fx.table.actionFx.beforeHand.map(c=>c.uid),orderedUIDs)
+ while(fx.pending())fx.next()
+ assert.deepEqual(fx.table.state.hand.map(c=>c.uid),orderedUIDs)
+})
 const copiedRepeatScore=(jokerId,rank,configure=()=>{})=>{
  const s=state([rank,8,6,4,2]);add(s,'blueprint');add(s,jokerId);configure(s);s.selected=[s.hand[0].uid]
  return E.play(s)
@@ -154,9 +199,21 @@ test('Blueprint copies Seltzer retriggers before it expires',()=>{
  assert.equal(E.blueprintCanCopy('seltzer','scoring'),true)
  assert.equal(copiedRepeatScore('seltzer',8).chips,29)
 })
-test('Blueprint copies Hanging Joker double retriggers on first-hand face cards',()=>{
+test('Blueprint copies Hanging Joker retriggers on the first scoring card every hand',()=>{
  assert.equal(E.blueprintCanCopy('hanging','scoring'),true)
  assert.equal(copiedRepeatScore('hanging',13).chips,55)
+ assert.equal(copiedRepeatScore('hanging',8,s=>{s.plays=1}).chips,45,'the copied effect also applies to a non-face card after the first play')
+})
+test('Hanging Joker follows played card order, skipping non-scoring kickers',()=>{
+ const first=state([8,8,6,4,2]);add(first,'hanging');first.hand[0].edition=first.deck[0].edition='foil'
+ const firstResult=play(first,[1,2]);assert.equal(firstResult.chips,192,'the Foil first scoring card is retriggered twice')
+ const second=state([8,8,6,4,2]);add(second,'hanging');second.hand[0].edition=second.deck[0].edition='foil'
+ ;[second.hand[0],second.hand[1]]=[second.hand[1],second.hand[0]]
+ const secondResult=play(second,[1,2]);assert.equal(secondResult.chips,92,'moving Foil second leaves it with just one trigger')
+ const kicker=state([2,8,8,6,4]);add(kicker,'hanging')
+ const result=play(kicker,[1,2,3])
+ assert.equal(result.chips,42,'the first card used in scoring, not the unscored kicker, is retriggered')
+ assert.deepEqual(result.events.filter(event=>['扑克牌','再次触发'].includes(event.source)).map(event=>event.uid),[2,2,2,3])
 })
 test('Blueprint repeats compatible stateful Madness and Square triggers',()=>{
  assert.equal(E.blueprintCanCopy('madness','blindStart'),true)
@@ -483,4 +540,61 @@ test('reminders do not leak face-down cards or disabled joker identities',()=>{
 test('consumable reminders distinguish upgrade, targeting and exact Death count',()=>{
  const s=state();assert.equal(cardCue(s,{kind:'planet',id:'pair'}).label,'对子 ↑1')
  const death={kind:'tarot',id:'death'};s.selected=[1];assert.equal(cardCue(s,death).ready,false);s.selected=[1,2];assert.equal(cardCue(s,death).ready,true)
+})
+test('manual reorder changes played scoring order and is saved',()=>{
+ const table=Object.create(PokerTable.prototype),s=state([14,14,13,12,10])
+ table.state=s;table.sort='rank';table.settings={handSort:'rank'};table.persist=()=>{table.saved=E.clone(table.state)}
+ s.selected=[1,2]
+ assert.deepEqual(table.orderedHand().map(c=>c.uid),[1,2,3,4,5])
+ assert.equal(table.reorderHand(2,0),true)
+ assert.equal(table.sort,'custom');assert.equal(table.settings.handSort,'custom')
+ assert.deepEqual(table.orderedHand().map(c=>c.uid),[2,1,3,4,5])
+ assert.deepEqual(s.selected,[1,2],'moving a selected card does not deselect it')
+ assert.deepEqual(table.saved.hand.map(c=>c.uid),[2,1,3,4,5],'manual arrangement is saved')
+ assert.deepEqual(E.restore(table.saved).hand.map(c=>c.uid),[2,1,3,4,5],'loading a save preserves the arrangement')
+ const result=table.transact(E.play)
+ assert.deepEqual(result.cards.map(c=>c.uid),[2,1],'engine receives selected cards in the visible manual order')
+ assert.equal(table.reorderHand(999,0),false,'unknown card cannot change arrangement')
+})
+test('pointer drag moves a hand card without also selecting it on release',()=>{
+ const table=Object.create(PokerTable.prototype),s=state([14,13,12])
+ table.state=s;table.sort='rank';table.settings={handSort:'rank'};table.busy=false;table.modal=null;table.jokerDrag=null;table.handDrag=null;table.audio={fx:()=>{}}
+ table.persist=()=>{};table.render=()=>{};table.animateHandReorder=()=>{};table.later=()=>{};table.root={contains:()=>true,querySelector:selector=>selector==='.bp-hand'?hand:null}
+ const wrappers=[]
+ const hand={children:wrappers,scrollLeft:0,querySelectorAll:()=>wrappers}
+ for(let i=0;i<3;i++){
+  const uid=i+1,button={dataset:{uid:String(uid)},disabled:false}
+  const classes=new Set(),wrapper={parentElement:hand,querySelector:()=>button,getBoundingClientRect:()=>({left:i*100,top:0,width:80,height:110}),classList:{add:name=>classes.add(name),remove:(...names)=>names.forEach(name=>classes.delete(name))},style:{setProperty:()=>{},removeProperty:()=>{}}}
+  button.parentElement=wrapper;button.closest=selector=>selector.includes('bp-hand')?button:null
+  wrappers.push(wrapper)
+ }
+ const down={button:0,pointerId:1,clientX:230,clientY:40,target:wrappers[2].querySelector()}
+ table.pointerDown(down)
+ table.pointerMove({pointerId:1,clientX:10,clientY:40,preventDefault:()=>{}})
+ table.pointerUp({pointerId:1,clientX:10,clientY:40,preventDefault:()=>{}})
+ assert.deepEqual(table.state.hand.map(c=>c.uid),[3,1,2])
+ assert.equal(table.sort,'custom')
+ let clickPrevented=false
+ table.click({target:{closest:()=>({dataset:{action:'select',uid:'1'},disabled:false})},preventDefault:()=>{clickPrevented=true}})
+ assert.equal(clickPrevented,true);assert.deepEqual(table.state.selected,[],'release click must not select the dragged card or the card under it')
+})
+test('manual order survives other transactions; rank/suit controls can restore automatic display',()=>{
+ const table=Object.create(PokerTable.prototype)
+ table.state=state([10,14,13],[2,1,0]);table.sort='custom';table.settings={handSort:'custom'};table.persist=()=>{}
+ assert.deepEqual(table.orderedHand().map(c=>c.uid),[1,2,3])
+ table.transact(s=>{s.money++})
+ assert.deepEqual(table.state.hand.map(c=>c.uid),[1,2,3])
+ table.sort='rank';assert.deepEqual(table.orderedHand().map(c=>c.uid),[2,3,1])
+ table.sort='suit';assert.deepEqual(table.orderedHand().map(c=>c.uid),[3,2,1])
+})
+test('moving a Foil card to the first scoring slot raises Hanging Joker score',()=>{
+ const score=move=>{
+  const table=Object.create(PokerTable.prototype),s=state([8,8,6,4,2])
+  add(s,'hanging');s.hand[1].edition=s.deck[1].edition='foil';s.selected=[1,2]
+  table.state=s;table.sort='rank';table.settings={handSort:'rank'};table.persist=()=>{}
+  if(move)table.reorderHand(2,0)
+  return table.transact(E.play).chips
+ }
+ assert.equal(score(false),92)
+ assert.equal(score(true),192)
 })

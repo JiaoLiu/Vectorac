@@ -278,7 +278,7 @@ function scoring(s,cards,e) {
   for(const c of scoringCards) {
     if(debuffed(s,c)) {events.push({source:'被 Boss 削弱',chips,mult,c:0,m:0,x:1,uid:c.uid});continue}
     let repeats=1+Number(c.seal==='red')
-    effects.forEach(({j})=>{if(j.id==='sock'&&face(s,c)||j.id==='hack'&&[2,3,4,5].includes(c.rank)||j.id==='dusk'&&s.hands===1||j.id==='seltzer')repeats++;if(j.id==='hanging'&&s.plays===0&&face(s,c))repeats+=2})
+    effects.forEach(({j})=>{if(j.id==='sock'&&face(s,c)||j.id==='hack'&&[2,3,4,5].includes(c.rank)||j.id==='dusk'&&s.hands===1||j.id==='seltzer')repeats++;if(j.id==='hanging'&&c.uid===scoringCards[0].uid)repeats+=2})
     const firstFace=face(s,c)&&!photographed;if(face(s,c))photographed=true
     for(let repeat=0;repeat<repeats;repeat++) {
       add(repeat?'再次触发':'扑克牌',cardChips(c)+(c.bonus||0),0,1,c.uid)

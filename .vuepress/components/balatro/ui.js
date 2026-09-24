@@ -65,11 +65,11 @@ export default class PokerTable {
   constructor(root){
     this.root=root;this.state=null;this.saved=E.restore(safeRead(SAVE));this.settings={sound:true,music:false,fast:false}
     try{Object.assign(this.settings,JSON.parse(safeRead(SETTINGS)||'{}'))}catch(_){}
-    this.audio=new Sound(this.settings);this.modal=null;this.busy=false;this.immersive=false;this.destroyed=false;this.timers=new Set();this.scoreTimer=null;this.scoreToken=0;this.seed='';this.deckType='red';this.sort='rank';this.toast='';this.effect='';this.anim=null;this.actionFx=null;this.packFx=null;this.packChoiceFx=null
+    this.audio=new Sound(this.settings);this.modal=null;this.busy=false;this.immersive=false;this.destroyed=false;this.timers=new Set();this.scoreTimer=null;this.scoreToken=0;this.seed='';this.deckType='red';this.sort=['rank','suit','custom'].includes(this.settings.handSort)?this.settings.handSort:'rank';this.toast='';this.effect='';this.anim=null;this.actionFx=null;this.packFx=null;this.packChoiceFx=null
     this.stake=0;this.marker=document.createComment('balatro-position');root.parentNode.insertBefore(this.marker,root)
     this.onClick=this.click.bind(this);this.onKey=this.key.bind(this);this.onDouble=e=>e.preventDefault()
     this.onPointerDown=this.pointerDown.bind(this);this.onPointerMove=this.pointerMove.bind(this);this.onPointerUp=this.pointerUp.bind(this);this.onPointerCancel=this.pointerCancel.bind(this)
-    this.jokerDrag=null;this.suppressInfoClickUid=null
+    this.jokerDrag=null;this.handDrag=null;this.suppressInfoClickUid=null;this.suppressHandClick=false;this.handClickToken=null
     this.pendingPlanet=null
     this.onResize=()=>{if(this.resizeFrame)cancelAnimationFrame(this.resizeFrame);this.resizeFrame=requestAnimationFrame(()=>{this.resizeFrame=null;this.updateLayout()})}
     this.resizeObserver=typeof ResizeObserver!=='undefined'?new ResizeObserver(this.onResize):null
@@ -116,7 +116,7 @@ export default class PokerTable {
     try{if(this.state)localStorage.setItem(SAVE,JSON.stringify(this.state));localStorage.setItem(SETTINGS,JSON.stringify(this.settings));this.saved=this.state?E.clone(this.state):this.saved}
     catch(_){this.toast='浏览器未允许保存进度，请不要关闭本页'}
   }
-  transact(fn){const draft=E.clone(this.state);draft.hand.sort(this.sort==='rank'?(a,b)=>b.rank-a.rank||a.suit-b.suit:(a,b)=>a.suit-b.suit||b.rank-a.rank);const result=fn(draft);this.state=draft;this.persist();return result}
+  transact(fn){const draft=E.clone(this.state);if(this.sort!=='custom')draft.hand.sort(this.sort==='rank'?(a,b)=>b.rank-a.rank||a.suit-b.suit:(a,b)=>a.suit-b.suit||b.rank-a.rank);const result=fn(draft);this.state=draft;this.persist();return result}
   fullscreen(){
     if(this.immersive)return
     this.oldOverflow=document.body.style.overflow;document.body.style.overflow='hidden';document.body.classList.add('bp-body-immersive');document.body.appendChild(this.root);this.immersive=true;this.root.classList.add('bp-fullscreen')
@@ -158,6 +158,7 @@ export default class PokerTable {
     const b=e.target.closest('[data-action]');if(!b||!this.root.contains(b)||b.disabled)return
     const action=b.dataset.action,uid=Number(b.dataset.uid),id=b.dataset.id
     if(action==='info'&&this.suppressInfoClickUid===uid){this.suppressInfoClickUid=null;e.preventDefault();return}
+    if(action==='select'&&this.suppressHandClick){this.suppressHandClick=false;this.handClickToken=null;e.preventDefault();return}
     if(this.busy&&action!=='fullscreen'&&action!=='skip-score')return
     if(action!=='info')this.clearPlanetTap()
     if(action==='deck-choice'){this.deckType=id;this.seed=(this.root.querySelector('[data-seed]')||{}).value||this.seed;this.render();return}
@@ -192,7 +193,14 @@ export default class PokerTable {
     this.perform(action,uid,id)
   }
   pointerDown(e){
-    if(e.button!==0||e.isPrimary===false||this.jokerDrag||this.busy||this.modal||!this.state||this.state.pack||!['play','shop','select'].includes(this.state.phase))return
+    if(e.button!==0||e.isPrimary===false||this.jokerDrag||this.handDrag||this.busy||this.modal||!this.state||this.state.pack||!['play','shop','select'].includes(this.state.phase))return
+    this.suppressHandClick=false;this.handClickToken=null
+    const handButton=e.target.closest('.bp-hand .bp-hand-card > .bp-playing[data-uid]')
+    if(handButton&&this.state.phase==='play'&&!handButton.disabled){
+      const wrapper=handButton.parentElement,hand=wrapper.parentElement,fromIndex=Array.from(hand.children).indexOf(wrapper)
+      if(fromIndex>=0)this.handDrag={pointerId:e.pointerId,uid:Number(handButton.dataset.uid),fromIndex,toIndex:fromIndex,x:e.clientX,y:e.clientY,wrapper,hand,marker:null,markerSide:''}
+      return
+    }
     const art=e.target.closest('.bp-joker-rack .bp-rack-cards > .bp-item[data-visual] > .bp-item-art')
     if(!art)return
     const item=art.parentElement
@@ -201,6 +209,24 @@ export default class PokerTable {
     this.jokerDrag={pointerId:e.pointerId,uid,fromIndex,toIndex:fromIndex,x:e.clientX,y:e.clientY,item,rack:item.parentElement,marker:null,markerSide:''}
   }
   pointerMove(e){
+    const handDrag=this.handDrag
+    if(handDrag&&handDrag.pointerId===e.pointerId){
+      const dx=e.clientX-handDrag.x,dy=e.clientY-handDrag.y
+      if(!handDrag.active&&Math.hypot(dx,dy)<7)return
+      handDrag.active=true;e.preventDefault()
+      handDrag.wrapper.classList.add('bp-hand-dragging')
+      handDrag.wrapper.style.setProperty('--hand-drag-x',`${dx}px`);handDrag.wrapper.style.setProperty('--hand-drag-y',`${dy}px`)
+      const others=Array.from(handDrag.hand.querySelectorAll(':scope > .bp-hand-card')).filter(el=>el!==handDrag.wrapper)
+      const before=others.findIndex(el=>e.clientX<el.getBoundingClientRect().left+el.getBoundingClientRect().width/2)
+      const side=before<0?'after':'before',marker=before<0?others[others.length-1]:others[before]
+      if(handDrag.marker!==marker||handDrag.markerSide!==side){
+        handDrag.marker?.classList.remove('bp-hand-drop-before','bp-hand-drop-after')
+        handDrag.marker=marker||null;handDrag.markerSide=side
+        handDrag.marker?.classList.add(`bp-hand-drop-${side}`)
+      }
+      handDrag.toIndex=before<0?others.length:before
+      return
+    }
     const drag=this.jokerDrag;if(!drag||drag.pointerId!==e.pointerId)return
     const dx=e.clientX-drag.x,dy=e.clientY-drag.y
     if(!drag.active&&Math.hypot(dx,dy)<7)return
@@ -229,10 +255,29 @@ export default class PokerTable {
     }
   }
   pointerCancel(e){
+    if(this.handDrag&&this.handDrag.pointerId===e.pointerId){const drag=this.handDrag;this.handDrag=null;this.clearHandDrag(drag);return}
     if(!this.jokerDrag||this.jokerDrag.pointerId!==e.pointerId)return
     const drag=this.jokerDrag;this.jokerDrag=null;this.clearJokerDrag(drag,true)
   }
   pointerUp(e){
+    const handDrag=this.handDrag
+    if(handDrag&&handDrag.pointerId===e.pointerId){
+      this.pointerMove(e);this.handDrag=null;this.clearHandDrag(handDrag)
+      if(!handDrag.active)return
+      e.preventDefault();this.suppressHandClick=true
+      const clickToken=Symbol('hand-drag-click');this.handClickToken=clickToken
+      this.later(()=>{if(this.handClickToken===clickToken){this.suppressHandClick=false;this.handClickToken=null}},400)
+      if(this.busy||this.state?.pack||this.state?.phase!=='play'||handDrag.toIndex===handDrag.fromIndex)return
+      const oldPositions=new Map(Array.from(handDrag.hand.querySelectorAll(':scope > .bp-hand-card'),el=>[Number(el.querySelector('.bp-playing')?.dataset.uid),el.getBoundingClientRect()]))
+      const scrollLeft=handDrag.hand.scrollLeft
+      try{
+        if(!this.reorderHand(handDrag.uid,handDrag.toIndex))return
+        this.audio.fx('tap');this.render()
+        const hand=this.root.querySelector('.bp-hand');if(hand)hand.scrollLeft=scrollLeft
+        this.animateHandReorder(oldPositions)
+      }catch(error){this.notify(error.message||'手牌排序失败，请重试')}
+      return
+    }
     const drag=this.jokerDrag;if(!drag||drag.pointerId!==e.pointerId)return
     this.pointerMove(e)
     this.jokerDrag=null
@@ -268,11 +313,42 @@ export default class PokerTable {
       this.later(()=>moving.forEach(el=>{if(el.isConnected){el.style.removeProperty('transition');el.style.removeProperty('transform')}}),260)
     })
   }
+  clearHandDrag(drag){
+    drag.marker?.classList.remove('bp-hand-drop-before','bp-hand-drop-after')
+    drag.wrapper.classList.remove('bp-hand-dragging')
+    drag.wrapper.style.removeProperty('--hand-drag-x');drag.wrapper.style.removeProperty('--hand-drag-y')
+  }
+  reorderHand(uid,toIndex){
+    const ids=this.orderedHand().map(c=>c.uid),fromIndex=ids.indexOf(uid)
+    if(fromIndex<0||fromIndex===toIndex)return false
+    ids.splice(fromIndex,1);ids.splice(Math.max(0,Math.min(toIndex,ids.length)),0,uid)
+    const oldSort=this.sort,oldSetting=this.settings.handSort
+    this.sort=this.settings.handSort='custom'
+    try{this.transact(s=>{const cards=new Map(s.hand.map(c=>[c.uid,c]));s.hand=ids.map(id=>cards.get(id))})}
+    catch(error){this.sort=oldSort;this.settings.handSort=oldSetting;throw error}
+    return true
+  }
+  animateHandReorder(oldPositions){
+    const cards=Array.from(this.root.querySelectorAll('.bp-hand > .bp-hand-card')),moving=[]
+    cards.forEach(el=>{
+      const old=oldPositions.get(Number(el.querySelector('.bp-playing')?.dataset.uid));if(!old)return
+      const next=el.getBoundingClientRect(),dx=old.left-next.left,dy=old.top-next.top
+      if(Math.abs(dx)<1&&Math.abs(dy)<1)return
+      el.style.transition='none';el.style.transform=`translate3d(${dx}px,${dy}px,0)`;moving.push(el)
+    })
+    if(!moving.length)return
+    void this.root.offsetWidth
+    requestAnimationFrame(()=>{
+      if(this.destroyed)return
+      moving.forEach(el=>{el.style.transition='transform 220ms cubic-bezier(.2,.78,.25,1)';el.style.transform='translate3d(0,0,0)'})
+      this.later(()=>moving.forEach(el=>{if(el.isConnected){el.style.removeProperty('transition');el.style.removeProperty('transform')}}),260)
+    })
+  }
   perform(action,uid,id){
     try{
       this.toast=''
       if(action==='select'){E.selectCard(this.state,uid);this.audio.fx('tap');this.render();return}
-      if(action==='sort-rank'||action==='sort-suit'){this.sort=action==='sort-rank'?'rank':'suit';this.render();return}
+      if(action==='sort-rank'||action==='sort-suit'||action==='sort-custom'){this.sort=action==='sort-rank'?'rank':action==='sort-suit'?'suit':'custom';this.settings.handSort=this.sort;this.persist();this.render();return}
       if(action==='play'){this.animatePlay();return}
       const ops={blind:E.startBlind,skip:E.skipBlind,discard:E.discard,cash:E.cashOut,next:E.nextBlind,reroll:E.rerollShop,boss:E.rerollBoss,endless:E.continueEndless,'pack-skip':E.closePack,buy:s=>E.buy(s,uid),'pack-choose':s=>E.choosePack(s,uid),use:s=>E.use(s,uid),sell:s=>E.sell(s,uid),left:s=>E.reorder(s,uid,-1),right:s=>E.reorder(s,uid,1)}
       if(!ops[action])return
@@ -363,8 +439,11 @@ export default class PokerTable {
   }
   animateConsumable(operation,used){
     const before=E.clone(this.state),preview=E.clone(this.state),packChoice=!!this.state.pack
-    const sort=this.sort==='rank'?(a,b)=>b.rank-a.rank||a.suit-b.suit:(a,b)=>a.suit-b.suit||b.rank-a.rank
-    before.hand.sort(sort);preview.hand.sort(sort);operation(preview)
+    if(this.sort!=='custom'){
+      const sort=this.sort==='rank'?(a,b)=>b.rank-a.rank||a.suit-b.suit:(a,b)=>a.suit-b.suit||b.rank-a.rank
+      before.hand.sort(sort);preview.hand.sort(sort)
+    }
+    operation(preview)
     const original=new Map(before.deck.map(c=>[c.uid,c])),finalCards=new Map(preview.deck.map(c=>[c.uid,c]))
     const changedUIDs=before.hand.filter(c=>{const next=finalCards.get(c.uid);return next&&['rank','suit','enh','edition','seal'].some(k=>c[k]!==next[k])}).map(c=>c.uid)
     const removedUIDs=before.hand.filter(c=>!finalCards.has(c.uid)).map(c=>c.uid)
@@ -429,7 +508,8 @@ export default class PokerTable {
   }
   animatePlay(){
     if(this.busy)return
-    const before=E.clone(this.state),result=this.transact(E.play)
+    const before=E.clone(this.state);before.hand=E.clone(this.orderedHand())
+    const result=this.transact(E.play)
     const token=++this.scoreToken
     this.busy=true;this.anim={before,result,event:result.events[0],index:0,token,skipped:false};this.render()
     const events=result.events.length>22?result.events.filter((_,i)=>i===0||i===result.events.length-1||i%Math.ceil(result.events.length/20)===0):result.events
@@ -478,7 +558,7 @@ export default class PokerTable {
     this.root.querySelectorAll('.bp-trigger').forEach(el=>el.classList.remove('bp-trigger'))
     if(event.uid){const el=this.root.querySelector(`[data-visual="${event.uid}"]`);if(el){void el.offsetWidth;el.classList.add('bp-trigger')}}
   }
-  orderedHand(){return this.state.hand.slice().sort(this.sort==='rank'?(a,b)=>b.rank-a.rank||a.suit-b.suit:(a,b)=>a.suit-b.suit||b.rank-a.rank)}
+  orderedHand(){const hand=this.state.hand.slice();return this.sort==='custom'?hand:hand.sort(this.sort==='rank'?(a,b)=>b.rank-a.rank||a.suit-b.suit:(a,b)=>a.suit-b.suit||b.rank-a.rank)}
   cardDetailsPanel(card){
     const entries=playingCardDetails(card)
     if(!entries.length)return '<p>这张牌背面朝上，牌面与效果暂不可查看。</p>'
@@ -509,7 +589,7 @@ export default class PokerTable {
       const pack=boosterPack(card.id)
       return `含 ${pack.options} 张${pack.content}，选择 ${pack.choose} 张${pack.action}。${pack.description}`
     }
-    if(card.kind==='card')return playingCardSummary(card)
+    if(!card.kind||card.kind==='card')return playingCardSummary(card)
     return byId(card.kind==='spectral'?SPECTRALS:TAROTS,card.id).desc
   }
   art(card,hidden=false){if(card.kind==='joker')return jokerArt(card,hidden);if(card.kind==='pack'){const pack=boosterPack(card.id);return packArt(pack.family,pack.size)}return card.kind==='card'?playingCard(card):consumableArt(card)}
@@ -557,7 +637,7 @@ export default class PokerTable {
   hand(s){
     const fx=this.actionFx,list=this.orderedHand(),baseCards=this.anim?this.anim.before.hand.filter(c=>!this.anim.result.cards.some(p=>p.uid===c.uid)):fx&&['cast','reveal','gather','added'].includes(fx.phase)?fx.beforeHand:list
     const cards=fx?.phase==='added'?baseCards.filter(c=>!fx.removedUIDs.includes(c.uid)):baseCards
-    return `<div class="bp-hand-area"><div class="bp-hand-caption"><span>${this.anim?'结算中':this.busy?'效果处理中…':s.pack?'选择手牌作为消耗牌目标':`手牌 ${s.hand.length}/${E.handSize(s)} · 已选 ${s.selected.length}/5`}</span><div>${button('sort-rank','点数',this.sort==='rank'?'bp-sort-active':'',this.busy)}${button('sort-suit','花色',this.sort==='suit'?'bp-sort-active':'',this.busy)}</div></div><div class="bp-hand ${cards.length>12?'bp-overfull':''}" style="--hand-count:${Math.max(1,cards.length)}">${cards.map((c,index)=>{
+    return `<div class="bp-hand-area"><div class="bp-hand-caption"><span>${this.anim?'结算中':this.busy?'效果处理中…':s.pack?'选择手牌作为消耗牌目标':`手牌 ${s.hand.length}/${E.handSize(s)} · 已选 ${s.selected.length}/5${this.sort==='custom'?' · 拖动换位':''}`}</span><div>${button('sort-rank','点数',this.sort==='rank'?'bp-sort-active':'',this.busy)}${button('sort-suit','花色',this.sort==='suit'?'bp-sort-active':'',this.busy)}${button('sort-custom','手动',this.sort==='custom'?'bp-sort-active':'',this.busy,'title="拖动手牌调整出牌计分顺序"')}</div></div><div class="bp-hand ${cards.length>12?'bp-overfull':''}" style="--hand-count:${Math.max(1,cards.length)}">${cards.map((c,index)=>{
       const next=fx&&['reveal','gather','added'].includes(fx.phase)?fx.finalCards.get(c.uid):null,display=next||c,changed=fx?.changedUIDs?.includes(c.uid),removed=fx?.removedUIDs?.includes(c.uid),gather=fx?.phase==='gather'&&fx.gatherUIDs?.includes(c.uid),destroy=fx?.phase==='gather'&&removed,deal=fx?.phase==='after'&&fx.dealUIDs?.includes(c.uid)
       const sealTarget=fx?.sealUID===c.uid,fxClass=gather?'bp-fx-gather':deal?'bp-fx-deal':destroy?'bp-fx-destroy':removed?'bp-fx-mark':sealTarget&&fx.phase==='cast'?'bp-fx-seal-pending':changed?fx.phase==='reveal'?'bp-fx-reveal':fx.phase==='cast'?'bp-fx-shake':'' :''
       const sealFx=sealTarget&&fx.phase==='reveal',sealKind=fx?.finalCards?.get(c.uid)?.seal||'gold'
@@ -649,6 +729,7 @@ export default class PokerTable {
     if(this.resizeFrame)cancelAnimationFrame(this.resizeFrame)
     window.removeEventListener('resize',this.onResize)
     this.clearJokerDrag(this.jokerDrag);this.jokerDrag=null
+    if(this.handDrag)this.clearHandDrag(this.handDrag);this.handDrag=null
     this.root.removeEventListener('click',this.onClick);this.root.removeEventListener('dblclick',this.onDouble);this.root.removeEventListener('pointerdown',this.onPointerDown);document.removeEventListener('pointermove',this.onPointerMove);document.removeEventListener('pointerup',this.onPointerUp);document.removeEventListener('pointercancel',this.onPointerCancel);document.removeEventListener('keydown',this.onKey);document.removeEventListener('visibilitychange',this.onVisibility);document.removeEventListener('fullscreenchange',this.onFull);document.removeEventListener('webkitfullscreenchange',this.onFull)
     if(this.immersive)this.exitFullscreen();if(this.marker.parentNode)this.marker.remove()
   }
