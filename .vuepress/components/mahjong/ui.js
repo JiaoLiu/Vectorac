@@ -802,8 +802,8 @@ export default class ScmjUI {
     }
     const duration = Math.min(20, Math.max(1, Math.round(Number(p.duration) || 0)))
     const bubbleEl = this.showChatBubble(viewSeat, { voice: true, duration, mime: p.mime, data: p.data })
-    // 音效开关关=不自动播语音，气泡仍可点按重播
-    if (this.settings.sound !== false) this._playVoiceData(p.mime, p.data, bubbleEl)
+    // 音效开关关=不自动播语音，气泡仍可点按重播；正在录音时也不自动播（会被麦克风回录）
+    if (this.settings.sound !== false && !this._recorder && !this._recStarting) this._playVoiceData(p.mime, p.data, bubbleEl)
   }
 
   /** 在某座位旁弹气泡（同一座位新消息顶掉旧的；textContent 渲染防注入） */
@@ -971,17 +971,27 @@ export default class ScmjUI {
   }
 
   async startVoiceRec() {
-    if (this._recorder) return // 已在录
+    if (this._recorder || this._recStarting) return // 已在录/正在开录
     if (!this.isOnline || !this.net) return
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || typeof MediaRecorder === 'undefined') {
       this.toast('当前浏览器不支持录音，可改用快捷短语')
       return
     }
+    // 开录中标记：getUserMedia 是异步的（授权弹窗/硬件初始化可达数百毫秒），
+    // 此窗口内松手必须能放弃开录，否则录音机变孤儿一直收音
+    this._recStarting = true
+    this._recAbort = false
     let stream
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true })
     } catch (err) {
+      this._recStarting = false
       this.toast('无法使用麦克风，请检查系统授权')
+      return
+    }
+    if (this._recAbort) { // 等待授权期间已松手：立即关轨，不开录
+      this._recStarting = false
+      stream.getTracks().forEach(t => t.stop())
       return
     }
     const mimes = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4']
@@ -997,6 +1007,7 @@ export default class ScmjUI {
     try {
       rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined)
     } catch (err) {
+      this._recStarting = false
       stream.getTracks().forEach(t => t.stop())
       this.toast('录音初始化失败')
       return
@@ -1006,13 +1017,15 @@ export default class ScmjUI {
     this._recStartAt = Date.now()
     this._recDiscard = false
     this._recorder = rec
+    this._recStarting = false
     this._recStream = stream
     rec.ondataavailable = ev => {
       if (ev.data && ev.data.size) this._recChunks.push(ev.data)
     }
     rec.onstop = () => this._finishVoiceRec()
     try {
-      rec.start()
+      // 必须带 timeslice：iOS Safari 不带时 stop() 常产出只有文件头的空录音
+      rec.start(1000)
     } catch (err) {
       this._recorder = null
       this._recStream = null
@@ -1029,13 +1042,22 @@ export default class ScmjUI {
   }
 
   stopVoiceRec() {
+    if (this._recStarting && !this._recorder) {
+      // getUserMedia 还在路上：标记放弃，resolve 后由 startVoiceRec 关轨
+      this._recAbort = true
+      return
+    }
     const rec = this._recorder
     if (!rec) return
     this._recorder = null // 先置空防重入；收尾在 onstop → _finishVoiceRec
     clearTimeout(this._recTimer)
     try {
-      if (rec.state !== 'inactive') rec.stop()
-      else this._finishVoiceRec()
+      if (rec.state !== 'inactive') {
+        try { rec.requestData() } catch (e) { /* 部分浏览器不支持，忽略 */ }
+        rec.stop()
+      } else {
+        this._finishVoiceRec()
+      }
     } catch (err) {
       this._finishVoiceRec()
     }
@@ -1060,7 +1082,10 @@ export default class ScmjUI {
       this._recDiscard = false
       return
     }
-    if (!chunks.length) return
+    if (!chunks.length) {
+      this.toast('没有录到声音，请重试')
+      return
+    }
     if (durMs < 800) {
       this.toast('说话时间太短')
       return
@@ -1077,9 +1102,10 @@ export default class ScmjUI {
       if (!base64) return
       const seconds = Math.min(VOICE_MAX_SEC, Math.max(1, Math.round(durMs / 1000)))
       if (this.net && this.net.sendVoice({ mime, data: base64, duration: seconds })) {
-        // 本地即时回显 + 自动播（服务端不回环发件人；与快捷短语一致：发出去就出声）
+        // 本地即时回显 + 自动播（服务端不回环发件人；与快捷短语一致：发出去就出声）。
+        // 正在录下一条时不自动播：播放声会被麦克风回录（气泡保留，可点按收听）
         const bubbleEl = this.showChatBubble(0, { voice: true, duration: seconds, mime, data: base64 })
-        if (this.settings.sound !== false) this._playVoiceData(mime, base64, bubbleEl)
+        if (this.settings.sound !== false && !this._recorder && !this._recStarting) this._playVoiceData(mime, base64, bubbleEl)
       } else {
         this.toast('连接已断开，语音未发出')
       }
@@ -1093,6 +1119,7 @@ export default class ScmjUI {
       this._unsubChat()
       this._unsubChat = null
     }
+    if (this._recStarting) this._recAbort = true // getUserMedia 在路上：放弃开录
     if (this._recorder) {
       this._recDiscard = true
       this.stopVoiceRec()
