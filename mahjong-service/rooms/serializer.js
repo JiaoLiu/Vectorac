@@ -76,6 +76,9 @@ export function buildPlayerViewForSeat(state, viewerSeat, meta) {
     pendingDiscard: raw.pendingDiscard
       ? { ...raw.pendingDiscard, seat: m(raw.pendingDiscard.seat) }
       : null,
+    lastDiscard: raw.lastDiscard
+      ? { ...raw.lastDiscard, seat: m(raw.lastDiscard.seat) }
+      : null,
     pendingKong: raw.pendingKong ? { ...raw.pendingKong, seat: m(raw.pendingKong.seat) } : null,
     players,
     my: {

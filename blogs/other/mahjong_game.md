@@ -100,6 +100,7 @@ meta:
 <div class="scmj-wallring-bottom" data-scmj-wallring-bottom></div>
 <div class="scmj-wallring-left" data-scmj-wallring-left></div>
 </div>
+<div class="scmj-winds" data-scmj-winds></div>
 <div class="scmj-felt" data-scmj-felt>
 <div class="scmj-disc-tiles scmj-felt-disc-2" data-scmj-disc2tiles></div>
 <div class="scmj-disc-tiles scmj-felt-disc-3" data-scmj-disc3tiles></div>
@@ -906,13 +907,25 @@ meta:
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  z-index: 4; /* 压过桌布弃牌（最高 z-index 3）：弃牌多了伸到罗盘底下被盖，如真实牌桌 */
+  z-index: 4; /* 圆盘+剩余数压过桌布弃牌（最高 z-index 3）：弃牌多了伸到罗盘底下被盖，如真实牌桌 */
   pointer-events: none;
   width: var(--scmj-compass-size, 104px);
   height: var(--scmj-compass-size, 104px);
   border-radius: 50%;
   background: radial-gradient(circle at 50% 45%, rgba(212, 175, 55, 0.16) 0%, rgba(9, 40, 21, 0.5) 70%);
   border: 1px dashed rgba(212, 175, 55, 0.45);
+}
+/* 风位圆牌独立层：与罗盘同位同尺寸，但 z-index 0 沉在弃牌（z1-3）之下——
+   东南西北只是牌桌嵌入的方位指示，弃牌多了应自然压住它，而非被它挡住 */
+#scmjGame .scmj-winds {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: var(--scmj-compass-size, 104px);
+  height: var(--scmj-compass-size, 104px);
+  z-index: 0;
+  pointer-events: none;
 }
 #scmjGame .scmj-compass-core {
   position: absolute;
@@ -1166,6 +1179,23 @@ meta:
 @keyframes scmjBreath {
   0%, 100% { box-shadow: 0 0 0 1px rgba(212, 175, 55, 0.6); }
   50% { box-shadow: 0 0 12px 2px rgba(212, 175, 55, 0.7); }
+}
+/* 最新打出的那张：常驻金色亮圈（取代「最新出牌」文本提醒）；
+   class 常驻不受动画开关影响——开关关时静止亮圈（基础 box-shadow），开时叠加亮金脉冲。
+   独立 keyframes 不复用 scmjBreath：呼吸帧的深金 #d4af37 会盖掉这里的亮金 #ffd968 */
+@keyframes scmjLatestPulse {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(255, 217, 104, 0.85), 0 0 6px 2px rgba(255, 217, 104, 0.45); }
+  50% { box-shadow: 0 0 0 2px rgba(255, 217, 104, 1), 0 0 14px 4px rgba(255, 217, 104, 0.8); }
+}
+#scmjGame .scmj-tile-latest {
+  border-radius: 5px;
+  box-shadow: 0 0 0 2px rgba(255, 217, 104, 0.95), 0 0 10px 3px rgba(255, 217, 104, 0.6);
+  animation: scmjLatestPulse 1.6s ease-in-out infinite;
+}
+/* 刚打出未落定的瞬间：滑入 + 脉冲双动画并行（latest 的 animation 简写在后会盖掉
+   new 的 scmjSlideIn，组合选择器显式合并，两个动画各管各的属性互不干扰） */
+#scmjGame .scmj-tile-latest.scmj-tile-new {
+  animation: scmjSlideIn 0.28s ease-out, scmjLatestPulse 1.6s ease-in-out 0.28s infinite;
 }
 
 /* ============ 玩家区（下方） ============ */
@@ -1499,10 +1529,10 @@ meta:
   border-radius: 2px;
   filter: drop-shadow(1px 1px 1px rgba(0, 0, 0, 0.45));
 }
-/* 重叠堆叠：省空间且更像一摞真实手牌 */
-#scmjGame .scmj-handbacks-2 .scmj-handback + .scmj-handback { margin-left: -8px; }
+/* 平铺不重叠（用户明确要求手牌不能重叠）：各断点已按正间距核算过空间 */
+#scmjGame .scmj-handbacks-2 .scmj-handback + .scmj-handback { margin-left: 1px; }
 #scmjGame .scmj-handbacks-3 .scmj-handback + .scmj-handback,
-#scmjGame .scmj-handbacks-1 .scmj-handback + .scmj-handback { margin-top: -13px; }
+#scmjGame .scmj-handbacks-1 .scmj-handback + .scmj-handback { margin-top: 2px; }
 
 /* ============ 联机交流：右下浮动入口 + 座位气泡 ============ */
 /* 入口定位在右缘偏下（top:56%），避开手牌/操作条/弃牌等可交互区。
@@ -1715,8 +1745,9 @@ meta:
   }
   #scmjGame .scmj-handbacks-3 .scmj-handback,
   #scmjGame .scmj-handbacks-1 .scmj-handback { width: 15px; height: 20px; }
+  /* 平铺不重叠：15×20 + 2px 间隙，庄家 14 张占 308px，竖屏列高足够 */
   #scmjGame .scmj-handbacks-3 .scmj-handback + .scmj-handback,
-  #scmjGame .scmj-handbacks-1 .scmj-handback + .scmj-handback { margin-top: -11px; }
+  #scmjGame .scmj-handbacks-1 .scmj-handback + .scmj-handback { margin-top: 2px; }
   /* 对家：面板居中单行，整行高度固定不变 */
   #scmjGame .scmj-side-2 {
     flex-direction: row;
@@ -1894,57 +1925,43 @@ body.scmj-lock #cw-panel { display: none !important; }
      牌墙只能分到几十像素（实测手机横屏实战中只剩 74px，几乎看不见）。 */
   #scmjGame .scmj-center { position: relative; display: block; }
   #scmjGame .scmj-centerslot { position: absolute; inset: 0; }
+  /* 横屏文字提醒整条删除（与竖屏一致）：轮到谁看座位呼吸高亮，
+     摸牌/出牌有语音播报，最新出牌看桌心金色亮圈，不再摆文字浮层 */
   #scmjGame .scmj-center-info,
-  #scmjGame .scmj-center-latest {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    z-index: 3;
-    width: 30%;
-    max-width: min(168px, calc((100% - var(--scmj-square, 0px)) / 2 - 6px));
-    box-sizing: border-box;
-    min-height: 0;
-    padding: 3px 6px;
-    border-radius: 8px;
-    background: rgba(9, 40, 21, 0.55);
-    border: 1px solid rgba(44, 92, 60, 0.7);
-    font-size: 11px;
-    line-height: 1.35;
-  }
-  #scmjGame .scmj-center-info { left: 0; flex-direction: column; gap: 2px; }
-  #scmjGame .scmj-center-info b { font-size: 15px; }
-  #scmjGame .scmj-center-latest { right: 0; }
+  #scmjGame .scmj-center-latest { display: none; }
   #scmjGame .scmj-wind-seat { display: none; }
-  /* 横屏矮屏：左右两侧座位固定在列首；牌背竖排比桌面略小，避免越出列底被裁 */
+  /* 横屏矮屏：左右两侧座位固定在列首；牌背越界到中央区一侧竖排，
+     侧栏不再裁切（弃牌早已收进中央 felt，侧栏里没有会被顶出的内容） */
   #scmjGame .scmj-side-3,
   #scmjGame .scmj-side-1 {
     align-self: stretch;
     height: 100%;
     min-height: 0;
-    overflow: hidden;
+    overflow: visible;
   }
   #scmjGame .scmj-side-3 > .scmj-seatwrap,
   #scmjGame .scmj-side-1 > .scmj-seatwrap { flex: none; }
   /* 对家牌背改小（浮层内顶部摆放） */
   #scmjGame .scmj-handbacks-2 { top: 0; }
   #scmjGame .scmj-handbacks-2 .scmj-handback { width: 13px; height: 17px; }
-  /* 横屏：左右牌背收进列内、座位面板正下方横排（基础样式里 left/right: calc(100%+4px)
-     越界到中央区，会被侧栏 overflow:hidden 整条裁掉——横屏看不到左右牌的根因）；
-     牌横躺 90° = 真实牌桌看左右家手牌「只见牌顶」的视角，叠放露 6px 边，
-     步进 6px：庄家 14 张占 97px，不超列宽不被裁 */
+  /* 横屏：左右牌背恢复竖排在座位面板靠中央一侧（越界 4px 到中央区边缘），
+     布局次序 = 头像面板 → 竖排手牌 → 牌墙与弃牌（用户指定的左到右次序）；
+     牌横躺 90° 只露牌背长条 = 真实牌桌看左右家手牌的顶视图，平铺不重叠，
+     占位 12×16（旋转后视觉 16×12 扁条），步进 18px：庄家 14 张占 250px，
+     列高约 270+ 放得下；中央区两侧各有 ~190px 空隙，不碰牌墙 */
   #scmjGame .scmj-handbacks-3,
   #scmjGame .scmj-handbacks-1 {
-    top: calc(100% + 4px);
-    left: 50%;
-    right: auto;
-    transform: translateX(-50%);
-    flex-direction: row;
-    max-width: 100%;
+    top: 4px;
+    flex-direction: column;
+    align-items: center;
+    transform: none;
   }
+  #scmjGame .scmj-handbacks-3 { left: calc(100% + 4px); right: auto; }
+  #scmjGame .scmj-handbacks-1 { right: calc(100% + 4px); left: auto; }
   #scmjGame .scmj-handbacks-3 .scmj-handback,
-  #scmjGame .scmj-handbacks-1 .scmj-handback { width: 14px; height: 19px; flex: none; transform: rotate(90deg); }
+  #scmjGame .scmj-handbacks-1 .scmj-handback { width: 12px; height: 16px; flex: none; transform: rotate(90deg); }
   #scmjGame .scmj-handbacks-3 .scmj-handback + .scmj-handback,
-  #scmjGame .scmj-handbacks-1 .scmj-handback + .scmj-handback { margin-top: 0; margin-left: -8px; }
+  #scmjGame .scmj-handbacks-1 .scmj-handback + .scmj-handback { margin-top: 2px; margin-left: 0; }
   #scmjGame .scmj-tile-disc { width: 20px; height: 22px; }
   #scmjGame .scmj-player { margin-top: 2px; position: relative; }
   /* 操作栏浮层化：absolute 浮在 player 区顶缘（向中央区探出），平时不占布局高度，

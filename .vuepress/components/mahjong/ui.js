@@ -279,6 +279,7 @@ export default class ScmjUI {
       diceMsg: q('[data-scmj-dice-msg]'),
       diceTitle: q('[data-scmj-dice-title]'),
       compass: q('[data-scmj-compass]'),
+      winds: q('[data-scmj-winds]'),
       roundChip: q('[data-scmj-round]'),
       center: q('[data-scmj-center]'),
       centerslot: q('[data-scmj-centerslot]'),
@@ -1802,6 +1803,10 @@ export default class ScmjUI {
     lab.textContent = '剩余'
     core.appendChild(lab)
     el.appendChild(core)
+    // 风位圆牌渲染到独立层 .scmj-winds（z-index 0，沉在弃牌之下）：
+    // 东南西北只是「牌桌嵌入的方位指示」，弃牌多了应压住它，而非被它挡住
+    const windsEl = this._els.winds
+    if (windsEl) windsEl.innerHTML = ''
     const layout = [
       { seat: 2, pos: 'top' },
       { seat: 1, pos: 'right' },
@@ -1825,7 +1830,7 @@ export default class ScmjUI {
       sub.className = 'scmj-wind-seat'
       sub.textContent = this._shorts[s]
       w.appendChild(sub)
-      el.appendChild(w)
+      ;(windsEl || el).appendChild(w)
     })
   }
 
@@ -2014,19 +2019,23 @@ export default class ScmjUI {
 
   // ---------- 四方向弃牌（全部收进牌墙内圈 .scmj-felt，向桌心生长不滚动） ----------
   renderDiscards(v) {
+    // 追踪「最新一张弃牌」：优先用引擎层 lastDiscard（打出瞬间即记录，落定/被碰走不清除）；
+    // pendingDiscard 是未落定暂存（落定即清 null，同步推进 AI 时中间态未必渲染），
+    // 仅作旧适配器没有 lastDiscard 字段时的兜底记忆
+    if (v.pendingDiscard) this._lastDiscard = { seat: v.pendingDiscard.seat, tile: v.pendingDiscard.tile }
+    const ld = v.lastDiscard || this._lastDiscard
     for (let s = 0; s < 4; s++) {
       const wrap = this._els['discTiles' + s]
       wrap.innerHTML = ''
       const list = v.players[s].discards
       list.forEach((id, i) => {
         const t = this.makeTile(id, 'disc')
-        if (
-          this.settings.animation &&
-          v.pendingDiscard &&
-          v.pendingDiscard.seat === s &&
-          i === list.length - 1
-        ) {
-          t.classList.add('scmj-tile-new') // 出牌滑入弃牌区（只表现结果）
+        // 全局最新打出的那张：常驻金色亮圈（取代「最新出牌」文本提醒）；
+        // 校验 id 一致——暂存牌被碰/杠拿走后该座位末位变成别的牌，亮圈不错位
+        // （同点数牌的极小概率误亮可接受）；滑入动效只在未落定期间叠加
+        if (ld && ld.seat === s && i === list.length - 1 && id === ld.tile) {
+          t.classList.add('scmj-tile-latest')
+          if (this.settings.animation && v.pendingDiscard && v.pendingDiscard.seat === s) t.classList.add('scmj-tile-new')
         }
         wrap.appendChild(t)
       })

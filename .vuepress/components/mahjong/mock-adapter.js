@@ -194,6 +194,7 @@ export function createLocalGame(opts = {}) {
       wall,
       players,
       pendingDiscard: null,
+      lastDiscard: null, // 最新一张被打出的牌（打出即记录，落定/被碰走不清除）：UI 常驻亮圈用
       pendingKong: null, // mock 不实现补杠抢胡窗口，恒为 null
       responded: {},
       results: null,
@@ -434,6 +435,7 @@ export function createLocalGame(opts = {}) {
     p.discards.push(tile)
     state.drawnTile = null
     state.pendingDiscard = { seat, tile }
+    state.lastDiscard = { seat, tile }
     state.phase = PHASE_RESPOND
     state.responded = {}
     respondActs.clear()
@@ -856,6 +858,7 @@ export function createLocalGame(opts = {}) {
       dealer: state.dealer,
       wallCount: state.wall.length,
       pendingDiscard: state.pendingDiscard ? { ...state.pendingDiscard } : null,
+      lastDiscard: state.lastDiscard ? { ...state.lastDiscard } : null,
       pendingKong: null,
       players: state.players.map(p => ({
         seat: p.seat,

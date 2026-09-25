@@ -302,6 +302,10 @@ export function createGame(opts = {}) {
     wall,
     players,
     pendingDiscard: null,
+    // 最新一张被打出的牌（打出瞬间即记录，落定/被碰走都不清除）：
+    // UI 常驻亮圈的可靠来源——pendingDiscard 是未落定暂存（落定即清 null），
+    // 且同步推进 AI 时非 null 中间态未必有机会渲染。
+    lastDiscard: null,
     pendingKong: null,
     discardTag: 0, // 出牌/补杠批次号：区分“同一张牌被多家胡”与“同一人先后点炮”
     // 本回合杠分暂存：幺鸡局「杠上炮转雨」用——杠者若在该回合打出的牌被胡，
@@ -710,6 +714,7 @@ function doDiscard(s, a) {
 
 /** 打出牌后开响应窗口；无人可响应则直接轮转 */
 function openRespond(s, discarder, tile, push, afterGang) {
+  s.lastDiscard = { seat: discarder, tile } // 打出瞬间即记录（落定/被碰走都不清除）
   // 候选响应者按有效摸牌顺序排列（自出牌者下家起逆时针，跳过已胡出阵者）
   const waiting = []
   for (const seat of seatOrderFrom(s, discarder)) {
@@ -1716,6 +1721,7 @@ export function playerView(state, seat) {
     wallCount: s.wall.length,
     yaoji,
     pendingDiscard: clone(s.pendingDiscard),
+    lastDiscard: clone(s.lastDiscard),
     pendingKong: clone(s.pendingKong),
     players,
     my,
