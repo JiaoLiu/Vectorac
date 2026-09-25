@@ -21,6 +21,7 @@ import {
   RULE_VERSION,
   YAOJI_TILE
 } from './contract.js'
+import { riverLayout } from './table-layout.mjs'
 
 // 座位文案（0 自己 1 右/下家 2 上/对家 3 左/上家）
 const SEAT_LABELS = ['你', '右家 · 旺财', '对家 · 阿福', '左家 · 小美']
@@ -100,15 +101,15 @@ const CHAT_PHRASES = ['快点啊', '等等，我想想', '别放炮哦', '这牌
 // 面板只展示前 4 条（语音为主、短语为辅）；查表保留全量 8 条，旧客户端发来的大序号仍能播
 const CHAT_PANEL_COUNT = 4
 const VOICE_MAX_SEC = 15 // 语音消息最长秒数（按住录音到点自动停）
-const MIN_HAND_TILE_W = 26 // 极窄屏的硬下限，再窄就交给换行
+const MIN_HAND_TILE_W = 16 // 14 张紧邻单排，窄屏仍保留每张独立点击区
 // 单张手牌的高度上限（宽 = 高 / TILE_ASPECT）。统一给到桌面档，让**宽度**成为
 // 唯一限制：横屏手机横向富余，14 张按可用宽度算出来的牌宽本来就更大，
 // 之前被矮屏分档（54/58）压住，白白空着三分之一屏宽。真正窄屏由 byWidth 兜住。
 const HAND_MAX_TILE_H = 68
 
-/** 每行放几张手牌：竖屏屏窄但屏高富余 → 两行 7 张（牌能大一圈）；横屏/桌面一行 14 张 */
+/** 四种方向均按满手 14 张连续单排，只有新摸牌留识别间距。 */
 function handSlotsPerRow() {
-  return window.innerHeight > window.innerWidth ? HAND_SLOTS_REF / 2 : HAND_SLOTS_REF
+  return HAND_SLOTS_REF
 }
 
 /**
@@ -285,6 +286,7 @@ export default class ScmjUI {
       centerslot: q('[data-scmj-centerslot]'),
       centerbox: q('[data-scmj-centerbox]'),
       wallbox: q('[data-scmj-wallbox]'),
+      felt: q('[data-scmj-felt]'),
       wallring: q('[data-scmj-wallring]'),
       wallringTop: q('[data-scmj-wallring-top]'),
       wallringRight: q('[data-scmj-wallring-right]'),
@@ -330,7 +332,7 @@ export default class ScmjUI {
     this.loadSettings()
     this.bindStatic()
     this.bindOnline()
-    // 中央面板与牌墙都是正方形，尺寸依赖中央区实际宽高 → 窗口尺寸变化时重算
+    // 矩形牌桌随可用宽高伸展；窗口变化时重算手牌、牌墙与四家弃牌占位。
     // （fitHand 先按新宽高定手牌尺寸，fitCenterBox 再定面板边长，fitWallRing 最后
     // 按面板内的牌墙盒计算）
     this._onResize = () => {
@@ -1870,7 +1872,7 @@ export default class ScmjUI {
 
   // ---------- 中央信息 ----------
   renderCenter(v) {
-    this.fitCenterBox() // 中央面板恒为正方形，尺寸依赖中央区实际宽高
+    this.fitCenterBox() // 使用中央区实际宽高，不再缩成居中的小正方形
     if (this._els.roundChip) {
       this._els.roundChip.textContent = this.isOnline
         ? '房间 ' + ((this.onlineRoom && this.onlineRoom.roomCode) || '') + ' · 你 ' + this.scores[0] + ' 分'
@@ -1899,87 +1901,47 @@ export default class ScmjUI {
     }
   }
 
-  /**
-   * 中央面板恒为正方形：边长取中间行（.scmj-centerslot）可用宽高的较小值并居中。
-   * 信息条 / 最新动态在面板外独占整行，因此面板拿到的是“文字之外的全部空间”，
-   * 横屏时不会被文字换行挤成一条缝。正方形写在内部 .scmj-centerbox 上，
-   * 横屏时不会跟着中央区一起被拉成长方形。
-   */
+  // Use the whole rectangular table; only the artwork has perspective, not its hit boxes.
   fitCenterBox() {
-    const slot = this._els.centerslot
-    const box = this._els.centerbox
-    if (!slot || !box) return
-    const w = slot.clientWidth
-    const h = slot.clientHeight
-    if (!w || !h) return
-    // 横屏矮屏：对家面板/操作栏改为浮层盖在中央区上下缘（见横屏断点），
-    // 牌墙让出顶 48（对家浮层）底 8（操作栏浮层），配合 CSS margin-top:40 定位
-    const landscapeShort = window.innerWidth > window.innerHeight && window.innerHeight <= 540
-    const size = Math.max(0, Math.min(w, h - (landscapeShort ? 56 : 0)))
-    if (!size) return
-    box.style.width = size + 'px'
-    box.style.height = size + 'px'
-    // 横屏矮屏把信息/最新动态做成中央区左右浮层，这里把正方形边长暴露给 CSS，
-    // 浮层宽度按「(中央区宽 - 边长) / 2」收敛，窄屏也不会压到牌墙上。
-    const center = this._els.center
-    if (center) center.style.setProperty('--scmj-square', size + 'px')
+    const slot=this._els.centerslot, box=this._els.centerbox
+    if(!slot||!box||!slot.clientWidth||!slot.clientHeight)return
+    box.style.width=slot.clientWidth+'px'
+    box.style.height=slot.clientHeight+'px'
+    const board=this.root.querySelector('.scmj-board')
+    if(board) {
+      board.style.setProperty('--scmj-back-step',Math.min(23,Math.max(8,(board.clientHeight-72)/14))+'px')
+      board.style.setProperty('--scmj-back-width',Math.min(26,Math.max(10,(board.clientWidth-140)/14))+'px')
+    }
   }
 
-  /**
-   * 牌墙恒为正方形：取牌墙盒（正方形面板内）可用宽高的较小值作为边长居中，
-   * 并按边长反推单张牌背尺寸（写入 CSS 变量），保证每边铺得下、不被裁切。
-   * 牌背是真实牌张（back.png，竖版），长边一律顺着墙走（横躺 = 贴图转 90°）：
-   *   上下墙（横向墙）牌横躺：沿 X 排 7 摞，2 行 = 两层牌深；
-   *   左右墙（纵向墙）牌竖放：沿 Y 排 7 摞，2 列 = 两层牌深。
-   * 这样每张牌沿墙方向占「一张牌高」，四边摞距一致、整条边看起来是连续的一条；
-   * 径向占「一张牌宽」，四条边等厚 = 两层牌深 = 2×牌宽 + 缝。故
-   *   边长 = 2×内缩 + 7×牌高 + 6×缝，内缩 = 2×牌宽 + 缝
-   *        = 4×牌宽 + 7×牌高 + 8×缝
-   * 牌宽 = 牌高 / TILE_ASPECT，回代反推牌高（取整向下，保证任何边长下都不溢出）。
-   */
   fitWallRing() {
-    const ring = this._els.wallring
-    const box = this._els.wallbox
-    if (!ring || !box) return
-    const w = box.clientWidth
-    const h = box.clientHeight
-    if (!w || !h) return
-    const size = Math.min(w, h)
-    const COLS = 7 // 每边可见 7 摞（每摞 2 张 = 两层牌深）
-    const GAP = 1 // 牌间 1px 缝
-    // 边长 = 4×牌宽 + 7×牌高 + 8×缝（见上方推导），牌宽 = 牌高 / TILE_ASPECT，
-    // 故 牌高 = (边长 - 8×缝) / (7 + 4 / TILE_ASPECT)；牌宽向下取整，保证不溢出。
-    const tileH = Math.max(8, Math.floor((size - 8 * GAP) / (COLS + 4 / TILE_ASPECT)))
-    const tileW = Math.max(5, Math.floor(tileH / TILE_ASPECT))
-    const inset = 2 * tileW + GAP
-    // 罗盘（含探出的风位圆牌）同比缩放，限制在内圈里且封顶 76px。
-    // 弃牌收进内圈后罗盘调小（0.30），给四堆弃牌留出平铺空间，
-    // 弃牌多了自然伸到罗盘底下被盖住（z-index 罗盘 4 > 弃牌最高 3）。
-    const inner = Math.max(0, size - 2 * inset)
-    const compass = Math.max(36, Math.min(76, Math.round(size * 0.30), inner))
-    const left = Math.round((w - size) / 2)
-    const top = Math.round((h - size) / 2)
-    ring.style.left = left + 'px'
-    ring.style.top = top + 'px'
-    ring.style.width = size + 'px'
-    ring.style.height = size + 'px'
-    // 变量挂在牌墙盒上，供牌背与罗盘（子元素）按同一边长取尺寸
-    box.style.setProperty('--scmj-wall-tile-w', tileW + 'px')
-    box.style.setProperty('--scmj-wall-tile-h', tileH + 'px')
-    box.style.setProperty('--scmj-wall-inset', inset + 'px')
-    box.style.setProperty('--scmj-compass-size', compass + 'px')
-    // 内圈弃牌（.scmj-felt）：区域 = 牌墙内圈再缩 2px；牌尺寸按内圈边长分档，
-    // 别家小牌（约 inner/9 高，四堆向心平铺放得下），自己放大 1.25 倍近大远小。
-    // 下限放到 12/15：横屏矮屏内圈仅 ~90-130，硬下限 18/24 必然互相叠压（实测教训）。
-    box.style.setProperty('--scmj-felt-inset', (inset + 2) + 'px')
-    const feltH = Math.max(12, Math.min(30, Math.round(inner / 9)))
-    const feltW = Math.max(9, Math.round(feltH / TILE_ASPECT))
-    const felt0H = Math.max(15, Math.min(38, Math.round(feltH * 1.25)))
-    const felt0W = Math.max(11, Math.round(felt0H / TILE_ASPECT))
-    box.style.setProperty('--scmj-felt-tile-w', feltW + 'px')
-    box.style.setProperty('--scmj-felt-tile-h', feltH + 'px')
-    box.style.setProperty('--scmj-felt-tile0-w', felt0W + 'px')
-    box.style.setProperty('--scmj-felt-tile0-h', felt0H + 'px')
+    const ring=this._els.wallring,box=this._els.wallbox
+    if(!ring||!box||!box.clientWidth||!box.clientHeight)return
+    const w=box.clientWidth,h=box.clientHeight
+    const tileW=Math.max(3,Math.min(6,Math.floor(Math.min(w,h)/42)))
+    const tileH=Math.max(8,Math.min(24,Math.floor((Math.min(w,h)-4*tileW)/7)))
+    const inset=2*tileW+3
+    Object.assign(ring.style,{left:'0px',top:'0px',width:w+'px',height:h+'px'})
+    box.style.setProperty('--scmj-wall-tile-w',tileW+'px')
+    box.style.setProperty('--scmj-wall-tile-h',tileH+'px')
+    box.style.setProperty('--scmj-wall-inset',inset+'px')
+    box.style.setProperty('--scmj-felt-inset',inset+'px')
+    box.style.setProperty('--scmj-compass-size',Math.min(54,(h-2*inset)*.22)+'px')
+    this.fitDiscards()
+  }
+
+  fitDiscards() {
+    const felt=this._els.felt
+    if(!felt||!felt.clientWidth||!felt.clientHeight)return
+    const wraps=[0,1,2,3].map(s=>this._els['discTiles'+s])
+    const layout=riverLayout(felt.clientWidth,felt.clientHeight,wraps.map(el=>el.children.length))
+    wraps.forEach((el,s)=>Array.from(el.children).forEach((tile,i)=>{
+      const p=layout[s][i],side=s===1||s===3
+      Object.assign(tile.style,{left:p.x+'px',top:p.y+'px',width:p.w+'px',height:p.h+'px'})
+      tile.style.setProperty('--scmj-face-w',(side?p.h:p.w)+'px')
+      tile.style.setProperty('--scmj-face-h',(side?p.w:p.h)+'px')
+      tile.style.setProperty('--scmj-disc-rot',p.rotation+'deg')
+    }))
   }
 
   /**
@@ -2022,7 +1984,7 @@ export default class ScmjUI {
   // 第 wallOpenOff 个牌位开牌，摸牌从开牌点起沿环序逐张吃掉——缺口
   // 从骰子点开的那一方中部出现并转圈扩大，被摸走的牌位留空不位移。
   renderWallRing(v) {
-    this.fitWallRing() // 牌墙正方形尺寸依赖中央区实际宽高
+    this.fitWallRing() // 牌墙与弃牌尺寸依赖中央区实际宽高
     const mask = ringMask(v.wallCount, this.wallHead, this.wallOpenOff)
     // 环序 = 出牌顺序「下→右→上→左」，掩码下标沿此环序递增，缺口从开牌点
     // 起顺着牌桌转圈扩大。右/上两边的 DOM 排布方向（右：上→下；上：左→右）
@@ -2074,6 +2036,7 @@ export default class ScmjUI {
         wrap.appendChild(t)
       })
     }
+    this.fitDiscards()
   }
 
   // ---------- 副露（自己与对手共用同一套整组渲染） ----------

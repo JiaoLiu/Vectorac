@@ -73,8 +73,10 @@ meta:
 </div>
 <div class="scmj-portrait-tip">📱 当前为竖屏，建议横屏获得完整牌桌体验</div>
 <div class="scmj-board">
+<div class="scmj-handbacks scmj-handbacks-2" data-scmj-backs2 aria-label="对家手牌背面"></div>
+<div class="scmj-handbacks scmj-handbacks-3" data-scmj-backs3 aria-label="左家手牌顶部"></div>
+<div class="scmj-handbacks scmj-handbacks-1" data-scmj-backs1 aria-label="右家手牌顶部"></div>
 <div class="scmj-side scmj-side-2">
-<div class="scmj-handbacks scmj-handbacks-2" data-scmj-backs2></div>
 <div class="scmj-seatwrap">
 <div class="scmj-seatpend" data-scmj-seat2pend hidden>定缺中…</div>
 <div class="scmj-seat" data-scmj-seat2></div>
@@ -83,7 +85,6 @@ meta:
 </div>
 <div class="scmj-side scmj-side-3">
 <div class="scmj-seatwrap">
-<div class="scmj-handbacks scmj-handbacks-3" data-scmj-backs3></div>
 <div class="scmj-seatpend" data-scmj-seat3pend hidden>定缺中…</div>
 <div class="scmj-seat" data-scmj-seat3></div>
 <div class="scmj-seatmelds" data-scmj-seat3melds></div>
@@ -115,7 +116,6 @@ meta:
 </div>
 <div class="scmj-side scmj-side-1">
 <div class="scmj-seatwrap">
-<div class="scmj-handbacks scmj-handbacks-1" data-scmj-backs1></div>
 <div class="scmj-seatpend" data-scmj-seat1pend hidden>定缺中…</div>
 <div class="scmj-seat" data-scmj-seat1></div>
 <div class="scmj-seatmelds" data-scmj-seat1melds></div>
@@ -2102,6 +2102,87 @@ body.scmj-lock #cw-panel { display: none !important; }
   #scmjGame .scmj-rank-total { font-size: 11px; padding: 1px 6px; }
   #scmjGame .scmj-settle-toggle { min-height: 30px; font-size: 12px; }
   #scmjGame .scmj-settle-btns .scmj-btn { min-height: 38px; }
+}
+/* Perspective table: rectilinear hit boxes; depth is drawn inside each tile. */
+#scmjGame .scmj-board { position: relative; display: block; min-height: 380px; }
+#scmjGame.scmj-fullscreen .scmj-board { min-height: 0; overflow: hidden; }
+#scmjGame .scmj-center { position: absolute; inset: 50px 88px 12px; display: block; }
+#scmjGame .scmj-centerslot { position: absolute; inset: 0; width: auto; height: auto; display: block; }
+#scmjGame .scmj-centerbox { margin: 0; border: 0; border-radius: 0; background: transparent; }
+#scmjGame .scmj-center-info, #scmjGame .scmj-center-latest { display: none; }
+#scmjGame .scmj-side { position: absolute; width: 64px; height: auto; min-height: 0; padding: 0; overflow: visible; z-index: 5; }
+#scmjGame .scmj-side-2 { top: 0; left: 8px; transform: none; }
+#scmjGame .scmj-side-3 { left: 0; top: 35%; }
+#scmjGame .scmj-side-1 { right: 0; top: 35%; }
+#scmjGame .scmj-side .scmj-seatwrap { width: 100%; padding: 0; }
+#scmjGame .scmj-seat { flex-direction: column; gap: 2px; padding: 5px 2px; border: 0; background: #123d3466; border-radius: 8px; }
+#scmjGame .scmj-seat-meta { align-items: center; }
+#scmjGame .scmj-avatar { width: 30px; height: 30px; font-size: 18px; }
+#scmjGame .scmj-seat-name { font-size: 10px; }
+#scmjGame .scmj-seat-score { font-size: 10px; }
+#scmjGame .scmj-side .scmj-windtag { display: none; }
+#scmjGame .scmj-side-2 .scmj-seat { flex-direction: row; width: 110px; padding: 3px; }
+#scmjGame .scmj-side-2 .scmj-seatwrap { align-items: flex-start; }
+#scmjGame .scmj-side .scmj-voidtag { white-space: nowrap; padding: 0 4px; font-size: 10px; }
+#scmjGame .scmj-side-2 .scmj-seatmelds { position: absolute; top: 34px; left: 0; max-width: 120px; }
+#scmjGame .scmj-handbacks { gap: 0; margin: 0; padding: 0; position: absolute; pointer-events: none; }
+#scmjGame .scmj-handbacks-2 { top: 5px; left: 50%; transform: translateX(-50%); flex-direction: row; }
+#scmjGame .scmj-handbacks-1, #scmjGame .scmj-handbacks-3 { top: 52px; bottom: auto; transform: none; flex-direction: column; align-items: stretch; }
+#scmjGame .scmj-handbacks-3 { left: 70px; right: auto; }
+#scmjGame .scmj-handbacks-1 { right: 70px; left: auto; }
+#scmjGame .scmj-handbacks .scmj-handback { flex: none; margin: 0; transform: none; box-sizing: border-box; border-radius: 1px; filter: none; }
+#scmjGame .scmj-handbacks .scmj-handback + .scmj-handback { margin: 0; }
+/* Opposite seat: upright green backs with a slim ivory top edge. */
+#scmjGame .scmj-handbacks-2 .scmj-handback {
+  width: var(--scmj-back-width,20px); height: calc(var(--scmj-back-width,20px)*1.3);
+  background: linear-gradient(#ffffe3 0 10%,#bfc991 11% 15%,#4e9c53 16%,#23623d 90%,#133d2a 91%);
+  border-right: 1px solid #173e2a; box-shadow: inset 1px 0 #8dbb71,0 3px 2px #001c2655;
+}
+/* Side seats: ONLY the narrow top of a standing tile, not a rotated full back. */
+#scmjGame .scmj-handbacks-1 .scmj-handback, #scmjGame .scmj-handbacks-3 .scmj-handback {
+  width: 12px; height: var(--scmj-back-step,18px);
+  background: linear-gradient(90deg,#3a8450 0 24%,#a4bf86 25% 35%,#fffbe1 36% 85%,#c9c6a0 86%);
+  border-bottom: 1px solid #8e9a6e; box-shadow: 2px 1px 1px #001c2644;
+}
+#scmjGame .scmj-handbacks-1 .scmj-handback { background: linear-gradient(90deg,#c9c6a0 0 14%,#fffbe1 15% 64%,#a4bf86 65% 75%,#3a8450 76%); }
+#scmjGame .scmj-wallring > div { gap: 0; }
+#scmjGame .scmj-wallback { background-image: linear-gradient(90deg,#266942,#70a76a 25%,#a6c484 75%,#2f6b44); border: 1px solid #315c3e; filter: none; box-shadow: 1px 1px 1px #0b291966; }
+#scmjGame .scmj-felt .scmj-disc-tiles { inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; transform: none; display: block; }
+#scmjGame .scmj-felt .scmj-tile-disc { position: absolute; margin: 0; padding: 0; transform: none; border-radius: 2px; filter: drop-shadow(0 1px 1px #001b2466); }
+#scmjGame .scmj-felt .scmj-tile-img { position: absolute; width: var(--scmj-face-w); height: var(--scmj-face-h); max-width: none; left: 50%; top: 50%; transform: translate(-50%,-50%) rotate(var(--scmj-disc-rot,0deg)); }
+@keyframes scmjRiverSlideIn { from { transform: translateY(-10px) scale(.8); opacity: 0; } to { transform: none; opacity: 1; } }
+#scmjGame .scmj-felt .scmj-tile-new { animation: scmjRiverSlideIn .28s ease-out; }
+#scmjGame .scmj-felt .scmj-tile-latest.scmj-tile-new { animation: scmjRiverSlideIn .28s ease-out, scmjLatestPulse 1.6s ease-in-out .28s infinite; }
+#scmjGame .scmj-compass-core { box-shadow: 0 2px 3px #061d2255; }
+#scmjGame .scmj-wind-seat { display: none; }
+#scmjGame .scmj-hand { flex-wrap: nowrap; column-gap: 0; overflow: visible; }
+#scmjGame .scmj-tile-hand { border-radius: 3px; box-shadow: 0 3px 0 #849277,0 5px 2px #05271d66; filter: none; }
+#scmjGame .scmj-tile-hand.scmj-tile-disabled { filter: grayscale(.6); }
+#scmjGame .scmj-mymelds:empty { display: none; }
+@media (max-width: 760px) and (orientation: portrait) {
+  #scmjGame .scmj-topbar { flex-wrap: nowrap; gap: 4px; margin-bottom: 4px; }
+  #scmjGame .scmj-topbar-title, #scmjGame .scmj-portrait-tip { display: none; }
+  #scmjGame .scmj-topbar-btns { gap: 4px; }
+  #scmjGame .scmj-topbar-btns .scmj-btn { min-height: 32px; padding: 4px 7px; font-size: 12px; }
+  #scmjGame .scmj-center { inset: 64px 52px 8px; }
+  #scmjGame .scmj-side { width: 40px; }
+  #scmjGame .scmj-avatar { width: 25px; height: 25px; font-size: 15px; }
+  #scmjGame .scmj-seat-score { font-size: 9px; }
+  #scmjGame .scmj-handbacks-3 { left: 41px; }
+  #scmjGame .scmj-handbacks-1 { right: 41px; }
+  #scmjGame .scmj-handbacks-1 .scmj-handback, #scmjGame .scmj-handbacks-3 .scmj-handback { width: 8px; }
+  #scmjGame .scmj-handbacks-2 { top: 30px; left: 58%; }
+  #scmjGame .scmj-side-2 { left: 4px; }
+  #scmjGame .scmj-side-2 .scmj-seat { width: 105px; }
+  #scmjGame .scmj-hand { min-height: 0; padding: 8px 1px; }
+  #scmjGame .scmj-actionbar { background: transparent; border-color: transparent; }
+}
+@media (max-height: 540px) and (orientation: landscape) {
+  #scmjGame .scmj-center { inset: 38px 86px 36px; }
+  #scmjGame .scmj-side-2 { top: 0; left: 4px; width: 64px; }
+  #scmjGame .scmj-side-3, #scmjGame .scmj-side-1 { height: auto; top: 30%; }
+  #scmjGame .scmj-side .scmj-seatwrap { padding-top: 0; }
+  #scmjGame .scmj-handbacks-1, #scmjGame .scmj-handbacks-3 { top: 40px; }
 }
 </style>
 
