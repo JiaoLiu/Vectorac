@@ -1849,7 +1849,9 @@ meta:
   border-radius: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding: max(10px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  /* bottom 收紧 8px（不取 env bottom）：竖屏手牌贴近屏幕底部，
+     iPhone home 热区上滑手势与点按出牌可共存 */
+  padding: max(10px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) 8px max(12px, env(safe-area-inset-left));
 }
 #scmjGame.scmj-fullscreen .scmj-settle { border-radius: 0; }
 /* 全屏时把牌桌约束在一屏内：牌桌区自适应收缩、手牌区固定不被挤出屏幕，
@@ -1875,7 +1877,9 @@ body.scmj-lock #cw-panel { display: none !important; }
 @media (max-height: 540px) and (orientation: landscape) {
   #scmjGame { padding: 6px 12px; }
   #scmjGame.scmj-fullscreen {
-    padding: max(6px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+    /* bottom 固定 2px 突破 home indicator 安全区：横屏时手牌贴底，
+       给听牌胶囊让出空间（home 热区上滑手势与点按出牌可共存） */
+    padding: max(6px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) 2px max(10px, env(safe-area-inset-left));
   }
   #scmjGame .scmj-topbar { margin-bottom: 1px; }
   #scmjGame .scmj-topbar-title { font-size: 11.5px; }
@@ -1979,7 +1983,9 @@ body.scmj-lock #cw-panel { display: none !important; }
   #scmjGame .scmj-handbacks-3 .scmj-handback + .scmj-handback,
   #scmjGame .scmj-handbacks-1 .scmj-handback + .scmj-handback { margin-top: 2px; margin-left: 0; }
   #scmjGame .scmj-tile-disc { width: 20px; height: 22px; }
-  #scmjGame .scmj-player { margin-top: 2px; position: relative; }
+  /* padding-top 16px 为听牌胶囊（absolute top:2）固定预留顶行：
+     无副露时 mymelds:empty 不占位，胶囊原本会直接压在手牌顶边上 */
+  #scmjGame .scmj-player { margin-top: 2px; position: relative; padding-top: 16px; }
   /* 操作栏浮层化：absolute 浮在 player 区顶缘（向中央区探出），平时不占布局高度，
      中央行因此多出 ~36px 给牌墙。盖到牌墙下边缘少量牌背，仅视觉无交互影响。
      固定单行不换行（按钮过多时横向滚动），左对齐防 center 溢出截断。 */
@@ -2039,7 +2045,8 @@ body.scmj-lock #cw-panel { display: none !important; }
      用 calc + env(x, 0px) 而不是 max()：calc 与 env 从 iOS 11.2 就有，
      max() 要 iOS 13.4+，旧机型上整条 padding 会失效退回过小的值。 */
   #scmjGame.scmj-fullscreen {
-    padding: calc(2px + env(safe-area-inset-top, 0px)) calc(8px + env(safe-area-inset-right, 0px)) calc(2px + env(safe-area-inset-bottom, 0px)) calc(8px + env(safe-area-inset-left, 0px));
+    /* bottom 同样固定 2px 突破 home indicator（左右刘海仍保留 env） */
+    padding: calc(2px + env(safe-area-inset-top, 0px)) calc(8px + env(safe-area-inset-right, 0px)) 2px calc(8px + env(safe-area-inset-left, 0px));
   }
   #scmjGame .scmj-topbar { margin-bottom: 0; }
   /* 与主横屏断点同步：中央区一行（对家面板已是浮层），听牌提示保留、出牌建议省略 */
