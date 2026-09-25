@@ -16,7 +16,7 @@ test('rectangular rivers stay within separate regions, including rotated footpri
 })
 test('neighboring discards touch instead of retaining pre-rotation gaps',()=>{
  const layout=riverLayout(480,240,[12,12,12,12])
- assert.equal(layout[0][0].x+layout[0][0].w,layout[0][1].x)
- assert.equal(layout[3][0].y+layout[3][0].h,layout[3][1].y)
- assert.equal(layout[1][1].y+layout[1][1].h,layout[1][0].y)
+ assert.ok(Math.abs(layout[0][0].x+layout[0][0].w-layout[0][1].x)<1e-6)
+ assert.ok(Math.abs(layout[3][0].y+layout[3][0].h-layout[3][1].y)<1e-6)
+ assert.ok(Math.abs(layout[1][1].y+layout[1][1].h-layout[1][0].y)<1e-6)
 })

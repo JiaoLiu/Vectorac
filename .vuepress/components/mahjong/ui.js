@@ -759,6 +759,8 @@ export default class ScmjUI {
     listen(e.chatToggle, 'click', () => {
       this.sound('click')
       if (e.chatPanel) e.chatPanel.hidden = !e.chatPanel.hidden
+      e.chatToggle.setAttribute('aria-expanded', String(!e.chatPanel.hidden))
+      this.fitChat()
     })
     // 按住说话：pointerdown 开录、up/cancel/滑出 停并发。用 pointer 系事件同时覆盖
     // 鼠标与触屏；contextmenu 防 iOS 长按弹系统菜单打断录音。
@@ -1909,6 +1911,8 @@ export default class ScmjUI {
         p.melds.forEach(m => meldRow.appendChild(this.makeMeldGroup(m)))
         // 胡牌那张捡到胡牌者自己一侧，金框高亮标出是哪一张
         if (p.hu && p.hu.winTile != null) meldRow.appendChild(this.makeWinMeld(p.hu))
+        // 副露沿手牌末端摆放，不挤在头像下；保留同一节点供后续渲染复用。
+        if (backs) backs.appendChild(meldRow)
       }
       // 定缺阶段未选花色者：面板旁浮字「定缺中…」
       const pend = this._els['seatPend' + s]
@@ -2052,16 +2056,41 @@ export default class ScmjUI {
     box.style.height=slot.clientHeight+'px'
     const board=this.root.querySelector('.scmj-board')
     if(board) {
-      board.style.setProperty('--scmj-back-step',Math.min(23,Math.max(8,(board.clientHeight-72)/14))+'px')
-      board.style.setProperty('--scmj-back-width',Math.min(26,Math.max(10,(board.clientWidth-140)/14))+'px')
+      board.style.setProperty('--scmj-back-step',Math.min(22,Math.max(8,(board.clientHeight-72)/14))+'px')
+      board.style.setProperty('--scmj-back-width',Math.min(22,Math.max(10,Math.min((board.clientWidth-140)/14,board.clientHeight*.075)))+'px')
+      // 杠比碰多一张，按各家实际总张数预算，四组副露也不挤出牌桌。
+      for (const s of [1, 2, 3]) {
+        const rack = this._els['backs' + s]
+        if (!rack) continue
+        const count = rack.querySelectorAll('.scmj-handback, .scmj-tile').length || 14
+        const groups = rack.querySelectorAll('.scmj-meld').length
+        const portrait = window.matchMedia('(max-width:760px) and (orientation:portrait)').matches
+        const step = Math.max(5, Math.min(22, (board.clientHeight - 72 - groups * 4) / Math.max(14, count)))
+        rack.style.setProperty('--scmj-back-step', step + 'px')
+        rack.style.setProperty('--scmj-side-meld-w', Math.min(portrait ? 12 : 22, step * 1.4) + 'px')
+        rack.style.setProperty('--scmj-back-width', Math.min(22, Math.max(6, Math.min((board.clientWidth - 140 - groups * 4) / Math.max(14, count), board.clientHeight * .075))) + 'px')
+      }
     }
+    this.fitChat()
+  }
+
+  fitChat() {
+    const {chat, chatPanel, chatToggle, table} = this._els
+    if (!chat || !table || table.hidden) return
+    const root = this.root.getBoundingClientRect()
+    const board = this.root.querySelector('.scmj-board').getBoundingClientRect()
+    // 按钮固定在牌桌右下角、手牌区上方。面板绝对定位向上展开，不推动按钮。
+    const top = Math.max(8, board.bottom - root.top - 48)
+    chat.style.top = top + 'px'
+    chatPanel.style.maxHeight = Math.max(60, top - 12) + 'px'
+    if (chatToggle) chatToggle.setAttribute('aria-expanded', String(!chatPanel.hidden))
   }
 
   fitWallRing() {
     const ring=this._els.wallring,box=this._els.wallbox
     if(!ring||!box||!box.clientWidth||!box.clientHeight)return
     const w=box.clientWidth,h=box.clientHeight
-    const tileW=Math.max(3,Math.min(6,Math.floor(Math.min(w,h)/42)))
+    const tileW=Math.max(6,Math.min(10,Math.floor(Math.min(w,h)/26)))
     const tileH=Math.max(8,Math.min(24,Math.floor((Math.min(w,h)-4*tileW)/7)))
     const inset=2*tileW+3
     Object.assign(ring.style,{left:'0px',top:'0px',width:w+'px',height:h+'px'})

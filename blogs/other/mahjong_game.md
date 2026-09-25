@@ -178,7 +178,7 @@ meta:
 <div class="scmj-chat-panel" data-scmj-chat-panel hidden>
 <button type="button" class="scmj-chat-micbtn" data-scmj-chat-mic title="按住说话">🎤 按住说话</button>
 </div>
-<button type="button" class="scmj-chat-btn" data-scmj-chat-toggle title="语音 / 短语">💬</button>
+<button type="button" class="scmj-chat-btn" data-scmj-chat-toggle title="语音 / 短语" aria-label="打开或收起语音与短语" aria-expanded="false">🎙<span>语音</span></button>
 </div>
 <div class="scmj-dice" data-scmj-dice hidden>
 <div class="scmj-dice-card">
@@ -1535,12 +1535,12 @@ meta:
 #scmjGame .scmj-handbacks-1 .scmj-handback + .scmj-handback { margin-top: 2px; }
 
 /* ============ 联机交流：右下浮动入口 + 座位气泡 ============ */
-/* 入口定位在右缘偏下（top:56%），避开手牌/操作条/弃牌等可交互区。
+/* 入口由 fitChat 固定在牌桌右下缘；展开面板不改变按钮位置。
    z-index 65：高于结算覆盖层（60），局间等待时也能收发；低于 toast(80)/弹窗(95)。 */
 #scmjGame .scmj-chat {
   position: absolute;
   right: 8px;
-  top: 56%;
+  top: 56%; /* 首次布局前的回退值，运行时按牌桌底边定位 */
   z-index: 65;
   display: flex;
   flex-direction: column;
@@ -1548,19 +1548,21 @@ meta:
   gap: 8px;
 }
 #scmjGame .scmj-chat-btn {
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   border: 1.5px solid rgba(212, 175, 55, 0.65);
   background: rgba(9, 40, 21, 0.92);
   color: #f3ead8;
   font-size: 19px;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4);
   touch-action: none; /* 按住录音不被滚动/捏合手势打断 */
 }
+#scmjGame .scmj-chat-btn span { font-size: 9px; line-height: 11px; }
 #scmjGame .scmj-chat-btn:active { transform: scale(0.94); }
 #scmjGame .scmj-chat-mic-on {
   background: rgba(140, 24, 24, 0.95);
@@ -1572,6 +1574,11 @@ meta:
   50% { box-shadow: 0 0 0 9px rgba(255, 90, 70, 0); }
 }
 #scmjGame .scmj-chat-rectip {
+  position: absolute;
+  right: 52px;
+  bottom: 0;
+  z-index: 1;
+  pointer-events: none;
   padding: 6px 12px;
   border-radius: 999px;
   background: rgba(140, 24, 24, 0.95);
@@ -1581,6 +1588,9 @@ meta:
   white-space: nowrap;
 }
 #scmjGame .scmj-chat-panel {
+  position: absolute;
+  right: 0;
+  bottom: 52px;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 6px;
@@ -1589,7 +1599,11 @@ meta:
   background: rgba(9, 40, 21, 0.96);
   border: 1px solid rgba(212, 175, 55, 0.55);
   box-shadow: 0 6px 22px rgba(0, 0, 0, 0.5);
-  max-width: 240px;
+  width: 228px;
+  max-width: calc(100vw - 24px);
+  box-sizing: border-box;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 /* 面板顶部全宽「按住说话」：最常用的语音入口放第一位，短语退居其次 */
 #scmjGame .scmj-chat-micbtn {
@@ -2104,6 +2118,11 @@ body.scmj-lock #cw-panel { display: none !important; }
   #scmjGame .scmj-settle-btns .scmj-btn { min-height: 38px; }
 }
 /* Perspective table: rectilinear hit boxes; depth is drawn inside each tile. */
+#scmjGame {
+  background: radial-gradient(ellipse at 48% 42%,#168d83 0%,#087c76 45%,#075c59 100%);
+  box-shadow: inset 0 0 0 2px #8b916354,inset 0 0 38px #003b4266,0 10px 30px #001d2933;
+}
+#scmjGame .scmj-board::before { content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .12; background: repeating-linear-gradient(0deg,transparent 0 2px,#d2e3b31f 2px 3px),repeating-linear-gradient(90deg,transparent 0 3px,#001d291f 3px 4px); }
 #scmjGame .scmj-board { position: relative; display: block; min-height: 380px; }
 #scmjGame.scmj-fullscreen .scmj-board { min-height: 0; overflow: hidden; }
 #scmjGame .scmj-center { position: absolute; inset: 50px 88px 12px; display: block; }
@@ -2134,21 +2153,21 @@ body.scmj-lock #cw-panel { display: none !important; }
 #scmjGame .scmj-handbacks .scmj-handback + .scmj-handback { margin: 0; }
 /* Opposite seat: upright green backs with a slim ivory top edge. */
 #scmjGame .scmj-handbacks-2 .scmj-handback {
-  width: var(--scmj-back-width,20px); height: calc(var(--scmj-back-width,20px)*1.3);
-  background: linear-gradient(#ffffe3 0 10%,#bfc991 11% 15%,#4e9c53 16%,#23623d 90%,#133d2a 91%);
-  border-right: 1px solid #173e2a; box-shadow: inset 1px 0 #8dbb71,0 3px 2px #001c2655;
+  width: var(--scmj-back-width,20px); height: calc(var(--scmj-back-width,20px)*1.25);
+  background: url('/mahjong/tiles/standing-back.svg') center / 100% 100% no-repeat;
+  border: 0; box-shadow: 0 3px 2px #002c3144;
 }
 /* Side seats: ONLY the narrow top of a standing tile, not a rotated full back. */
 #scmjGame .scmj-handbacks-1 .scmj-handback, #scmjGame .scmj-handbacks-3 .scmj-handback {
   width: 12px; height: var(--scmj-back-step,18px);
-  background: linear-gradient(90deg,#3a8450 0 24%,#a4bf86 25% 35%,#fffbe1 36% 85%,#c9c6a0 86%);
-  border-bottom: 1px solid #8e9a6e; box-shadow: 2px 1px 1px #001c2644;
+  background: url('/mahjong/tiles/standing-top.svg') center / 100% 100% no-repeat;
+  border: 0; box-shadow: 2px 1px 1px #002c3144;
 }
-#scmjGame .scmj-handbacks-1 .scmj-handback { background: linear-gradient(90deg,#c9c6a0 0 14%,#fffbe1 15% 64%,#a4bf86 65% 75%,#3a8450 76%); }
+#scmjGame .scmj-handbacks-1 .scmj-handback { transform: scaleX(-1); }
 #scmjGame .scmj-wallring > div { gap: 0; }
-#scmjGame .scmj-wallback { background-image: linear-gradient(90deg,#266942,#70a76a 25%,#a6c484 75%,#2f6b44); border: 1px solid #315c3e; filter: none; box-shadow: 1px 1px 1px #0b291966; }
+#scmjGame .scmj-wallback { background-image: linear-gradient(90deg,#e0e4b8 0 14%,#47794c 16%,#79a66a 35%,#8fba78 76%,#305d3d 80%); border: 1px solid #315c3e; border-radius: 1px; filter: none; box-shadow: 1px 1px 1px #0b291966; }
 #scmjGame .scmj-felt .scmj-disc-tiles { inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; transform: none; display: block; }
-#scmjGame .scmj-felt .scmj-tile-disc { position: absolute; margin: 0; padding: 0; transform: none; border-radius: 2px; filter: drop-shadow(0 1px 1px #001b2466); }
+#scmjGame .scmj-felt .scmj-tile-disc { position: absolute; margin: 0; padding: 0; transform: none; border-radius: 2px; filter: drop-shadow(0 1px .5px #002b37a6); }
 #scmjGame .scmj-felt .scmj-tile-img { position: absolute; width: var(--scmj-face-w); height: var(--scmj-face-h); max-width: none; left: 50%; top: 50%; transform: translate(-50%,-50%) rotate(var(--scmj-disc-rot,0deg)); }
 @keyframes scmjRiverSlideIn { from { transform: translateY(-10px) scale(.8); opacity: 0; } to { transform: none; opacity: 1; } }
 #scmjGame .scmj-felt .scmj-tile-new { animation: scmjRiverSlideIn .28s ease-out; }
@@ -2156,9 +2175,26 @@ body.scmj-lock #cw-panel { display: none !important; }
 #scmjGame .scmj-compass-core { box-shadow: 0 2px 3px #061d2255; }
 #scmjGame .scmj-wind-seat { display: none; }
 #scmjGame .scmj-hand { flex-wrap: nowrap; column-gap: 0; overflow: visible; }
-#scmjGame .scmj-tile-hand { border-radius: 3px; box-shadow: 0 3px 0 #849277,0 5px 2px #05271d66; filter: none; }
+#scmjGame .scmj-tile-hand { border-radius: 3px; box-shadow: 0 2px 0 #d5dfb6,0 4px 0 #558b59,0 6px 2px #003c4055; filter: none; }
 #scmjGame .scmj-tile-hand.scmj-tile-disabled { filter: grayscale(.6); }
 #scmjGame .scmj-mymelds:empty { display: none; }
+/* 副露紧接手牌：完整展示碰3/杠4张，不再用一张牌代替整组。 */
+#scmjGame .scmj-handbacks .scmj-seatmelds { position: static; display: flex; flex-wrap: nowrap; max-width: none; gap: 4px; margin: 0 0 0 4px; align-items: flex-start; }
+#scmjGame .scmj-handbacks .scmj-seatmelds:empty { display: none; }
+#scmjGame .scmj-handbacks .scmj-meld { position: relative; flex: none; gap: 0; }
+#scmjGame .scmj-handbacks .scmj-meld .scmj-tile { display: block; flex: none; width: var(--scmj-back-width); height: calc(var(--scmj-back-width)*1.4); filter: drop-shadow(0 2px 0 #3b7955); }
+#scmjGame .scmj-handbacks .scmj-meld-tag { position: absolute; left: 0; top: 100%; margin: 2px 0 0; padding: 0 2px; font-size: 8px; line-height: 10px; white-space: nowrap; }
+#scmjGame .scmj-handbacks-1 .scmj-seatmelds, #scmjGame .scmj-handbacks-3 .scmj-seatmelds { flex-direction: column; margin: 4px 0 0; }
+#scmjGame .scmj-handbacks-1 .scmj-meld, #scmjGame .scmj-handbacks-3 .scmj-meld { flex-direction: column; }
+#scmjGame .scmj-handbacks-1 .scmj-meld .scmj-tile, #scmjGame .scmj-handbacks-3 .scmj-meld .scmj-tile { position: relative; width: var(--scmj-side-meld-w); height: calc(var(--scmj-side-meld-w)/1.4); }
+#scmjGame .scmj-handbacks-1 .scmj-meld .scmj-tile-img, #scmjGame .scmj-handbacks-3 .scmj-meld .scmj-tile-img { position: absolute; max-width: none; width: calc(var(--scmj-side-meld-w)/1.4); height: var(--scmj-side-meld-w); left: 50%; top: 50%; transform: translate(-50%,-50%) rotate(-90deg); }
+#scmjGame .scmj-handbacks-3 .scmj-meld .scmj-tile-img { transform: translate(-50%,-50%) rotate(90deg); }
+#scmjGame .scmj-handbacks-1 .scmj-meld-tag, #scmjGame .scmj-handbacks-3 .scmj-meld-tag { top: 0; left: auto; right: 100%; margin: 0 2px; writing-mode: vertical-rl; }
+#scmjGame .scmj-handbacks-3 .scmj-meld-tag { left: 100%; right: auto; }
+#scmjGame .scmj-mymelds { flex-wrap: nowrap; gap: 5px; }
+#scmjGame .scmj-mymelds .scmj-tile { width: clamp(12px,3.8vw,22px); height: auto; aspect-ratio: 5/7; }
+#scmjGame .scmj-mymelds .scmj-meld { position: relative; padding-top: 11px; }
+#scmjGame .scmj-mymelds .scmj-meld-tag { position: absolute; top: 0; left: 0; margin: 0; padding: 0 2px; font-size: 9px; line-height: 10px; }
 @media (max-width: 760px) and (orientation: portrait) {
   #scmjGame .scmj-topbar { flex-wrap: nowrap; gap: 4px; margin-bottom: 4px; }
   #scmjGame .scmj-topbar-title, #scmjGame .scmj-portrait-tip { display: none; }
