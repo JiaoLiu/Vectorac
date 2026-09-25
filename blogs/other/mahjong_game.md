@@ -2005,9 +2005,19 @@ body.scmj-lock #cw-panel { display: none !important; }
   #scmjGame .scmj-actionbar .scmj-btn { min-height: 32px; padding: 4px 10px; font-size: 12px; flex: none; }
   #scmjGame .scmj-action-info { font-size: 11.5px; white-space: nowrap; }
   /* 横屏矮屏：只省右侧出牌建议（纯提示元素）；听牌提示保留——
-     玩家开 AI 辅助就指望「可胡哪几张多少番」。行高压到 0：
-     未听牌时 ting 为空、整条不占高度，听牌/已胡时才顶出胶囊 */
-  #scmjGame .scmj-hintrow { min-height: 0; margin: 0 2px; }
+     玩家开 AI 辅助就指望「可胡哪几张多少番」。
+     听牌胶囊悬浮化：absolute 浮在操作栏上方，不占文档流高度——
+     文档流占位会在听牌瞬间把整张牌桌往上推 ~16px（得不偿失）。
+     纯展示不拦截点击；与操作栏（bottom:100%，高 ~36px）垂直错开不重叠。 */
+  #scmjGame .scmj-hintrow {
+    position: absolute; left: 50%; transform: translateX(-50%);
+    bottom: calc(100% + 36px);
+    z-index: 4; margin: 0; min-height: 0;
+    width: max-content; max-width: 100%;
+    pointer-events: none;
+  }
+  /* 操作栏为空（:empty 隐藏）时贴到 player 顶缘，不留悬空缝 */
+  #scmjGame .scmj-player:has(.scmj-actionbar:empty) .scmj-hintrow { bottom: calc(100% - 0px); }
   #scmjGame .scmj-suggest { display: none; }
   /* 副露排压缩：碰牌后出现副露也不多吃中央高度 */
   #scmjGame .scmj-mymelds { min-height: 20px; margin-bottom: 1px; gap: 6px; }
