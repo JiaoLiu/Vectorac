@@ -1,0 +1,403 @@
+blogs/other/mahjong_game.md
+  ff6feec799719add 2121-2125,2156-2158,2163-2164,2166,2170,2178
+.vuepress/components/mahjong/ui.js
+  ff6feec799719add 2059-2060
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.8",
+  "base_commit_sha": "112e628af174b11d04a5666a2f23545fcfa8f5bd",
+  "prompts": {
+    "005cae9c1dbc73d5": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a7d220af85496fd0502022c",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 16,
+      "overriden_lines": 0
+    },
+    "056992989d58fd24": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a38e6391d55a586f6a882f6",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 885,
+      "overriden_lines": 0
+    },
+    "05a20fc4e057e9a3": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d603-50f0-7051-a14b-f49e7ad30428",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 13,
+      "total_deletions": 1,
+      "accepted_lines": 13,
+      "overriden_lines": 0
+    },
+    "076cd075fc982088": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6ab094a9d2a55b0267c03982",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 13,
+      "overriden_lines": 0
+    },
+    "13835d04629220ac": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d67a-7a3d-70a2-8e96-d0f7b22b120b",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 44,
+      "total_deletions": 82,
+      "accepted_lines": 41,
+      "overriden_lines": 0
+    },
+    "1d47727bbcb88a13": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d262-eacd-7861-a89d-da25bc32011f",
+        "model": "gpt-6-luna"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "1efb2cdd1e5a75ab": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6aac9e69d2a55b0267c00651",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 424,
+      "overriden_lines": 0
+    },
+    "26c5942801a23ac1": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6ab1d3e7d2a55b0267c0460f",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 23,
+      "overriden_lines": 0
+    },
+    "2f1af447cbbb2318": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a9a6a0f994bdfd3aac25077",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 261,
+      "overriden_lines": 0
+    },
+    "32a9729784f18ef1": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6aa0c0f23a379370e56fccd6",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 809,
+      "overriden_lines": 0
+    },
+    "49bd55c166d50799": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6ab0980ad2a55b0267c039fc",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1196,
+      "overriden_lines": 0
+    },
+    "4a68a259acc17f46": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a7152c27fd21251a8b13b6c",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 228,
+      "overriden_lines": 0
+    },
+    "5f2ae642c403f7ed": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6aa371d13a379370e56fda4b",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 224,
+      "overriden_lines": 0
+    },
+    "82fbbf65aa138f10": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d615-f1ff-7841-8409-3884dbb9c23b",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 9,
+      "total_deletions": 3,
+      "accepted_lines": 9,
+      "overriden_lines": 0
+    },
+    "a1cd53983a2dd32f": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a9a80e2994bdfd3aac25415",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 225,
+      "overriden_lines": 0
+    },
+    "b4fb3f2dd63721b9": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6aa265113a379370e56fd6f9",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 269,
+      "overriden_lines": 0
+    },
+    "bfcf2812a5394d1a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ffe24-0691-79c0-9329-ff854e9d5202",
+        "model": "gpt-6-luna"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 36,
+      "total_deletions": 21,
+      "accepted_lines": 163,
+      "overriden_lines": 0
+    },
+    "c56a32e809737a22": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a82d2b6f85496fd05021002",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 584,
+      "overriden_lines": 0
+    },
+    "c8c57fc2ff498eb1": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6ab251edd2a55b0267c056e6",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 1611,
+      "total_deletions": 459,
+      "accepted_lines": 3457,
+      "overriden_lines": 1
+    },
+    "cc00914bf98624a9": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6ab1e26dd2a55b0267c048f9",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1866,
+      "overriden_lines": 0
+    },
+    "f58fab71a540773a": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a97c6b8b6e5888c03083198",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    },
+    "f80830a51a6eab6f": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a9faac33a379370e56fc8c3",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 148,
+      "overriden_lines": 0
+    },
+    "ff6feec799719add": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06bd4-83e2-7680-a983-22c87f9788d0",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 15,
+      "total_deletions": 10,
+      "accepted_lines": 19,
+      "overriden_lines": 0
+    }
+  },
+  "commit_stats": {
+    "git_diff_added_lines": 153,
+    "git_diff_deleted_lines": 28,
+    "ai_additions": 15,
+    "ai_accepted": 15,
+    "BYMC": 138,
+    "mixed_additions": 0,
+    "BYAC": 15,
+    "BYRC": 0,
+    "per_file": {
+      ".vuepress/components/mahjong/table-layout.mjs": {
+        "BYMC": [
+          "3-8",
+          "10-12",
+          "15",
+          "19",
+          "23",
+          "26"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      ".vuepress/components/mahjong/ui.js": {
+        "BYMC": [
+          "762-763",
+          "1914-1915",
+          "2061-2072",
+          "2074-2086",
+          "2093"
+        ],
+        "BYAC": [
+          "2059-2060"
+        ],
+        "BYRC": []
+      },
+      ".vuepress/public/mahjong/tiles/standing-back.svg": {
+        "BYMC": [
+          "1-13"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      ".vuepress/public/mahjong/tiles/standing-top.svg": {
+        "BYMC": [
+          "1-8"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "blogs/other/mahjong_game.md": {
+        "BYMC": [
+          "181",
+          "1538",
+          "1543",
+          "1551-1552",
+          "1559",
+          "1565",
+          "1577-1581",
+          "1591-1593",
+          "1602-1606",
+          "2168",
+          "2181-2197"
+        ],
+        "BYAC": [
+          "2121-2125",
+          "2156-2158",
+          "2163-2164",
+          "2166",
+          "2170",
+          "2178"
+        ],
+        "BYRC": []
+      },
+      "scripts/test-mahjong-layout-browser.mjs": {
+        "BYMC": [
+          "23",
+          "71-102"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-mahjong-layout.mjs": {
+        "BYMC": [
+          "19-21"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      }
+    }
+  },
+  "commit_timestamp": 1790319782,
+  "requirement_id": ""
+}
