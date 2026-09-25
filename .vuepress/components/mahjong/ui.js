@@ -907,19 +907,33 @@ export default class ScmjUI {
       let src = null
       let gain = null
       let done = false
+      let decoded = false
+      let wdDecode = null
+      let wdPlay = null
       const release = () => {
         if (done) return
         done = true
+        clearTimeout(wdDecode)
+        clearTimeout(wdPlay)
         try { if (src) src.stop() } catch (e) { /* 忽略 */ }
         try { if (gain) gain.disconnect() } catch (e) { /* 忽略 */ }
         if (this._voiceMsgPlaying === holder) this._voiceMsgPlaying = null
       }
+      const fallback = () => {
+        release()
+        this._playVoiceViaElement(mime, bytes, bubbleEl)
+      }
       holder._release = release
       holder.pause = release // Web Audio 不能暂停续播：点停=停止；再点=重新解码重播
       this._voiceMsgPlaying = holder
+      // 看门狗1：iOS 的 decodeAudioData 对部分 MediaRecorder 产物（fMP4）可能
+      // 永不回调（无成功也无失败），1 秒没动静就转 <audio> 回退，不能让用户等无声
+      wdDecode = setTimeout(() => { if (!decoded && !done) fallback() }, 1000)
       ac.decodeAudioData(
         bytes.buffer.slice(0),
         buf => {
+          decoded = true
+          clearTimeout(wdDecode)
           if (done) return
           try {
             gain = ac.createGain()
@@ -930,14 +944,16 @@ export default class ScmjUI {
             src.connect(gain)
             gain.connect(ac.destination)
             src.start()
+            // 看门狗2：录音刚停 iOS 音频会话可能还在切换（context 卡在 interrupted），
+            // start 后排在冻结时间线上无声——700ms 后还没 running 就回退 <audio>
+            wdPlay = setTimeout(() => { if (!done && ac.state !== 'running') fallback() }, 700)
           } catch (e) {
             release()
           }
         },
         () => {
           // 解码失败（如老 Safari 不认 webm/opus）：回退 <audio> 元素
-          release()
-          this._playVoiceViaElement(mime, bytes, bubbleEl)
+          fallback()
         }
       )
       return true
@@ -1103,9 +1119,13 @@ export default class ScmjUI {
       const seconds = Math.min(VOICE_MAX_SEC, Math.max(1, Math.round(durMs / 1000)))
       if (this.net && this.net.sendVoice({ mime, data: base64, duration: seconds })) {
         // 本地即时回显 + 自动播（服务端不回环发件人；与快捷短语一致：发出去就出声）。
+        // 延迟 350ms 再播：iOS 录音停止后音频会话从「录制」切回「播放」需要一点时间，
+        // 立刻播会卡在冻结的 AudioContext 时间线上（第二次发语音不自动播的根因）。
         // 正在录下一条时不自动播：播放声会被麦克风回录（气泡保留，可点按收听）
         const bubbleEl = this.showChatBubble(0, { voice: true, duration: seconds, mime, data: base64 })
-        if (this.settings.sound !== false && !this._recorder && !this._recStarting) this._playVoiceData(mime, base64, bubbleEl)
+        setTimeout(() => {
+          if (this.settings.sound !== false && !this._recorder && !this._recStarting) this._playVoiceData(mime, base64, bubbleEl)
+        }, 350)
       } else {
         this.toast('连接已断开，语音未发出')
       }
@@ -3012,7 +3032,9 @@ export default class ScmjUI {
         this._master.gain.value = 0.6
         this._master.connect(this._ac.destination)
       }
-      if (this._ac.state === 'suspended') this._ac.resume().catch(() => {})
+      // iOS 录音停止会把 context 打进 'interrupted'（非 suspended），同样需要 resume，
+      // 否则录音刚停时的自动播排在冻结时间线上无声（第二次发语音不自动播的根因之一）
+      if (this._ac.state === 'suspended' || this._ac.state === 'interrupted') this._ac.resume().catch(() => {})
       return this._ac
     } catch (e) {
       return null
