@@ -2165,9 +2165,10 @@ body.scmj-lock #cw-panel { display: none !important; }
 }
 /* 左右两家：绿色牌背朝外（朝桌心），白色牌面一侧朝向自己头像（靠头像侧描象牙细边示意）；
    一张贴一张：背景放大 20% 居中，裁掉牌背图自带的象牙上下边框——
-   相邻牌绿贴绿无缝隙，只留 1px 深色发丝线分出单张（真实牌码放效果） */
+   相邻牌绿贴绿无缝隙，只留 1px 深色发丝线分出单张（真实牌码放效果）。
+   横竖屏统一 8px 宽 × ≤16px 高（接近真实牌 22×38 比例），不随旋转变化 */
 #scmjGame .scmj-handbacks-1 .scmj-handback, #scmjGame .scmj-handbacks-3 .scmj-handback {
-  width: 12px; height: var(--scmj-back-step,18px);
+  width: 8px; height: min(var(--scmj-back-step,18px), 16px);
   background: url('/mahjong/tiles/back.png') center / 100% 120% no-repeat;
   border: 0; border-bottom: 1px solid rgba(0,38,22,.6);
   box-shadow: 2px 1px 1px #002c3144;
@@ -2187,7 +2188,9 @@ body.scmj-lock #cw-panel { display: none !important; }
 #scmjGame .scmj-compass-core { box-shadow: 0 2px 3px #061d2255; }
 #scmjGame .scmj-wind-seat { display: none; }
 #scmjGame .scmj-hand { flex-wrap: nowrap; column-gap: 0; overflow: visible; }
-#scmjGame .scmj-tile-hand { border-radius: 3px; box-shadow: 0 2px 0 #d5dfb6, 0 4px 0 #558b59, 0 6px 2px #003c4055; filter: none; }
+/* 手牌只留柔和落影：象牙+绿色两层实色阴影会与牌 PNG 自带的厚度叠加，
+   在手牌下方形成一条贯穿性「白绿条」（用户反馈），实色层全部去掉 */
+#scmjGame .scmj-tile-hand { border-radius: 3px; box-shadow: 0 3px 3px #002c3144; filter: none; }
 #scmjGame .scmj-tile-hand.scmj-tile-disabled { filter: grayscale(.6); }
 #scmjGame .scmj-mymelds:empty { display: none; }
 /* 副露紧接手牌：完整展示碰3/杠4张，不再用一张牌代替整组。 */
@@ -2218,7 +2221,10 @@ body.scmj-lock #cw-panel { display: none !important; }
   #scmjGame .scmj-seat-score { font-size: 9px; }
   #scmjGame .scmj-handbacks-3 { left: 41px; }
   #scmjGame .scmj-handbacks-1 { right: 41px; }
-  #scmjGame .scmj-handbacks-1 .scmj-handback, #scmjGame .scmj-handbacks-3 .scmj-handback { width: 8px; }
+  /* 竖屏：手牌列垂直居中——固定 top:52 会让列顶紧贴对家手牌行（且水平方向
+     与对家行有数像素重叠），看起来压住对家的牌；居中后整列落在对家与自家
+     之间的空档正中，不再遮挡 */
+  #scmjGame .scmj-handbacks-1, #scmjGame .scmj-handbacks-3 { top: 50%; transform: translateY(-50%); }
   #scmjGame .scmj-handbacks-2 { top: 30px; left: 58%; }
   #scmjGame .scmj-side-2 { left: 4px; }
   #scmjGame .scmj-side-2 .scmj-seat { width: 105px; }
