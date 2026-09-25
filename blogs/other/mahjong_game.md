@@ -2006,18 +2006,18 @@ body.scmj-lock #cw-panel { display: none !important; }
   #scmjGame .scmj-action-info { font-size: 11.5px; white-space: nowrap; }
   /* 横屏矮屏：只省右侧出牌建议（纯提示元素）；听牌提示保留——
      玩家开 AI 辅助就指望「可胡哪几张多少番」。
-     听牌胶囊悬浮化：absolute 浮在操作栏上方，不占文档流高度——
-     文档流占位会在听牌瞬间把整张牌桌往上推 ~16px（得不偿失）。
-     纯展示不拦截点击；与操作栏（bottom:100%，高 ~36px）垂直错开不重叠。 */
+     听牌胶囊放回左下原位置（player 区顶行空白处），absolute 不占文档流——
+     既不撑大桌面，也不上浮遮挡弃牌区。max-width 限宽，内容多了横向滑动。 */
   #scmjGame .scmj-hintrow {
-    position: absolute; left: 50%; transform: translateX(-50%);
-    bottom: calc(100% + 36px);
+    position: absolute; top: 2px; left: 8px;
     z-index: 4; margin: 0; min-height: 0;
-    width: max-content; max-width: 100%;
-    pointer-events: none;
+    max-width: 60%; overflow-x: auto; white-space: nowrap;
+    scrollbar-width: none;
   }
-  /* 操作栏为空（:empty 隐藏）时贴到 player 顶缘，不留悬空缝 */
-  #scmjGame .scmj-player:has(.scmj-actionbar:empty) .scmj-hintrow { bottom: calc(100% - 0px); }
+  #scmjGame .scmj-hintrow::-webkit-scrollbar { display: none; }
+  /* 有副露时：副露靠左排列，胶囊移到该行右端，同行共存互不遮挡 */
+  #scmjGame .scmj-player:has(.scmj-mymelds:not(:empty)) .scmj-mymelds { justify-content: flex-start; }
+  #scmjGame .scmj-player:has(.scmj-mymelds:not(:empty)) .scmj-hintrow { left: auto; right: 8px; max-width: 55%; }
   #scmjGame .scmj-suggest { display: none; }
   /* 副露排压缩：碰牌后出现副露也不多吃中央高度 */
   #scmjGame .scmj-mymelds { min-height: 20px; margin-bottom: 1px; gap: 6px; }
