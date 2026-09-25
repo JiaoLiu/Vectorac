@@ -569,7 +569,10 @@ function shopCards(s) {
     if(duplicateNamedCard||duplicatePlayingCard){i--;continue}
     result.push(card)
   }
-  if(s.tags.includes('rare')){result[0]=randomJoker(s,3);result[0].free=true;s.tags.splice(s.tags.indexOf('rare'),1)}
+  if(s.tags.includes('rare')){
+    const otherOfferedJokers=new Set(result.slice(1).filter(card=>card.kind==='joker').map(card=>card.id))
+    result[0]=randomJoker(s,3,otherOfferedJokers);result[0].free=true;s.tags.splice(s.tags.indexOf('rare'),1)
+  }
   if(s.tags.includes('free')){result.forEach(c=>c.free=true);s.tags.splice(s.tags.indexOf('free'),1)}
   return result
 }

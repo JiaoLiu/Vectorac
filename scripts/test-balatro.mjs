@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import {readFileSync} from 'node:fs'
 import * as E from '../.vuepress/components/balatro/engine.mjs'
 import { HANDS,JOKERS,TAROTS,SPECTRALS,VOUCHERS,BOSSES,DECKS,BOOSTER_PACKS } from '../.vuepress/components/balatro/catalog.mjs'
-import { cardCue } from '../.vuepress/components/balatro/cues.mjs'
+import { cardCue, jokerProgress } from '../.vuepress/components/balatro/cues.mjs'
 import { playingCardDetails, playingCardSummary } from '../.vuepress/components/balatro/card-details.mjs'
 import { playingCard } from '../.vuepress/components/balatro/art.mjs'
 import PokerTable from '../.vuepress/components/balatro/ui.js'
@@ -24,11 +24,12 @@ const boosterOffers=(seed,family,{showman=false,held=null}={})=>{
  s.shop={cards:[],packs:[{uid:902,kind:'pack',id:`${family}-mega`}],voucher:null,rerolls:0,freeUsed:false}
  E.buy(s,902);return s.pack.cards
 }
-const shopOffers=(seed,family,{showman=false,held=null,magicTrick=false}={})=>{
+const shopOffers=(seed,family,{showman=false,held=null,magicTrick=false,rareTag=false}={})=>{
  const s=E.newRun(seed,family==='spectral'?'ghost':'red');s.phase='shop';s.money=100;s.vouchers.push('overstock','plus')
  if(magicTrick)s.vouchers.push('magictrick')
  if(held&&!(family==='spectral'&&s.consumables.some(c=>c.kind===family&&c.id===held))){if(family==='joker')s.jokers.push({uid:900,kind:'joker',id:held});else s.consumables.push({uid:900,kind:family,id:held})}
  if(showman)s.jokers.push({uid:901,kind:'joker',id:'showman'})
+ if(rareTag)s.tags.push('rare')
  s.shop={cards:[],packs:[],voucher:null,rerolls:0,freeUsed:false};E.rerollShop(s);return s.shop.cards
 }
 
@@ -59,7 +60,7 @@ test('the game introduction and gallery cover describe and show the refreshed J,
  const gallery=readFileSync(new URL('../blogs/other/games.md',import.meta.url),'utf8')
  for(const court of ['jack','queen','king'])assert.match(cover,new RegExp(`id="court-${court}"`),`${court} appears in the cover`)
  assert.match(cover,/新版双面杰克、皇后与国王牌面/);assert.match(intro,/新版双面人像牌面/)
- assert.match(intro,/牌桌中央会显示它的效果与触发时机/);assert.match(gallery,/双面 J\/Q\/K 人头牌/)
+ assert.match(intro,/约 2.5 秒后消失/);assert.match(gallery,/双面 J\/Q\/K 人头牌/)
 })
 const examples=[['high',[14,11,9,5,2]],['pair',[8,8,13,5,2]],['two',[8,8,4,4,2]],['three',[8,8,8,5,2]],['straight',[14,2,3,4,5]],['flush',[14,11,9,5,2],[1,1,1,1,1]],['full',[8,8,8,5,5]],['four',[8,8,8,8,2]],['sf',[5,6,7,8,9],[2,2,2,2,2]],['five',[8,8,8,8,8]],['ffull',[8,8,8,5,5],[1,1,1,1,1]],['ffive',[8,8,8,8,8],[0,0,0,0,0]]]
 for(const [id,ranks,suits]of examples)test(`poker classification: ${id}`,()=>assert.equal(E.evaluate(cards(ranks,suits)).id,id))
@@ -359,18 +360,40 @@ test('playing-card details share complete face, enhancement, edition and seal tr
  }
  assert.deepEqual(playingCardDetails({rank:14,suit:0,hidden:true}),[],'face-down cards reveal no card facts')
 })
-test('selected enhanced hand cards show concise effect reminders in the empty center table area',()=>{
- const s=state([12,10,8],[1,0,2]);s.hand[0].enh=s.deck[0].enh='bonus';s.hand[0].seal=s.deck[0].seal='blue';s.selected=[s.hand[0].uid]
- const table=Object.create(PokerTable.prototype);table.anim=null;table.busy=false
- const stage=table.playStage(s)
- assert.match(stage,/bp-selected-card-effects/);assert.match(stage,/红桃 Q/);assert.match(stage,/奖励牌/);assert.match(stage,/额外获得 30 筹码/)
- assert.match(stage,/蓝色蜡封/);assert.match(stage,/生成一张对应上一手牌型的星球牌/)
- assert.doesNotMatch(stage,/bp-last-hand/,'the table center uses its otherwise empty space for the selected card details')
- s.hand[0].hidden=true
- const concealed=table.playStage(s)
- assert.doesNotMatch(concealed,/bp-selected-card-effects|蓝色蜡封|奖励牌/,'a face-down card never leaks its effects in the center reminder')
- s.hand[0].hidden=false;s.hand[0].enh=null;s.hand[0].seal=null
- assert.doesNotMatch(table.playStage(s),/bp-selected-card-effects/,'unmodified selected cards keep the table center clear')
+const selectionTable=s=>{
+ const table=Object.create(PokerTable.prototype),pending=[]
+ Object.assign(table,{state:s,anim:null,busy:false,timers:new Set(),root:{querySelector:()=>null},audio:{fx:()=>{}},render:()=>{},later:(fn,ms)=>{const timer={fn,ms};pending.push(timer);return timer}})
+ return {table,pending}
+}
+test('selection hints expire, replace each other and only replay on a new selection',()=>{
+ const s=state([12,10,8],[1,0,2]);s.hand[0].enh='bonus';s.hand[0].seal='blue';s.hand[1].seal='gold'
+ const {table,pending}=selectionTable(s)
+ table.perform('select',1)
+ assert.match(table.selectionHint.text,/红桃 Q.*计分 \+30 筹码.*蓝封/)
+ assert.equal(pending[0].ms,2500)
+ assert.doesNotMatch(table.playStage(s),/bp-selected-card-effects|bp-live-boss/)
+ table.perform('select',2)
+ assert.match(table.selectionHint.text,/黑桃 10.*金封/);assert.doesNotMatch(table.selectionHint.text,/蓝封/)
+ pending[0].fn();assert.ok(table.selectionHint,'an older timeout cannot remove the newer hint')
+ pending[1].fn();assert.equal(table.selectionHint,null)
+ table.render();assert.equal(table.selectionHint,null,'rendering does not reopen a hint')
+ table.perform('select',2);assert.equal(table.selectionHint,null,'deselecting never reopens a hint')
+ table.perform('select',2);assert.match(table.selectionHint.text,/金封/)
+ table.perform('select',3);assert.equal(table.selectionHint,null,'ordinary cards clear the previous card hint')
+ s.hand[2].seal='purple';s.hand[2].hidden=true
+ table.perform('select',3);table.perform('select',3);assert.equal(table.selectionHint,null,'face-down cards reveal no effects')
+})
+test('selected-card reminders warn when a Boss debuffs an effect and clear the warning when Chicot disables it',()=>{
+ const s=state([12,10,8],[1,0,2]),card=s.hand[0];card.enh=s.deck[0].enh='bonus';s.selected=[card.uid];s.blind=2;s.boss='head'
+ const {table}=selectionTable(s)
+ assert.equal(E.debuffed(s,card),true)
+ table.showSelectionHint(card)
+ const debuffed=table.playStage(s)
+ assert.match(debuffed,/本轮被 Boss 削弱，效果不生效/);assert.doesNotMatch(debuffed,/计分 \+30/)
+ add(s,'chicot');assert.equal(E.debuffed(s,card),false)
+ table.clearSelectionHint();table.showSelectionHint(card)
+ const active=table.playStage(s)
+ assert.doesNotMatch(active,/本轮被 Boss 削弱|bp-live-boss/);assert.match(active,/计分 \+30 筹码/)
 })
 test('pack and shop card descriptions spell out seal effects instead of bare names',()=>{
  assert.equal(playingCardSummary({rank:10,suit:1}),'标准扑克牌','plain cards stay short')
@@ -605,6 +628,16 @@ test('Showman allows held Jokers and consumables to return in shops, without aff
  assert.deepEqual(withShowman,without,'Showman must not enable or suppress regular playing-card offers')
  assert.equal(without.length,3,'different playing cards remain separate shop offers')
 })
+test('Rare Tag replacement avoids another offered rare Joker when Showman is absent',()=>{
+ const offers=shopOffers('RARE-TAG-180','joker',{rareTag:true})
+ const freeRare=offers.find(card=>card.kind==='joker'&&card.free)
+ assert.ok(freeRare,'Rare Tag replaces the first shop item with a free Joker')
+ assert.equal(JOKERS.find(joker=>joker.id===freeRare.id).rarity,3,'Rare Tag still guarantees a rare Joker')
+ assert.ok(offers.some(card=>card.kind==='joker'&&card.id==='campfire'&&!card.free),'the other shop slots retain the fixed-seed Campfire offer')
+ assert.notEqual(freeRare.id,'campfire','the free rare does not duplicate the same offered Joker')
+ const jokerIds=offers.filter(card=>card.kind==='joker').map(card=>card.id)
+ assert.equal(new Set(jokerIds).size,jokerIds.length,'the no-Showman shop has no duplicate Jokers after the tag replacement')
+})
 test('Showman permits named repeats inside matching Mega packs, but does not affect Standard packs',()=>{
  const fixtures=[['joker','SHOWMAN-joker-6'],['tarot','SHOWMAN-tarot-0'],['planet','SHOWMAN-planet-1'],['spectral','SHOWMAN-spectral-0']]
  for(const [kind,seed] of fixtures){
@@ -644,6 +677,45 @@ test('ante 8 win and endless continuation advance to ante 9 once',()=>{
 })
 test('Yorick and Loyalty counters are not reset at blind entry',()=>{const s=E.newRun('COUNTERS');add(s,'yorick').counter=22;add(s,'loyalty').counter=5;E.startBlind(s);assert.equal(s.jokers[0].counter,22);assert.equal(s.jokers[1].counter,5)})
 test('invalid saves are rejected rather than mounted',()=>{assert.equal(E.restore('{'),null);const s=E.newRun('BAD');s.deck[0].rank=100;assert.equal(E.restore(s),null);assert.equal(E.restore({version:0}),null)})
+test('hand dialog displays round/run counts and the actual locked Boss target',()=>{
+ const s=state(),table=Object.assign(Object.create(PokerTable.prototype),{state:s,modal:{type:'hands'}})
+ s.played.pair=8;s.played.high=4;s.roundPlayed.pair=2;s.blind=2;s.boss='ox';s.oxHand='high'
+ const before=JSON.stringify(s),html=table.dialog()
+ assert.match(html,/data-hand-id="pair"[^]*?本轮 2 次 · 本局 8 次/)
+ assert.match(html,/data-hand-id="high"[^]*?本轮 0 次 · 本局 4 次[^]*?公牛目标/)
+ assert.equal((html.match(/公牛目标/g)||[]).length,1)
+ assert.equal(JSON.stringify(s),before)
+ s.boss='eye';assert.match(table.dialog(),/眼睛：再次打出不计分/)
+ s.disabledBoss=true;assert.doesNotMatch(table.dialog(),/眼睛：/)
+ s.disabledBoss=false;s.boss='mouth';assert.match(table.dialog(),/嘴巴：本轮只允许此牌型/)
+ add(s,'chicot');assert.doesNotMatch(table.dialog(),/嘴巴：/)
+})
+test('hand counts follow real plays, exclude discards, and reset only per-blind counts',()=>{
+ const s=state();play(s,[1,2]);assert.equal(s.played.pair,1);assert.equal(s.roundPlayed.pair,1)
+ s.selected=[3];E.discard(s);assert.equal(s.played.pair,1);assert.equal(s.roundPlayed.pair,1)
+ s.phase='select';E.startBlind(s)
+ const table=Object.assign(Object.create(PokerTable.prototype),{state:s,modal:{type:'hands'}})
+ assert.match(table.dialog(),/data-hand-id="pair"[^]*?本轮 0 次 · 本局 1 次/)
+})
+test('joker details label additive/multiplicative progress precisely, including zero',()=>{
+ const s=state(),j=add(s,'constellation');j.value=1.2000000000000002
+ const table=Object.assign(Object.create(PokerTable.prototype),{state:s,modal:{type:'info',uid:j.uid}})
+ assert.match(table.dialog(),/当前 ×1.2 倍率/)
+ j.id='hologram';j.value=1.25;assert.match(table.dialog(),/当前 ×1.25 倍率/)
+ j.id='ramen';j.value=1.99;assert.match(table.dialog(),/当前 ×1.99 倍率/)
+ j.id='green';j.value=0;assert.match(table.dialog(),/当前 \+0 倍率/)
+ j.id='square';j.value=12;assert.match(table.dialog(),/当前 \+12 筹码/)
+ j.disabled=true;assert.match(table.dialog(),/目前已失效/)
+ s.blind=2;s.boss='acorn';assert.doesNotMatch(table.dialog(),/当前 \+12|保留数值/)
+ const before=JSON.stringify(s);jokerProgress(s,j);assert.equal(JSON.stringify(s),before)
+})
+test('joker progress distinguishes counters and derived multipliers',()=>{
+ const s=state(),j=add(s,'yorick');j.value=2;j.counter=22
+ assert.deepEqual(jokerProgress(s,j),['当前 ×2 倍率','下次成长：已弃 22/23 张'])
+ j.id='throwback';s.skips=1;assert.deepEqual(jokerProgress(s,j),['当前 ×1.25 倍率'])
+ j.id='loyalty';j.counter=5;assert.deepEqual(jokerProgress(s,j),['距离下次 ×4：1 次出牌'])
+ j.id='ice';j.value=95;assert.deepEqual(jokerProgress(s,j),['当前 +95 筹码'])
+})
 test('To Do List displays its target and highlights only a matching selection',()=>{
  const s=state(),j=add(s,'toDo');j.hand='pair'
  assert.equal(cardCue(s,j).label,'对子 +$4');assert.equal(cardCue(s,j).ready,false)

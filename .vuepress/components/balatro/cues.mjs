@@ -1,9 +1,30 @@
 import { HANDS, JOKERS, TAROTS, SPECTRALS, SUITS, byId } from './catalog.mjs'
-import { evaluate, debuffed, matchesSuit, has, consumableSlots, blueprintCanCopyAny } from './engine.mjs'
+import { evaluate, debuffed, matchesSuit, has, consumableSlots, blueprintCanCopyAny, sellValue } from './engine.mjs'
 
 const rank = n => ({11:'J',12:'Q',13:'K',14:'A'}[n] || n)
 const face = (s,c) => c.enh!=='stone' && (c.rank>=11 && c.rank<=13 || has(s,'pareidolia'))
 const cue = (label, detail, ready=false, tone='target') => ({label,detail,ready,tone})
+
+// Read accumulated state only. Do not score a hypothetical hand (which can mutate RNG/state).
+export function jokerProgress(s,card) {
+  if(!s||!card||card.kind!=='joker')return []
+  const fmt=value=>new Intl.NumberFormat('en-US',{maximumFractionDigits:6}).format(value)
+  const lines=[]
+  if(['green','bus','trousers','popcorn','redcard','flash','ceremonial'].includes(card.id))lines.push(`当前 +${fmt(card.value)} 倍率`)
+  if(['runner','square','ice','wee','castle'].includes(card.id))lines.push(`当前 +${fmt(card.value)} 筹码`)
+  if(['constellation','hologram','ramen','banana','vampire','glass','luckycat','madness','obelisk','campfire','hitroad','canio','yorick'].includes(card.id))lines.push(`当前 ×${fmt(card.value)} 倍率`)
+  if(card.id==='yorick')lines.push(`下次成长：已弃 ${card.counter}/23 张`)
+  if(card.id==='loyalty')lines.push(`距离下次 ×4：${6-card.counter%6} 次出牌`)
+  if(card.id==='seltzer')lines.push(`剩余 ${card.value} 次出牌`)
+  if(card.id==='turtle')lines.push(`当前手牌上限 +${card.value}`)
+  if(card.id==='invisible')lines.push(`已完成 ${card.value}/2 轮${card.value>=2?'，出售可触发复制':''}`)
+  if(card.id==='rocket')lines.push(`当前盲注奖励 +$${fmt(card.value)}（击败 Boss 时再成长）`)
+  if(card.id==='egg')lines.push(`当前售价 $${fmt(sellValue(card))}`)
+  const dynamic={steel:()=>`当前 ×${fmt(1+.2*s.deck.filter(c=>c.enh==='steel').length)} 倍率`,throwback:()=>`当前 ×${fmt(1+.25*s.skips)} 倍率`,fortune:()=>`当前 +${s.tarotUsed} 倍率`,abstract:()=>`当前 +${s.jokers.length*3} 倍率`,bull:()=>`当前 +${Math.max(0,s.money)*2} 筹码`,boot:()=>`当前 +${Math.max(0,Math.floor(s.money/5))*2} 倍率`,stone:()=>`当前 +${s.deck.filter(c=>c.enh==='stone').length*25} 筹码`,erosion:()=>`当前 +${Math.max(0,s.initialDeckSize-s.deck.length)*4} 倍率`,swash:()=>`当前 +${s.jokers.filter(j=>j.uid!==card.uid).reduce((n,j)=>n+sellValue(j),0)} 倍率`}
+  if(dynamic[card.id])lines.push(dynamic[card.id]())
+  if((card.disabled||card.perished)&&lines.length)lines.unshift('目前已失效，以下为保留数值，不参与计分')
+  return lines
+}
 
 // Presentation only: never simulate play(), advance RNG or mutate run state to predict a proc.
 export function cardCue(s,card,visited=[]) {
