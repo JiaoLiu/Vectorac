@@ -379,7 +379,7 @@ export default class ScmjUI {
   // 用户一旦物理旋转屏幕（orientationchange），本会话内此后横竖屏自由切换。
   _setupForceLandscape() {
     if (typeof window === 'undefined') return
-    const KEY = 'scmj-rotated'
+    const KEY = 'scmj-rotated2'
     let rotated = false
     try { rotated = sessionStorage.getItem(KEY) === '1' } catch (e) { /* 隐私模式忽略 */ }
     const isMobile = () => {
@@ -445,7 +445,9 @@ export default class ScmjUI {
     this._flsApply = () => {
       if (this._destroyed) return
       const portrait = window.innerHeight >= window.innerWidth
-      const force = !rotated && portrait && isMobile()
+      // 仅在牌桌全屏（开始游戏后）才强制横屏；介绍页保持正常竖屏浏览
+      const inGame = this.root.classList.contains('scmj-fullscreen')
+      const force = !rotated && portrait && inGame && isMobile()
       this.root.classList.toggle('scmj-fls', force)
       if (force) {
         // fixed 包含块陷阱：祖先带 transform 时 fixed 元素会相对祖先而非视口定位
@@ -465,7 +467,15 @@ export default class ScmjUI {
         this.root.style.height = ''
         this.root.style.top = ''
         if (this._flsParent) {
-          this._flsParent.insertBefore(this.root, this._flsNext)
+          // _flsNext 可能已被 VuePress 增删节点波及而失效（insertBefore 会抛
+          // NotFoundError，曾导致媒体查询还原被跳过、竖屏样式卡死「恢复不了」）
+          try {
+            if (this._flsNext && this._flsNext.parentNode === this._flsParent) {
+              this._flsParent.insertBefore(this.root, this._flsNext)
+            } else {
+              this._flsParent.appendChild(this.root)
+            }
+          } catch (e) { try { this._flsParent.appendChild(this.root) } catch (e2) { /* ignore */ } }
           this._flsParent = null
           this._flsNext = null
         }
@@ -480,6 +490,9 @@ export default class ScmjUI {
       if (this._onResize) this._onResize()
     }
     this._flsOnOrientation = () => {
+      // 只在牌桌内才消耗「自由切换」名额——介绍页里无意转一下手机，
+      // 不应导致之后进入牌桌失去强制横屏
+      if (!this.root.classList.contains('scmj-fullscreen')) return
       rotated = true
       try { sessionStorage.setItem(KEY, '1') } catch (e) { /* ignore */ }
       // iOS orientationchange 触发瞬间 innerWidth/innerHeight 可能还是旧值，延迟重评估
@@ -500,7 +513,13 @@ export default class ScmjUI {
       this.root.style.height = ''
       this.root.style.top = ''
       if (this._flsParent) {
-        this._flsParent.insertBefore(this.root, this._flsNext)
+        try {
+          if (this._flsNext && this._flsNext.parentNode === this._flsParent) {
+            this._flsParent.insertBefore(this.root, this._flsNext)
+          } else {
+            this._flsParent.appendChild(this.root)
+          }
+        } catch (e) { try { this._flsParent.appendChild(this.root) } catch (e2) { /* ignore */ } }
         this._flsParent = null
         this._flsNext = null
       }
@@ -1786,6 +1805,8 @@ export default class ScmjUI {
         }
       }
     } catch (e) { /* 不支持则仅使用 CSS 全屏 */ }
+    // 进入牌桌后重评估强制横屏（竖屏持机时此刻才加 scmj-fls）
+    if (this._flsApply) this._flsApply()
   }
 
   exitFullscreen() {
@@ -1806,6 +1827,8 @@ export default class ScmjUI {
         }
       }
     } catch (e) { /* 忽略 */ }
+    // 退出牌桌解除强制横屏（介绍页不强制）
+    if (this._flsApply) this._flsApply()
   }
 
   onGameEvent(ev) {
