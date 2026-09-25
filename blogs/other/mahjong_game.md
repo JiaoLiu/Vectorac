@@ -2248,6 +2248,27 @@ body.scmj-lock #cw-panel { display: none !important; }
   #scmjGame .scmj-side .scmj-seatwrap { padding-top: 0; }
   #scmjGame .scmj-handbacks-1, #scmjGame .scmj-handbacks-3 { top: 40px; }
 }
+/* 移动端竖屏进入时强制横屏（ui.js _setupForceLandscape 加 .scmj-fls）：
+   容器宽=视口高、高=视口宽，绕左下原点顺时针转 90° 恰好铺满竖屏——
+   竖屏持机看到的即是横屏画面；物理刘海（容器 top 边）随旋转落到视觉右侧，
+   fullscreen 的 safe-area padding 方向恰好仍对应。
+   尺寸/偏移由 JS 按 innerWidth/innerHeight 写内联精确值（避免 iOS 100vh 含地址栏），
+   这里的 100vh/100vw 只是首帧 fallback。用户一旦物理旋转屏幕即摘掉本 class，
+   此后横竖屏自由切换。 */
+#scmjGame.scmj-fls {
+  position: fixed;
+  inset: auto;
+  top: -100vw; left: 0;
+  width: 100vh; height: 100vw;
+  max-width: none; margin: 0; border-radius: 0;
+  transform: rotate(90deg);
+  transform-origin: bottom left;
+  z-index: 300;
+}
+body:has(#scmjGame.scmj-fls) { overflow: hidden; }
+/* 强制横屏期间同样隐藏全局 AI 客服悬浮件（入口页尚未 fullscreen/lock 时也会触发） */
+body:has(#scmjGame.scmj-fls) #cw-fab,
+body:has(#scmjGame.scmj-fls) #cw-panel { display: none !important; }
 </style>
 
 <script>

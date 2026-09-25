@@ -342,6 +342,8 @@ export default class ScmjUI {
     }
     window.addEventListener('resize', this._onResize)
     window.addEventListener('orientationchange', this._onResize)
+    // 移动端竖屏进入时强制横屏渲染（详见 _setupForceLandscape）
+    this._setupForceLandscape()
     // 页面切后台时只暂停 Web Audio 合成（系统也会挂起它）；BGM 音频文件继续播，
     // 回前台恢复。想完全静音可用设置里的「背景音乐」开关。
     this._onVisibility = () => {
@@ -367,8 +369,146 @@ export default class ScmjUI {
     else if (hasOnlineCred) this.openOnlineLobby()
   }
 
+  // 移动端竖屏进入时强制横屏：给 #scmjGame 加 .scmj-fls 旋转 90° 铺满竖屏，
+  // 用户竖着拿手机看到的即是横屏画面。难点在 CSS 媒体查询按「物理视口」评估——
+  // 竖屏持机时 portrait 媒体查询会错误命中（竖屏规则生效）、landscape 不命中
+  // （横屏规则缺失），容器转了 90° 内部却还是竖屏样式。
+  // 解法：CSSOM 允许直接改写 CSSMediaRule 的 mediaText——强制横屏时按「虚拟视口」
+  // （旋转后逻辑宽高互换：宽=innerHeight、高=innerWidth）重新评估每条媒体查询，
+  // 命中则改写为 'all'、不命中改写为 'not all'；解除时逐一还原原文。
+  // 用户一旦物理旋转屏幕（orientationchange），本会话内此后横竖屏自由切换。
+  _setupForceLandscape() {
+    if (typeof window === 'undefined') return
+    const KEY = 'scmj-rotated'
+    let rotated = false
+    try { rotated = sessionStorage.getItem(KEY) === '1' } catch (e) { /* 隐私模式忽略 */ }
+    const isMobile = () => {
+      try { if (window.matchMedia('(pointer: coarse)').matches) return true } catch (e) { /* ignore */ }
+      return 'ontouchstart' in window && Math.min(window.screen.width, window.screen.height) < 820
+    }
+    const evalCond = (cond, vw, vh) => {
+      let m = cond.match(/max-width\s*:\s*([\d.]+)px/)
+      if (m) return vw <= +m[1]
+      m = cond.match(/min-width\s*:\s*([\d.]+)px/)
+      if (m) return vw >= +m[1]
+      m = cond.match(/max-height\s*:\s*([\d.]+)px/)
+      if (m) return vh <= +m[1]
+      m = cond.match(/min-height\s*:\s*([\d.]+)px/)
+      if (m) return vh >= +m[1]
+      if (/orientation\s*:\s*portrait/.test(cond)) return vh >= vw
+      if (/orientation\s*:\s*landscape/.test(cond)) return vw > vh
+      return null // 不认识的条件 → 整条媒体查询保持原样不动
+    }
+    // 逗号分组任一命中即命中；组内 and 需全部成立。有解析不了的组则整体返回 null。
+    const evalMedia = (text, vw, vh) => {
+      let sawUnknown = false, sawHit = false
+      for (const part of text.split(',')) {
+        const conds = []
+        const re = /\(([^)]+)\)/g
+        let mm
+        while ((mm = re.exec(part))) conds.push(mm[1])
+        if (!conds.length) {
+          if (/^\s*(all|screen)?\s*$/.test(part)) sawHit = true
+          else sawUnknown = true
+          continue
+        }
+        let allHit = true, unknown = false
+        for (const c of conds) {
+          const r = evalCond(c, vw, vh)
+          if (r === null) { unknown = true; break }
+          if (!r) { allHit = false; break }
+        }
+        if (unknown) sawUnknown = true
+        else if (allHit) sawHit = true
+      }
+      if (sawHit) return true
+      if (sawUnknown) return null
+      return false
+    }
+    // 懒收集全部 CSSMediaRule（跨域样式表读 cssRules 会抛 SecurityError，跳过）
+    this._flsMedia = null
+    const collectMediaRules = () => {
+      if (this._flsMedia) return this._flsMedia
+      this._flsMedia = []
+      for (const sheet of document.styleSheets) {
+        let rules
+        try { rules = sheet.cssRules } catch (e) { continue }
+        if (!rules) continue
+        for (const rule of rules) {
+          if (typeof CSSMediaRule !== 'undefined' && rule instanceof CSSMediaRule) {
+            this._flsMedia.push({ rule, orig: rule.media.mediaText })
+          }
+        }
+      }
+      return this._flsMedia
+    }
+    this._flsApply = () => {
+      if (this._destroyed) return
+      const portrait = window.innerHeight >= window.innerWidth
+      const force = !rotated && portrait && isMobile()
+      this.root.classList.toggle('scmj-fls', force)
+      if (force) {
+        // fixed 包含块陷阱：祖先带 transform 时 fixed 元素会相对祖先而非视口定位
+        // （实测 VuePress 页面祖先让画面整体下移 80px、navbar 外露）。
+        // 强制横屏期间把 root 移到 body 直下；解除时放回原位。
+        if (this.root.parentNode !== document.body) {
+          this._flsParent = this.root.parentNode
+          this._flsNext = this.root.nextSibling
+          document.body.appendChild(this.root)
+        }
+        // 内联精确尺寸（iOS 100vh 含地址栏会偏高），CSS 里的 100vh/100vw 仅作首帧 fallback
+        this.root.style.width = window.innerHeight + 'px'
+        this.root.style.height = window.innerWidth + 'px'
+        this.root.style.top = (-window.innerWidth) + 'px'
+      } else {
+        this.root.style.width = ''
+        this.root.style.height = ''
+        this.root.style.top = ''
+        if (this._flsParent) {
+          this._flsParent.insertBefore(this.root, this._flsNext)
+          this._flsParent = null
+          this._flsNext = null
+        }
+      }
+      for (const item of collectMediaRules()) {
+        if (!force) { item.rule.media.mediaText = item.orig; continue }
+        // 虚拟视口：旋转 90° 后逻辑宽高互换
+        const hit = evalMedia(item.orig, window.innerHeight, window.innerWidth)
+        if (hit === null) continue
+        item.rule.media.mediaText = hit ? 'all' : 'not all'
+      }
+      if (this._onResize) this._onResize()
+    }
+    this._flsOnOrientation = () => {
+      rotated = true
+      try { sessionStorage.setItem(KEY, '1') } catch (e) { /* ignore */ }
+      // iOS orientationchange 触发瞬间 innerWidth/innerHeight 可能还是旧值，延迟重评估
+      setTimeout(() => this._flsApply && this._flsApply(), 80)
+    }
+    window.addEventListener('orientationchange', this._flsOnOrientation)
+    window.addEventListener('resize', this._flsApply)
+    this._flsApply()
+  }
+
   destroy() {
     this._destroyed = true
+    if (this._flsApply) {
+      window.removeEventListener('orientationchange', this._flsOnOrientation)
+      window.removeEventListener('resize', this._flsApply)
+      this.root.classList.remove('scmj-fls')
+      this.root.style.width = ''
+      this.root.style.height = ''
+      this.root.style.top = ''
+      if (this._flsParent) {
+        this._flsParent.insertBefore(this.root, this._flsNext)
+        this._flsParent = null
+        this._flsNext = null
+      }
+      // 还原所有被改写的媒体查询，避免影响站内其他页面
+      if (this._flsMedia) for (const item of this._flsMedia) item.rule.media.mediaText = item.orig
+      this._flsApply = null
+      this._flsOnOrientation = null
+    }
     this._teardownChat()
     if (this.game && this.game.dispose) this.game.dispose()
     this.game = null
