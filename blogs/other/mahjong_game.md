@@ -1213,6 +1213,8 @@ meta:
   border: 1px solid rgba(44, 92, 60, 0.8);
 }
 #scmjGame .scmj-action-info { color: #cfe3d2; font-size: 14px; }
+/* 无操作时整条隐藏——常驻空横条纯属占位碍眼；有碰/杠/胡/换三张内容时照常显示 */
+#scmjGame .scmj-actionbar:empty { display: none; }
 #scmjGame .scmj-hintrow {
   display: flex;
   align-items: center;
@@ -2002,8 +2004,11 @@ body.scmj-lock #cw-panel { display: none !important; }
   }
   #scmjGame .scmj-actionbar .scmj-btn { min-height: 32px; padding: 4px 10px; font-size: 12px; flex: none; }
   #scmjGame .scmj-action-info { font-size: 11.5px; white-space: nowrap; }
-  /* 横屏矮屏：提示条整条隐藏（纯提示元素，与竖屏同理省略），省 ~21px 给中央牌墙 */
-  #scmjGame .scmj-hintrow { display: none; }
+  /* 横屏矮屏：只省右侧出牌建议（纯提示元素）；听牌提示保留——
+     玩家开 AI 辅助就指望「可胡哪几张多少番」。行高压到 0：
+     未听牌时 ting 为空、整条不占高度，听牌/已胡时才顶出胶囊 */
+  #scmjGame .scmj-hintrow { min-height: 0; margin: 0 2px; }
+  #scmjGame .scmj-suggest { display: none; }
   /* 副露排压缩：碰牌后出现副露也不多吃中央高度 */
   #scmjGame .scmj-mymelds { min-height: 20px; margin-bottom: 1px; gap: 6px; }
   #scmjGame .scmj-mymelds .scmj-tile-disc { width: 15px; height: 18px; }
@@ -2027,11 +2032,12 @@ body.scmj-lock #cw-panel { display: none !important; }
     padding: calc(2px + env(safe-area-inset-top, 0px)) calc(8px + env(safe-area-inset-right, 0px)) calc(2px + env(safe-area-inset-bottom, 0px)) calc(8px + env(safe-area-inset-left, 0px));
   }
   #scmjGame .scmj-topbar { margin-bottom: 0; }
-  /* 与主横屏断点同步：中央区一行（对家面板已是浮层），提示条保持隐藏 */
+  /* 与主横屏断点同步：中央区一行（对家面板已是浮层），听牌提示保留、出牌建议省略 */
   #scmjGame .scmj-board { grid-template-rows: minmax(92px, 1fr); gap: 4px; }
   #scmjGame .scmj-actionbar { min-height: 28px; padding: 1px 5px; }
   #scmjGame .scmj-actionbar .scmj-btn { min-height: 28px; padding: 3px 9px; font-size: 11.5px; }
-  #scmjGame .scmj-hintrow { display: none; }
+  #scmjGame .scmj-hintrow { min-height: 0; margin: 0 2px; }
+  #scmjGame .scmj-suggest { display: none; }
   #scmjGame .scmj-mymelds { min-height: 20px; margin-bottom: 1px; }
   #scmjGame .scmj-mymelds .scmj-tile-disc { width: 15px; height: 18px; }
   #scmjGame .scmj-hand { min-height: 38px; padding: 2px 4px 0; }
@@ -2119,13 +2125,13 @@ body.scmj-lock #cw-panel { display: none !important; }
 }
 /* Perspective table: rectilinear hit boxes; depth is drawn inside each tile. */
 #scmjGame {
-  background: radial-gradient(ellipse at 48% 42%,#168d83 0%,#087c76 45%,#075c59 100%);
-  box-shadow: inset 0 0 0 2px #8b916354,inset 0 0 38px #003b4266,0 10px 30px #001d2933;
+  background: radial-gradient(ellipse at center,#1c6b3c 0%,#14532d 55%,#0d3b20 100%);
+  box-shadow: inset 0 0 0 2px #a99b5d66,inset 0 0 60px #001e1799,0 10px 30px #001d2933;
 }
 #scmjGame .scmj-board::before { content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .12; background: repeating-linear-gradient(0deg,transparent 0 2px,#d2e3b31f 2px 3px),repeating-linear-gradient(90deg,transparent 0 3px,#001d291f 3px 4px); }
 #scmjGame .scmj-board { position: relative; display: block; min-height: 380px; }
 #scmjGame.scmj-fullscreen .scmj-board { min-height: 0; overflow: hidden; }
-#scmjGame .scmj-center { position: absolute; inset: 50px 88px 12px; display: block; }
+#scmjGame .scmj-center { position: absolute; inset: 50px 112px 12px; display: block; }
 #scmjGame .scmj-centerslot { position: absolute; inset: 0; width: auto; height: auto; display: block; }
 #scmjGame .scmj-centerbox { margin: 0; border: 0; border-radius: 0; background: transparent; }
 #scmjGame .scmj-center-info, #scmjGame .scmj-center-latest { display: none; }
@@ -2154,28 +2160,34 @@ body.scmj-lock #cw-panel { display: none !important; }
 /* Opposite seat: upright green backs with a slim ivory top edge. */
 #scmjGame .scmj-handbacks-2 .scmj-handback {
   width: var(--scmj-back-width,20px); height: calc(var(--scmj-back-width,20px)*1.25);
-  background: url('/mahjong/tiles/standing-back.svg') center / 100% 100% no-repeat;
+  background: url('/mahjong/tiles/back.png') center / 100% 100% no-repeat;
   border: 0; box-shadow: 0 3px 2px #002c3144;
 }
-/* Side seats: ONLY the narrow top of a standing tile, not a rotated full back. */
+/* 左右两家：绿色牌背朝外（朝桌心），白色牌面一侧朝向自己头像（靠头像侧描象牙细边示意）；
+   一张贴一张：背景放大 20% 居中，裁掉牌背图自带的象牙上下边框——
+   相邻牌绿贴绿无缝隙，只留 1px 深色发丝线分出单张（真实牌码放效果） */
 #scmjGame .scmj-handbacks-1 .scmj-handback, #scmjGame .scmj-handbacks-3 .scmj-handback {
   width: 12px; height: var(--scmj-back-step,18px);
-  background: url('/mahjong/tiles/standing-top.svg') center / 100% 100% no-repeat;
-  border: 0; box-shadow: 2px 1px 1px #002c3144;
+  background: url('/mahjong/tiles/back.png') center / 100% 120% no-repeat;
+  border: 0; border-bottom: 1px solid rgba(0,38,22,.6);
+  box-shadow: 2px 1px 1px #002c3144;
 }
-#scmjGame .scmj-handbacks-1 .scmj-handback { transform: scaleX(-1); }
+#scmjGame .scmj-handbacks-3 .scmj-handback { border-left: 2px solid #e9e2c8; }
+#scmjGame .scmj-handbacks-1 .scmj-handback { border-right: 2px solid #e9e2c8; }
 #scmjGame .scmj-wallring > div { gap: 0; }
-#scmjGame .scmj-wallback { background-image: linear-gradient(90deg,#e0e4b8 0 14%,#47794c 16%,#79a66a 35%,#8fba78 76%,#305d3d 80%); border: 1px solid #315c3e; border-radius: 1px; filter: none; box-shadow: 1px 1px 1px #0b291966; }
+#scmjGame .scmj-wallback { background-image: url('/mahjong/tiles/back.png'); border: 0; border-radius: 1px; filter: none; box-shadow: 1px 1px 1px #0b291966; }
 #scmjGame .scmj-felt .scmj-disc-tiles { inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; transform: none; display: block; }
 #scmjGame .scmj-felt .scmj-tile-disc { position: absolute; margin: 0; padding: 0; transform: none; border-radius: 2px; filter: drop-shadow(0 1px .5px #002b37a6); }
 #scmjGame .scmj-felt .scmj-tile-img { position: absolute; width: var(--scmj-face-w); height: var(--scmj-face-h); max-width: none; left: 50%; top: 50%; transform: translate(-50%,-50%) rotate(var(--scmj-disc-rot,0deg)); }
 @keyframes scmjRiverSlideIn { from { transform: translateY(-10px) scale(.8); opacity: 0; } to { transform: none; opacity: 1; } }
 #scmjGame .scmj-felt .scmj-tile-new { animation: scmjRiverSlideIn .28s ease-out; }
 #scmjGame .scmj-felt .scmj-tile-latest.scmj-tile-new { animation: scmjRiverSlideIn .28s ease-out, scmjLatestPulse 1.6s ease-in-out .28s infinite; }
+#scmjGame .scmj-felt .scmj-river-latest { z-index: 5; }
+#scmjGame .scmj-felt .scmj-tile-latest { z-index: 6; outline: 2px solid #ffe790; outline-offset: 1px; }
 #scmjGame .scmj-compass-core { box-shadow: 0 2px 3px #061d2255; }
 #scmjGame .scmj-wind-seat { display: none; }
 #scmjGame .scmj-hand { flex-wrap: nowrap; column-gap: 0; overflow: visible; }
-#scmjGame .scmj-tile-hand { border-radius: 3px; box-shadow: 0 2px 0 #d5dfb6,0 4px 0 #558b59,0 6px 2px #003c4055; filter: none; }
+#scmjGame .scmj-tile-hand { border-radius: 3px; box-shadow: 0 2px 0 #d5dfb6, 0 4px 0 #558b59, 0 6px 2px #003c4055; filter: none; }
 #scmjGame .scmj-tile-hand.scmj-tile-disabled { filter: grayscale(.6); }
 #scmjGame .scmj-mymelds:empty { display: none; }
 /* 副露紧接手牌：完整展示碰3/杠4张，不再用一张牌代替整组。 */
@@ -2200,7 +2212,7 @@ body.scmj-lock #cw-panel { display: none !important; }
   #scmjGame .scmj-topbar-title, #scmjGame .scmj-portrait-tip { display: none; }
   #scmjGame .scmj-topbar-btns { gap: 4px; }
   #scmjGame .scmj-topbar-btns .scmj-btn { min-height: 32px; padding: 4px 7px; font-size: 12px; }
-  #scmjGame .scmj-center { inset: 64px 52px 8px; }
+  #scmjGame .scmj-center { inset: 64px 72px 8px; }
   #scmjGame .scmj-side { width: 40px; }
   #scmjGame .scmj-avatar { width: 25px; height: 25px; font-size: 15px; }
   #scmjGame .scmj-seat-score { font-size: 9px; }
@@ -2214,7 +2226,7 @@ body.scmj-lock #cw-panel { display: none !important; }
   #scmjGame .scmj-actionbar { background: transparent; border-color: transparent; }
 }
 @media (max-height: 540px) and (orientation: landscape) {
-  #scmjGame .scmj-center { inset: 38px 86px 36px; }
+  #scmjGame .scmj-center { inset: 38px 112px 16px; }
   #scmjGame .scmj-side-2 { top: 0; left: 4px; width: 64px; }
   #scmjGame .scmj-side-3, #scmjGame .scmj-side-1 { height: auto; top: 30%; }
   #scmjGame .scmj-side .scmj-seatwrap { padding-top: 0; }

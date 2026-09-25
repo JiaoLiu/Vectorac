@@ -21,7 +21,7 @@ import {
   RULE_VERSION,
   YAOJI_TILE
 } from './contract.js'
-import { riverLayout } from './table-layout.mjs'
+import { riverLayout, compassSize, latestVisibleDiscard } from './table-layout.mjs'
 
 // 座位文案（0 自己 1 右/下家 2 上/对家 3 左/上家）
 const SEAT_LABELS = ['你', '右家 · 旺财', '对家 · 阿福', '左家 · 小美']
@@ -2098,7 +2098,7 @@ export default class ScmjUI {
     box.style.setProperty('--scmj-wall-tile-h',tileH+'px')
     box.style.setProperty('--scmj-wall-inset',inset+'px')
     box.style.setProperty('--scmj-felt-inset',inset+'px')
-    box.style.setProperty('--scmj-compass-size',Math.min(54,(h-2*inset)*.22)+'px')
+    box.style.setProperty('--scmj-compass-size',compassSize(w-2*inset,h-2*inset)+'px')
     this.fitDiscards()
   }
 
@@ -2190,10 +2190,10 @@ export default class ScmjUI {
     // 追踪「最新一张弃牌」：优先用引擎层 lastDiscard（打出瞬间即记录，落定/被碰走不清除）；
     // pendingDiscard 是未落定暂存（落定即清 null，同步推进 AI 时中间态未必渲染），
     // 仅作旧适配器没有 lastDiscard 字段时的兜底记忆
-    if (v.pendingDiscard) this._lastDiscard = { seat: v.pendingDiscard.seat, tile: v.pendingDiscard.tile }
-    const ld = v.lastDiscard || this._lastDiscard
+    const ld = latestVisibleDiscard(v)
     for (let s = 0; s < 4; s++) {
       const wrap = this._els['discTiles' + s]
+      wrap.classList.toggle('scmj-river-latest', !!ld && ld.seat === s)
       wrap.innerHTML = ''
       const list = v.players[s].discards
       list.forEach((id, i) => {

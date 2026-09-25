@@ -1,12 +1,9 @@
 // Display geometry only: no rules, hidden hands or wall order are inspected.
 export function riverLayout(width, height, counts) {
-  // Keep four rivers around one readable table centre, not stretched to the
-  // viewport corners. Portrait uses its extra height as breathing room.
-  const tableWidth=width,tableHeight=height
-  width=Math.min(width,Math.max(height*2,width*.76))
-  height=Math.min(height,width*1.5)
-  const offsetX=(tableWidth-width)/2,offsetY=(tableHeight-height)/2
-  const side = width * .22, middle = width - side * 2, band = height * .38
+  // 真实牌桌摆法：各家弃牌河贴着自家牌墙内侧（felt 四边），向桌心生长；
+  // 不再收窄居中——收窄会让弃牌河与牌墙脱离（悬空飘在桌中央）
+  const side = width * .22, middle = width - side * 2
+  const band = (height - compassSize(width, height) * 1.16 - 8) / 2
   // On landscape screens a normal twelve-tile river should form one complete
   // row instead of eleven tiles plus a stranded tile on the next row.
   let w = Math.min(24,middle/(width>=height?12:8))
@@ -20,9 +17,31 @@ export function riverLayout(width, height, counts) {
   return counts.map((count,seat)=>Array.from({length:count},(_,i)=>{
     if(seat===0||seat===2) {
       const col=i%across,row=Math.floor(i/across),start=(width-across*w)/2
-      return {x:offsetX+start+(seat===0?col:across-1-col)*w,y:offsetY+(seat===0?height-(row+1)*h:row*h),w,h,rotation:seat===0?0:180}
+      // 对家弃牌 rotation 0：牌面对本方正立可读（用户要求，不再 180° 倒挂）
+      return {x:start+(seat===0?col:across-1-col)*w,y:seat===0?height-(row+1)*h:row*h,w,h,rotation:0}
     }
     const row=i%down,col=Math.floor(i/down),start=(height-down*w)/2
-    return {x:offsetX+(seat===3?col*h:width-(col+1)*h),y:offsetY+start+(seat===3?row:down-1-row)*w,w:h,h:w,rotation:seat===3?-90:90}
+    return {x:seat===3?col*h:width-(col+1)*h,y:start+(seat===3?row:down-1-row)*w,w:h,h:w,rotation:seat===3?-90:90}
   }))
+}
+
+export function compassSize(width, height) {
+  return Math.min(88, width * .45, height * .42)
+}
+
+// Older online snapshots have no lastDiscard. Their public event stream still
+// tells us which discard is newest, including after reconnect (no UI memory).
+export function latestVisibleDiscard(view) {
+  if (view.pendingDiscard) return view.pendingDiscard
+  const events = view.lastEvents || []
+  let last = view.lastDiscard || null
+  for (let i = events.length - 1; i >= 0; i--) {
+    const ev = events[i], data = ev.data || {}
+    if (ev.type === 'peng' || (ev.type === 'gang' && data.gangType === 'ming')) return null
+    if (ev.type === 'discard') {
+      if (!last) last = {seat: ev.seat, tile: data.tile}
+      break
+    }
+  }
+  return last
 }
