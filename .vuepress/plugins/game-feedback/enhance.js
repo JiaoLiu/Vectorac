@@ -61,7 +61,7 @@
     // Valine 内置 autosize 会给 veditor 写内联 height（按预填内容算出 ~116px），
     // 内联样式会压过 min-height，必须用 !important 才能接管高度。
     // 紧凑模式下整条 Valine 容器链改为 flex，编辑器拉伸填满键盘上方的全部剩余空间；
-    // 同时隐藏对反馈无用的表情/预览工具行。
+    // Valine 1.4.14 的工具栏 .vrow 是 .vedit 的子项；提交行是 .vedit 的兄弟项，不能选中它。
     '#game-feedback-modal.gf-kb .gf-valine{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}',
     '#game-feedback-modal.gf-kb .gf-valine > .vpanel{flex:1 1 auto;display:flex;flex-direction:column;min-height:0}',
     '#game-feedback-modal.gf-kb .vwrap{padding:6px!important;margin-bottom:0!important;flex:1 1 auto;display:flex;flex-direction:column;min-height:0}',
@@ -111,15 +111,11 @@
     // 否则标题 + 说明文字 + 编辑器最小高度就超出可视区，下半部分被键盘裁掉。
     var compact = viewport.height <= 220 || viewport.height < window.innerHeight * 0.62
     overlay.classList.toggle('gf-kb', compact)
-    // padding-bottom 限高只适用于移动端全屏弹窗；桌面卡片模式（如 pinch-zoom 触发紧凑）不干预。
+    // 底部避让依据真实 visualViewport 空隙计算，与是否进入紧凑样式无关；桌面卡片模式不干预。
     var fullscreen = window.matchMedia && window.matchMedia('(max-width: 640px), (max-height: 500px)').matches
-    if (compact && fullscreen) {
-      // 被键盘等占掉的底部高度；内容区 = innerHeight - gap ≈ 可视区，其余由白底填满。
-      var gap = window.innerHeight - viewport.height - viewport.offsetTop
-      dialog.style.paddingBottom = Math.max(0, Math.round(gap)) + 'px'
-    } else {
-      dialog.style.paddingBottom = ''
-    }
+    // 被键盘等占掉的底部高度；内容区贴合 visualViewport，剩余区域由弹窗白底填满。
+    var gap = Math.max(0, Math.round(window.innerHeight - viewport.height - viewport.offsetTop))
+    dialog.style.paddingBottom = fullscreen && gap > 0 ? gap + 'px' : ''
   }
 
   // 键盘动画期间 iOS 的 visualViewport 会多次变化，且 focus 早于 resize 事件；
@@ -138,6 +134,8 @@
       if (!viewport || viewport.height >= window.innerHeight - 80) return
       // 紧凑模式下整个弹窗就是可视区，scrollIntoView 反而会把提交按钮滚出去。
       if (modal() && modal().classList.contains('gf-kb')) return
+      // 非紧凑键盘高度也可能已通过 dialog 底部留白完成避让，不再额外滚动表单。
+      if (modal() && parseFloat(modal().querySelector('.gf-dialog').style.paddingBottom) > 0) return
       try { field.scrollIntoView({ block: 'center', behavior: 'smooth' }) } catch (_) { field.scrollIntoView() }
     }, 320)
   }
