@@ -869,30 +869,94 @@ export default class ScmjUI {
     return seat && seat.closest ? seat.closest('.scmj-seatwrap') : null
   }
 
-  /** base64 → Blob URL 播放（iOS Safari 对 data: 音频兼容性差，走 Blob 更稳）。
-   *  单例：连点多个气泡 / 自动播与重播叠加时，永远只有最新一条出声，
-   *  同时掐掉语音播报（语音类声音全局互斥，避免好几个声音重叠）。
-   *  bubbleEl：来源气泡（自动播也带上），气泡「播中点停」靠它辨认自己在播的那条。 */
+  /** base64 语音消息播放。单例：连点多个气泡 / 自动播与重播叠加时，永远只有
+   *  最新一条出声，同时掐掉语音播报（语音类声音全局互斥，避免好几个声音重叠）。
+   *  bubbleEl：来源气泡（自动播也带上），气泡「播中点停」靠它辨认自己在播的那条。
+   *  优先 Web Audio 解码播放：可加增益（录音普遍偏小，人声 ×1.5 放大才不被
+   *  提示音盖过），且 iOS 上 Web Audio 音量可控；解码失败回退 <audio> 元素
+   *  （iOS Safari 对 data: 音频兼容性差，走 Blob URL 更稳）。 */
   _playVoiceData(mime, data, bubbleEl) {
     if (!mime || !data) return
     try {
       const bin = atob(data)
       const bytes = new Uint8Array(bin.length)
       for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
-      const url = URL.createObjectURL(new Blob([bytes], { type: mime }))
-      const a = new Audio(url)
-      a._bubble = bubbleEl || null
       if (this._voiceMsgPlaying) {
         try { this._voiceMsgPlaying.pause() } catch (e) { /* 忽略 */ }
         if (this._voiceMsgPlaying._release) this._voiceMsgPlaying._release()
         this._voiceMsgPlaying = null
       }
       this._stopVoiceNow() // 语音消息与播报互斥：听消息时不掺报牌声
-      this._voiceMsgPlaying = a
-      // 语音消息=用户交流（最高层级）：播放期间 BGM 压到近乎静音。
+      // 语音消息=用户交流（最高层级）：播放期间 BGM 压到近乎静音（iOS 则暂停）。
       // 时长按字节粗估（opus ≈16kbps、mp4 ≈64kbps），最长 15 秒
       const bps = /mp4/.test(mime) ? 8000 : 2000
       this._duckBgmComm(Math.max(0.6, Math.min(15, bytes.length / bps)))
+      if (!this._playVoiceViaWebAudio(mime, bytes, bubbleEl)) this._playVoiceViaElement(mime, bytes, bubbleEl)
+    } catch (err) {
+      /* 非法数据忽略 */
+    }
+  }
+
+  /** Web Audio 增益播放：返回 false 表示环境不支持，调用方回退 <audio> */
+  _playVoiceViaWebAudio(mime, bytes, bubbleEl) {
+    try {
+      const ac = this._ensureAudio()
+      if (!ac || ac.state === 'closed' || typeof ac.decodeAudioData !== 'function') return false
+      // holder 伪装成 Audio 接口（pause/_release/_bubble），供单例互斥与气泡点停复用
+      const holder = { _bubble: bubbleEl || null, _release: null, pause: null }
+      let src = null
+      let gain = null
+      let done = false
+      const release = () => {
+        if (done) return
+        done = true
+        try { if (src) src.stop() } catch (e) { /* 忽略 */ }
+        try { if (gain) gain.disconnect() } catch (e) { /* 忽略 */ }
+        if (this._voiceMsgPlaying === holder) this._voiceMsgPlaying = null
+      }
+      holder._release = release
+      holder.pause = release // Web Audio 不能暂停续播：点停=停止；再点=重新解码重播
+      this._voiceMsgPlaying = holder
+      ac.decodeAudioData(
+        bytes.buffer.slice(0),
+        buf => {
+          if (done) return
+          try {
+            gain = ac.createGain()
+            gain.gain.value = 1.5 // 人声增益（BGM 已被交流档压低/暂停，不怕突出）
+            src = ac.createBufferSource()
+            src.buffer = buf
+            src.onended = release
+            src.connect(gain)
+            gain.connect(ac.destination)
+            src.start()
+          } catch (e) {
+            release()
+          }
+        },
+        () => {
+          // 解码失败（如老 Safari 不认 webm/opus）：回退 <audio> 元素
+          release()
+          this._playVoiceViaElement(mime, bytes, bubbleEl)
+        }
+      )
+      return true
+    } catch (e) {
+      return false
+    }
+  }
+
+  /** <audio> 元素播放（回退路径）：音量上限 100%，但兼容性最广 */
+  _playVoiceViaElement(mime, bytes, bubbleEl) {
+    try {
+      const url = URL.createObjectURL(new Blob([bytes], { type: mime }))
+      const a = new Audio(url)
+      a._bubble = bubbleEl || null
+      if (this._voiceMsgPlaying) {
+        try { this._voiceMsgPlaying.pause() } catch (e) { /* 忽略 */ }
+        if (this._voiceMsgPlaying._release) this._voiceMsgPlaying._release()
+      }
+      this._voiceMsgPlaying = a
       const release = () => {
         URL.revokeObjectURL(url)
         if (this._voiceMsgPlaying === a) this._voiceMsgPlaying = null
@@ -901,8 +965,8 @@ export default class ScmjUI {
       a.onended = release
       a.onerror = release
       a.play().catch(release)
-    } catch (err) {
-      /* 非法数据忽略 */
+    } catch (e) {
+      /* 忽略 */
     }
   }
 
@@ -1307,7 +1371,7 @@ export default class ScmjUI {
     // 读秒提醒：最后 5 秒每到新的一秒滴一声（仅轮到自己操作时倒计时会显示）
     if (left >= 1 && left <= 5 && this.settings.sound !== false && this._lastTickSec !== left) {
       this._lastTickSec = left
-      if (this._ensureAudio()) this._note(990, 0.12, 0.4, 'triangle')
+      if (this._ensureAudio()) this._note(990, 0.12, 0.2, 'triangle')
     }
   }
 
@@ -1342,16 +1406,48 @@ export default class ScmjUI {
     }, Math.max(200, Math.round((sec || 0.6) * 1000)))
   }
 
+  /** 当前平台是否允许 JS 设置媒体音量。iOS Safari 的 HTMLMediaElement.volume
+   * 只读（恒为 1，音量只能由用户物理键控制），所有 _duckApply 写在 iPhone 上无效 */
+  _volCanSet() {
+    if (this._volSettable == null) {
+      try {
+        const a = document.createElement('audio')
+        a.volume = 0.42
+        this._volSettable = a.volume === 0.42
+      } catch (e) {
+        this._volSettable = false
+      }
+    }
+    return this._volSettable
+  }
+
   /** 用户交流 ducking（交流档，最高层级）：语音消息/快捷短语播放期间
-   *  BGM 压到近乎静音，sec 秒后自动恢复；并发计数叠加 */
+   *  BGM 压到近乎静音，sec 秒后自动恢复；并发计数叠加。
+   *  音量不可设置的平台（iOS）：无法压低就 0→1 沿整体暂停 BGM，全部结束后恢复，
+   *  否则 BGM 满音量盖过人声。 */
   _duckBgmComm(sec) {
     if (typeof window === 'undefined') return
+    const was = (this._bgmCommDucks || 0) > 0
     this._bgmCommDucks = (this._bgmCommDucks || 0) + 1
-    this._duckApply()
+    const ms = Math.max(200, Math.round((sec || 0.6) * 1000))
+    if (this._volCanSet()) {
+      this._duckApply()
+    } else if (!was && this._bgm && !this._bgm.paused) {
+      this._bgmCommHolding = true
+      try { this._bgm.pause() } catch (e) { /* 忽略 */ }
+    }
     setTimeout(() => {
       this._bgmCommDucks = Math.max(0, (this._bgmCommDucks || 0) - 1)
-      this._duckApply()
-    }, Math.max(200, Math.round((sec || 0.6) * 1000)))
+      if (this._volCanSet()) {
+        this._duckApply()
+      } else if (!this._bgmCommDucks && this._bgmCommHolding) {
+        this._bgmCommHolding = false
+        // 播放期间用户主动关了音乐则不恢复
+        if (this._bgm && this._bgm.paused && this.settings.music !== false) {
+          try { this._bgm.play().catch(() => {}) } catch (e) { /* 忽略 */ }
+        }
+      }
+    }, ms)
   }
 
   // ==================== 对局控制 ====================
@@ -2999,6 +3095,12 @@ export default class ScmjUI {
     let step = this._musicStep || 0
     const tick = () => {
       if (!this._ac || this._ac.state !== 'running') return
+      // 合成兜底 BGM 同样服从交流档（音量不可调，语音消息/短语播放期间直接静默）
+      if ((this._bgmCommDucks || 0) > 0) {
+        step++
+        this._musicStep = step
+        return
+      }
       const n = melody[step % 16]
       if (n) this._note(scale[n - 1], 0.55, 0.07, 'triangle')
       if (step % 8 === 0) this._note(110, 1.5, 0.06, 'sine')
