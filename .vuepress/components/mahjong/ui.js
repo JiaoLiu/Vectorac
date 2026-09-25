@@ -799,9 +799,9 @@ export default class ScmjUI {
       return
     }
     const duration = Math.min(20, Math.max(1, Math.round(Number(p.duration) || 0)))
-    this.showChatBubble(viewSeat, { voice: true, duration, mime: p.mime, data: p.data })
+    const bubbleEl = this.showChatBubble(viewSeat, { voice: true, duration, mime: p.mime, data: p.data })
     // 音效开关关=不自动播语音，气泡仍可点按重播
-    if (this.settings.sound !== false) this._playVoiceData(p.mime, p.data)
+    if (this.settings.sound !== false) this._playVoiceData(p.mime, p.data, bubbleEl)
   }
 
   /** 在某座位旁弹气泡（同一座位新消息顶掉旧的；textContent 渲染防注入） */
@@ -820,20 +820,31 @@ export default class ScmjUI {
     if (msg.voice) {
       el.classList.add('scmj-bubble-voice')
       el.textContent = '🔊 ' + (msg.duration || 1) + '″'
-      el.title = '点击重播'
+      el.title = '点击停/重播'
       el.addEventListener('click', () => {
         this.sound('click')
-        this._playVoiceData(msg.mime, msg.data)
+        // 这条气泡的语音正在播：点一下停（不听）；否则播/重播
+        const cur = this._voiceMsgPlaying
+        if (cur && cur._bubble === el) {
+          try { cur.pause() } catch (e) { /* 忽略 */ }
+          if (cur._release) cur._release()
+          this._voiceMsgPlaying = null
+        } else {
+          this._playVoiceData(msg.mime, msg.data, el)
+        }
       })
       hideAfter = Math.min(12000, 3000 + (msg.duration || 1) * 1000)
     } else if (msg.phrase != null) {
-      // 短语语音气泡：🔊 + 文字（文字仅作视觉辅助，点击重播语音）
+      // 短语语音气泡：🔊 + 文字（文字仅作视觉辅助，点击停/重播语音）
       el.classList.add('scmj-bubble-voice')
       el.textContent = '🔊 ' + msg.text
-      el.title = '点击重播'
+      el.title = '点击停/重播'
       el.addEventListener('click', () => {
         this.sound('click')
-        this.speak('phrase-' + msg.phrase, msg.text)
+        // 这条短语正在播：点一下停；否则播/重播
+        const now = this._voiceNow
+        if (now && now.key === 'phrase-' + msg.phrase) this._stopVoiceNow()
+        else this.speak('phrase-' + msg.phrase, msg.text)
       })
       hideAfter = 4500
     } else {
@@ -846,6 +857,7 @@ export default class ScmjUI {
       delete this._bubbles[viewSeat]
     }, hideAfter)
     this._bubbles[viewSeat] = { el, timer }
+    return el
   }
 
   /** 气泡锚点：对手挂座位面板的 seatwrap，自己挂玩家区域 */
@@ -857,8 +869,9 @@ export default class ScmjUI {
 
   /** base64 → Blob URL 播放（iOS Safari 对 data: 音频兼容性差，走 Blob 更稳）。
    *  单例：连点多个气泡 / 自动播与重播叠加时，永远只有最新一条出声，
-   *  同时掐掉语音播报（语音类声音全局互斥，避免好几个声音重叠）。 */
-  _playVoiceData(mime, data) {
+   *  同时掐掉语音播报（语音类声音全局互斥，避免好几个声音重叠）。
+   *  bubbleEl：来源气泡（自动播也带上），气泡「播中点停」靠它辨认自己在播的那条。 */
+  _playVoiceData(mime, data, bubbleEl) {
     if (!mime || !data) return
     try {
       const bin = atob(data)
@@ -866,19 +879,23 @@ export default class ScmjUI {
       for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
       const url = URL.createObjectURL(new Blob([bytes], { type: mime }))
       const a = new Audio(url)
+      a._bubble = bubbleEl || null
       if (this._voiceMsgPlaying) {
         try { this._voiceMsgPlaying.pause() } catch (e) { /* 忽略 */ }
+        if (this._voiceMsgPlaying._release) this._voiceMsgPlaying._release()
         this._voiceMsgPlaying = null
       }
       this._stopVoiceNow() // 语音消息与播报互斥：听消息时不掺报牌声
       this._voiceMsgPlaying = a
-      // 语音消息播放期间压低 BGM：按时长粗估（opus ≈16kbps、mp4 ≈64kbps），最长 15 秒
+      // 语音消息=用户交流（最高层级）：播放期间 BGM 压到近乎静音。
+      // 时长按字节粗估（opus ≈16kbps、mp4 ≈64kbps），最长 15 秒
       const bps = /mp4/.test(mime) ? 8000 : 2000
-      this._duckBgmTemp(Math.max(0.6, Math.min(15, bytes.length / bps)))
+      this._duckBgmComm(Math.max(0.6, Math.min(15, bytes.length / bps)))
       const release = () => {
         URL.revokeObjectURL(url)
         if (this._voiceMsgPlaying === a) this._voiceMsgPlaying = null
       }
+      a._release = release
       a.onended = release
       a.onerror = release
       a.play().catch(release)
@@ -994,8 +1011,9 @@ export default class ScmjUI {
       if (!base64) return
       const seconds = Math.min(VOICE_MAX_SEC, Math.max(1, Math.round(durMs / 1000)))
       if (this.net && this.net.sendVoice({ mime, data: base64, duration: seconds })) {
-        // 本地即时回显（服务端不回环发件人）
-        this.showChatBubble(0, { voice: true, duration: seconds, mime, data: base64 })
+        // 本地即时回显 + 自动播（服务端不回环发件人；与快捷短语一致：发出去就出声）
+        const bubbleEl = this.showChatBubble(0, { voice: true, duration: seconds, mime, data: base64 })
+        if (this.settings.sound !== false) this._playVoiceData(mime, base64, bubbleEl)
       } else {
         this.toast('连接已断开，语音未发出')
       }
@@ -1291,10 +1309,14 @@ export default class ScmjUI {
     }
   }
 
-  /** BGM 音量统一结算：基准 0.5，读秒持续档与音效/语音临时档各自 ×0.2 叠乘 */
+  /** BGM 音量统一结算。层级：用户交流（语音消息/快捷短语）＞事件特效播报
+   * （读秒滴滴/碰杠胡音效/语音播报）＞背景音乐。
+   * 基准 0.4；交流档 ×0.08（近乎静音，人声必须字字清晰）；
+   * 读秒持续档与音效临时档各 ×0.2，可相互叠乘 */
   _duckApply() {
     if (!this._bgm) return
-    let v = 0.5
+    let v = 0.4
+    if (this._bgmCommDucks > 0) v *= 0.08
     if (this._bgmDucked) v *= 0.2
     if (this._bgmTempDucks > 0) v *= 0.2
     this._bgm.volume = v
@@ -1307,13 +1329,25 @@ export default class ScmjUI {
     this._duckApply()
   }
 
-  /** 音效/语音 ducking（临时档）：播放期间压低 BGM，sec 秒后自动恢复；并发播放计数叠加 */
+  /** 音效/语音播报 ducking（事件临时档）：播放期间压低 BGM，sec 秒后自动恢复；并发计数叠加 */
   _duckBgmTemp(sec) {
     if (typeof window === 'undefined') return
     this._bgmTempDucks = (this._bgmTempDucks || 0) + 1
     this._duckApply()
     setTimeout(() => {
       this._bgmTempDucks = Math.max(0, (this._bgmTempDucks || 0) - 1)
+      this._duckApply()
+    }, Math.max(200, Math.round((sec || 0.6) * 1000)))
+  }
+
+  /** 用户交流 ducking（交流档，最高层级）：语音消息/快捷短语播放期间
+   *  BGM 压到近乎静音，sec 秒后自动恢复；并发计数叠加 */
+  _duckBgmComm(sec) {
+    if (typeof window === 'undefined') return
+    this._bgmCommDucks = (this._bgmCommDucks || 0) + 1
+    this._duckApply()
+    setTimeout(() => {
+      this._bgmCommDucks = Math.max(0, (this._bgmCommDucks || 0) - 1)
       this._duckApply()
     }, Math.max(200, Math.round((sec || 0.6) * 1000)))
   }
@@ -3030,11 +3064,15 @@ export default class ScmjUI {
     // 播报与语音消息互斥：报牌/短语开声前掐掉正在播的语音消息
     if (this._voiceMsgPlaying) {
       try { this._voiceMsgPlaying.pause() } catch (e) { /* 忽略 */ }
+      if (this._voiceMsgPlaying._release) this._voiceMsgPlaying._release()
       this._voiceMsgPlaying = null
     }
     const item = { key, say, lowPrio }
     this._voiceNow = item
-    this._duckBgmTemp(1.6) // 播报期间压低 BGM（真人录音多为 1~2 秒）
+    // 音量层级：快捷短语=用户交流（最高层级，BGM 压到近乎静音）；
+    // 动作/报牌播报=事件档（与音效同级）
+    if (/^phrase-/.test(key)) this._duckBgmComm(1.6)
+    else this._duckBgmTemp(1.6) // 播报期间压低 BGM（真人录音多为 1~2 秒）
     this._playVoiceItem(item)
   }
 
