@@ -57,7 +57,7 @@
 #balatro-game .bp-entry-bottom { margin-top: auto; letter-spacing: 1px; gap: 10px; }
 #balatro-game .bp-lobby-link { text-decoration: none; }
 #balatro-game .bp-entry-bottom > span:first-child { font-size: 22px; }
-#balatro-game .bp-title-art { height: 285px; position: relative; display: flex; align-items: center; justify-content: center; }
+#balatro-game .bp-title-art { height: min(371px, 56.25vw); position: relative; display: flex; align-items: center; justify-content: center; }
 #balatro-game .bp-title-card, #balatro-game .bp-title-joker { position: absolute; width: 112px; height: 157px; filter: drop-shadow(5px 12px 7px #102d2980); }
 #balatro-game .bp-title-left { left: calc(50% - 253px); top: 58px; transform: rotate(-20deg); }
 #balatro-game .bp-title-right { right: calc(50% - 253px); top: 62px; transform: rotate(20deg); }
@@ -748,7 +748,8 @@
 #balatro-game.bp-compact:not(.bp-is-playing):not(.bp-fullscreen) { height: auto; }
 #balatro-game.bp-compact .bp-entry { gap: 10px; padding: 12px; overflow-y: auto; }
 #balatro-game.bp-compact:not(.bp-is-playing):not(.bp-fullscreen) .bp-entry { height: auto; overflow: visible; }
-#balatro-game.bp-compact .bp-title-art { height: 200px; min-height: 110px; }
+#balatro-game.bp-compact .bp-title-art { height: min(371px, 56.25vw); min-height: 110px; }
+#balatro-game.bp-compact.bp-short .bp-title-art { height: 200px; }
 #balatro-game.bp-compact .bp-start-panel { grid-template-columns: 60px minmax(0,1fr); padding: 12px; gap: 10px; }
 #balatro-game.bp-compact .bp-start-options { gap: 7px; }
 #balatro-game.bp-compact .bp-deck-preview { padding-right: 8px; }
