@@ -8,6 +8,9 @@ const require=createRequire(import.meta.url),{build}=require('esbuild');
 const {chromium,webkit}=require(process.env.PLAYWRIGHT_PATH||'playwright');
 const root=resolve(import.meta.dirname,'..'),out=await mkdtemp(join(tmpdir(),'slime-qa-'));
 const md=await readFile(join(root,'blogs/other/slime_game.md'),'utf8');
+const audioSource=await readFile(join(root,'.vuepress/components/slime-audio.js'),'utf8');
+const {TOOL_SOUNDS}=await import('data:text/javascript;base64,'+Buffer.from(audioSource).toString('base64'));
+const kitSize=new Set([...Object.values(TOOL_SOUNDS).flat(),'bed_01']).size;
 const html=md.slice(md.indexOf('<div id="slimeGame"'),md.indexOf('<div class="game-introduction">'));
 const css=md.match(/<style>([\s\S]*?)<\/style>/)[1];
 const built=await build({stdin:{contents:"export {default as Studio} from './.vuepress/components/SlimeStudio';export {default as Audio} from './.vuepress/components/slime-audio';",resolveDir:root},bundle:true,format:'iife',globalName:'SlimeTest',write:false});
@@ -36,7 +39,7 @@ try{
   await page.locator('[data-material=cotton]').click();
   await page.waitForFunction(()=>studio.audio.context && studio.audio.context.state==='running');
   await page.evaluate(()=>studio.audio.ready);
-  assert.equal(await page.evaluate(()=>studio.audio.buffers.size),19,'all recorded foley decoded');
+  assert.equal(await page.evaluate(()=>studio.audio.buffers.size),kitSize,'all recorded foley decoded');
   assert.ok(await page.evaluate(()=>Array.from(studio.audio.buffers.values()).every(b=>{
     const data=b.getChannelData(0);let peak=0;for(const sample of data)peak=Math.max(peak,Math.abs(sample));return peak>.005 && peak<=1;
   })),'recordings contain a non-silent, non-clipped signal');
