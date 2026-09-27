@@ -9,7 +9,12 @@ export const TOOL_SOUNDS = {
   move: ['slime_04', 'slime_14'], bubble: ['bubble_01', 'bubble_03'],
   pop: ['bubble_02', 'slime_12'], glitter: ['slime_11', 'slime_16'],
   foil: ['slime_06', 'slime_11'], release: ['slime_11', 'slime_12'],
-  mold: ['slime_05', 'slime_15'], reset: ['slime_01', 'slime_14']
+  mold: ['slime_05', 'slime_15'], reset: ['slime_01', 'slime_14'],
+  // Interface actions answer with foley too, so no tap is ever silent.
+  pick: ['slime_09', 'slime_13'], material: ['slime_05', 'slime_10'],
+  color: ['slime_03', 'slime_11'], add: ['slime_01', 'slime_03'],
+  undo: ['slime_07', 'slime_13'], view: ['slime_15', 'slime_09'],
+  rotate: ['slime_04', 'slime_14'], ui: ['slime_07', 'slime_15']
 };
 
 export default class SlimeAudio {
@@ -93,8 +98,10 @@ export default class SlimeAudio {
     this.lastSample[tool] = name;
     const buffer = this.buffers.get(name), cotton = material === 'cotton';
     const quiet = ['smooth', 'carve', 'glitter', 'foil', 'release'].includes(tool);
+    // Taps stay under the sculpting foley; a new material or a new lump should land.
+    const soft = ['ui', 'rotate', 'pick', 'undo', 'view', 'color'].includes(tool);
     const rate = (.97 + this.random() * .06) * (cotton ? .94 : 1);
-    const level = (.4 + Math.max(0, Math.min(1, strength)) * .5) * (quiet ? .42 : 1) * (cotton ? .65 : 1);
+    const level = (.4 + Math.max(0, Math.min(1, strength)) * .5) * (quiet ? .42 : soft ? .6 : 1) * (cotton ? .65 : 1);
     const time = c.currentTime, duration = buffer.duration / rate;
     const source = c.createBufferSource(), filter = c.createBiquadFilter(), gain = c.createGain();
     source.buffer = buffer;

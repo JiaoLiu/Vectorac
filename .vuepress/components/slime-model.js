@@ -7,9 +7,9 @@ export const MATERIALS = {
     damping: 15,
     memory: 0.18,
     plastic: 0.3,
-    roughness: 1,
-    transmission: 0,
-    tip: "团絮起伏和细绒表面，揉捏声更轻柔；试试拉起、翻折，松手慢慢回蓬。"
+    roughness: .76,
+    transmission: .06,
+    tip: "棉絮融在柔软胶体里，不是长毛；试试压扁、拉起和翻折，松手缓缓回弹。"
   },
   butter: {
     name: "黄油泥",

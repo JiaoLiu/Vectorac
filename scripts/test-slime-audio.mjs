@@ -16,6 +16,9 @@ await audio.ready;assert.equal(requests,19);assert.equal(audio.buffers.size,19);
 for(const material of ['butter','cotton','crystal','liquid','foam','memory','clay'])for(const tool of Object.keys(TOOL_SOUNDS)){
  audio.stop(); assert.equal(audio.play(tool,material),true,material+' '+tool);
 }
+const studio = await readFile(new URL('../.vuepress/components/SlimeStudio.js', import.meta.url), 'utf8');
+for(const key of new Set([...studio.matchAll(/audio\.(?:play|begin)\(\s*['"]([a-z]+)['"]/g)].map(match=>match[1])))
+ assert.ok(TOOL_SOUNDS[key],'SlimeStudio triggers "'+key+'" but no recording is mapped to it');
 audio.stop();for(let i=0;i<100;i++)audio.play('pop');
 assert.equal(audio.voices.size,3,'rapid actions cannot create unlimited overlapping voices');
 audio.stop();audio.begin('pump','butter',.6);

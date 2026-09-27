@@ -94,53 +94,28 @@ export default class SlimeStudio {
       side: THREE.DoubleSide,
       envMapIntensity: 0.45
     });
-    // Separate from the face/paint map: fine soft pores survive painting and molds.
-    const cottonCanvas = document.createElement('canvas');
-    cottonCanvas.width = cottonCanvas.height = 128;
-    const cottonContext = cottonCanvas.getContext('2d');
-    cottonContext.fillStyle = '#909090';
-    cottonContext.fillRect(0, 0, 128, 128);
-    // Broad soft tufts beneath the fine pores, instead of a shiny rubber surface.
-    for (let i = 0; i < 32; i++) {
-      const x = (i * 47.31) % 128, y = (i * 79.73) % 128, r = 10 + (i % 5) * 3;
-      for (const ox of [-128, 0, 128]) for (const oy of [-128, 0, 128]) {
-        const tuft = cottonContext.createRadialGradient(x+ox, y+oy, 0, x+ox, y+oy, r);
-        tuft.addColorStop(0, i % 2 ? '#d8d8d8b0' : '#55555590');
-        tuft.addColorStop(1, '#90909000');
-        cottonContext.fillStyle = tuft;
-        cottonContext.fillRect(x+ox-r, y+oy-r, r*2, r*2);
-      }
-    }
-    for (let i = 0; i < 420; i++) {
-      const x = (i * 47.31) % 128, y = (i * 79.73) % 128, r = 1.2 + (i % 5) * .6;
-      const soft = cottonContext.createRadialGradient(x, y, 0, x, y, r);
-      soft.addColorStop(0, i % 2 ? '#bfbfbf60' : '#60606060');
-      soft.addColorStop(1, '#90909000');
-      cottonContext.fillStyle = soft;
-      cottonContext.fillRect(x-r, y-r, r*2, r*2);
-    }
-    this.cottonTexture = new THREE.CanvasTexture(cottonCanvas);
-    this.cottonTexture.wrapS = this.cottonTexture.wrapT = THREE.RepeatWrapping;
-    this.cottonTexture.repeat.set(3, 3);
+    this.cotton = new SlimeCotton();
+    this.cottonTexture = this.cotton.texture;
     this.cottonSoftness = {value: 0};
     this.material.onBeforeCompile = shader => {
       shader.uniforms.cottonSoftness = this.cottonSoftness;
-      shader.vertexShader = 'uniform float cottonSoftness;\nvarying float cottonLoft;\n' + shader.vertexShader.replace(
+      shader.uniforms.cottonInclusions = {value: this.cottonTexture};
+      shader.vertexShader = 'varying vec2 cottonUV;\n' + shader.vertexShader.replace(
         '#include <begin_vertex>',
         `#include <begin_vertex>
-        cottonLoft = sin(position.x*7.+sin(position.y*5.))*sin(position.y*9.+position.z*7.)*.5+.5;
-        transformed += normal*cottonSoftness*(.035+cottonLoft*.12);`
+        cottonUV = uv*2.;`
       );
-      shader.fragmentShader = 'uniform float cottonSoftness;\nvarying float cottonLoft;\n' + shader.fragmentShader.replace(
+      shader.fragmentShader = 'uniform float cottonSoftness;\nuniform sampler2D cottonInclusions;\nvarying vec2 cottonUV;\n' + shader.fragmentShader.replace(
         '#include <color_fragment>',
-        '#include <color_fragment>\ndiffuseColor.rgb = mix(diffuseColor.rgb, vec3(1.0), cottonSoftness*.65);\ndiffuseColor.rgb *= 1.0-cottonSoftness*(1.0-cottonLoft)*.18;'
+        `#include <color_fragment>
+        float inclusions = smoothstep(.50,.90,texture2D(cottonInclusions,cottonUV).r);
+        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(1.), cottonSoftness*(.22+inclusions*.16));`
       );
     };
     this.mesh = new THREE.Mesh(this.geometry, this.material);
     this.mesh.rotation.x = -Math.PI / 2;
     this.mesh.position.y = 0.32;
     this.scene.add(this.mesh);
-    this.cotton = new SlimeCotton(this.mesh);
     this.sprinkles = new SlimeSprinkles(this.mesh);
     const floor = new THREE.Mesh(
       new THREE.PlaneGeometry(200, 200),
@@ -311,10 +286,25 @@ export default class SlimeStudio {
   }
   bind() {
     const c = this.canvas;
+    // Every control answers with its own squish. Mold and reset are silent here
+    // because their handlers already play a dedicated recording.
+    const BUTTON_SOUNDS = [
+      ['[data-tool]', 'pick'], ['[data-material]', 'material'],
+      ['[data-color]', 'color'], ['[data-undo]', 'undo'],
+      ['[data-add-clay]', 'add'], ['[data-view]', 'view'],
+      ['[data-mold]', null], ['[data-reset]', null]
+    ];
+    const OPTION_SOUNDS = {tool: 'pick', material: 'material', mold: null};
     this.on(this.root, 'pointerdown', e => {
       this.audio.unlock();
       const button = e.target.closest('button');
-      if (button && !button.hasAttribute('data-sound') && !button.disabled) this.audio.play('ui');
+      if (!button || button.disabled || button.hasAttribute('data-sound')) return;
+      const drop = button.closest('[data-fs-drop]');
+      const match = BUTTON_SOUNDS.find(([selector]) => button.matches(selector));
+      const sound = drop && button.hasAttribute('data-option')
+        ? OPTION_SOUNDS[drop.dataset.fsDrop]
+        : match ? match[1] : 'ui';
+      if (sound) this.audio.play(sound, this.model.material, .55);
     }, {capture:true});
     this.on(this.root, 'keydown', e => {
       if (e.key === 'Enter' || e.key === ' ') this.audio.unlock();
@@ -655,7 +645,7 @@ export default class SlimeStudio {
       });
     });
     const colorInput = this.root.querySelector("[data-fs-color]");
-    if (colorInput)
+    if (colorInput) {
       this.on(colorInput, "input", () => {
         this.color.set(colorInput.value).convertSRGBToLinear();
         this.root
@@ -663,6 +653,9 @@ export default class SlimeStudio {
           .forEach(x => x.classList.remove("active"));
         this.status("颜色会随揉捏混入表面。");
       });
+      // Only when the picker closes: dragging inside it must not machine-gun samples.
+      this.on(colorInput, "change", () => this.audio.play("color", this.model.material, .55));
+    }
     this.on(maxBtn, "click", () => {
       if (document.fullscreenElement || document.webkitFullscreenElement) {
         (document.exitFullscreen || document.webkitExitFullscreen).call(
@@ -1173,7 +1166,6 @@ export default class SlimeStudio {
     this.geometry.computeVertexNormals();
     this.geometry.computeBoundingSphere();
     this.geometry.attributes.color.needsUpdate = true;
-    if (this.cotton) this.cotton.update(this.model, this.geometry, this.canvas.height);
   }
   paintMold() {
     if (this.colors.length !== this.model.positions.length) {
@@ -1257,13 +1249,13 @@ export default class SlimeStudio {
       thickness: m.transmission > 0.4 ? 0.18 : 0.65,
       side: THREE.FrontSide,
       ior: 1.38,
-      clearcoat: name === 'cotton' ? 0 : m.transmission > 0.3 ? 1 : 0.12,
+      clearcoat: name === 'cotton' ? .18 : m.transmission > 0.3 ? 1 : 0.12,
       bumpMap: name === 'cotton' ? this.cottonTexture : null,
-      bumpScale: name === 'cotton' ? .065 : 0,
-      clearcoatRoughness: 0.15,
+      bumpScale: name === 'cotton' ? .012 : 0,
+      clearcoatRoughness: name === 'cotton' ? .5 : .15,
       needsUpdate: true
     });
-    this.cottonSoftness.value = name === 'cotton' ? .55 : 0;
+    this.cottonSoftness.value = name === 'cotton' ? .85 : 0;
     this.active("material", name);
     this.status(m.tip);
   }
@@ -1857,7 +1849,6 @@ export default class SlimeStudio {
     });
     this.shadowTexture.dispose();
     this.floorTexture.dispose();
-    this.cottonTexture.dispose();
     if (this.faceTexture) this.faceTexture.dispose();
     this.environment.dispose();
     this.renderer.dispose();

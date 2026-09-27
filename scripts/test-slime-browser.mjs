@@ -43,10 +43,10 @@ try{
   assert.equal(await page.evaluate(()=>studio.model.material),'cotton');
   await page.locator('#slimeCanvas').scrollIntoViewIfNeeded();
   await page.waitForTimeout(200);
-  assert.ok(await page.evaluate(()=>studio.cotton.points.visible && studio.cotton.geometry.attributes.position.count===4200));
+  assert.ok(await page.evaluate(()=>!studio.mesh.children.some(c=>c.isPoints) && studio.material.bumpMap===studio.cotton.texture),'cotton inclusions stay in the gel, no fur layer');
   await page.locator('#slimeCanvas').screenshot({path:join(out,`cotton-${viewport.width}.png`)});
   await page.locator('[data-material=crystal]').click();
-  await page.waitForFunction(()=>!studio.cotton.points.visible);
+  await page.waitForFunction(()=>studio.material.bumpMap===null && studio.cottonSoftness.value===0);
   await page.locator('[data-material=cotton]').click();
   const center=async()=>{
    await page.locator('#slimeCanvas').scrollIntoViewIfNeeded();
