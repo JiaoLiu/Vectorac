@@ -5,7 +5,9 @@
 // Re-run with: node scripts/gen-slime-sounds.mjs
 import {writeFile, mkdir, rm, readdir} from 'node:fs/promises';
 
-const SR = 44100;
+// 22.05 kHz mono: every voice is lowpassed well under 8 kHz, so this halves
+// transfer size with no audible loss and decodes fine on old Safari.
+const SR = 22050;
 const DIR = new URL('../.vuepress/public/audio/slime-v3/', import.meta.url);
 let seed = 20260927;
 const rand = () => (seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 4294967296;

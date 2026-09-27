@@ -197,6 +197,12 @@ export default class SlimeStudio {
     this.setMaterial("butter");
     this.sync();
     this.bind();
+    // Fetch and decode the foley kit during idle time: decoding works on a
+    // suspended context, so sounds are ready before the first gesture instead
+    // of competing with it for bandwidth.
+    const warmup = () => this.audio.warmup();
+    if (typeof requestIdleCallback === "function") requestIdleCallback(warmup, { timeout: 2000 });
+    else setTimeout(warmup, 800);
     this.frame = time => {
       if (!canvas.isConnected) {
         this.destroy();

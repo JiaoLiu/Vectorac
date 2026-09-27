@@ -35,7 +35,9 @@ try{
    window.sounds=[];const play=studio.audio.play.bind(studio.audio);
    studio.audio.play=(tool,...args)=>{const result=play(tool,...args);if(result)sounds.push(tool);return result;};
   });
-  assert.equal(await page.evaluate(()=>!!studio.audio.context),false);
+  // Warmup may create a suspended context during idle time, but nothing may
+  // be audible before the first user gesture.
+  assert.notEqual(await page.evaluate(()=>studio.audio.context&&studio.audio.context.state),'running');
   await page.locator('[data-material=cotton]').click();
   await page.waitForFunction(()=>studio.audio.context && studio.audio.context.state==='running');
   await page.evaluate(()=>studio.audio.ready);

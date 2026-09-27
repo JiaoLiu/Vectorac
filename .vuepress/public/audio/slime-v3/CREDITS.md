@@ -18,7 +18,8 @@ Design notes — each action owns a distinct timbre, then variations within it:
 - bed_01: seamless 2.1s squish loop (tail crossfaded into head) that sustains
   long holds and swells while rubbing.
 
-Mono 44.1 kHz 16-bit WAV, normalized to -2.8 dBFS peak.
+Mono 22.05 kHz 16-bit WAV (all voices are lowpassed under 8 kHz), normalized
+to -2.8 dBFS peak. ~830 KB for the whole kit.
 Re-generate with: `node scripts/gen-slime-sounds.mjs`
 
 v2 (CC0 recordings) is kept alongside for pages cached before this release.

@@ -72,25 +72,50 @@ export default class SlimeAudio {
     this.loading.set(name, task);
     return task;
   }
+  ensureContext() {
+    if (this.context || this.destroyed) return this.context;
+    try {
+      const c = this.createContext();
+      if (!c) return null;
+      this.context = c;
+      this.master = c.createGain();
+      this.master.gain.value = .7;
+      this.limiter = c.createDynamicsCompressor();
+      this.limiter.threshold.value = -16;
+      this.limiter.knee.value = 12;
+      this.limiter.ratio.value = 5;
+      this.master.connect(this.limiter);
+      this.limiter.connect(c.destination);
+      return c;
+    } catch (_) {
+      return null; /* Audio unavailable must never stop sculpting. */
+    }
+  }
+  // Fetch and decode the kit in small priority batches. Decoding works on a
+  // suspended context, so this runs during idle time before the first
+  // gesture: first-touch sounds (press/dab/thud/bed) land in batch one
+  // instead of fighting the gesture for bandwidth.
+  warmup() {
+    if (this.warming) return this.warming;
+    if (!this.enabled || !this.ensureContext()) return null;
+    const priority = ['press_01', 'press_02', 'press_03', BED, 'dab_01', 'dab_02', 'thud_01', 'thud_02'];
+    const rest = [...new Set([...Object.values(TOOL_SOUNDS).flat(), BED])].filter(name => !priority.includes(name));
+    const names = [...priority, ...rest];
+    this.warming = (async () => {
+      for (let i = 0; i < names.length; i += 6)
+        await Promise.all(names.slice(i, i + 6).map(name => this.load(name)));
+    })();
+    this.ready = this.warming;
+    return this.warming;
+  }
   unlock() {
     if (!this.enabled || this.destroyed) return;
     try {
-      if (!this.context) {
-        this.context = this.createContext();
-        if (!this.context) return;
-        const c = this.context;
-        this.master = c.createGain();
-        this.master.gain.value = .7;
-        this.limiter = c.createDynamicsCompressor();
-        this.limiter.threshold.value = -16;
-        this.limiter.knee.value = 12;
-        this.limiter.ratio.value = 5;
-        this.master.connect(this.limiter);
-        this.limiter.connect(c.destination);
-        this.ready = Promise.all([...new Set([...Object.values(TOOL_SOUNDS).flat(), BED])].map(name => this.load(name)));
-      }
-      if (this.context.state !== 'running' && !this.resuming) {
-        this.resuming = Promise.resolve(this.context.resume()).catch(() => this.stop()).finally(() => {this.resuming = null;});
+      const c = this.ensureContext();
+      if (!c) return;
+      this.warmup();
+      if (c.state !== 'running' && !this.resuming) {
+        this.resuming = Promise.resolve(c.resume()).catch(() => this.stop()).finally(() => {this.resuming = null;});
       }
     } catch (_) { /* Audio unavailable must never stop sculpting. */ }
   }
