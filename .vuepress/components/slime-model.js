@@ -9,7 +9,7 @@ export const MATERIALS = {
     plastic: 0.3,
     roughness: 1,
     transmission: 0,
-    tip: "像棉花一样蓬松哑光，轻压沙沙响，松手慢慢回蓬；试试拉起和翻折。"
+    tip: "团絮起伏和细绒表面，揉捏声更轻柔；试试拉起、翻折，松手慢慢回蓬。"
   },
   butter: {
     name: "黄油泥",

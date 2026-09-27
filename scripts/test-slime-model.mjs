@@ -310,6 +310,7 @@ let studioSource = await readFile(
   "utf8"
 );
 const dependencies = {
+  "./slime-cotton": moduleURL((await readFile(new URL("../.vuepress/components/slime-cotton.js", import.meta.url), "utf8")).replace("from 'three'", 'from '+JSON.stringify(new URL('../node_modules/three/build/three.module.js', import.meta.url).href))),
   "./slime-audio": moduleURL(await readFile(new URL("../.vuepress/components/slime-audio.js", import.meta.url), "utf8")),
   "./slime-safety": moduleURL(
     await readFile(

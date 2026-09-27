@@ -18,6 +18,7 @@ import { validSurface } from "./slime-safety";
 import { meshVolume, preserveVolume } from "./slime-volume";
 import slimeWorkerUrl from "./slime-worker-url.generated";
 import SlimeAudio from "./slime-audio";
+import SlimeCotton from "./slime-cotton";
 
 export default class SlimeStudio {
   constructor(canvas) {
@@ -124,15 +125,22 @@ export default class SlimeStudio {
     this.cottonSoftness = {value: 0};
     this.material.onBeforeCompile = shader => {
       shader.uniforms.cottonSoftness = this.cottonSoftness;
-      shader.fragmentShader = 'uniform float cottonSoftness;\n' + shader.fragmentShader.replace(
+      shader.vertexShader = 'uniform float cottonSoftness;\nvarying float cottonLoft;\n' + shader.vertexShader.replace(
+        '#include <begin_vertex>',
+        `#include <begin_vertex>
+        cottonLoft = sin(position.x*7.+sin(position.y*5.))*sin(position.y*9.+position.z*7.)*.5+.5;
+        transformed += normal*cottonSoftness*(.035+cottonLoft*.12);`
+      );
+      shader.fragmentShader = 'uniform float cottonSoftness;\nvarying float cottonLoft;\n' + shader.fragmentShader.replace(
         '#include <color_fragment>',
-        '#include <color_fragment>\ndiffuseColor.rgb = mix(diffuseColor.rgb, vec3(1.0), cottonSoftness);'
+        '#include <color_fragment>\ndiffuseColor.rgb = mix(diffuseColor.rgb, vec3(1.0), cottonSoftness*.65);\ndiffuseColor.rgb *= 1.0-cottonSoftness*(1.0-cottonLoft)*.18;'
       );
     };
     this.mesh = new THREE.Mesh(this.geometry, this.material);
     this.mesh.rotation.x = -Math.PI / 2;
     this.mesh.position.y = 0.32;
     this.scene.add(this.mesh);
+    this.cotton = new SlimeCotton(this.mesh);
     this.sprinkles = new SlimeSprinkles(this.mesh);
     const floor = new THREE.Mesh(
       new THREE.PlaneGeometry(200, 200),
@@ -1165,6 +1173,7 @@ export default class SlimeStudio {
     this.geometry.computeVertexNormals();
     this.geometry.computeBoundingSphere();
     this.geometry.attributes.color.needsUpdate = true;
+    if (this.cotton) this.cotton.update(this.model, this.geometry, this.canvas.height);
   }
   paintMold() {
     if (this.colors.length !== this.model.positions.length) {
@@ -1250,11 +1259,11 @@ export default class SlimeStudio {
       ior: 1.38,
       clearcoat: name === 'cotton' ? 0 : m.transmission > 0.3 ? 1 : 0.12,
       bumpMap: name === 'cotton' ? this.cottonTexture : null,
-      bumpScale: name === 'cotton' ? .035 : 0,
+      bumpScale: name === 'cotton' ? .065 : 0,
       clearcoatRoughness: 0.15,
       needsUpdate: true
     });
-    this.cottonSoftness.value = name === 'cotton' ? .32 : 0;
+    this.cottonSoftness.value = name === 'cotton' ? .55 : 0;
     this.active("material", name);
     this.status(m.tip);
   }
@@ -1829,6 +1838,7 @@ export default class SlimeStudio {
     if (this.destroyed) return;
     this.destroyed = true;
     this.audio.destroy();
+    this.cotton.dispose();
     this.cancelFoldRebuild();
     if (this.fusion) {
       this.mesh.remove(this.fusion.neck);

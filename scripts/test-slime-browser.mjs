@@ -14,6 +14,7 @@ const built=await build({stdin:{contents:"export {default as Studio} from './.vu
 const server=createServer(async(req,res)=>{
  try{
   if(req.url==='/test.js'){res.setHeader('Content-Type','text/javascript');res.end(built.outputFiles[0].text);return;}
+  if(req.url.startsWith('/audio/')){res.setHeader('Content-Type','audio/wav');res.end(await readFile(join(root,'.vuepress/public',req.url)));return;}
   if(req.url.startsWith('/js/')){res.setHeader('Content-Type','text/javascript');res.end(await readFile(join(root,'.vuepress/public',req.url)));return;}
   res.setHeader('Content-Type','text/html');res.end(`<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0}${css}</style>${html}<script src="/test.js"></script>`);
  }catch(_){res.writeHead(404);res.end();}
@@ -34,10 +35,19 @@ try{
   assert.equal(await page.evaluate(()=>!!studio.audio.context),false);
   await page.locator('[data-material=cotton]').click();
   await page.waitForFunction(()=>studio.audio.context && studio.audio.context.state==='running');
+  await page.evaluate(()=>studio.audio.ready);
+  assert.equal(await page.evaluate(()=>studio.audio.buffers.size),19,'all recorded foley decoded');
+  assert.ok(await page.evaluate(()=>Array.from(studio.audio.buffers.values()).every(b=>{
+    const data=b.getChannelData(0);let peak=0;for(const sample of data)peak=Math.max(peak,Math.abs(sample));return peak>.005 && peak<=1;
+  })),'recordings contain a non-silent, non-clipped signal');
   assert.equal(await page.evaluate(()=>studio.model.material),'cotton');
   await page.locator('#slimeCanvas').scrollIntoViewIfNeeded();
   await page.waitForTimeout(200);
+  assert.ok(await page.evaluate(()=>studio.cotton.points.visible && studio.cotton.geometry.attributes.position.count===4200));
   await page.locator('#slimeCanvas').screenshot({path:join(out,`cotton-${viewport.width}.png`)});
+  await page.locator('[data-material=crystal]').click();
+  await page.waitForFunction(()=>!studio.cotton.points.visible);
+  await page.locator('[data-material=cotton]').click();
   const center=async()=>{
    await page.locator('#slimeCanvas').scrollIntoViewIfNeeded();
    return page.evaluate(()=>{
@@ -45,6 +55,9 @@ try{
     return {x:r.left+(p.x+1)*r.width/2,y:r.top+(1-p.y)*r.height/2};
    });
   };
+  const touch=await center();
+  await page.touchscreen.tap(touch.x,touch.y);
+  assert.ok(await page.evaluate(()=>sounds.includes('pump')),'trusted touch tap also plays foley');
   for(const tool of ['pump','pinch','carve','flatten','smooth','glitter','foil','move','tear','fold','bubble']){
    await page.locator('[data-mold=round]').click();
    await page.locator(`[data-tool=${tool}]`).first().click();
