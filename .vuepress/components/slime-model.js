@@ -1,6 +1,16 @@
 import { meshVolume, preserveVolume } from "./slime-volume";
 // Closed, shared-vertex surface. Positions and plastic offsets are in object space.
 export const MATERIALS = {
+  cotton: {
+    name: "棉花云朵泥",
+    spring: 8,
+    damping: 15,
+    memory: 0.18,
+    plastic: 0.3,
+    roughness: 1,
+    transmission: 0,
+    tip: "像棉花一样蓬松哑光，轻压沙沙响，松手慢慢回蓬；试试拉起和翻折。"
+  },
   butter: {
     name: "黄油泥",
     spring: 5,
@@ -261,7 +271,8 @@ export default class SlimeModel {
       crystal: 0.9,
       butter: 0.45,
       memory: 0.12,
-      foam: 0.35
+      foam: 0.35,
+      cotton: 0.22
     };
     const rate = rates[this.material];
     if (!rate) {
@@ -276,7 +287,8 @@ export default class SlimeModel {
       crystal: 0.62,
       butter: 0.72,
       memory: 0.82,
-      foam: 0.74
+      foam: 0.74,
+      cotton: 0.92
     };
     const restingHeight = heights[this.material];
     const factor =

@@ -17,6 +17,7 @@
 <span class="selector-label">手感</span>
 <div class="studio-options">
 <button class="active" data-material="butter">黄油泥</button>
+<button data-material="cotton">☁ 棉花云朵泥</button>
 <button data-material="crystal">水晶胶</button>
 <button data-material="memory">超慢回弹</button>
 <button data-material="liquid">流动胶</button>
@@ -79,6 +80,7 @@
 </div>
 </div>
 <div class="studio-options studio-settings">
+<button type="button" data-sound aria-pressed="true">🔊 音效开</button>
 <button class="tool-btn" data-tool="glitter" title="点一下撒闪粉，按住连续撒；换按压工具把它揉进去。">✦ 撒闪粉</button>
 <button class="tool-btn" data-tool="foil" title="撒下金属薄片，落在表面后可以随泥团一起揉动。">◆ 撒金属屑</button>
 <label><input type="checkbox" data-sculpt /> 保留捏痕</label>
@@ -92,6 +94,7 @@
 </div>
 
 <div class="slime-fs-bar">
+<button type="button" data-sound aria-pressed="true">🔊 音效开</button>
 <div class="fs-drop" data-fs-drop="tool">
 <button type="button" class="fs-trigger">按压<i class="fs-chevron">▾</i></button>
 <div class="fs-menu"></div>
@@ -128,6 +131,8 @@
 <li>电脑端：使用鼠标点击、拖动、按压进行互动</li>
 <li>移动端：使用手指触摸、滑动进行操作</li>
 <li>选择不同颜色和工具获得不同游戏体验</li>
+<li>棉花云朵泥：蓬松哑光、轻压沙沙作响，松手后缓缓回弹；可以继续捏起、翻折和混色。</li>
+<li>按压、拉扯、翻折、起泡、戳泡和撒装饰都有不同的触感音效，力度和材质会改变声音；可随时关闭音效。</li>
 </ul>
 </div>
 
@@ -141,6 +146,8 @@
 #slimeGame .studio-settings { margin-top: 16px; }
 #slimeGame .studio-settings label { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: #56445d; }
 #slimeGame .studio-settings input[type=range] { width: 95px; }
+#slimeGame [data-sound] { min-height: 36px; padding: 6px 10px; border: 1px solid #ded3df; border-radius: 12px; background: #fffafa; color: #56445d; font: inherit; font-size: 13px; cursor: pointer; white-space: nowrap; }
+#slimeGame [data-sound][aria-pressed=true] { background: #efe3f2; border-color: #b295b9; }
 #slimeGame .studio-status { margin: 12px 0 0; min-height: 22px; font-size: 13px; color: #765573; }
 #slimeGame { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
 #slimeGame #slimeCanvas { width: 100%; height: auto; max-height: none; touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; -webkit-user-drag: none; }

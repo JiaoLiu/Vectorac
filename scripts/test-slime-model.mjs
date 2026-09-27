@@ -67,7 +67,7 @@ for (const mold of ["round", "star", "heart", "melody"]) {
 }
 
 const results = {};
-for (const material of ["butter", "crystal", "memory", "clay"]) {
+for (const material of ["butter", "crystal", "memory", "clay", "cotton"]) {
   const model = new SlimeModel();
   model.material = material;
   advance(model, 2, brush);
@@ -78,6 +78,8 @@ for (const material of ["butter", "crystal", "memory", "clay"]) {
 }
 assert.ok(results.crystal.recovered > results.butter.recovered);
 assert.ok(results.butter.recovered > results.memory.recovered);
+assert.ok(results.cotton.recovered > results.butter.recovered, "Cotton gently returns to its airy shape");
+assert.ok(results.cotton.recovered > results.cotton.pressed + .08);
 assert.ok(
   results.clay.recovered < 0.3,
   "Clay should retain a substantial impression"
@@ -308,6 +310,7 @@ let studioSource = await readFile(
   "utf8"
 );
 const dependencies = {
+  "./slime-audio": moduleURL(await readFile(new URL("../.vuepress/components/slime-audio.js", import.meta.url), "utf8")),
   "./slime-safety": moduleURL(
     await readFile(
       new URL("../.vuepress/components/slime-safety.js", import.meta.url),
@@ -523,7 +526,7 @@ console.log(
   "PASS: torn fragments reunite and survive 25 alternating folds without exploding"
 );
 
-for (const material of ["butter", "crystal", "liquid", "clay"]) {
+for (const material of ["butter", "crystal", "liquid", "clay", "cotton"]) {
   studio.model = new SlimeModel();
   studio.model.material = material;
   studio.colors = new Float32Array(studio.model.positions.length).fill(0.6);

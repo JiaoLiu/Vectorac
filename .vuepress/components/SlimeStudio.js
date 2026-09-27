@@ -17,12 +17,15 @@ import SlimeSprinkles from "./SlimeSprinkles";
 import { validSurface } from "./slime-safety";
 import { meshVolume, preserveVolume } from "./slime-volume";
 import slimeWorkerUrl from "./slime-worker-url.generated";
+import SlimeAudio from "./slime-audio";
 
 export default class SlimeStudio {
   constructor(canvas) {
     this.canvas = canvas;
     this.root = canvas.closest(".game-container");
     this.listeners = [];
+    this.audio = new SlimeAudio();
+    try { this.audio.enabled = localStorage.getItem('vectorac.slime.sound.v1') !== 'off'; } catch (_) {}
     this.bubbles = [];
     this.undoStack = [];
     this.model = new SlimeModel();
@@ -90,6 +93,42 @@ export default class SlimeStudio {
       side: THREE.DoubleSide,
       envMapIntensity: 0.45
     });
+    // Separate from the face/paint map: fine soft pores survive painting and molds.
+    const cottonCanvas = document.createElement('canvas');
+    cottonCanvas.width = cottonCanvas.height = 128;
+    const cottonContext = cottonCanvas.getContext('2d');
+    cottonContext.fillStyle = '#909090';
+    cottonContext.fillRect(0, 0, 128, 128);
+    // Broad soft tufts beneath the fine pores, instead of a shiny rubber surface.
+    for (let i = 0; i < 32; i++) {
+      const x = (i * 47.31) % 128, y = (i * 79.73) % 128, r = 10 + (i % 5) * 3;
+      for (const ox of [-128, 0, 128]) for (const oy of [-128, 0, 128]) {
+        const tuft = cottonContext.createRadialGradient(x+ox, y+oy, 0, x+ox, y+oy, r);
+        tuft.addColorStop(0, i % 2 ? '#d8d8d8b0' : '#55555590');
+        tuft.addColorStop(1, '#90909000');
+        cottonContext.fillStyle = tuft;
+        cottonContext.fillRect(x+ox-r, y+oy-r, r*2, r*2);
+      }
+    }
+    for (let i = 0; i < 420; i++) {
+      const x = (i * 47.31) % 128, y = (i * 79.73) % 128, r = 1.2 + (i % 5) * .6;
+      const soft = cottonContext.createRadialGradient(x, y, 0, x, y, r);
+      soft.addColorStop(0, i % 2 ? '#bfbfbf60' : '#60606060');
+      soft.addColorStop(1, '#90909000');
+      cottonContext.fillStyle = soft;
+      cottonContext.fillRect(x-r, y-r, r*2, r*2);
+    }
+    this.cottonTexture = new THREE.CanvasTexture(cottonCanvas);
+    this.cottonTexture.wrapS = this.cottonTexture.wrapT = THREE.RepeatWrapping;
+    this.cottonTexture.repeat.set(3, 3);
+    this.cottonSoftness = {value: 0};
+    this.material.onBeforeCompile = shader => {
+      shader.uniforms.cottonSoftness = this.cottonSoftness;
+      shader.fragmentShader = 'uniform float cottonSoftness;\n' + shader.fragmentShader.replace(
+        '#include <color_fragment>',
+        '#include <color_fragment>\ndiffuseColor.rgb = mix(diffuseColor.rgb, vec3(1.0), cottonSoftness);'
+      );
+    };
     this.mesh = new THREE.Mesh(this.geometry, this.material);
     this.mesh.rotation.x = -Math.PI / 2;
     this.mesh.position.y = 0.32;
@@ -195,6 +234,10 @@ export default class SlimeStudio {
         this.acc -= 1 / 120;
       }
       if (this.brush && this.tool !== "smooth") this.mixColor(dt);
+      if (this.brush || this.manipulation || this.sprinkling || (this.carvePoint && this.soundMotion > .03)) {
+        this.audio.tick(dt, this.tool, this.model.material, this.pressure, this.soundMotion || 0);
+      }
+      this.soundMotion = (this.soundMotion || 0) * Math.exp(-dt * 8);
       if (this.fusion) this.advanceFusion(dt);
       this.sync();
       if (this.sprinkling) {
@@ -260,6 +303,27 @@ export default class SlimeStudio {
   }
   bind() {
     const c = this.canvas;
+    this.on(this.root, 'pointerdown', e => {
+      this.audio.unlock();
+      const button = e.target.closest('button');
+      if (button && !button.hasAttribute('data-sound') && !button.disabled) this.audio.play('ui');
+    }, {capture:true});
+    this.on(this.root, 'keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') this.audio.unlock();
+    });
+    const updateSoundButtons = () => this.root.querySelectorAll('[data-sound]').forEach(button => {
+      button.textContent = this.audio.enabled ? '🔊 音效开' : '🔇 音效关';
+      button.setAttribute('aria-pressed', String(this.audio.enabled));
+    });
+    this.root.querySelectorAll('[data-sound]').forEach(button => this.on(button, 'click', () => {
+      this.audio.setEnabled(!this.audio.enabled);
+      try { localStorage.setItem('vectorac.slime.sound.v1', this.audio.enabled ? 'on' : 'off'); } catch (_) {}
+      updateSoundButtons();
+      if (this.audio.enabled) this.audio.play('ui');
+    }));
+    updateSoundButtons();
+    this.on(document, 'visibilitychange', () => {if (document.hidden) this.audio.suspend();});
+    this.on(window, 'pagehide', () => this.audio.suspend());
     this.on(c, "contextmenu", e => e.preventDefault());
     this.on(c, "pointerdown", e => {
       if (this.fusion) this.completeFusion();
@@ -322,6 +386,10 @@ export default class SlimeStudio {
           )
             this.addBubble();
         }
+        if (this.tool !== 'pop' && (this.brush || this.manipulation || this.sprinkling || this.carvePoint))
+          this.audio.begin(this.tool, this.model.material, this.pressure);
+      } else {
+        this.audio.play('rotate', this.model.material, .4);
       }
     });
     this.on(c, "pointermove", e => {
@@ -332,6 +400,7 @@ export default class SlimeStudio {
         return;
       }
       if (e.pointerId !== this.pointer) return;
+      this.soundMotion = Math.min(1, Math.hypot(e.clientX - this.previous.x, e.clientY - this.previous.y) / 18);
       if (this.rotating) {
         this.yaw -= (e.clientX - this.previous.x) * 0.009;
         this.elevation = THREE.MathUtils.clamp(
@@ -350,7 +419,7 @@ export default class SlimeStudio {
       } else {
         const hit = this.hit(e);
         if (hit) this.setBrush(hit);
-        else this.brush = null;
+        else { this.brush = null; this.carvePoint = null; }
       }
       this.previous = { x: e.clientX, y: e.clientY };
     });
@@ -361,6 +430,7 @@ export default class SlimeStudio {
         this.previous = { x: e.clientX, y: e.clientY };
       }
       if (e.pointerId !== this.pointer) return;
+      this.audio.end(this.model.material, e.type === 'pointerup');
       this.growingBubble = null;
       this.pointer = undefined;
       this.brush = null;
@@ -436,6 +506,7 @@ export default class SlimeStudio {
       this.paintMold();
       this.sync();
       this.status("已重新揉成当前模具形状。");
+      this.audio.play('reset', this.model.material);
     });
     this.on(this.root.querySelector("[data-undo]"), "click", () => this.undo());
     this.on(this.root.querySelector("[data-view]"), "click", () => {
@@ -464,6 +535,7 @@ export default class SlimeStudio {
     this.sync();
     this.active("mold", this.model.mold);
     this.status("模具压好了！开启保留捏痕，开始雕塑。");
+    this.audio.play('mold', this.model.material);
   }
   bindFullscreen() {
     const maxBtn = this.root.querySelector("[data-maximize]");
@@ -520,6 +592,7 @@ export default class SlimeStudio {
         key: "material",
         options: [
           ["butter", "黄油泥"],
+          ["cotton", "棉花云朵泥"],
           ["crystal", "水晶胶"],
           ["memory", "超慢回弹"],
           ["liquid", "流动胶"],
@@ -616,6 +689,7 @@ export default class SlimeStudio {
     this.camera.updateMatrixWorld();
   }
   beginPinch() {
+    this.audio.end(this.model.material, false);
     const [a, b] = [...this.pointers.values()];
     this.pinch = {
       dist: Math.hypot(a.x - b.x, a.y - b.y) || 1,
@@ -1163,6 +1237,7 @@ export default class SlimeStudio {
     }
   }
   setMaterial(name) {
+    if (!MATERIALS[name]) return;
     this.model.material = name;
     const m = MATERIALS[name];
     // A painted dark disk looked like grey matter inside transmissive clay.
@@ -1173,10 +1248,13 @@ export default class SlimeStudio {
       thickness: m.transmission > 0.4 ? 0.18 : 0.65,
       side: THREE.FrontSide,
       ior: 1.38,
-      clearcoat: m.transmission > 0.3 ? 1 : 0.12,
+      clearcoat: name === 'cotton' ? 0 : m.transmission > 0.3 ? 1 : 0.12,
+      bumpMap: name === 'cotton' ? this.cottonTexture : null,
+      bumpScale: name === 'cotton' ? .035 : 0,
       clearcoatRoughness: 0.15,
       needsUpdate: true
     });
+    this.cottonSoftness.value = name === 'cotton' ? .32 : 0;
     this.active("material", name);
     this.status(m.tip);
   }
@@ -1578,6 +1656,7 @@ export default class SlimeStudio {
       butter: 1.6,
       memory: 2.7,
       foam: 1.5,
+      cotton: 1.9,
       clay: 2.5
     };
     this.fusion = {
@@ -1676,6 +1755,7 @@ export default class SlimeStudio {
     s.geometry.dispose();
     s.material.dispose();
     this.bubbles = this.bubbles.filter(b => b.mesh !== s);
+    this.audio.play('pop', this.model.material, Math.min(1, .5 + s.scale.x));
     this.status("啪！气泡戳破了。");
   }
   clearBubbles() {
@@ -1748,6 +1828,7 @@ export default class SlimeStudio {
   destroy() {
     if (this.destroyed) return;
     this.destroyed = true;
+    this.audio.destroy();
     this.cancelFoldRebuild();
     if (this.fusion) {
       this.mesh.remove(this.fusion.neck);
@@ -1766,6 +1847,7 @@ export default class SlimeStudio {
     });
     this.shadowTexture.dispose();
     this.floorTexture.dispose();
+    this.cottonTexture.dispose();
     if (this.faceTexture) this.faceTexture.dispose();
     this.environment.dispose();
     this.renderer.dispose();
