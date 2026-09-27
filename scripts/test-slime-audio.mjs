@@ -110,6 +110,24 @@ audio.setEnabled(false);assert.equal(audio.voices.size,0);assert.equal(audio.pla
 audio.setEnabled(true); audio.begin('pump','cotton',.6);audio.end('cotton',false);assert.equal(audio.gesture,false);
 audio.begin('pinch','cotton',.6);audio.suspend();assert.equal(audio.voices.size,0);assert.equal(audio.gesture,false);
 audio.destroy();assert.equal(context.state,'closed');audio.unlock();assert.equal(created,1);
+// iOS Safari regression: an AudioContext created outside a user gesture can
+// stay suspended forever. Warmup must only fetch; the context is born in the
+// gesture and the fetched bytes decode right after it.
+let made=0;
+const ios=new Audio({createContext:()=>{made++;return {...context,state:'suspended',resume(){return Promise.resolve();}};},fetchAudio:async()=>new ArrayBuffer(2),random:()=>.5});
+await ios.warmup();
+assert.equal(made,0,'warmup never creates an AudioContext outside a gesture');
+assert.equal(ios.raw.size,allSamples.size,'warmup still fetched every sample for later decoding');
+assert.equal(ios.play('pump'),false,'nothing plays before the first gesture');
+ios.unlock();
+assert.equal(made,1,'the context is created inside the gesture');
+await ios.ready;
+assert.equal(ios.buffers.size,allSamples.size,'fetched bytes decode after the gesture');
+assert.equal(ios.play('pump'),false,'still silent while suspended');
+ios.context.state='running';
+assert.equal(ios.play('pump'),true,'sound works once the gesture resumes the context');
+ios.destroy();
+
 const unavailable=new Audio({createContext:()=>{throw new Error('unavailable');}});assert.doesNotThrow(()=>unavailable.unlock());assert.equal(unavailable.play('pump'),false);
 
 // Failed loads are not cached forever: after the cooldown the game retries.

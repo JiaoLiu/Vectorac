@@ -46,20 +46,37 @@ export default class SlimeAudio {
     this.buffers = new Map();
     this.loading = new Map();
     this.failures = new Map();
+    this.raw = new Map();
     this.lastSample = {};
     this.clock = 0;
     this.gesture = false;
     this.gestureId = 0;
   }
+  // Fetching needs no user gesture, so it runs during idle time. Decoding is
+  // deferred until unlock(): an AudioContext created outside a gesture can
+  // stay permanently suspended on iOS Safari, silencing the game.
   load(name) {
     if (this.buffers.has(name)) return Promise.resolve(this.buffers.get(name));
     if (this.loading.has(name)) return this.loading.get(name);
+    if (this.raw.has(name)) {
+      if (this.context) this.decodePending();
+      return Promise.resolve(null);
+    }
     const failedAt = this.failures.get(name);
     if (failedAt && Date.now() < failedAt) return Promise.resolve(null);
-    const context = this.context;
     const task = Promise.resolve().then(() => this.fetchAudio(this.baseUrl + name + '.wav'))
-      .then(data => context.decodeAudioData(data)).then(buffer => {
-        if (!this.destroyed) this.buffers.set(name, buffer);
+      .then(data => {
+        if (this.destroyed) return null;
+        if (!this.context) {
+          this.raw.set(name, data); // Keep the bytes; decode after the first gesture.
+          return null;
+        }
+        return this.context.decodeAudioData(data).then(buffer => {
+          if (!this.destroyed) this.buffers.set(name, buffer);
+          return buffer;
+        });
+      }).then(buffer => {
+        this.loading.delete(name);
         return buffer;
       }).catch(() => {
         // Failed loads may retry after a cooldown: a deploy or a flaky network
@@ -91,13 +108,12 @@ export default class SlimeAudio {
       return null; /* Audio unavailable must never stop sculpting. */
     }
   }
-  // Fetch and decode the kit in small priority batches. Decoding works on a
-  // suspended context, so this runs during idle time before the first
-  // gesture: first-touch sounds (press/dab/thud/bed) land in batch one
-  // instead of fighting the gesture for bandwidth.
+  // Fetch the kit in small priority batches during idle time: first-touch
+  // sounds (press/dab/thud/bed) land in batch one instead of fighting the
+  // first gesture for bandwidth. No AudioContext is touched here.
   warmup() {
     if (this.warming) return this.warming;
-    if (!this.enabled || !this.ensureContext()) return null;
+    if (!this.enabled || this.destroyed) return null;
     const priority = ['press_01', 'press_02', 'press_03', BED, 'dab_01', 'dab_02', 'thud_01', 'thud_02'];
     const rest = [...new Set([...Object.values(TOOL_SOUNDS).flat(), BED])].filter(name => !priority.includes(name));
     const names = [...priority, ...rest];
@@ -108,6 +124,28 @@ export default class SlimeAudio {
     this.ready = this.warming;
     return this.warming;
   }
+  // Decode everything fetched before the gesture, priority samples first.
+  decodePending() {
+    if (this.decoding) return this.decoding;
+    const c = this.context;
+    if (!c) return null;
+    const names = [...this.raw.keys()];
+    this.decoding = (async () => {
+      for (const name of names) {
+        const data = this.raw.get(name);
+        if (!data) continue;
+        this.raw.delete(name);
+        try {
+          const buffer = await c.decodeAudioData(data);
+          if (!this.destroyed) this.buffers.set(name, buffer);
+        } catch (_) {
+          this.failures.set(name, Date.now() + this.retryDelay);
+        }
+      }
+      this.decoding = null;
+    })();
+    return this.decoding;
+  }
   unlock() {
     if (!this.enabled || this.destroyed) return;
     try {
@@ -117,6 +155,7 @@ export default class SlimeAudio {
       if (c.state !== 'running' && !this.resuming) {
         this.resuming = Promise.resolve(c.resume()).catch(() => this.stop()).finally(() => {this.resuming = null;});
       }
+      this.ready = Promise.resolve(this.warming).then(() => this.decodePending());
     } catch (_) { /* Audio unavailable must never stop sculpting. */ }
   }
   setEnabled(enabled) {
@@ -132,7 +171,12 @@ export default class SlimeAudio {
     const c = this.context, candidates = TOOL_SOUNDS[tool];
     if (!this.enabled || this.destroyed || !c || c.state !== 'running' || !candidates) return false;
     const available = candidates.filter(name => this.buffers.has(name));
-    if (!available.length) return false; // Never queue late sounds after release.
+    if (!available.length) {
+      // Nothing decoded for this action yet: kick off (re)loads so the next
+      // attempt can sound. A previous failure alone never mutes the session.
+      candidates.forEach(name => { this.load(name); });
+      return false; // Never queue late sounds after release.
+    }
     if (this.voices.size >= 4) {
       const oldest = this.voices.values().next().value;
       oldest.sources.forEach(source => {try {source.stop();} catch (_) {}});
