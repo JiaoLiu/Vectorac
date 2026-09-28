@@ -28,7 +28,8 @@ test('FIFO; recorded voice outranks every announcement even with game sound disa
  ui.settings.sound=false
  receive('A');receive('B');receive('C')
  assert.equal(sources.length,1);assert.equal(ui._voiceQueue.length,2)
- assert.equal(atob(ui._voiceActive.entry.data),'A');assert.equal(ui._master.gain.value,.06)
+ assert.equal(atob(ui._voiceActive.entry.data),'A');assert.equal(ui._master.gain.value,0)
+ assert.equal(ui._bgm.paused,true)
  assert.equal(ui._bgm.volume,.4*.08)
  ui.settings.sound=true
  for(const key of ['wan1','peng','gang','hu','zimo','phrase-0'])ui.speak(key,'test')
@@ -53,6 +54,16 @@ test('recording pauses current voice at queue head; arrivals wait until tracks c
  sources[0].onended();assert.equal(atob(ui._voiceActive.entry.data),'A','stale ended cannot consume restarted voice')
  sources[1].onended();await flush();assert.equal(atob(ui._voiceActive.entry.data),'B')
  f.close()
+})
+test('game actions and direct countdown notes never open audio during player playback',()=>{
+ const f=fixture(),{ui,receive,sources}=f;receive('A')
+ ui._ensureAudio=()=>{throw Error('game action must not resume or create audio during voice')}
+ for(let i=0;i<100;i++){
+  for(const type of ['discard','click','draw','peng','gang','hu','dice'])ui.sound(type)
+  ui._note(990);ui._duckBgm(i%2===0)
+ }
+ assert.equal(ui._master.gain.value,0);assert.equal(ui._bgm.paused,true)
+ assert.equal(sources[0].stopped,undefined);assert.equal(atob(ui._voiceActive.entry.data),'A');f.close()
 })
 test('voice switch pauses/retains FIFO independently of sound switch',()=>{
  const f=fixture(),{ui,receive,sources}=f
@@ -82,6 +93,9 @@ test('WebAudio fallback retains the same queue slot; element end advances once',
  const f=fixture({decode:'pending'}),{ui,receive,decodes}=f
  receive('A');receive('B');const job=ui._voiceActive
  decodes[0].fail();assert.equal(elements.length,1);assert.equal(ui._voiceActive,job)
+ ui._ensureAudio=()=>{throw Error('fallback player must not overlap game WebAudio')}
+ ui.sound('discard');ui._note(990);ui.speak('gang','杠')
+ assert.equal(ui._master.gain.value,0);assert.equal(ui._bgm.paused,true)
  decodes[0].fail();assert.equal(elements.length,1,'late callback cannot start duplicate fallback')
  elements[0].onended();await flush();assert.equal(atob(ui._voiceActive.entry.data),'B');f.close()
 })

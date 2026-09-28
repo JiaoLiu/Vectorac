@@ -1103,14 +1103,14 @@ export default class ScmjUI {
   _syncVoiceMix() {
     const active = !!this._voiceActive
     // 只压游戏音效总线；玩家人声直接接 destination，不随音效总线降低。
-    if (this._master) this._master.gain.value = active ? 0.06 : 0.6
+    if (this._master) this._master.gain.value = active ? 0 : 0.6
     this._duckApply()
-    if (!this._volCanSet() && this._bgm) {
+    if (this._bgm) {
       if (active && !this._bgm.paused) {
         this._voiceBgmHolding = true
         this._bgm.pause()
       } else if (!active && this._voiceBgmHolding) {
-        this._voiceBgmHolding = false
+        if (!(this._bgmCommDucks > 0)) this._voiceBgmHolding = false
         if (this.settings.music !== false && this._els.table && !this._els.table.hidden && !this._destroyed && !(this._bgmCommDucks > 0))
           this._bgm.play().catch(() => {})
       }
@@ -1670,7 +1670,7 @@ export default class ScmjUI {
     // 读秒提醒：最后 5 秒每到新的一秒滴一声（仅轮到自己操作时倒计时会显示）
     if (left >= 1 && left <= 5 && this.settings.sound !== false && this._lastTickSec !== left) {
       this._lastTickSec = left
-      if (this._ensureAudio()) this._note(990, 0.12, 0.2, 'triangle')
+      if (!this._voiceActive && this._ensureAudio()) this._note(990, 0.12, 0.2, 'triangle')
     }
   }
 
@@ -1747,6 +1747,7 @@ export default class ScmjUI {
           try { this._bgm.play().catch(() => {}) } catch (e) { /* 忽略 */ }
         }
       }
+      if (!this._bgmCommDucks && !this._voiceActive && this._voiceBgmHolding) this._syncVoiceMix()
     }, ms)
   }
 
@@ -3315,7 +3316,7 @@ export default class ScmjUI {
       if (!this._ac) {
         this._ac = new AC()
         this._master = this._ac.createGain()
-        this._master.gain.value = this._voiceActive ? 0.06 : 0.6
+        this._master.gain.value = this._voiceActive ? 0 : 0.6
         this._master.connect(this._ac.destination)
       }
       // iOS 录音停止会把 context 打进 'interrupted'（非 suspended），同样需要 resume，
@@ -3328,6 +3329,7 @@ export default class ScmjUI {
   }
 
   _note(freq, length = 0.1, volume = 0.14, type = 'sine', delay = 0) {
+    if (this._voiceActive) return
     const ac = this._ac
     if (!ac || ac.state === 'closed') return
     const o = ac.createOscillator()
@@ -3346,6 +3348,7 @@ export default class ScmjUI {
   }
 
   sound(type) {
+    if (this._voiceActive) return
     if (!this.settings.sound || typeof window === 'undefined') return
     if (!this._ensureAudio()) return
     // 特殊音效期间压低 BGM（临时档，与读秒持续档叠乘；click/discard/deal 太短不压）
@@ -3417,7 +3420,8 @@ export default class ScmjUI {
       }
       if (this._bgm) {
         this._duckApply() // 新建的 BGM 也要套用进行中的 duck（读秒/音效临时档）
-        if (this._bgm.paused && (!this._voiceActive || this._volCanSet())) {
+        if (this._voiceActive) { this._voiceBgmHolding = true; this._bgm.pause(); return }
+        if (this._bgm.paused) {
           const p = this._bgm.play()
           if (p && p.catch) p.catch(() => {})
         }
