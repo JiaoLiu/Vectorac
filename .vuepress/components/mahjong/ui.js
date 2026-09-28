@@ -35,6 +35,25 @@ const SUIT_CODE = { wan: 'm', tong: 'p', tiao: 's' }
 function tileImageSrc(id) {
   return '/mahjong/tiles/' + SUIT_CODE[tileSuit(id)] + tileRank(id) + '.png'
 }
+// 全桌共享原始 PNG 及解码结果；重绘不重新创建图片加载任务。
+const tileImages = new Map()
+function loadTileImage(id) {
+  const cached = tileImages.get(id)
+  if (cached) return cached
+  const entry = { image: null, promise: null }
+  tileImages.set(id, entry)
+  entry.promise = new Promise((resolve, reject) => {
+    const image = new Image()
+    image.onload = async () => {
+      if (image.decode) { try { await image.decode() } catch (e) { /* onload 已成功 */ } }
+      entry.image = image
+      resolve(image)
+    }
+    image.onerror = () => { tileImages.delete(id); reject(new Error('牌面加载失败：' + tileName(id))) }
+    image.src = tileImageSrc(id)
+  })
+  return entry
+}
 // 紧凑牌名：1万 / 2筒 / 3条（听牌提示用，省空间）
 function compactTileName(id) {
   return tileRank(id) + SUIT_NAMES[tileSuit(id)]
@@ -252,6 +271,8 @@ export default class ScmjUI {
   // ==================== 生命周期 ====================
 
   mount() {
+    this._tileImagesReady = Promise.all(Array.from({ length: 27 }, (_, id) => loadTileImage(id).promise))
+    this._tileImagesReady.catch(() => { if (!this._destroyed) this.toast('牌面图片加载失败，请检查网络后刷新') })
     const q = s => this.root.querySelector(s)
     this._els = {
       entry: q('[data-scmj-entry]'),
@@ -362,6 +383,13 @@ export default class ScmjUI {
       else if (this._els.table && !this._els.table.hidden) this.music(true)
     }
     document.addEventListener('visibilitychange', this._onVisibility)
+    this._onAudioGesture = ev => {
+      if (ev.target && ev.target.closest && ev.target.closest('.scmj-bubble-voice')) return
+      this._resumeVoiceFromGesture()
+    }
+    this.root.addEventListener('pointerdown', this._onAudioGesture, true)
+    this.root.addEventListener('pointerup', this._onAudioGesture, true)
+    this.root.addEventListener('keydown', this._onAudioGesture, true)
     if (this._els.rulesContent) this._els.rulesContent.innerHTML = this.buildRulesHtml()
     this.refreshEntry()
     this.showEntry()
@@ -551,7 +579,14 @@ export default class ScmjUI {
       document.removeEventListener('visibilitychange', this._onVisibility)
       this._onVisibility = null
     }
+    if (this._onAudioGesture) {
+      this.root.removeEventListener('pointerdown', this._onAudioGesture, true)
+      this.root.removeEventListener('pointerup', this._onAudioGesture, true)
+      this.root.removeEventListener('keydown', this._onAudioGesture, true)
+      this._onAudioGesture = null
+    }
     this.music(false)
+    clearTimeout(this._bgmResumeTimer)
     if (this._bgm) { this._bgm.pause(); this._bgm.removeAttribute('src'); this._bgm = null }
     this._stopVoiceNow() // 掐断当前播报 + speechSynthesis.cancel
     if (this._voiceMsgPlaying) { try { this._voiceMsgPlaying.pause() } catch (e) { /* 忽略 */ } this._voiceMsgPlaying = null }
@@ -1002,6 +1037,7 @@ export default class ScmjUI {
       el.textContent = '🔊 ' + (msg.duration || 1) + '″'
       el.title = '点击停/重播'
       el.addEventListener('click', () => {
+        if (this._voicePlaybackBlocked) { this._resumeVoiceFromGesture(); return }
         this.sound('click')
         // 这条气泡的语音正在播：点一下停（不听）；否则播/重播
         const cur = this._voiceMsgPlaying
@@ -1064,11 +1100,12 @@ export default class ScmjUI {
   }
 
   _drainVoiceQueue() {
-    if (this._destroyed || this._voiceActive) return
+    if (this._destroyed || this._voiceActive || this._voicePlaybackBlocked) return
     if (this.settings.voice === false || this._recStarting || this._recorder || this._recStream) {
       this._syncVoiceMix()
       return
     }
+    this._setVoiceSession('playback')
     const delay = this._voiceResumeAt - Date.now()
     if (delay > 0) { this._scheduleVoiceDrain(delay); return }
     const entry = this._voiceQueue.shift()
@@ -1101,7 +1138,7 @@ export default class ScmjUI {
   }
 
   _syncVoiceMix() {
-    const active = !!this._voiceActive
+    const active = !!(this._voiceActive || this._recStarting || this._recorder || this._recStream)
     // 只压游戏音效总线；玩家人声直接接 destination，不随音效总线降低。
     if (this._master) this._master.gain.value = active ? 0 : 0.6
     this._duckApply()
@@ -1110,11 +1147,44 @@ export default class ScmjUI {
         this._voiceBgmHolding = true
         this._bgm.pause()
       } else if (!active && this._voiceBgmHolding) {
-        if (!(this._bgmCommDucks > 0)) this._voiceBgmHolding = false
-        if (this.settings.music !== false && this._els.table && !this._els.table.hidden && !this._destroyed && !(this._bgmCommDucks > 0))
-          this._bgm.play().catch(() => {})
+        this._resumeVoiceBgm()
       }
     }
+  }
+
+  _setVoiceSession(type) {
+    try {
+      if (typeof navigator !== 'undefined' && navigator.audioSession && navigator.audioSession.type !== type)
+        navigator.audioSession.type = type
+    } catch (e) { /* 较旧的浏览器不支持该 API，仍可使用媒体元素播放。 */ }
+  }
+
+  _resumeVoiceBgm(retry = true) {
+    if (this._bgmResumePending || !this._voiceBgmHolding || !this._bgm ||
+        this._voiceActive || this._recStarting || this._recorder || this._recStream ||
+        this.settings.music === false || !this._els.table || this._els.table.hidden ||
+        this._destroyed || this._bgmCommDucks > 0) return
+    this._setVoiceSession('playback')
+    const bgm = this._bgm
+    this._bgmResumePending = true
+    const failed = () => {
+      // 录音会话刚切回时可暂时拒绝播放，短延时补一次；仍失败则留给真实手势恢复。
+      if (retry && !this._destroyed) {
+        clearTimeout(this._bgmResumeTimer)
+        this._bgmResumeTimer = setTimeout(() => this._resumeVoiceBgm(false), 400)
+      }
+    }
+    try {
+      Promise.resolve(bgm.play()).then(() => {
+        if (this._bgm === bgm && !bgm.paused && !this._voiceActive && !this._recStarting && !this._recorder && !this._recStream)
+          this._voiceBgmHolding = false
+      }, failed)
+        .then(() => { this._bgmResumePending = false })
+    } catch (e) { this._bgmResumePending = false; failed() }
+  }
+
+  _preferVoiceMedia(mime) {
+    try { return !!document.createElement('audio').canPlayType(mime) } catch (e) { return false }
   }
 
   _startVoiceData(mime, data, bubbleEl, job) {
@@ -1122,6 +1192,9 @@ export default class ScmjUI {
       const bin = atob(data)
       const bytes = new Uint8Array(bin.length)
       for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+      // 与快捷语/BGM 同走媒体播放路径，避免正常录音在 WebAudio 与媒体元素间切换。
+      this._setVoiceSession('playback')
+      if (this._preferVoiceMedia(mime)) { this._playVoiceViaElement(mime, bytes, bubbleEl, job); return }
       if (!this._playVoiceViaWebAudio(mime, bytes, bubbleEl, job)) this._playVoiceViaElement(mime, bytes, bubbleEl, job)
     } catch (err) {
       this._finishVoiceItem(job)
@@ -1203,26 +1276,64 @@ export default class ScmjUI {
     if (this._voiceActive !== job) return
     try {
       const url = URL.createObjectURL(new Blob([bytes], { type: mime }))
-      const a = new Audio(url)
+      const a = this._getVoiceElement()
+      a.src = url
       a._bubble = bubbleEl || null
       this._voiceMsgPlaying = a
       let done = false
-      const release = () => {
+      const release = (advance = true) => {
         if (done) return
         done = true
         a.onended = a.onerror = null
         try { a.pause() } catch (e) { /* 忽略 */ }
         URL.revokeObjectURL(url)
         if (this._voiceMsgPlaying === a) this._voiceMsgPlaying = null
-        this._finishVoiceItem(job)
+        if (advance) this._finishVoiceItem(job)
       }
       a._release = release
-      a.onended = release
-      a.onerror = release
-      a.play().catch(release)
+      a.onended = () => release()
+      a.onerror = () => release()
+      Promise.resolve(a.play()).catch(err => {
+        if (done || this._voiceActive !== job) return
+        if (err && (err.name === 'NotAllowedError' || err.name === 'AbortError')) {
+          release(false)
+          this._voiceActive = null
+          this._voiceQueue.unshift(job.entry)
+          this._voicePlaybackBlocked = true
+          this._syncVoiceMix()
+          this.toast('语音待播放，轻触牌桌即可继续收听')
+        } else release()
+      })
     } catch (e) {
       this._finishVoiceItem(job)
     }
+  }
+
+  _getVoiceElement() {
+    if (!this._voiceElement) { this._voiceElement = new Audio(); this._voiceElement.preload = 'auto' }
+    return this._voiceElement
+  }
+
+  _resumeVoiceFromGesture() {
+    if (this._destroyed || this._recStarting || this._recorder || this._recStream) return
+    this._voicePlaybackBlocked = false
+    this._drainVoiceQueue() // 必须直接在手势栈内 play，不能放进定时器。
+    this._syncVoiceMix()
+    if (this._voiceActive || this.settings.voice === false || this._voicePrimed || this._voicePriming) return
+    // 在入局/选牌手势中解锁同一个媒体元素，后续语音只换 src，保留逐元素播放许可。
+    const a = this._getVoiceElement()
+    const bytes = new Uint8Array(204), v = new DataView(bytes.buffer)
+    const str = (at, s) => { for (let i = 0; i < s.length; i++) bytes[at + i] = s.charCodeAt(i) }
+    str(0, 'RIFF'); v.setUint32(4, 196, true); str(8, 'WAVEfmt '); v.setUint32(16, 16, true)
+    v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, 8000, true)
+    v.setUint32(28, 16000, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true)
+    str(36, 'data'); v.setUint32(40, 160, true)
+    a.src = 'data:audio/wav;base64,' + btoa(String.fromCharCode.apply(null, bytes))
+    this._voicePriming = true
+    try {
+      Promise.resolve(a.play()).then(() => { this._voicePrimed = true }, () => {})
+        .then(() => { this._voicePriming = false })
+    } catch (e) { this._voicePriming = false }
   }
 
   async startVoiceRec() {
@@ -1238,6 +1349,7 @@ export default class ScmjUI {
     this._pauseVoiceQueue()
     this._stopVoiceNow()
     this._recAbort = false
+    this._setVoiceSession('play-and-record')
     let stream
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true })
@@ -1334,6 +1446,7 @@ export default class ScmjUI {
       this._recStream.getTracks().forEach(t => t.stop())
       this._recStream = null
     }
+    this._setVoiceSession('playback')
     // 所有收尾分支（短录音/取消/发送失败也包括）都恢复暂缓的接收队列。
     this._voiceResumeAt = Date.now() + 350
     this._scheduleVoiceDrain(350)
@@ -1386,6 +1499,8 @@ export default class ScmjUI {
     this._chatGeneration++
     this._pauseVoiceQueue()
     this._voiceQueue = []
+    this._voicePlaybackBlocked = false
+    if (this._voiceElement) this._voiceElement.pause()
     clearTimeout(this._voiceDrainTimer)
     if (this._unsubChat) {
       this._unsubChat()
@@ -1741,11 +1856,8 @@ export default class ScmjUI {
         this._duckApply()
       } else if (!this._bgmCommDucks && this._bgmCommHolding) {
         this._bgmCommHolding = false
-        if (this._voiceActive) this._voiceBgmHolding = true
-        // 播放期间用户主动关了音乐则不恢复
-        if (this._bgm && this._bgm.paused && this.settings.music !== false && !this._voiceActive) {
-          try { this._bgm.play().catch(() => {}) } catch (e) { /* 忽略 */ }
-        }
+        this._voiceBgmHolding = true
+        this._syncVoiceMix()
       }
       if (!this._bgmCommDucks && !this._voiceActive && this._voiceBgmHolding) this._syncVoiceMix()
     }, ms)
@@ -2540,12 +2652,20 @@ export default class ScmjUI {
 
   // 牌面贴图（透明背景 PNG，alt 保留中文牌名便于无障碍/加载失败兜底）
   makeTileImage(id) {
-    const img = document.createElement('img')
-    img.className = 'scmj-tile-img'
-    img.src = tileImageSrc(id)
-    img.alt = tileName(id)
-    img.draggable = false
-    return img
+    const face = document.createElement('canvas')
+    face.className = 'scmj-tile-img'
+    face.setAttribute('role', 'img')
+    face.setAttribute('aria-label', tileName(id))
+    const draw = image => {
+      face.width = image.naturalWidth
+      face.height = image.naturalHeight
+      face.getContext('2d').drawImage(image, 0, 0)
+      face.dataset.ready = 'true'
+    }
+    const entry = loadTileImage(id)
+    if (entry.image) draw(entry.image)
+    else entry.promise.then(draw).catch(() => {})
+    return face
   }
 
   /** 幺鸡赖子角标（右上角金色「赖」，样式与缺门红角标一致） */
@@ -2558,14 +2678,26 @@ export default class ScmjUI {
 
   renderHand(v) {
     const el = this._els.hand
-    el.innerHTML = ''
+    const reusable = new Map()
+    Array.from(el.children).forEach(b => {
+      const list = reusable.get(b._tileId) || []
+      list.push(b); reusable.set(b._tileId, list)
+    })
     const merged = this.mergedHand()
     const discardOpt = v.legal.find(o => o.type === 'discard')
     const legalTiles = discardOpt ? discardOpt.tiles : null
     const swapMode = v.phase === 'swap'
     merged.forEach(t => {
-      const b = document.createElement('button')
-      b.type = 'button'
+      const list = reusable.get(t.id)
+      const b = list && list.length ? list.shift() : document.createElement('button')
+      if (b._tileId == null) {
+        b.type = 'button'
+        b.appendChild(this.makeTileImage(t.id))
+        b.addEventListener('click', () => this.onHandTile(b._tileIdx, b._tileId))
+      }
+      b._tileId = t.id
+      b._tileIdx = t.idx
+      b.querySelectorAll('.scmj-tile-wildmark, .scmj-tile-voidmark').forEach(mark => mark.remove())
       let cls = 'scmj-tile scmj-tile-hand'
       if (t.drawn) cls += ' scmj-tile-drawn' // 新摸的牌与原手牌留间距
       if (this.selectedIdx === t.idx || this.swapPickIdxs.indexOf(t.idx) >= 0) cls += ' scmj-tile-selected'
@@ -2584,10 +2716,9 @@ export default class ScmjUI {
         mark.textContent = '缺'
         b.appendChild(mark)
       }
-      b.appendChild(this.makeTileImage(t.id))
-      b.addEventListener('click', () => this.onHandTile(t.idx, t.id))
-      el.appendChild(b)
+      if (el.children[t.idx] !== b) el.insertBefore(b, el.children[t.idx] || null)
     })
+    reusable.forEach(list => list.forEach(b => b.remove()))
   }
 
   onHandTile(idx, tileId) {
@@ -3329,7 +3460,7 @@ export default class ScmjUI {
   }
 
   _note(freq, length = 0.1, volume = 0.14, type = 'sine', delay = 0) {
-    if (this._voiceActive) return
+    if (this._voiceActive || this._recStarting || this._recorder || this._recStream) return
     const ac = this._ac
     if (!ac || ac.state === 'closed') return
     const o = ac.createOscillator()
@@ -3348,7 +3479,7 @@ export default class ScmjUI {
   }
 
   sound(type) {
-    if (this._voiceActive) return
+    if (this._voiceActive || this._recStarting || this._recorder || this._recStream) return
     if (!this.settings.sound || typeof window === 'undefined') return
     if (!this._ensureAudio()) return
     // 特殊音效期间压低 BGM（临时档，与读秒持续档叠乘；click/discard/deal 太短不压）
@@ -3420,7 +3551,10 @@ export default class ScmjUI {
       }
       if (this._bgm) {
         this._duckApply() // 新建的 BGM 也要套用进行中的 duck（读秒/音效临时档）
-        if (this._voiceActive) { this._voiceBgmHolding = true; this._bgm.pause(); return }
+        if (this._voiceActive || this._recStarting || this._recorder || this._recStream) {
+          this._voiceBgmHolding = true; this._bgm.pause(); return
+        }
+        if (this._voiceBgmHolding) { this._resumeVoiceBgm(); return }
         if (this._bgm.paused) {
           const p = this._bgm.play()
           if (p && p.catch) p.catch(() => {})

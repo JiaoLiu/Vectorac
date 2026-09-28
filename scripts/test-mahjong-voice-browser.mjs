@@ -87,6 +87,19 @@ try{
   assert.equal(await page.locator('[data-scmj-set-sound]').isChecked(),true)
   assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('scmj-settings')).voice),false)
   await page.screenshot({path:join(out,`settings-${viewport.width}.png`)})
+  // Slow/failed image requests must never remove cards or force unaffected images to reload.
+  await page.route('**/mahjong/tiles/*.png',async route=>{await new Promise(r=>setTimeout(r,300));await route.abort()})
+  const handResult=await page.evaluate(()=>{
+   ui.view={phase:'play',legal:[{type:'discard',tiles:[0,1,2,3,4,5,6,7,8]}],my:{hand:[0,0,1,1,2,2,3,3,4,4,5,5,6],drawnTile:7,void:null}}
+   ui.renderHand(ui.view)
+   const before=Array.from(ui._els.hand.children),images=before.map(b=>b.querySelector('img'))
+   for(let i=0;i<50;i++){ui.selectedIdx=i%14;ui.renderHand(ui.view)}
+   const stable=before.every((b,i)=>b===ui._els.hand.children[i]&&images[i]===b.querySelector('img'))
+   ui.view.my.hand.shift();ui.view.my.drawnTile=8;ui.renderHand(ui.view)
+   return {stable,count:ui._els.hand.children.length,correct:Array.from(ui._els.hand.children).every((b,i)=>b._tileIdx===i)}
+  })
+  assert.deepEqual(handResult,{stable:true,count:13,correct:true})
+  await page.waitForFunction(()=>Array.from(ui._els.hand.querySelectorAll('img')).every(img=>img.complete&&img.naturalWidth>0&&img.src.startsWith('data:image/svg+xml')))
   await page.evaluate(()=>ui.destroy());assert.deepEqual(errors,[]);await page.close()
  }
  console.log(JSON.stringify({passed:true,screenshots:out}))

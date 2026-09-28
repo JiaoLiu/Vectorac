@@ -125,3 +125,65 @@ test('denied microphone permission resumes the paused head message',async()=>{
  try {await ui.startVoiceRec();assert.equal(sources.length,2);assert.equal(atob(ui._voiceActive.entry.data),'A')}
  finally {f.close();if(old)Object.defineProperty(globalThis,'navigator',old);else delete globalThis.navigator}
 })
+
+test('failed BGM resume keeps intent and retries; manual music off remains off',async()=>{
+ const f=fixture(),{ui,receive,sources}=f;let attempts=0
+ ui._bgm.play=function(){attempts++;if(attempts===1)return Promise.reject(Error('session switching'));this.paused=false;return Promise.resolve()}
+ receive('A');sources[0].onended();await flush()
+ assert.equal(ui._voiceBgmHolding,true);assert.equal(ui._bgm.paused,true)
+ await new Promise(r=>setTimeout(r,450))
+ assert.equal(attempts,2);assert.equal(ui._voiceBgmHolding,false);assert.equal(ui._bgm.paused,false)
+ receive('B');ui.settings.music=false;sources[1].onended();await flush()
+ assert.equal(ui._bgm.paused,true);assert.equal(attempts,2);f.close()
+})
+
+test('native media playback uses playback session without creating WebAudio',()=>{
+ const old=Object.getOwnPropertyDescriptor(globalThis,'navigator'),oldAudio=globalThis.Audio
+ const session={type:'play-and-record'}
+ Object.defineProperty(globalThis,'navigator',{configurable:true,value:{audioSession:session}})
+ let element
+ globalThis.Audio=class {constructor(){element=this}play(){return Promise.resolve()}pause(){}}
+ const f=fixture(),{ui,receive}=f;ui._preferVoiceMedia=()=>true
+ ui._ensureAudio=()=>{throw Error('native recording should not create a WebAudio context')}
+ try {receive('A');assert.equal(session.type,'playback');assert.equal(ui._voiceMsgPlaying,element)}
+ finally {f.close();globalThis.Audio=oldAudio;if(old)Object.defineProperty(globalThis,'navigator',old);else delete globalThis.navigator}
+})
+
+test('recording switches session; microphone denial restores playback',async()=>{
+ const old=Object.getOwnPropertyDescriptor(globalThis,'navigator');const session={type:'playback'}
+ Object.defineProperty(globalThis,'navigator',{configurable:true,value:{audioSession:session,mediaDevices:{getUserMedia:async()=>{
+  assert.equal(session.type,'play-and-record');throw Error('denied')
+ }}}})
+ const f=fixture()
+ try {await f.ui.startVoiceRec();assert.equal(session.type,'playback')}
+ finally {f.close();if(old)Object.defineProperty(globalThis,'navigator',old);else delete globalThis.navigator}
+})
+
+test('autoplay rejection keeps FIFO; next ordinary gesture retries on the same element',async()=>{
+ const old=globalThis.Audio;let created=0,allowed=false,plays=0
+ globalThis.Audio=class {constructor(){created++}pause(){}play(){plays++;return allowed?Promise.resolve():Promise.reject(Object.assign(Error('gesture required'),{name:'NotAllowedError'}))}}
+ const f=fixture(),{ui,receive}=f;ui._preferVoiceMedia=()=>true
+ try {
+  receive('A');receive('B');await flush()
+  assert.equal(ui._voiceActive,null);assert.equal(ui._voicePlaybackBlocked,true)
+  assert.deepEqual(ui._voiceQueue.map(e=>atob(e.data)),['A','B'])
+  receive('C');assert.equal(plays,1,'no retry storm while blocked')
+  allowed=true;ui._resumeVoiceFromGesture()
+  assert.equal(atob(ui._voiceActive.entry.data),'A');assert.equal(created,1)
+  ui._voiceElement.onended();await flush()
+  assert.equal(atob(ui._voiceActive.entry.data),'B');assert.equal(created,1)
+  ui._voiceElement.onended();await flush()
+  assert.equal(atob(ui._voiceActive.entry.data),'C');assert.equal(created,1)
+ } finally {f.close();globalThis.Audio=old}
+})
+
+test('entry gesture primes the reusable voice element, later messages do not create new elements',async()=>{
+ const old=globalThis.Audio;let created=0
+ globalThis.Audio=class {constructor(){created++}pause(){}play(){return Promise.resolve()}}
+ const f=fixture(),{ui,receive}=f;ui._preferVoiceMedia=()=>true
+ try {
+  ui._resumeVoiceFromGesture();assert.equal(created,1);await flush();assert.equal(ui._voicePrimed,true)
+  const player=ui._voiceElement;receive('A');assert.equal(ui._voiceMsgPlaying,player)
+  ui._voiceElement.onended();await flush();receive('B');assert.equal(ui._voiceMsgPlaying,player);assert.equal(created,1)
+ } finally {f.close();globalThis.Audio=old}
+})
