@@ -1,0 +1,408 @@
+{
+  "sampleRate": 22050,
+  "sources": {
+    "slime": {
+      "title": "Slime",
+      "author": "qubodup",
+      "license": "CC0-1.0",
+      "page": "https://freesound.org/people/qubodup/sounds/127449/",
+      "download": "https://cdn.freesound.org/previews/127/127449_71257-lq.mp3",
+      "sha256": "5dd188917ed63766283f610c226467081122577fb20c37864c4b4eed55580037"
+    },
+    "bubbles": {
+      "title": "slime - bubble blowing recordings",
+      "author": "rubberduck9999",
+      "license": "CC0-1.0",
+      "page": "https://freesound.org/people/rubberduck9999/sounds/680446/",
+      "download": "https://cdn.freesound.org/previews/680/680446_14687392-lq.mp3",
+      "sha256": "0ad2a459f9d99f217a9da566a9378bb1980c1853771cf01d61906b8aa9845895"
+    }
+  },
+  "samples": {
+    "press_01": {
+      "source": "bubbles",
+      "start": 15.65,
+      "length": 0.6,
+      "duration": 0.6,
+      "loop": false,
+      "gain": 0.45450786178441566,
+      "rms": 0.075,
+      "peak": 0.35776259694910106,
+      "sha256": "1138ed516c1571741ed05bd342de65fd273453d3935542c88788ec2f11987cf2"
+    },
+    "press_02": {
+      "source": "bubbles",
+      "start": 25.76,
+      "length": 0.55,
+      "duration": 0.5500226757369614,
+      "loop": false,
+      "gain": 1.370350594276087,
+      "rms": 0.075,
+      "peak": 0.37678679573376556,
+      "sha256": "4eaf8b0d43de5809c3e4889ef7328539ae054f86269655868113a8700327ce85"
+    },
+    "press_03": {
+      "source": "bubbles",
+      "start": 33.05,
+      "length": 0.65,
+      "duration": 0.6500226757369615,
+      "loop": false,
+      "gain": 1.7387963562647764,
+      "rms": 0.04908048857306267,
+      "peak": 0.56,
+      "sha256": "23ae09fc9c24d940aa7fde8cf8ed87f8822d578a555e58af2d9cf625ca6f4902"
+    },
+    "pinch_01": {
+      "source": "slime",
+      "start": 27,
+      "length": 0.38,
+      "duration": 0.38,
+      "loop": false,
+      "gain": 102.37758930865402,
+      "rms": 0.05724024604922372,
+      "peak": 0.56,
+      "sha256": "4365ba2271eca5c2b620206aa6df15cf467a4cd8079ebeecad73f9ff54e08888"
+    },
+    "pinch_02": {
+      "source": "slime",
+      "start": 31.2,
+      "length": 0.45,
+      "duration": 0.4500226757369615,
+      "loop": false,
+      "gain": 274.43792805773785,
+      "rms": 0.05710039329725295,
+      "peak": 0.56,
+      "sha256": "3311bb32d1d93b186b691d9aed38d04aa4cdca7e3fb9f4d8cd1085c27541bb7d"
+    },
+    "flatten_01": {
+      "source": "bubbles",
+      "start": 39.05,
+      "length": 0.85,
+      "duration": 0.8500226757369614,
+      "loop": false,
+      "gain": 1.1480710145654902,
+      "rms": 0.075,
+      "peak": 0.2673118956474767,
+      "sha256": "fd399ef53ce3d429a0d325ea1edbedec0d825dc693bc812b9c5a65a989ae92f8"
+    },
+    "flatten_02": {
+      "source": "bubbles",
+      "start": 107.1,
+      "length": 0.9,
+      "duration": 0.9,
+      "loop": false,
+      "gain": 0.41500914906379616,
+      "rms": 0.075,
+      "peak": 0.22584775759834747,
+      "sha256": "23f7b8806ed008cd0a72ccb76cd210b0c320f98cf54600f6e70b7bc5d6028c83"
+    },
+    "smooth_01": {
+      "source": "bubbles",
+      "start": 12.05,
+      "length": 0.7,
+      "duration": 0.7,
+      "loop": false,
+      "gain": 4.819506749941305,
+      "rms": 0.049999999999999996,
+      "peak": 0.25020872005085004,
+      "sha256": "5b8aebdd40861242aaa88dd86fe75f1ff60a6c79b5f89f57cdff225efe8d4b74"
+    },
+    "smooth_02": {
+      "source": "bubbles",
+      "start": 96.05,
+      "length": 0.75,
+      "duration": 0.7499773242630385,
+      "loop": false,
+      "gain": 1.327756266763044,
+      "rms": 0.05,
+      "peak": 0.16197900522989384,
+      "sha256": "627706e951fb63c9034a0c6e646bc39e513799e432397588b8afd23e47f51e8e"
+    },
+    "carve_01": {
+      "source": "slime",
+      "start": 42.2,
+      "length": 0.45,
+      "duration": 0.4500226757369615,
+      "loop": false,
+      "gain": 225.63577442104642,
+      "rms": 0.05102970753901579,
+      "peak": 0.56,
+      "sha256": "94d6473aab1e0cfb32c3fa6a6aecc7c6b59e91d51e60ee9a5a88ebef8dd7b833"
+    },
+    "carve_02": {
+      "source": "slime",
+      "start": 74.45,
+      "length": 0.4,
+      "duration": 0.4,
+      "loop": false,
+      "gain": 324.07846199264503,
+      "rms": 0.0720336133502387,
+      "peak": 0.56,
+      "sha256": "dc90e00408a296f92bd2dbcb013fc05920f20290cf11439a4326f8d61f4d4d3c"
+    },
+    "tear_01": {
+      "source": "bubbles",
+      "start": 91.55,
+      "length": 0.85,
+      "duration": 0.8499773242630385,
+      "loop": false,
+      "gain": 0.6095066390684879,
+      "rms": 0.075,
+      "peak": 0.554533931465559,
+      "sha256": "1d004efa90dfc97f9ec01940e0c541110dd773e3422753f433308284d0d8d897"
+    },
+    "tear_02": {
+      "source": "bubbles",
+      "start": 105.45,
+      "length": 0.85,
+      "duration": 0.8499773242630385,
+      "loop": false,
+      "gain": 0.46700790993001634,
+      "rms": 0.075,
+      "peak": 0.5163416485460101,
+      "sha256": "9d7ff746d60a8a195b20a01d0f45e76b5d4e71ea0f47190dd1a31cb94db99657"
+    },
+    "fold_01": {
+      "source": "bubbles",
+      "start": 109.05,
+      "length": 0.85,
+      "duration": 0.8499773242630385,
+      "loop": false,
+      "gain": 0.44977823070848133,
+      "rms": 0.075,
+      "peak": 0.3010544602096881,
+      "sha256": "32d4bae4b637feed6fc738753c235e7787757ac39542aa8e2386a1d154da3805"
+    },
+    "fold_02": {
+      "source": "bubbles",
+      "start": 110.45,
+      "length": 0.8,
+      "duration": 0.8,
+      "loop": false,
+      "gain": 0.41717410149389994,
+      "rms": 0.075,
+      "peak": 0.33457889511830385,
+      "sha256": "cd2a68f2c1d459755b5e1774cdd818fcdb1e04fc23b370c524dc7dd52e00c39f"
+    },
+    "drag_01": {
+      "source": "bubbles",
+      "start": 9,
+      "length": 0.9,
+      "duration": 0.9,
+      "loop": false,
+      "gain": 0.47383465687584797,
+      "rms": 0.07037281717928026,
+      "peak": 0.56,
+      "sha256": "65f08404918c13284ced65a954d881ac46fd590c55473099bd403f48cfe03585"
+    },
+    "drag_02": {
+      "source": "bubbles",
+      "start": 10,
+      "length": 0.8,
+      "duration": 0.8,
+      "loop": false,
+      "gain": 0.49011381878175325,
+      "rms": 0.075,
+      "peak": 0.4438332620735102,
+      "sha256": "da2c86459e8ffad5193221b3e3be64b1fda40a9ac3f644a49901a11a6d43f757"
+    },
+    "blow_01": {
+      "source": "bubbles",
+      "start": 4.05,
+      "length": 0.9,
+      "duration": 0.9,
+      "loop": false,
+      "gain": 1.5515045176082773,
+      "rms": 0.075,
+      "peak": 0.39372427454063286,
+      "sha256": "bd5e31f28165d4e31f475d6fc946f2ca47fcb9bc4fedfdd74a4919d58e0bc336"
+    },
+    "blow_02": {
+      "source": "bubbles",
+      "start": 13.25,
+      "length": 1,
+      "duration": 1,
+      "loop": false,
+      "gain": 3.6649201345047047,
+      "rms": 0.075,
+      "peak": 0.3520319958548504,
+      "sha256": "8562622549c1f8b01ee1093a33f06ecf22e8fc9b9bb181ec7b3b52a30264028f"
+    },
+    "pop_01": {
+      "source": "bubbles",
+      "start": 27.05,
+      "length": 0.28,
+      "duration": 0.28,
+      "loop": false,
+      "gain": 0.9286557986099219,
+      "rms": 0.075,
+      "peak": 0.369734423059269,
+      "sha256": "fcd20bef4f8f9463bd45e0158c47e116ecc8786d84294200fa45052b66bb967c"
+    },
+    "pop_02": {
+      "source": "bubbles",
+      "start": 35.3,
+      "length": 0.28,
+      "duration": 0.28,
+      "loop": false,
+      "gain": 4.390514936480528,
+      "rms": 0.053567011786466064,
+      "peak": 0.56,
+      "sha256": "a4c4e4bb6815b721e926e531b81152f1e5095b3804ad21790c5f9ba0dfa42aed"
+    },
+    "pop_03": {
+      "source": "bubbles",
+      "start": 24.1,
+      "length": 0.3,
+      "duration": 0.3,
+      "loop": false,
+      "gain": 1.547723341705157,
+      "rms": 0.06873941197899786,
+      "peak": 0.56,
+      "sha256": "9ac0f6820c9aa240a911b40a6e0880efb60cbb83b8adf1685bb54cbf57e0bd6d"
+    },
+    "glitter_01": {
+      "source": "slime",
+      "start": 11.7,
+      "length": 0.4,
+      "duration": 0.4,
+      "loop": false,
+      "gain": 88.8058340013883,
+      "rms": 0.02393067161358209,
+      "peak": 0.56,
+      "sha256": "14da97b9067100659035e47941a6926d1083d7ae1a24fb9d167d8f0b67015b57"
+    },
+    "glitter_02": {
+      "source": "slime",
+      "start": 51.2,
+      "length": 0.45,
+      "duration": 0.4500226757369615,
+      "loop": false,
+      "gain": 350.30096578844615,
+      "rms": 0.05,
+      "peak": 0.49503098787412325,
+      "sha256": "0bef5a6e6317e4ce8406391ed3a71d91dbd01f1ece56c12b71cca651014f06d2"
+    },
+    "foil_01": {
+      "source": "bubbles",
+      "start": 29.05,
+      "length": 0.45,
+      "duration": 0.44997732426303855,
+      "loop": false,
+      "gain": 0.7191435850663314,
+      "rms": 0.05,
+      "peak": 0.3063885364083672,
+      "sha256": "3c83c85f35145287358c231a07f2836ce332758c870cd6a714012fea70763731"
+    },
+    "foil_02": {
+      "source": "bubbles",
+      "start": 32.15,
+      "length": 0.5,
+      "duration": 0.5,
+      "loop": false,
+      "gain": 2.7008549747374326,
+      "rms": 0.05,
+      "peak": 0.3427550437238915,
+      "sha256": "74c463b066cd20b94411f02b6f5bc0de1b8ff6f5034ef57df2958720071a118e"
+    },
+    "thud_01": {
+      "source": "bubbles",
+      "start": 30.55,
+      "length": 0.26,
+      "duration": 0.26,
+      "loop": false,
+      "gain": 3.6352653759227582,
+      "rms": 0.05,
+      "peak": 0.19219123194252596,
+      "sha256": "49deaf9cbedd2bde8b2b7d3930371ffedbc94b712b76b9015cd63a1aa6e0a00c"
+    },
+    "thud_02": {
+      "source": "bubbles",
+      "start": 34.4,
+      "length": 0.28,
+      "duration": 0.28,
+      "loop": false,
+      "gain": 1.0781417128701192,
+      "rms": 0.05,
+      "peak": 0.4118202837283423,
+      "sha256": "984cf65bcc0f933d1969fd32933abe4a8e887030ed5f1928168916f96ee6f147"
+    },
+    "mold_01": {
+      "source": "bubbles",
+      "start": 18.25,
+      "length": 0.9,
+      "duration": 0.8999546485260771,
+      "loop": false,
+      "gain": 0.2648106978562658,
+      "rms": 0.075,
+      "peak": 0.3147188771735138,
+      "sha256": "99ae41baec59939028d105e7e1025ec279bca5095612ef3cec43ad056fff828f"
+    },
+    "mold_02": {
+      "source": "bubbles",
+      "start": 19.6,
+      "length": 0.9,
+      "duration": 0.9,
+      "loop": false,
+      "gain": 0.2638549696224549,
+      "rms": 0.075,
+      "peak": 0.43396756609006926,
+      "sha256": "05a6d99839863d218ec9c63bd8837b80d5e6a0d60795a9a3e68e4be8dbc04644"
+    },
+    "reset_01": {
+      "source": "bubbles",
+      "start": 112,
+      "length": 0.9,
+      "duration": 0.9,
+      "loop": false,
+      "gain": 0.33251539525845847,
+      "rms": 0.075,
+      "peak": 0.37960647664913066,
+      "sha256": "15108a784217a1eca6f60b345a82a011144b42c370425c8628906c1587b53fb9"
+    },
+    "reset_02": {
+      "source": "bubbles",
+      "start": 113,
+      "length": 0.9,
+      "duration": 0.9,
+      "loop": false,
+      "gain": 0.286704757951612,
+      "rms": 0.075,
+      "peak": 0.3781401655374172,
+      "sha256": "48f49d299768dc3acbd6a13dd6ce9c254917795bd64f14313de892532b275e14"
+    },
+    "dab_01": {
+      "source": "slime",
+      "start": 49,
+      "length": 0.24,
+      "duration": 0.24,
+      "loop": false,
+      "gain": 203.04099136966187,
+      "rms": 0.05,
+      "peak": 0.288070582818598,
+      "sha256": "1d4f859fd0acc0de28ae41716fffdd0969529b6a8c494490e4d44bae4e634c53"
+    },
+    "dab_02": {
+      "source": "bubbles",
+      "start": 26.35,
+      "length": 0.22,
+      "duration": 0.22,
+      "loop": false,
+      "gain": 0.6297142410623431,
+      "rms": 0.05,
+      "peak": 0.18937983147535115,
+      "sha256": "199be1257f57a3f20437f508277686368e24c83507cf200cfcd4b28dbce9fe7a"
+    },
+    "bed_01": {
+      "source": "bubbles",
+      "start": 107,
+      "length": 3,
+      "duration": 2.84,
+      "loop": true,
+      "gain": 0.30497666406423335,
+      "rms": 0.045000000000000005,
+      "peak": 0.22552736673013382,
+      "sha256": "b2bb750857d6da643a68399bd977a6ed1b7bdf752e94ad914ccb32510bccf41c"
+    }
+  }
+}

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {readFile, access} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
 const source = await readFile(new URL('../.vuepress/components/slime-audio.js', import.meta.url), 'utf8');
 const {default: Audio, TOOL_SOUNDS} = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
 
@@ -21,7 +22,34 @@ const audio=new Audio({createContext:()=>{created++;return context;},fetchAudio:
 // The whole kit must exist on disk where the game fetches it.
 const allSamples=new Set([...Object.values(TOOL_SOUNDS).flat(),'bed_01']);
 for(const name of allSamples)
- await access(new URL('../.vuepress/public/audio/slime-v3/'+name+'.wav',import.meta.url));
+ await access(new URL('../.vuepress/public'+audio.baseUrl+name+'.wav',import.meta.url));
+assert.equal(audio.baseUrl,'/audio/slime-v6/','new kit bypasses earlier caches');
+const manifest=JSON.parse(await readFile(new URL('../.vuepress/public'+audio.baseUrl+'manifest.json',import.meta.url),'utf8'));
+assert.deepEqual(Object.keys(manifest.samples).sort(),[...allSamples].sort(),'every runtime sample has source provenance');
+const hashes=new Set();
+for(const name of allSamples){
+ const entry=manifest.samples[name];
+ const chime=/^(glitter|foil)_/.test(name);
+ assert.equal(manifest.sources[entry.source].license,chime?'Project-owned':'CC0-1.0');
+ assert.equal(entry.source,chime?'originalChimes':name.startsWith('pop_')?'bubbles':'slime','correct action source');
+ const bytes=await readFile(new URL('../.vuepress/public'+audio.baseUrl+name+'.wav',import.meta.url));
+ const hash=createHash('sha256').update(bytes).digest('hex');
+ assert.equal(hash,entry.sha256,'recorded clip checksum: '+name);
+ assert.ok(!hashes.has(hash),'distinct samples must not secretly be identical: '+name);hashes.add(hash);
+ assert.equal(bytes.toString('ascii',0,4),'RIFF');assert.equal(bytes.toString('ascii',8,12),'WAVE');
+ assert.equal(bytes.readUInt16LE(20),1);assert.equal(bytes.readUInt16LE(22),1);
+ assert.equal(bytes.readUInt32LE(24),22050);assert.equal(bytes.readUInt16LE(34),16);
+ assert.equal(bytes.readUInt32LE(40),bytes.length-44);
+ let peak=0,sum=0;
+ for(let offset=44;offset<bytes.length;offset+=2){const v=bytes.readInt16LE(offset)/32768;peak=Math.max(peak,Math.abs(v));sum+=v*v;}
+ assert.ok(peak>.005&&peak<=(name.startsWith('pop_')?.561:.801),'audible with safe peak headroom: '+name);
+ assert.ok(Math.sqrt(sum/((bytes.length-44)/2))>.005,'not an empty/near-silent excerpt: '+name);
+ if(chime){assert.deepEqual(bytes,await readFile(new URL('../.vuepress/public/audio/slime-v3/'+name+'.wav',import.meta.url)),'restore original chime unchanged');}
+ else if(!entry.loop){assert.equal(bytes.readInt16LE(44),0);assert.equal(bytes.readInt16LE(bytes.length-2),0);}
+ else assert.ok(Math.abs(bytes.readInt16LE(44)-bytes.readInt16LE(bytes.length-2))/32768<.04,'loop seam does not click');
+}
+const previousManifest=JSON.parse(await readFile(new URL('../.vuepress/public/audio/slime-v4/manifest.json',import.meta.url),'utf8'));
+for(const name of TOOL_SOUNDS.pop)assert.equal(manifest.samples[name].sha256,previousManifest.samples[name].sha256,'accepted pop audio remains byte-identical');
 
 // Sculpting actions never share a recording: each has its own timbre.
 const sculpting=['pump','pinch','flatten','smooth','carve','tear','fold','move','bubble','pop','glitter','foil','mold','reset'];
@@ -36,8 +64,10 @@ audio.setEnabled(true); await audio.resuming; assert.equal(created,1);
 await audio.ready;assert.equal(requests,allSamples.size);assert.equal(audio.buffers.size,allSamples.size);
 for(const material of ['butter','cotton','crystal','liquid','foam','memory','clay'])for(const tool of Object.keys(TOOL_SOUNDS)){
  audio.stop(); assert.equal(audio.play(tool,material),true,material+' '+tool);
+ if(tool!=='pop')assert.equal([...audio.voices][0].sources[0].playbackRate.value,1,'qubodup recording keeps its natural pitch: '+tool);
 }
 const studio = await readFile(new URL('../.vuepress/components/SlimeStudio.js', import.meta.url), 'utf8');
+assert.deepEqual([...studio.matchAll(/audio\.play\(\s*['"]([a-z]+)['"]/g)].map(m=>m[1]),['pop'],'only direct bubble popping may trigger standalone playback');
 for(const key of new Set([...studio.matchAll(/audio\.(?:play|begin)\(\s*['"]([a-z]+)['"]/g)].map(match=>match[1])))
  assert.ok(TOOL_SOUNDS[key],'SlimeStudio triggers "'+key+'" but no recording is mapped to it');
 
@@ -54,10 +84,19 @@ audio.stop();audio.begin('pinch');audio.clock=0;audio.tick(.2,'pinch','butter',.
 assert.equal([...audio.voices].filter(v=>!v.bed).length,2,'rubbing movement triggers another wet sample');
 
 // A bed starts with the gesture and swells with motion.
+for(const tool of ['glitter','foil']){
+ audio.stop();context.currentTime=5;audio.begin(tool,'butter',.6);
+ assert.equal(audio.bed,null,'sprinkles have no clay background');
+ audio.tick(.5,tool,'butter',.6,1);
+ assert.ok([...audio.voices].every(v=>!v.bed),'sprinkling motion does not add clay loop');
+ delete audio.lastSample.release;context.currentTime=7;audio.end('butter',true);
+ assert.equal(audio.lastSample.release,undefined,'sprinkles do not release with a clay squish');
+}
 audio.stop();audio.begin('pump','butter',.6);
 const bed=audio.bed;
 assert.ok(bed&&bed.bed&&bed.gesture===audio.gestureId,'a sustained bed starts with the gesture');
 assert.ok(bed.sources[0].loop,'the bed loops seamlessly for unlimited holds');
+assert.equal(bed.sources[0].playbackRate.value,1,'held sound also keeps its natural pitch');
 const base=bed.base;
 audio.tick(1/60,'pump','butter',.6,1);
 const swell=bed.gain.gain.events.find(e=>e[0]==='target'&&e[1]>base);
@@ -127,6 +166,66 @@ assert.equal(ios.play('pump'),false,'still silent while suspended');
 ios.context.state='running';
 assert.equal(ios.play('pump'),true,'sound works once the gesture resumes the context');
 ios.destroy();
+
+// An unresolved resume must never block the next real user gesture. A stale
+// failure must also not stop audio that a later gesture successfully started.
+let attempts=0,rejectFirst;
+const retryContext={...context,state:'suspended',resume(){
+ attempts++;
+ if(attempts===1)return new Promise((_,reject)=>{rejectFirst=reject;});
+ this.state='running';return Promise.resolve();
+}};
+const retry=new Audio({createContext:()=>retryContext,fetchAudio:async()=>new ArrayBuffer(2)});
+retry.unlock();await retry.ready;
+retry.unlock();await retry.resuming;
+assert.equal(attempts,2,'a pending first resume cannot lock out touchend/click');
+retry.begin('pump','butter');
+const retryVoices=retry.voices.size;
+rejectFirst(new Error('stale resume failed'));await Promise.resolve();await Promise.resolve();
+assert.equal(retry.voices.size,retryVoices,'old resume failure cannot stop the recovered gesture');
+retry.destroy();
+
+// A truly stuck context is replaced on the next gesture, with decoded samples
+// kept. Also cover the Safari running-but-frozen-clock failure mode.
+for(const state of ['suspended','interrupted','running','closed']){
+ let time=0,contexts=0;
+ const stuck=new Audio({now:()=>time,createContext:()=>{
+  contexts++;
+  return {...context,state:contexts===1?state:'suspended',currentTime:0,
+   resume(){if(contexts===1)return new Promise(()=>{});this.state='running';return Promise.resolve();}};
+ },fetchAudio:async()=>new ArrayBuffer(2)});
+ stuck.unlock();await stuck.ready;
+ const old=stuck.context;
+ time=1600;stuck.unlock();await stuck.ready;
+ assert.equal(contexts,2,state+' context recovers without a page reload');
+ assert.notEqual(stuck.context,old);
+ assert.equal(stuck.buffers.size,allSamples.size,'context recovery keeps the decoded kit');
+ assert.equal(stuck.play('pump'),true);
+ stuck.destroy();
+}
+
+// AudioSession routes game sound through playback, without leaving a global
+// playback session behind after muting or leaving the page.
+const session={type:'auto'};
+const routed=new Audio({getAudioSession:()=>session,createContext:()=>({...context,state:'running'}),fetchAudio:async()=>new ArrayBuffer(2)});
+routed.unlock();await routed.ready;assert.equal(session.type,'playback');
+routed.setEnabled(false);assert.equal(session.type,'auto');
+routed.setEnabled(true);assert.equal(session.type,'playback');
+routed.suspend();assert.equal(session.type,'auto');
+routed.unlock();assert.equal(session.type,'playback');
+routed.destroy();assert.equal(session.type,'auto');
+
+// If decode/resume finishes during the first hold, the frame loop starts its
+// sound. If the user already released, it must not replay the missed action.
+const cold=new Audio({createContext:()=>({...context,state:'running'}),fetchAudio:async()=>new ArrayBuffer(2)});
+cold.unlock();cold.begin('pump','butter');
+assert.equal(cold.voices.size,0);
+await cold.ready;cold.tick(.016,'pump','butter',.6,0);
+assert.ok(cold.bed&&cold.gestureSoundStarted,'a motionless first hold becomes audible once ready');
+cold.stop();cold.buffers.clear();cold.begin('pump');cold.end('butter',false);
+await cold.load('press_01');cold.tick(.016,'pump','butter',.6,0);
+assert.equal(cold.voices.size,0,'released first touch never plays late');
+cold.destroy();
 
 const unavailable=new Audio({createContext:()=>{throw new Error('unavailable');}});assert.doesNotThrow(()=>unavailable.unlock());assert.equal(unavailable.play('pump'),false);
 

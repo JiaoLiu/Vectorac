@@ -17,7 +17,7 @@
 <span class="selector-label">手感</span>
 <div class="studio-options">
 <button class="active" data-material="butter">黄油泥</button>
-<button data-material="cotton">☁ 棉花云朵泥</button>
+<button data-material="cotton">棉花云朵泥</button>
 <button data-material="crystal">水晶胶</button>
 <button data-material="memory">超慢回弹</button>
 <button data-material="liquid">流动胶</button>
@@ -132,9 +132,9 @@
 <li>移动端：使用手指触摸、滑动进行操作</li>
 <li>选择不同颜色和工具获得不同游戏体验</li>
 <li>棉花云朵泥：柔软胶体包裹细小棉絮，表面连续、不长毛；可以捏起、翻折和混色，松手缓缓回弹。</li>
-<li>每个动作都有贴合的解压音效：按压是湿黏的咕叽、拉扯是绵密的噼啪、戳泡是清脆的噗叽；随动作轻重和移动变化。</li>
+<li>音效采用真实史莱姆与吹泡录音，按压、拉扯、揉搓和气泡使用不同片段；随动作轻重和移动变化。</li>
 <li>轻按短促、长按绵长：快速点按时声音会立刻收住，按住不动也不会反复敲响，可随时静音。</li>
-<li>换水泥、换颜色、选工具、压模、撤销、添泥、视角复位与旋转视角也各有一记对应手感音，任何操作都不会没声音。</li>
+<li>只有直接操作泥、戳泡泡和撒装饰时有音效；撒金粉和金属屑各有专属声音。换颜色、选工具、旋转视角及其他界面操作保持安静。</li>
 </ul>
 </div>
 

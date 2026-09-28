@@ -292,26 +292,12 @@ export default class SlimeStudio {
   }
   bind() {
     const c = this.canvas;
-    // Every control answers with its own squish. Mold and reset are silent here
-    // because their handlers already play a dedicated recording.
-    const BUTTON_SOUNDS = [
-      ['[data-tool]', 'pick'], ['[data-material]', 'material'],
-      ['[data-color]', 'color'], ['[data-undo]', 'undo'],
-      ['[data-add-clay]', 'add'], ['[data-view]', 'view'],
-      ['[data-mold]', null], ['[data-reset]', null]
-    ];
-    const OPTION_SOUNDS = {tool: 'pick', material: 'material', mold: null};
-    this.on(this.root, 'pointerdown', e => {
-      this.audio.unlock();
-      const button = e.target.closest('button');
-      if (!button || button.disabled || button.hasAttribute('data-sound')) return;
-      const drop = button.closest('[data-fs-drop]');
-      const match = BUTTON_SOUNDS.find(([selector]) => button.matches(selector));
-      const sound = drop && button.hasAttribute('data-option')
-        ? OPTION_SOUNDS[drop.dataset.fsDrop]
-        : match ? match[1] : 'ui';
-      if (sound) this.audio.play(sound, this.model.material, .55);
-    }, {capture:true});
+    // Controls may unlock Safari audio, but never produce interface sounds.
+    this.on(this.root, 'pointerdown', () => this.audio.unlock(), {capture:true});
+    // Touch pointerdown is not a transient user activation on iOS. Retry in
+    // touchend/pointerup/click too, even if an earlier resume() never settled.
+    for (const event of ['touchend', 'pointerup', 'click'])
+      this.on(this.root, event, () => this.audio.unlock(), {capture:true, passive:true});
     this.on(this.root, 'keydown', e => {
       if (e.key === 'Enter' || e.key === ' ') this.audio.unlock();
     });
@@ -323,7 +309,6 @@ export default class SlimeStudio {
       this.audio.setEnabled(!this.audio.enabled);
       try { localStorage.setItem('vectorac.slime.sound.v1', this.audio.enabled ? 'on' : 'off'); } catch (_) {}
       updateSoundButtons();
-      if (this.audio.enabled) this.audio.play('ui');
     }));
     updateSoundButtons();
     this.on(document, 'visibilitychange', () => {if (document.hidden) this.audio.suspend();});
@@ -392,8 +377,6 @@ export default class SlimeStudio {
         }
         if (this.tool !== 'pop' && (this.brush || this.manipulation || this.sprinkling || this.carvePoint))
           this.audio.begin(this.tool, this.model.material, this.pressure);
-      } else {
-        this.audio.play('rotate', this.model.material, .4);
       }
     });
     this.on(c, "pointermove", e => {
@@ -510,7 +493,6 @@ export default class SlimeStudio {
       this.paintMold();
       this.sync();
       this.status("已重新揉成当前模具形状。");
-      this.audio.play('reset', this.model.material);
     });
     this.on(this.root.querySelector("[data-undo]"), "click", () => this.undo());
     this.on(this.root.querySelector("[data-view]"), "click", () => {
@@ -539,7 +521,6 @@ export default class SlimeStudio {
     this.sync();
     this.active("mold", this.model.mold);
     this.status("模具压好了！开启保留捏痕，开始雕塑。");
-    this.audio.play('mold', this.model.material);
   }
   bindFullscreen() {
     const maxBtn = this.root.querySelector("[data-maximize]");
@@ -659,8 +640,6 @@ export default class SlimeStudio {
           .forEach(x => x.classList.remove("active"));
         this.status("颜色会随揉捏混入表面。");
       });
-      // Only when the picker closes: dragging inside it must not machine-gun samples.
-      this.on(colorInput, "change", () => this.audio.play("color", this.model.material, .55));
     }
     this.on(maxBtn, "click", () => {
       if (document.fullscreenElement || document.webkitFullscreenElement) {

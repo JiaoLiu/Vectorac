@@ -38,6 +38,7 @@ try{
   // Warmup only fetches; the AudioContext must be born inside a user gesture
   // or iOS Safari may keep it suspended forever (silent game).
   assert.equal(await page.evaluate(()=>!!studio.audio.context),false);
+  assert.equal(await page.locator('[data-material=cotton]').textContent(),'棉花云朵泥','material label has no extra icon');
   await page.locator('[data-material=cotton]').click();
   await page.waitForFunction(()=>studio.audio.context && studio.audio.context.state==='running');
   await page.evaluate(()=>studio.audio.ready);
@@ -61,8 +62,35 @@ try{
    });
   };
   const touch=await center();
+  await page.evaluate(()=>{studio.audio.stop();sounds.length=0;});
+  for(const selector of ['[data-tool=pinch]','[data-material=butter]','[data-color]',
+    '[data-view]','[data-add-clay]','[data-mold=round]','[data-reset]','[data-undo]']){
+   await page.locator(selector).first().click();
+   assert.equal(await page.evaluate(()=>sounds.length),0,'silent interface action: '+selector);
+  }
+  await page.locator('[data-tool=rotate]').first().click();
+  const rotation=await center();
+  await page.mouse.move(rotation.x,rotation.y);await page.mouse.down();
+  await page.mouse.move(rotation.x+20,rotation.y+8,{steps:4});await page.mouse.up();
+  assert.equal(await page.evaluate(()=>sounds.length),0,'rotating on the clay is silent');
+  await page.locator('[data-tool=pump]').first().click();
+  await page.locator('[data-view]').first().click();
+  const restoredTouch=await center();touch.x=restoredTouch.x;touch.y=restoredTouch.y;
   await page.touchscreen.tap(touch.x,touch.y);
   assert.ok(await page.evaluate(()=>sounds.includes('pump')),'trusted touch tap also plays foley');
+  // Reproduce a hung WebKit resume promise in the real input dispatch path.
+  // pointerdown fails; touchend/pointerup must still retry synchronously.
+  await page.evaluate(async()=>{
+    studio.audio.stop();
+    const c=studio.audio.context, resume=c.resume.bind(c);
+    await c.suspend();window.resumeAttempts=0;
+    c.resume=()=>{resumeAttempts++;return resumeAttempts===1?new Promise(()=>{}):resume();};
+    sounds.length=0;
+  });
+  await page.touchscreen.tap(touch.x,touch.y);
+  await page.waitForFunction(()=>resumeAttempts>=2 && studio.audio.context.state==='running');
+  await page.touchscreen.tap(touch.x,touch.y);
+  assert.ok(await page.evaluate(()=>sounds.includes('pump')),'touch recovers even when the first resume never resolves');
   for(const tool of ['pump','pinch','carve','flatten','smooth','glitter','foil','move','tear','fold','bubble']){
    await page.locator('[data-mold=round]').click();
    await page.locator(`[data-tool=${tool}]`).first().click();
@@ -85,6 +113,7 @@ try{
   await page.evaluate(()=>{studio.root.classList.add('slime-fs');studio.resize();});
   await page.locator('[data-fs-drop=material] .fs-trigger').click();
   assert.ok(await page.locator('[data-fs-drop=material] [data-option=cotton]').isVisible());
+  assert.equal(await page.locator('[data-fs-drop=material] [data-option=cotton]').textContent(),'棉花云朵泥','fullscreen label also has no extra icon');
   await page.locator('[data-fs-drop=material] [data-option=cotton]').click();
   await page.screenshot({path:join(out,`fullscreen-${viewport.width}.png`)});
   await page.evaluate(()=>studio.destroy());

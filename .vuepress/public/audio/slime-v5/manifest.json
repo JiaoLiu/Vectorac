@@ -1,0 +1,408 @@
+{
+  "sampleRate": 22050,
+  "sources": {
+    "slime": {
+      "title": "Slime",
+      "author": "qubodup",
+      "license": "CC0-1.0",
+      "page": "https://freesound.org/people/qubodup/sounds/127449/",
+      "download": "https://cdn.freesound.org/previews/127/127449_71257-lq.mp3",
+      "sha256": "5dd188917ed63766283f610c226467081122577fb20c37864c4b4eed55580037"
+    },
+    "bubbles": {
+      "title": "slime - bubble blowing recordings",
+      "author": "rubberduck9999",
+      "license": "CC0-1.0",
+      "page": "https://freesound.org/people/rubberduck9999/sounds/680446/",
+      "download": "https://cdn.freesound.org/previews/680/680446_14687392-lq.mp3",
+      "sha256": "0ad2a459f9d99f217a9da566a9378bb1980c1853771cf01d61906b8aa9845895"
+    }
+  },
+  "samples": {
+    "press_01": {
+      "source": "slime",
+      "start": 27,
+      "length": 0.44,
+      "duration": 0.44,
+      "loop": false,
+      "gain": 146.2536990123629,
+      "rms": 0.0760149332425296,
+      "peak": 0.8,
+      "sha256": "b066594efe6fa8a58f706bfa2322504c747d2f4bf6424380d423c3c5e91516f8"
+    },
+    "press_02": {
+      "source": "slime",
+      "start": 42.2,
+      "length": 0.42,
+      "duration": 0.42,
+      "loop": false,
+      "gain": 322.3368206014949,
+      "rms": 0.07518332900678426,
+      "peak": 0.8,
+      "sha256": "c1c98566c1f4192a368aa2fcfe317e7d34d76fbd4e3a3a0b9ef18b692cc9d2ae"
+    },
+    "press_03": {
+      "source": "slime",
+      "start": 74.45,
+      "length": 0.44,
+      "duration": 0.44,
+      "loop": false,
+      "gain": 462.9692314180643,
+      "rms": 0.10076072630848405,
+      "peak": 0.8,
+      "sha256": "7057eec4d7643372ab734565d26028556724368a6cf2bc737bfb87a7fdf502a9"
+    },
+    "pinch_01": {
+      "source": "slime",
+      "start": 27,
+      "length": 0.38,
+      "duration": 0.38,
+      "loop": false,
+      "gain": 146.2536990123629,
+      "rms": 0.08177178007031959,
+      "peak": 0.8,
+      "sha256": "48ea378b3957c721dd9922cd75e416bb22e2c8f2c483019c3ac08cb713f1590a"
+    },
+    "pinch_02": {
+      "source": "slime",
+      "start": 31.2,
+      "length": 0.45,
+      "duration": 0.4500226757369615,
+      "loop": false,
+      "gain": 392.0541829396255,
+      "rms": 0.08157199042464706,
+      "peak": 0.8,
+      "sha256": "7e6ace0fce7f8474707186d9ad0340238a447e786e6e200dfa33743e0fd6cff7"
+    },
+    "flatten_01": {
+      "source": "slime",
+      "start": 48.9,
+      "length": 0.8,
+      "duration": 0.8,
+      "loop": false,
+      "gain": 27.073504563574936,
+      "rms": 0.02354994397170702,
+      "peak": 0.8,
+      "sha256": "0b8761ea18d4698ed42edb0892b3560695ab84d2de802ba00ab9e21391a13de3"
+    },
+    "flatten_02": {
+      "source": "slime",
+      "start": 113.15,
+      "length": 0.85,
+      "duration": 0.8499773242630385,
+      "loop": false,
+      "gain": 105.52017965346614,
+      "rms": 0.04390587215717257,
+      "peak": 0.8,
+      "sha256": "c0bf2cfec3411cee1f3392fc5f1f2ede0dbad320201207ad983debea29fceb4a"
+    },
+    "smooth_01": {
+      "source": "slime",
+      "start": 2.2,
+      "length": 0.7,
+      "duration": 0.7,
+      "loop": false,
+      "gain": 342.64035490471565,
+      "rms": 0.07929662823005021,
+      "peak": 0.8,
+      "sha256": "d62ea9758a3935399bf8aa11073a8440a4f13b770904d872211112b50c0f9718"
+    },
+    "smooth_02": {
+      "source": "slime",
+      "start": 3.4,
+      "length": 0.75,
+      "duration": 0.7500226757369615,
+      "loop": false,
+      "gain": 503.00846100051723,
+      "rms": 0.09927398096936739,
+      "peak": 0.8,
+      "sha256": "44fe6b7411efec2e75392fc02b7dfec0a0f35eec04e592c37a9d1e1d19224e2e"
+    },
+    "carve_01": {
+      "source": "slime",
+      "start": 42.2,
+      "length": 0.45,
+      "duration": 0.4500226757369615,
+      "loop": false,
+      "gain": 322.3368206014949,
+      "rms": 0.07289958219859399,
+      "peak": 0.8,
+      "sha256": "e551f7587750a7e5c3b0e7ee009e8a42eac100299aa1ae642caf1530bd510041"
+    },
+    "carve_02": {
+      "source": "slime",
+      "start": 74.45,
+      "length": 0.4,
+      "duration": 0.4,
+      "loop": false,
+      "gain": 462.9692314180643,
+      "rms": 0.10290516192891241,
+      "peak": 0.8,
+      "sha256": "71da9fd1e54fc58b5e5d63ec7a451e2387774ebd7468b3efb2d6bf146fd2015d"
+    },
+    "tear_01": {
+      "source": "slime",
+      "start": 115.35,
+      "length": 0.85,
+      "duration": 0.8499773242630385,
+      "loop": false,
+      "gain": 38.25158975530018,
+      "rms": 0.04205118000761982,
+      "peak": 0.8,
+      "sha256": "dc8d39ff4a60ca18d54e4fb7db941e7460dad9b9b386915a66649383737cac75"
+    },
+    "tear_02": {
+      "source": "slime",
+      "start": 92.1,
+      "length": 0.8,
+      "duration": 0.8,
+      "loop": false,
+      "gain": 55.255693274147326,
+      "rms": 0.03531184525232538,
+      "peak": 0.8,
+      "sha256": "1d760cb1b12f96a1ed3cccfabdf008912d4c3f07ff982f6994ffe53cf5c9eff9"
+    },
+    "fold_01": {
+      "source": "slime",
+      "start": 27,
+      "length": 0.85,
+      "duration": 0.8500226757369614,
+      "loop": false,
+      "gain": 146.2536990123629,
+      "rms": 0.05487650059569738,
+      "peak": 0.8,
+      "sha256": "9e9a4b4ab33718efcbe72c3fa147d26212c7d50c1150a46a22d16bd5afc8360a"
+    },
+    "fold_02": {
+      "source": "slime",
+      "start": 31.15,
+      "length": 0.8,
+      "duration": 0.8,
+      "loop": false,
+      "gain": 392.0541829396255,
+      "rms": 0.06797506252517885,
+      "peak": 0.8,
+      "sha256": "1c46063baf4603784f140d480893edc37896c6df36540627c2c3a277e1a5c408"
+    },
+    "drag_01": {
+      "source": "slime",
+      "start": 41,
+      "length": 0.65,
+      "duration": 0.6500226757369615,
+      "loop": false,
+      "gain": 571.6919543228627,
+      "rms": 0.07988306980725607,
+      "peak": 0.8,
+      "sha256": "177063466fd745aa416859ad607e0ce12feb6c216de68b70f1e5b3a95225c3cc"
+    },
+    "drag_02": {
+      "source": "slime",
+      "start": 63.65,
+      "length": 0.8,
+      "duration": 0.8,
+      "loop": false,
+      "gain": 390.41359576841165,
+      "rms": 0.04639349092635078,
+      "peak": 0.8,
+      "sha256": "5c15b3ffb83ffb7413c31dbee5b36c4c15496d138a8aed6a80e41f6c0fb8bc02"
+    },
+    "blow_01": {
+      "source": "slime",
+      "start": 65.4,
+      "length": 0.7,
+      "duration": 0.7,
+      "loop": false,
+      "gain": 661.0007613878737,
+      "rms": 0.07999175652394913,
+      "peak": 0.8,
+      "sha256": "626f71804817358eb23aafa47cc92e0300334df4c833c2e8c9825746e9b47220"
+    },
+    "blow_02": {
+      "source": "slime",
+      "start": 66.2,
+      "length": 0.75,
+      "duration": 0.7500226757369615,
+      "loop": false,
+      "gain": 1169.4244027138955,
+      "rms": 0.11799562055590733,
+      "peak": 0.8000000000000002,
+      "sha256": "bc83c156f51d5b180f72158559804a6f7a1b9802702bfb2ef72b663dc13cdafb"
+    },
+    "pop_01": {
+      "source": "bubbles",
+      "start": 27.05,
+      "length": 0.28,
+      "duration": 0.28,
+      "loop": false,
+      "gain": 0.9286557986099219,
+      "rms": 0.075,
+      "peak": 0.369734423059269,
+      "sha256": "fcd20bef4f8f9463bd45e0158c47e116ecc8786d84294200fa45052b66bb967c"
+    },
+    "pop_02": {
+      "source": "bubbles",
+      "start": 35.3,
+      "length": 0.28,
+      "duration": 0.28,
+      "loop": false,
+      "gain": 4.390514936480528,
+      "rms": 0.053567011786466064,
+      "peak": 0.56,
+      "sha256": "a4c4e4bb6815b721e926e531b81152f1e5095b3804ad21790c5f9ba0dfa42aed"
+    },
+    "pop_03": {
+      "source": "bubbles",
+      "start": 24.1,
+      "length": 0.3,
+      "duration": 0.3,
+      "loop": false,
+      "gain": 1.547723341705157,
+      "rms": 0.06873941197899786,
+      "peak": 0.56,
+      "sha256": "9ac0f6820c9aa240a911b40a6e0880efb60cbb83b8adf1685bb54cbf57e0bd6d"
+    },
+    "glitter_01": {
+      "source": "slime",
+      "start": 11.7,
+      "length": 0.4,
+      "duration": 0.4,
+      "loop": false,
+      "gain": 126.86547714484043,
+      "rms": 0.034186673733688694,
+      "peak": 0.8,
+      "sha256": "4b892be9afae010c976baa7885fff90b89ee2bd34bebb6dd407eb61d7453cbe3"
+    },
+    "glitter_02": {
+      "source": "slime",
+      "start": 51.2,
+      "length": 0.45,
+      "duration": 0.4500226757369615,
+      "loop": false,
+      "gain": 566.1075356802041,
+      "rms": 0.0808030223961883,
+      "peak": 0.8,
+      "sha256": "4366f62d63fcb89e43b52ea43ab70a8d0b838965948cac786fdd85ed646e2e3c"
+    },
+    "foil_01": {
+      "source": "slime",
+      "start": 7.45,
+      "length": 0.45,
+      "duration": 0.44997732426303855,
+      "loop": false,
+      "gain": 469.149670234152,
+      "rms": 0.056341440616221525,
+      "peak": 0.8,
+      "sha256": "27134fd9ce6c8f94f9738e3a1a7360efccbbfbc7c780b17e2201a42226ee3567"
+    },
+    "foil_02": {
+      "source": "slime",
+      "start": 10.2,
+      "length": 0.5,
+      "duration": 0.5,
+      "loop": false,
+      "gain": 566.3628410400585,
+      "rms": 0.08749683356544818,
+      "peak": 0.8,
+      "sha256": "306484d7ac8d0d81aee8516c3bda44f2cc1f73d0a925b1d6fc995b3961a5e324"
+    },
+    "thud_01": {
+      "source": "slime",
+      "start": 97,
+      "length": 0.26,
+      "duration": 0.26,
+      "loop": false,
+      "gain": 783.1722082068685,
+      "rms": 0.09481775840561137,
+      "peak": 0.8,
+      "sha256": "510967e3b40eacdd74396bd3980d71e4ac8c14e515dc813b109f9092b7fb3a7c"
+    },
+    "thud_02": {
+      "source": "slime",
+      "start": 119,
+      "length": 0.28,
+      "duration": 0.28,
+      "loop": false,
+      "gain": 1052.5093194022188,
+      "rms": 0.10999999999999999,
+      "peak": 0.6954516246937872,
+      "sha256": "95ad540ac65ac19c97c8e819397e9a6a9908fb6b0ad635adc38786b56e2e7101"
+    },
+    "mold_01": {
+      "source": "slime",
+      "start": 114.2,
+      "length": 0.9,
+      "duration": 0.9,
+      "loop": false,
+      "gain": 33.28867653212591,
+      "rms": 0.018366689724528637,
+      "peak": 0.8,
+      "sha256": "48999dce6e07298e473da663ff13a654fba9b81ac0e82375079812fc3c34bb09"
+    },
+    "mold_02": {
+      "source": "slime",
+      "start": 116.1,
+      "length": 0.85,
+      "duration": 0.8499773242630385,
+      "loop": false,
+      "gain": 43.81797879132465,
+      "rms": 0.02003955724763175,
+      "peak": 0.8,
+      "sha256": "1b875b2e666c6918e82a34341a1cb5008d811fa1d1bc930543a2c6046e41e060"
+    },
+    "reset_01": {
+      "source": "slime",
+      "start": 48.15,
+      "length": 0.9,
+      "duration": 0.9,
+      "loop": false,
+      "gain": 28.832439729001198,
+      "rms": 0.018988200323996823,
+      "peak": 0.8,
+      "sha256": "5bde1bb82ec8987633db1f2a152492f4c59c52e845ef79b23c7813311f4823db"
+    },
+    "reset_02": {
+      "source": "slime",
+      "start": 108.55,
+      "length": 0.9,
+      "duration": 0.9,
+      "loop": false,
+      "gain": 17.770127422920503,
+      "rms": 0.026860117563113607,
+      "peak": 0.8,
+      "sha256": "c4bb18c6b8e3c273deba084ee23296ec30f9c619102d913fb9f7915d4a9c1c7e"
+    },
+    "dab_01": {
+      "source": "slime",
+      "start": 49,
+      "length": 0.24,
+      "duration": 0.24,
+      "loop": false,
+      "gain": 446.6901810132561,
+      "rms": 0.11,
+      "peak": 0.6337552822009155,
+      "sha256": "2a9f253a57ba02c5ba81784778dd7729e505bd5352f8d95eae75324472f68e64"
+    },
+    "dab_02": {
+      "source": "slime",
+      "start": 12.45,
+      "length": 0.22,
+      "duration": 0.22,
+      "loop": false,
+      "gain": 863.0111189852462,
+      "rms": 0.10999999999999999,
+      "peak": 0.4927551711802914,
+      "sha256": "2cf4e1d35bd4134e7df647b5270cabeb3cc5d1ffa380ab555eef766bea67ff69"
+    },
+    "bed_01": {
+      "source": "slime",
+      "start": 31.05,
+      "length": 2.8,
+      "duration": 2.64,
+      "loop": true,
+      "gain": 176.52346597319885,
+      "rms": 0.025665197147102456,
+      "peak": 0.8,
+      "sha256": "a1dafe126ee635bd5603eae58b65163aa11bd321b8c0311fb285b57b11df304e"
+    }
+  }
+}
