@@ -146,6 +146,7 @@ meta:
 <div class="scmj-modal-title">设置</div>
 <div class="scmj-modal-content scmj-settings-body">
 <label><input type="checkbox" data-scmj-set-sound checked /> 音效（碰/杠/胡带语音播报）</label>
+<label><input type="checkbox" data-scmj-set-voice checked /> 玩家语音（关闭后暂停收听）</label>
 <label><input type="checkbox" data-scmj-set-music checked /> 背景音乐</label>
 <label><input type="checkbox" data-scmj-set-anim checked /> 动画</label>
 <label><input type="checkbox" data-scmj-set-passhu checked /> 过胡时二次确认</label>

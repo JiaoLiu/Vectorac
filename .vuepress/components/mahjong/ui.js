@@ -101,6 +101,9 @@ const CHAT_PHRASES = ['快点啊', '等等，我想想', '别放炮哦', '这牌
 // 面板只展示前 4 条（语音为主、短语为辅）；查表保留全量 8 条，旧客户端发来的大序号仍能播
 const CHAT_PANEL_COUNT = 4
 const VOICE_MAX_SEC = 15 // 语音消息最长秒数（按住录音到点自动停）
+// 报牌/动作/短语语音的根目录。四川话录音放这里并作为默认；普通话版本仍保留在
+// /audio/mahjong/ 下，想切回普通话只改这一处（或临时把它指回去）。
+const VOICE_BASE = '/audio/mahjong-sichuan'
 const MIN_HAND_TILE_W = 16 // 14 张紧邻单排，窄屏仍保留每张独立点击区
 // 单张手牌的高度上限（宽 = 高 / TILE_ASPECT）。统一给到桌面档，让**宽度**成为
 // 唯一限制：横屏手机横向富余，14 张按可用宽度算出来的牌宽本来就更大，
@@ -172,6 +175,7 @@ export default class ScmjUI {
     // yaojiEnabled：幺鸡赖子开关（入口勾选，开启后幺鸡当万能牌）
     this.settings = {
       sound: true,
+      voice: true,
       music: true,
       animation: true,
       passHuConfirm: true,
@@ -238,6 +242,11 @@ export default class ScmjUI {
     this._recStartAt = 0
     this._recTimer = null
     this._recDiscard = false // 离开/销毁时丢弃录音，不发送
+    this._voiceQueue = []
+    this._voiceActive = null
+    this._voiceDrainTimer = null
+    this._voiceResumeAt = 0
+    this._chatGeneration = 0
   }
 
   // ==================== 生命周期 ====================
@@ -265,6 +274,7 @@ export default class ScmjUI {
       modalConfirm: q('[data-scmj-modal-confirm]'),
       rulesContent: q('[data-scmj-rules-content]'),
       setSound: q('[data-scmj-set-sound]'),
+      setVoice: q('[data-scmj-set-voice]'),
       setMusic: q('[data-scmj-set-music]'),
       setAnim: q('[data-scmj-set-anim]'),
       setPassHu: q('[data-scmj-set-passhu]'),
@@ -592,6 +602,7 @@ export default class ScmjUI {
     setChecked(e.entryYaoji, this.settings.yaojiEnabled)
     setChecked(e.entryAssist, this.settings.assist !== false)
     setChecked(e.setSound, this.settings.sound)
+    setChecked(e.setVoice, this.settings.voice !== false)
     setChecked(e.setMusic, this.settings.music !== false)
     setChecked(e.setAnim, this.settings.animation)
     setChecked(e.setPassHu, this.settings.passHuConfirm)
@@ -857,6 +868,12 @@ export default class ScmjUI {
       this.settings.sound = e.setSound.checked
       this.saveSettings()
     })
+    on(e.setVoice, 'change', () => {
+      this.settings.voice = e.setVoice.checked
+      this.saveSettings()
+      if (this.settings.voice === false) this._pauseVoiceQueue()
+      else this._drainVoiceQueue()
+    })
     on(e.setMusic, 'change', () => {
       this.settings.music = e.setMusic.checked
       this.saveSettings()
@@ -963,8 +980,8 @@ export default class ScmjUI {
     }
     const duration = Math.min(20, Math.max(1, Math.round(Number(p.duration) || 0)))
     const bubbleEl = this.showChatBubble(viewSeat, { voice: true, duration, mime: p.mime, data: p.data })
-    // 音效开关关=不自动播语音，气泡仍可点按重播；正在录音时也不自动播（会被麦克风回录）
-    if (this.settings.sound !== false && !this._recorder && !this._recStarting) this._playVoiceData(p.mime, p.data, bubbleEl)
+    // 接收即排队。游戏音效开关不影响玩家语音；录音中暂缓而不是丢弃。
+    this._playVoiceData(p.mime, p.data, bubbleEl)
   }
 
   /** 在某座位旁弹气泡（同一座位新消息顶掉旧的；textContent 渲染防注入） */
@@ -991,7 +1008,6 @@ export default class ScmjUI {
         if (cur && cur._bubble === el) {
           try { cur.pause() } catch (e) { /* 忽略 */ }
           if (cur._release) cur._release()
-          this._voiceMsgPlaying = null
         } else {
           this._playVoiceData(msg.mime, msg.data, el)
         }
@@ -1030,36 +1046,91 @@ export default class ScmjUI {
     return seat && seat.closest ? seat.closest('.scmj-seatwrap') : null
   }
 
-  /** base64 语音消息播放。单例：连点多个气泡 / 自动播与重播叠加时，永远只有
-   *  最新一条出声，同时掐掉语音播报（语音类声音全局互斥，避免好几个声音重叠）。
-   *  bubbleEl：来源气泡（自动播也带上），气泡「播中点停」靠它辨认自己在播的那条。
-   *  优先 Web Audio 解码播放：可加增益（录音普遍偏小，人声 ×1.5 放大才不被
-   *  提示音盖过），且 iOS 上 Web Audio 音量可控；解码失败回退 <audio> 元素
-   *  （iOS Safari 对 data: 音频兼容性差，走 Blob URL 更稳）。 */
+  /** 玩家录音 FIFO。点击待播气泡不重复入队，也不抢占较早收到的录音。 */
   _playVoiceData(mime, data, bubbleEl) {
-    if (!mime || !data) return
+    if (!mime || !data || this._destroyed) return
+    if (bubbleEl && ((this._voiceActive && this._voiceActive.entry.bubbleEl === bubbleEl) ||
+        this._voiceQueue.some(entry => entry.bubbleEl === bubbleEl))) return
+    this._voiceQueue.push({ mime, data, bubbleEl })
+    this._drainVoiceQueue()
+  }
+
+  _scheduleVoiceDrain(delay = 0) {
+    clearTimeout(this._voiceDrainTimer)
+    this._voiceDrainTimer = setTimeout(() => {
+      this._voiceDrainTimer = null
+      this._drainVoiceQueue()
+    }, delay)
+  }
+
+  _drainVoiceQueue() {
+    if (this._destroyed || this._voiceActive) return
+    if (this.settings.voice === false || this._recStarting || this._recorder || this._recStream) {
+      this._syncVoiceMix()
+      return
+    }
+    const delay = this._voiceResumeAt - Date.now()
+    if (delay > 0) { this._scheduleVoiceDrain(delay); return }
+    const entry = this._voiceQueue.shift()
+    if (!entry) { this._syncVoiceMix(); return }
+    const job = { entry } // 每次播放独立身份，旧解码/结束回调不能影响新任务。
+    this._voiceActive = job
+    this._stopVoiceNow()
+    this._syncVoiceMix()
+    this._startVoiceData(entry.mime, entry.data, entry.bubbleEl, job)
+  }
+
+  _finishVoiceItem(job) {
+    if (this._voiceActive !== job) return
+    this._voiceActive = null
+    this._scheduleVoiceDrain()
+  }
+
+  _pauseVoiceQueue() {
+    clearTimeout(this._voiceDrainTimer)
+    const job = this._voiceActive
+    this._voiceActive = null // 先撤销身份，stop 产生的 onended 不得消费队列。
+    if (job) this._voiceQueue.unshift(job.entry)
+    const playing = this._voiceMsgPlaying
+    this._voiceMsgPlaying = null
+    if (playing) {
+      try { playing.pause() } catch (e) { /* 忽略 */ }
+      if (playing._release) playing._release()
+    }
+    this._syncVoiceMix()
+  }
+
+  _syncVoiceMix() {
+    const active = !!this._voiceActive
+    // 只压游戏音效总线；玩家人声直接接 destination，不随音效总线降低。
+    if (this._master) this._master.gain.value = active ? 0.06 : 0.6
+    this._duckApply()
+    if (!this._volCanSet() && this._bgm) {
+      if (active && !this._bgm.paused) {
+        this._voiceBgmHolding = true
+        this._bgm.pause()
+      } else if (!active && this._voiceBgmHolding) {
+        this._voiceBgmHolding = false
+        if (this.settings.music !== false && this._els.table && !this._els.table.hidden && !this._destroyed && !(this._bgmCommDucks > 0))
+          this._bgm.play().catch(() => {})
+      }
+    }
+  }
+
+  _startVoiceData(mime, data, bubbleEl, job) {
     try {
       const bin = atob(data)
       const bytes = new Uint8Array(bin.length)
       for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
-      if (this._voiceMsgPlaying) {
-        try { this._voiceMsgPlaying.pause() } catch (e) { /* 忽略 */ }
-        if (this._voiceMsgPlaying._release) this._voiceMsgPlaying._release()
-        this._voiceMsgPlaying = null
-      }
-      this._stopVoiceNow() // 语音消息与播报互斥：听消息时不掺报牌声
-      // 语音消息=用户交流（最高层级）：播放期间 BGM 压到近乎静音（iOS 则暂停）。
-      // 时长按字节粗估（opus ≈16kbps、mp4 ≈64kbps），最长 15 秒
-      const bps = /mp4/.test(mime) ? 8000 : 2000
-      this._duckBgmComm(Math.max(0.6, Math.min(15, bytes.length / bps)))
-      if (!this._playVoiceViaWebAudio(mime, bytes, bubbleEl)) this._playVoiceViaElement(mime, bytes, bubbleEl)
+      if (!this._playVoiceViaWebAudio(mime, bytes, bubbleEl, job)) this._playVoiceViaElement(mime, bytes, bubbleEl, job)
     } catch (err) {
-      /* 非法数据忽略 */
+      this._finishVoiceItem(job)
     }
   }
 
   /** Web Audio 增益播放：返回 false 表示环境不支持，调用方回退 <audio> */
-  _playVoiceViaWebAudio(mime, bytes, bubbleEl) {
+  _playVoiceViaWebAudio(mime, bytes, bubbleEl, job) {
+    let cleanup = null
     try {
       const ac = this._ensureAudio()
       if (!ac || ac.state === 'closed' || typeof ac.decodeAudioData !== 'function') return false
@@ -1071,7 +1142,7 @@ export default class ScmjUI {
       let decoded = false
       let wdDecode = null
       let wdPlay = null
-      const release = () => {
+      const release = (advance = true) => {
         if (done) return
         done = true
         clearTimeout(wdDecode)
@@ -1079,11 +1150,14 @@ export default class ScmjUI {
         try { if (src) src.stop() } catch (e) { /* 忽略 */ }
         try { if (gain) gain.disconnect() } catch (e) { /* 忽略 */ }
         if (this._voiceMsgPlaying === holder) this._voiceMsgPlaying = null
+        if (advance) this._finishVoiceItem(job)
       }
       const fallback = () => {
-        release()
-        this._playVoiceViaElement(mime, bytes, bubbleEl)
+        if (done || this._voiceActive !== job) return
+        release(false)
+        this._playVoiceViaElement(mime, bytes, bubbleEl, job)
       }
+      cleanup = () => release(false)
       holder._release = release
       holder.pause = release // Web Audio 不能暂停续播：点停=停止；再点=重新解码重播
       this._voiceMsgPlaying = holder
@@ -1101,7 +1175,7 @@ export default class ScmjUI {
             gain.gain.value = 1.5 // 人声增益（BGM 已被交流档压低/暂停，不怕突出）
             src = ac.createBufferSource()
             src.buffer = buf
-            src.onended = release
+            src.onended = () => release()
             src.connect(gain)
             gain.connect(ac.destination)
             src.start()
@@ -1119,36 +1193,40 @@ export default class ScmjUI {
       )
       return true
     } catch (e) {
+      if (cleanup) cleanup()
       return false
     }
   }
 
   /** <audio> 元素播放（回退路径）：音量上限 100%，但兼容性最广 */
-  _playVoiceViaElement(mime, bytes, bubbleEl) {
+  _playVoiceViaElement(mime, bytes, bubbleEl, job) {
+    if (this._voiceActive !== job) return
     try {
       const url = URL.createObjectURL(new Blob([bytes], { type: mime }))
       const a = new Audio(url)
       a._bubble = bubbleEl || null
-      if (this._voiceMsgPlaying) {
-        try { this._voiceMsgPlaying.pause() } catch (e) { /* 忽略 */ }
-        if (this._voiceMsgPlaying._release) this._voiceMsgPlaying._release()
-      }
       this._voiceMsgPlaying = a
+      let done = false
       const release = () => {
+        if (done) return
+        done = true
+        a.onended = a.onerror = null
+        try { a.pause() } catch (e) { /* 忽略 */ }
         URL.revokeObjectURL(url)
         if (this._voiceMsgPlaying === a) this._voiceMsgPlaying = null
+        this._finishVoiceItem(job)
       }
       a._release = release
       a.onended = release
       a.onerror = release
       a.play().catch(release)
     } catch (e) {
-      /* 忽略 */
+      this._finishVoiceItem(job)
     }
   }
 
   async startVoiceRec() {
-    if (this._recorder || this._recStarting) return // 已在录/正在开录
+    if (this._recorder || this._recStarting || this._recStream) return // 包含 onstop 尚未关轨的收尾窗口
     if (!this.isOnline || !this.net) return
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || typeof MediaRecorder === 'undefined') {
       this.toast('当前浏览器不支持录音，可改用快捷短语')
@@ -1157,6 +1235,8 @@ export default class ScmjUI {
     // 开录中标记：getUserMedia 是异步的（授权弹窗/硬件初始化可达数百毫秒），
     // 此窗口内松手必须能放弃开录，否则录音机变孤儿一直收音
     this._recStarting = true
+    this._pauseVoiceQueue()
+    this._stopVoiceNow()
     this._recAbort = false
     let stream
     try {
@@ -1164,11 +1244,13 @@ export default class ScmjUI {
     } catch (err) {
       this._recStarting = false
       this.toast('无法使用麦克风，请检查系统授权')
+      this._drainVoiceQueue()
       return
     }
     if (this._recAbort) { // 等待授权期间已松手：立即关轨，不开录
       this._recStarting = false
       stream.getTracks().forEach(t => t.stop())
+      this._drainVoiceQueue()
       return
     }
     const mimes = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4']
@@ -1187,6 +1269,7 @@ export default class ScmjUI {
       this._recStarting = false
       stream.getTracks().forEach(t => t.stop())
       this.toast('录音初始化失败')
+      this._drainVoiceQueue()
       return
     }
     this._recChunks = []
@@ -1209,6 +1292,7 @@ export default class ScmjUI {
       this._recStartAt = 0
       stream.getTracks().forEach(t => t.stop())
       this.toast('录音启动失败')
+      this._drainVoiceQueue()
       return
     }
     if (this._els.chatMic) this._els.chatMic.classList.add('scmj-chat-mic-on')
@@ -1250,6 +1334,9 @@ export default class ScmjUI {
       this._recStream.getTracks().forEach(t => t.stop())
       this._recStream = null
     }
+    // 所有收尾分支（短录音/取消/发送失败也包括）都恢复暂缓的接收队列。
+    this._voiceResumeAt = Date.now() + 350
+    this._scheduleVoiceDrain(350)
     if (this._els.chatMic) this._els.chatMic.classList.remove('scmj-chat-mic-on')
     if (this._els.chatRecTip) this._els.chatRecTip.hidden = true
     const chunks = this._recChunks
@@ -1273,7 +1360,9 @@ export default class ScmjUI {
       return
     }
     const reader = new FileReader()
+    const generation = this._chatGeneration
     reader.onload = () => {
+      if (generation !== this._chatGeneration || this._destroyed) return
       const url = String(reader.result || '')
       const base64 = url.slice(url.indexOf(',') + 1)
       if (!base64) return
@@ -1284,9 +1373,7 @@ export default class ScmjUI {
         // 立刻播会卡在冻结的 AudioContext 时间线上（第二次发语音不自动播的根因）。
         // 正在录下一条时不自动播：播放声会被麦克风回录（气泡保留，可点按收听）
         const bubbleEl = this.showChatBubble(0, { voice: true, duration: seconds, mime, data: base64 })
-        setTimeout(() => {
-          if (this.settings.sound !== false && !this._recorder && !this._recStarting) this._playVoiceData(mime, base64, bubbleEl)
-        }, 350)
+        this._playVoiceData(mime, base64, bubbleEl)
       } else {
         this.toast('连接已断开，语音未发出')
       }
@@ -1296,6 +1383,10 @@ export default class ScmjUI {
 
   /** 离开/销毁时：退订阅、丢弃进行中的录音、清空气泡 */
   _teardownChat() {
+    this._chatGeneration++
+    this._pauseVoiceQueue()
+    this._voiceQueue = []
+    clearTimeout(this._voiceDrainTimer)
     if (this._unsubChat) {
       this._unsubChat()
       this._unsubChat = null
@@ -1590,7 +1681,7 @@ export default class ScmjUI {
   _duckApply() {
     if (!this._bgm) return
     let v = 0.4
-    if (this._bgmCommDucks > 0) v *= 0.08
+    if (this._voiceActive || this._bgmCommDucks > 0) v *= 0.08
     if (this._bgmDucked) v *= 0.2
     if (this._bgmTempDucks > 0) v *= 0.2
     this._bgm.volume = v
@@ -1650,8 +1741,9 @@ export default class ScmjUI {
         this._duckApply()
       } else if (!this._bgmCommDucks && this._bgmCommHolding) {
         this._bgmCommHolding = false
+        if (this._voiceActive) this._voiceBgmHolding = true
         // 播放期间用户主动关了音乐则不恢复
-        if (this._bgm && this._bgm.paused && this.settings.music !== false) {
+        if (this._bgm && this._bgm.paused && this.settings.music !== false && !this._voiceActive) {
           try { this._bgm.play().catch(() => {}) } catch (e) { /* 忽略 */ }
         }
       }
@@ -3116,10 +3208,12 @@ export default class ScmjUI {
   buildRulesHtml() {
     const r = { ...DEFAULT_RULES, capFan: this.settings.capFan, swapThree: this.settings.swapThree, yaojiEnabled: this.settings.yaojiEnabled }
     const cap = r.baseScore * Math.pow(2, r.capFan)
+    // 幺鸡局点杠基准翻倍（见 engine.js gangUnit）
+    const mingPay = r.yaojiEnabled ? r.gangMing * 2 : r.gangMing
     const yaojiLi = r.yaojiEnabled
       ? '<li>幺鸡赖子（本局启用）：幺鸡（一条）为万能牌，可当任意牌与真牌凑顺子 / 刻子 / 对子；1 张真牌 + 1 只幺鸡可碰；明杠 2 张真牌 + 1 只幺鸡、暗杠 3 张真牌 + 1 只幺鸡；碰过的副露也能拿手里的幺鸡当第 4 张补杠（一副露最多只含 1 只幺鸡：碰里已经带了幺鸡的，只能等摸到真牌再补杠；带幺鸡的副露在牌桌标注「赖」）。</li>' +
-        '<li>幺鸡杠价：带幺鸡时点杠 ' + r.gangMing + ' 分、暗杠每家 ' + r.gangAn + ' 分、补杠每家 ' + r.gangBu +
-        ' 分；整组不带幺鸡时翻倍（点杠 ' + r.gangMing * 2 + ' 分、暗杠每家 ' + r.gangAn * 2 + ' 分、补杠每家 ' + r.gangBu * 2 + ' 分）。</li>' +
+        '<li>幺鸡杠价：带幺鸡时点杠 ' + mingPay + ' 分、暗杠每家 ' + r.gangAn + ' 分、补杠每家 ' + r.gangBu +
+        ' 分；整组不带幺鸡时翻倍（点杠 ' + mingPay * 2 + ' 分、暗杠每家 ' + r.gangAn * 2 + ' 分、补杠每家 ' + r.gangBu * 2 + ' 分）。</li>' +
         '<li>幺鸡番数：整手牌（手牌 + 副露）不含任何幺鸡时额外 +1 番（不带幺鸡点炮 2 倍，带幺鸡 1 倍）。</li>' +
         '<li>幺鸡换牌：用幺鸡补位形成的杠（明杠 / 暗杠 / 补杠），之后摸到对应真牌可点「换幺鸡」把幺鸡换回手牌继续当赖子。例外：幺鸡是在「碰」那一步进来的（碰赖），即便之后用真牌补杠成杠也不能换；碰本身是纯真牌、幺鸡是补杠时才补进来的，则可以换。</li>' +
         '<li>杠上炮转雨：杠后补牌回合打出的牌被胡，本回合收到的杠钱转给胡牌者。</li>' +
@@ -3135,7 +3229,7 @@ export default class ScmjUI {
       '<li>换三张：' + (r.swapThree ? '启用（传牌方向由牌局派生：下家 / 上家 / 对家）' : '关闭（入口可勾选）') + '。</li>' +
       '<li>定缺：' + (r.voidRequired ? '必须定缺，缺门牌未打完前只能打缺门、不能胡（碰 / 杠不受限，碰杠后仍须把缺门打完）' : '关闭') + '。</li>' +
       '<li>不允许吃牌。</li>' +
-      '<li>明杠（刮风）：放杠者付 ' + r.gangMing + ' 分；补杠（刮风）：每位活跃未胡玩家付 ' +
+      '<li>明杠（刮风）：放杠者付 ' + mingPay + ' 分；补杠（刮风）：每位活跃未胡玩家付 ' +
       (r.yaojiEnabled ? r.gangBu : r.gangAn) + ' 分；暗杠（下雨）：每位活跃未胡玩家付 ' + r.gangAn + ' 分。</li>' +
       yaojiLi +
       '<li>自摸额外加 ' + r.zimoFan + ' 番。</li>' +
@@ -3221,7 +3315,7 @@ export default class ScmjUI {
       if (!this._ac) {
         this._ac = new AC()
         this._master = this._ac.createGain()
-        this._master.gain.value = 0.6
+        this._master.gain.value = this._voiceActive ? 0.06 : 0.6
         this._master.connect(this._ac.destination)
       }
       // iOS 录音停止会把 context 打进 'interrupted'（非 suspended），同样需要 resume，
@@ -3323,7 +3417,7 @@ export default class ScmjUI {
       }
       if (this._bgm) {
         this._duckApply() // 新建的 BGM 也要套用进行中的 duck（读秒/音效临时档）
-        if (this._bgm.paused) {
+        if (this._bgm.paused && (!this._voiceActive || this._volCanSet())) {
           const p = this._bgm.play()
           if (p && p.catch) p.catch(() => {})
         }
@@ -3337,7 +3431,7 @@ export default class ScmjUI {
     const tick = () => {
       if (!this._ac || this._ac.state !== 'running') return
       // 合成兜底 BGM 同样服从交流档（音量不可调，语音消息/短语播放期间直接静默）
-      if ((this._bgmCommDucks || 0) > 0) {
+      if (this._voiceActive || (this._bgmCommDucks || 0) > 0) {
         step++
         this._musicStep = step
         return
@@ -3357,22 +3451,17 @@ export default class ScmjUI {
    * 优先级：报牌（牌名 wan/tong/tiao）为低；碰/杠/胡/自摸/短语（peng/gang/hu/zimo/phrase）
    * 为高。高优先级播报期间新来的报牌直接丢弃（不排队不补播）；其余情况一律掐旧播新
    * （连打只报最新一张；杠上花「杠」→「自摸」也能及时接上）。
-   * 真人录音优先：/audio/mahjong/{key}.mp3 存在即播放；文件缺失时回退浏览器语音合成。
+   * 真人录音优先：VOICE_BASE/{key}.mp3 存在即播放；文件缺失时回退浏览器语音合成。
    */
   speak(key, text) {
     if (this.settings.sound === false || typeof window === 'undefined') return
+    if (this._voiceActive || this._recStarting || this._recorder || this._recStream) return
     const say = text || { peng: '碰！', gang: '杠！', hu: '胡喽！', zimo: '自摸！' }[key]
     if (!say) return
     const lowPrio = /^(wan|tong|tiao)/.test(key) // 仅报牌为低优先级
     const now = this._voiceNow
     if (now && !now.lowPrio && lowPrio) return // 高优先级播报中，报牌让路
     this._stopVoiceNow()
-    // 播报与语音消息互斥：报牌/短语开声前掐掉正在播的语音消息
-    if (this._voiceMsgPlaying) {
-      try { this._voiceMsgPlaying.pause() } catch (e) { /* 忽略 */ }
-      if (this._voiceMsgPlaying._release) this._voiceMsgPlaying._release()
-      this._voiceMsgPlaying = null
-    }
     const item = { key, say, lowPrio }
     this._voiceNow = item
     // 音量层级：快捷短语=用户交流（最高层级，BGM 压到近乎静音）；
@@ -3406,7 +3495,7 @@ export default class ScmjUI {
     let clip = this._voiceCache[key]
     if (!clip) {
       try {
-        clip = new Audio(`/audio/mahjong/${key}.mp3`)
+        clip = new Audio(`${VOICE_BASE}/${key}.mp3`)
         clip.preload = 'auto'
         clip.addEventListener('error', () => { clip._broken = true })
         this._voiceCache[key] = clip
