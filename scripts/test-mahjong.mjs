@@ -1917,7 +1917,7 @@ ok('幺鸡赖子：1 张真牌 + 1 只幺鸡可碰（副露 wild=1）', () => {
   conservation(s, '幺鸡碰后')
 })
 
-ok('幺鸡赖子：2 张真牌 + 1 只幺鸡可明杠，点杠 1 分（不带幺鸡 2 分）', () => {
+ok('幺鸡赖子：2 张真牌 + 1 只幺鸡可明杠，点杠 2 分（不带幺鸡 4 分）', () => {
   // 带幺鸡
   let s = fastForward(7, undefined, { yaojiEnabled: true })
   setupTable(s, {
@@ -1936,10 +1936,10 @@ ok('幺鸡赖子：2 张真牌 + 1 只幺鸡可明杠，点杠 1 分（不带幺
   assert.ok(r.ok, `明杠失败: ${r.error}`)
   s = r.state
   assert.equal(s.players[1].melds[0].wild, 1)
-  assert.equal(s.players[1].delta, 1, '带幺鸡点杠：放杠者付 1 分')
+  assert.equal(s.players[1].delta, 2, '带幺鸡点杠：放杠者付 2 分')
   conservation(s, '幺鸡明杠后')
 
-  // 不带幺鸡：3 张真牌，点杠翻倍 2 分
+  // 不带幺鸡：3 张真牌，点杠翻倍 4 分
   let t = fastForward(7, undefined, { yaojiEnabled: true })
   setupTable(t, {
     turn: 0,
@@ -1956,7 +1956,7 @@ ok('幺鸡赖子：2 张真牌 + 1 只幺鸡可明杠，点杠 1 分（不带幺
   assert.ok(r.ok, `明杠失败: ${r.error}`)
   t = r.state
   assert.ok(!t.players[1].melds[0].wild, '纯真牌杠无 wild')
-  assert.equal(t.players[1].delta, 2, '不带幺鸡点杠翻倍：2 分')
+  assert.equal(t.players[1].delta, 4, '不带幺鸡点杠翻倍：4 分')
 })
 
 ok('幺鸡赖子：3 张真牌 + 1 只幺鸡可暗杠，每家 2 分（不带幺鸡每家 4 分）', () => {
@@ -2222,9 +2222,9 @@ ok('幺鸡赖子：明杠用幺鸡补位，之后摸到同一张真牌可换回�
   assert.equal(p0.melds[0].wild, 1, '副露应记录 1 只幺鸡补位')
   assert.equal(p0.hand.filter(t => t === W(5)).length, 0, '两张真牌已编入副露')
   assert.equal(p0.hand.filter(t => t === YAOJI_TILE).length, 0, '幺鸡已编入副露')
-  // 带幺鸡明杠按基准价 1 分，由放杠者（出牌者）付
-  assert.equal(s.players[1].delta, -1)
-  assert.equal(p0.delta, 1)
+  // 带幺鸡明杠按幺鸡局价 2 分，由放杠者（出牌者）付
+  assert.equal(s.players[1].delta, -2)
+  assert.equal(p0.delta, 2)
   conservation(s, '带幺鸡明杠后')
 
   // 之后摸到第 4 张真牌 → 可把副露里的幺鸡换回手牌
@@ -2909,7 +2909,7 @@ ok('TEST4 GANG 成交即结束：Seat2 杠成，Seat1 的碰权随之失效', ()
   const st = r.state
   assert.equal(st.players[2].melds[0].kind, 'gang')
   assert.equal(st.players[1].melds.length, 0, 'Seat1 的碰不得执行')
-  assert.equal(st.players[0].delta, -1, '明杠由放杠者付 1 分')
+  assert.equal(st.players[0].delta, -2, '明杠（带幺鸡）由放杠者付 2 分')
   conservation(st, 'TEST4')
 })
 

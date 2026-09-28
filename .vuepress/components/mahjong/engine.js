@@ -66,7 +66,7 @@
 //     swap-yaoji 把幺鸡换回手牌。判定看幺鸡从哪一步进来：只要是在「碰」那一步
 //     进来的（meld.wildPeng > 0，即碰赖），即便之后用真牌补杠成了杠也不可换；
 //     碰本身是纯真牌、幺鸡是在补杠那一步才补进来的，则可以换；
-//   · 杠钱：带幺鸡按基准、不带幺鸡翻倍（明杠 1/2、暗杠 2/4、补杠 1/2）；
+//   · 杠钱：幺鸡局点杠基准翻倍、不带幺鸡再翻倍（明杠 2/4、暗杠 2/4、补杠 1/2）；
 //   · 杠上炮转雨：杠后补牌回合打出的牌被胡时，本回合收到的杠钱转给胡牌者
 //     （gangTurn 暂存，理由 gang-zhuan-yu）；
 //   · 喜钱：结算时名下（手牌 + 副露，含被抢杠后留在副露的）有 3 只幺鸡每家付 4 分、
@@ -930,8 +930,8 @@ function finishBuGang(s, seat, tile, pengMeld, push, buWild = 0) {
 }
 
 /**
- * 单份杠分（baseScore 单位）：幺鸡局里「不带幺鸡」翻倍（相当于多一番）：
- *   明杠（点杠）：带幺鸡 1 / 不带幺鸡 2；
+ * 单份杠分（baseScore 单位）：幺鸡局里点杠基准翻倍，且整组「不带幺鸡」再翻倍：
+ *   明杠（点杠）：带幺鸡 2 / 不带幺鸡 4；
  *   暗杠（自己甩）：带幺鸡 2 / 不带幺鸡 4；
  *   补杠：带幺鸡 1 / 不带幺鸡 2。
  * 非幺鸡局保持原有定价（明杠 gangMing、暗杠/补杠 gangAn）。
@@ -942,7 +942,8 @@ function gangUnit(s, kind, wild) {
     return (kind === 'ming' ? s.rules.gangMing : s.rules.gangAn) * base
   }
   let unit
-  if (kind === 'ming') unit = s.rules.gangMing
+  // 幺鸡局的点杠比普通局贵一倍：赖子让杠更容易成，点杠得多掏
+  if (kind === 'ming') unit = s.rules.gangMing * 2
   else if (kind === 'an') unit = s.rules.gangAn
   else unit = s.rules.gangBu
   return unit * base * ((wild || 0) > 0 ? 1 : 2)
@@ -1380,7 +1381,7 @@ function settleMeld(s, seat, kind, push) {
     push('turn', { turn: seat })
     return
   }
-  // 明杠：出牌者付分（幺鸡局带幺鸡 1 / 不带幺鸡 2），杠者墙尾摸牌继续
+  // 明杠：出牌者付分（幺鸡局带幺鸡 2 / 不带幺鸡 4，非幺鸡局 1），杠者墙尾摸牌继续
   const wild = gangMingWildCount(p.hand, tile, yaojiOn(s)) || 0
   removeTiles(p.hand, new Array(3 - wild).fill(tile).concat(new Array(wild).fill(YAOJI_TILE)))
   const meld = { kind: 'gang', gangType: 'ming', tile, from: payer }
