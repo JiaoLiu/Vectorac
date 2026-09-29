@@ -142,7 +142,10 @@ export default {
     unlockAudio(){if(this._audio)this._audio.unlock()},
     toggleSound(){this.soundOn=!this.soundOn;this._audio.effects(this.soundOn)},
     toggleMusic(){this.musicOn=!this.musicOn;this._audio.music(this.musicOn)},
-    focusOwn(){this.$nextTick(()=>{const el=this.$refs.boardWindow;if(el){el.scrollLeft=(el.scrollWidth-el.clientWidth)/2;el.scrollTop=el.scrollHeight-el.clientHeight}})},
+    /* 横屏全屏时棋盘靠左贴边，不再左右居中：屏幕底部中间是系统横条，
+       靠左布局能让己方后排棋子避开它。放大态横向滚到最右，等于把棋盘尽量往左挪。 */
+    isLeftAligned(){return this.fullscreen&&window.matchMedia('(max-height:550px) and (orientation:landscape)').matches},
+    focusOwn(){this.$nextTick(()=>{const el=this.$refs.boardWindow;if(el){const max=el.scrollWidth-el.clientWidth;el.scrollLeft=this.isLeftAligned()?max:max/2;el.scrollTop=el.scrollHeight-el.clientHeight}})},
     toggleZoom(){this.zoom=this.zoom===1?1.8:1;this.focusOwn()},
     playMove(){this._audio.play(this.game.phase==='finished'?'finish':this.game.lastMove.outcome)},
     px(n) { return 50 + n * 50 },
@@ -237,7 +240,7 @@ export default {
  .jq-fullscreen .jq-command{grid-column:2;grid-row:2;padding:0 0 5px;font-size:11px}
  .jq-fullscreen .jq-panel{grid-column:2;grid-row:3;min-height:0;max-height:none;padding:0 0 0 9px;overflow:auto;border-left:1px solid #496151}
  .jq-fullscreen .jq-board-footer{grid-column:2;grid-row:4;padding:5px 0 0;flex-wrap:wrap;row-gap:4px}
- .jq-fullscreen .jq-board-window{grid-column:1;grid-row:1/-1;justify-self:center;align-self:center;height:100%;width:auto;max-width:100%;margin:0}
+ .jq-fullscreen .jq-board-window{grid-column:1;grid-row:1/-1;justify-self:start;align-self:center;height:100%;width:auto;max-width:100%;margin:0}
  .jq-fullscreen .jq-board{min-width:0;width:auto!important;height:100%!important;max-width:100%}
  .jq-fullscreen .jq-board-window.is-zoomed{width:100%;height:100%;max-width:none;max-height:none}
  .jq-fullscreen .jq-board-window.is-zoomed .jq-board{width:auto!important;height:180%!important;max-width:none}
