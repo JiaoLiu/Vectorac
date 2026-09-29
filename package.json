@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "author": "reco_luan",
   "scripts": {
+    "test:junqi": "node --test scripts/test-junqi.mjs scripts/test-junqi-audio.mjs",
     "test:balatro": "node --test scripts/test-balatro.mjs",
     "build:slime-worker": "node scripts/build-slime-worker.js",
     "predev": "npm run build:slime-worker",
