@@ -15,13 +15,18 @@ const css=md.match(/<style>([\s\S]*?)<\/style>/)[1]
 const built=await build({stdin:{contents:"export {default as UI} from './.vuepress/components/mahjong/ui.js'",resolveDir:root},bundle:true,format:'iife',globalName:'VoiceTest',write:false})
 const server=createServer(async(req,res)=>{
  if(req.url==='/test.js'){res.setHeader('Content-Type','text/javascript');res.end(built.outputFiles[0].text);return}
+ if(/^\/mahjong\/tiles\/[mps][1-9]\.png$/.test(req.url)){
+  res.setHeader('Content-Type','image/png');res.setHeader('Cache-Control','no-store')
+  res.end(await readFile(join(root,'.vuepress/public',req.url)));return
+ }
  res.setHeader('Content-Type','text/html');res.end(`<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>${css}</style>${template}<script src="/test.js"></script>`)
 })
 await new Promise(r=>server.listen(0,'127.0.0.1',r))
 const browser=await webkit.launch({headless:true})
 try{
  for(const viewport of [{width:390,height:844},{width:844,height:390}]){
-  const page=await browser.newPage({viewport,hasTouch:true,isMobile:true}),errors=[]
+  const page=await browser.newPage({viewport,hasTouch:true,isMobile:true}),errors=[],tileRequests=[]
+  page.on('request',r=>{if(/\/mahjong\/tiles\/[mps][1-9]\.png$/.test(r.url()))tileRequests.push(r.url())})
   page.on('pageerror',e=>errors.push(e.message))
   await page.goto(`http://127.0.0.1:${server.address().port}/`)
   await page.evaluate(()=>{
@@ -87,19 +92,32 @@ try{
   assert.equal(await page.locator('[data-scmj-set-sound]').isChecked(),true)
   assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('scmj-settings')).voice),false)
   await page.screenshot({path:join(out,`settings-${viewport.width}.png`)})
-  // Slow/failed image requests must never remove cards or force unaffected images to reload.
-  await page.route('**/mahjong/tiles/*.png',async route=>{await new Promise(r=>setTimeout(r,300));await route.abort()})
+  // All 27 original PNGs preload once on entry; even with HTTP cache disabled,
+  // offline redraws must synchronously use decoded originals, never fallback art.
+  await page.evaluate(()=>ui._tileImagesReady)
+  assert.equal(tileRequests.length,27);assert.equal(new Set(tileRequests).size,27)
+  await page.context().setOffline(true)
   const handResult=await page.evaluate(()=>{
    ui.view={phase:'play',legal:[{type:'discard',tiles:[0,1,2,3,4,5,6,7,8]}],my:{hand:[0,0,1,1,2,2,3,3,4,4,5,5,6],drawnTile:7,void:null}}
    ui.renderHand(ui.view)
-   const before=Array.from(ui._els.hand.children),images=before.map(b=>b.querySelector('img'))
+   const before=Array.from(ui._els.hand.children),images=before.map(b=>b.querySelector('canvas'))
    for(let i=0;i<50;i++){ui.selectedIdx=i%14;ui.renderHand(ui.view)}
-   const stable=before.every((b,i)=>b===ui._els.hand.children[i]&&images[i]===b.querySelector('img'))
+   const stable=before.every((b,i)=>b===ui._els.hand.children[i]&&images[i]===b.querySelector('canvas'))
    ui.view.my.hand.shift();ui.view.my.drawnTile=8;ui.renderHand(ui.view)
-   return {stable,count:ui._els.hand.children.length,correct:Array.from(ui._els.hand.children).every((b,i)=>b._tileIdx===i)}
+   let originals=true
+   for(let id=0;id<27;id++){
+    const hand=ui.makeTile(id,'hand').querySelector('canvas')
+    for(let i=0;i<20;i++){
+     const discarded=ui.makeTile(id,'disc').querySelector('canvas')
+     if(hand.dataset.ready!=='true'||discarded.dataset.ready!=='true'||hand.toDataURL()!==discarded.toDataURL())originals=false
+    }
+    const meld=ui.makeMeldGroup({tile:id,kind:'peng'})
+    if(!Array.from(meld.querySelectorAll('canvas')).every(c=>c.dataset.ready==='true'&&c.toDataURL()===hand.toDataURL()))originals=false
+   }
+   return {stable,originals,count:ui._els.hand.children.length,correct:Array.from(ui._els.hand.children).every((b,i)=>b._tileIdx===i)}
   })
-  assert.deepEqual(handResult,{stable:true,count:13,correct:true})
-  await page.waitForFunction(()=>Array.from(ui._els.hand.querySelectorAll('img')).every(img=>img.complete&&img.naturalWidth>0&&img.src.startsWith('data:image/svg+xml')))
+  assert.deepEqual(handResult,{stable:true,originals:true,count:13,correct:true})
+  assert.equal(tileRequests.length,27,'offline redraws issue no new PNG requests')
   await page.evaluate(()=>ui.destroy());assert.deepEqual(errors,[]);await page.close()
  }
  console.log(JSON.stringify({passed:true,screenshots:out}))
