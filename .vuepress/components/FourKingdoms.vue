@@ -93,7 +93,7 @@
       </div>
     </div>
     <div v-if="confirmBox" class="jq-modal jq-mode-modal" @click.self="confirmBox=null"><div role="dialog" aria-modal="true" aria-labelledby="jq-confirm-title" @keydown.tab="trapDialogFocus"><header><h3 id="jq-confirm-title">{{confirmBox.title}}</h3><button aria-label="关闭确认" @click="confirmBox=null">✕</button></header><p>{{confirmBox.text}}</p><div class="jq-button-pair"><button @click="confirmBox=null">取消</button><button class="jq-primary" @click="acceptConfirm">确认</button></div></div></div>
-    <div v-if="rules" class="jq-modal" @click.self="rules=false"><div role="dialog" aria-modal="true" aria-label="四国军棋规则" @keydown.tab="trapDialogFocus"><header><h3>四国军棋 · 作战手册</h3><button @click="rules=false" aria-label="关闭规则">✕</button></header><p>对家结盟，青龙与玄武一队，赤虎与朱雀一队。轮流行棋；一家出局后，队友仍可独立取胜。</p><h4>01 布阵</h4><p>每方 25 子。军旗必须在两个大本营之一；地雷只在最后两排；炸弹不能放第一排；五个行营留空。点击两枚己方棋子交换。</p><h4>02 行棋</h4><p>出征时四方各掷两颗骰子，点数最大者先行，并列最高点重掷，先手不由座次固定。公路走相邻一站，行营有斜线连接。铁路没有棋子阻挡时可长行；普通棋子直行或沿弧线通行，只有工兵能在铁路直角处转弯。不能越过友军或敌军，不能攻击行营里的棋子。任何棋子进入大本营后都不能移动。</p><h4>03 战斗</h4><p>司令 ＞ 军长 ＞ 师长 ＞ 旅长 ＞ 团长 ＞ 营长 ＞ 连长 ＞ 排长 ＞ 工兵。同级同归于尽；炸弹与任何棋子同归于尽；工兵排雷，其他普通棋子触雷阵亡。司令阵亡，本方军旗公开。</p><h4>04 胜负与暗棋</h4><p>军旗被夺、无合法行棋或投降，该方出局，剩余棋子撤离。全队两家出局才判负。连续 70 手无碰撞判和。双明只显示本队身份；四暗只显示自己；全明为练习模式。AI 同样按可见信息选步。</p></div></div>
+    <div v-if="rules" class="jq-modal" @click.self="rules=false"><div role="dialog" aria-modal="true" aria-label="四国军棋规则" @keydown.tab="trapDialogFocus"><header><h3>四国军棋 · 作战手册</h3><button @click="rules=false" aria-label="关闭规则">✕</button></header><p>对家结盟，青龙与玄武一队，赤虎与朱雀一队。轮流行棋；一家出局后，队友仍可独立取胜。</p><h4>01 布阵</h4><p>每方 25 子。军旗必须在两个大本营之一；地雷只在最后两排；炸弹不能放第一排；五个行营留空。点击两枚己方棋子交换。</p><h4>02 行棋</h4><p>四方各掷两颗骰子，点数最大者先行，并列最高点重掷；骰子只决定先手。之后固定按棋盘座次顺时针轮行：下方 → 左方 → 上方 → 右方；一家出局或无合法步时才跳过。公路走相邻一站，行营有斜线连接。铁路没有棋子阻挡时可长行；普通棋子直行或沿弧线通行，只有工兵能在铁路直角处转弯。不能越过友军或敌军，不能攻击行营里的棋子。任何棋子进入大本营后都不能移动。</p><h4>03 战斗</h4><p>司令 ＞ 军长 ＞ 师长 ＞ 旅长 ＞ 团长 ＞ 营长 ＞ 连长 ＞ 排长 ＞ 工兵。同级同归于尽；炸弹与任何棋子同归于尽；工兵排雷，其他普通棋子触雷阵亡。司令阵亡，本方军旗公开。</p><h4>04 胜负与暗棋</h4><p>军旗被夺、无合法行棋或投降，该方出局，剩余棋子撤离。全队两家出局才判负。连续 70 手无碰撞判和。双明只显示本队身份；四暗只显示自己；全明为练习模式。AI 同样按可见信息选步。</p></div></div>
   </section>
 </template>
 
@@ -232,11 +232,12 @@ export default {
 @media(max-height:550px) and (orientation:landscape){
  .jq-fullscreen{display:grid;grid-template-columns:minmax(0,1fr) clamp(268px,36%,312px);grid-template-rows:auto auto minmax(0,1fr) auto;column-gap:10px;padding-bottom:0;background:radial-gradient(ellipse at center,#294a3e,#112925)}
  .jq-fullscreen .jq-layout,.jq-fullscreen .jq-arena{display:contents}
- .jq-fullscreen .jq-top{grid-column:2;grid-row:1;flex-direction:row;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px 8px;height:auto;padding:0 0 6px;background:none;border:0}
+ .jq-fullscreen .jq-top{grid-column:2;grid-row:1;flex-direction:row;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px 10px;height:auto;padding:0 0 6px;background:none;border:0}
  .jq-fullscreen .jq-emblem,.jq-fullscreen .jq-brand small{display:none}
  .jq-fullscreen .jq-brand strong{font-size:16px;letter-spacing:2px}
- .jq-fullscreen .jq-top-actions{gap:4px}
- .jq-fullscreen .jq-top-actions button,.jq-fullscreen .jq-top-actions a{padding:6px 8px;min-height:32px;font-size:12px}
+ .jq-fullscreen .jq-top-actions{gap:8px;flex-wrap:wrap;justify-content:flex-end}
+ .jq-fullscreen .jq-top-actions button,.jq-fullscreen .jq-top-actions a{padding:7px 10px;min-height:40px;font-size:12px;white-space:nowrap}
+ .jq-fullscreen .jq-top-actions a{display:inline-flex;align-items:center;justify-content:center}
  .jq-fullscreen .jq-command{grid-column:2;grid-row:2;padding:0 0 5px;font-size:11px}
  .jq-fullscreen .jq-panel{grid-column:2;grid-row:3;min-height:0;max-height:none;padding:0 0 0 9px;overflow:auto;border-left:1px solid #496151}
  .jq-fullscreen .jq-board-footer{grid-column:2;grid-row:4;padding:5px 0 0;flex-wrap:wrap;row-gap:4px}
@@ -246,7 +247,8 @@ export default {
  .jq-fullscreen .jq-board-window.is-zoomed .jq-board{width:auto!important;height:180%!important;max-width:none}
  .jq-fullscreen .jq-team-card{margin:6px 0;padding:8px 11px}
  .jq-fullscreen .jq-team-card small{display:none}
- .jq-fullscreen .jq-button-pair button{min-height:34px}
+ .jq-fullscreen .jq-button-pair{gap:10px}
+ .jq-fullscreen .jq-button-pair button{min-height:40px}
  .jq-fullscreen .jq-journal,.jq-fullscreen .jq-mini-rule,.jq-fullscreen .jq-intel,.jq-fullscreen .jq-panel-title small{display:none}
  .jq-fullscreen .jq-select-label{margin-top:8px}.jq-fullscreen .jq-panel-title{margin-bottom:8px}
 }
@@ -279,4 +281,16 @@ export default {
 .jq-dice-rows strong{min-width:30px;font-family:Georgia,serif;font-size:20px;color:#e5d09c;text-align:right}
 .jq-dice-msg{min-height:20px;font-size:13px;letter-spacing:1px;color:#e9e2c9;text-align:center}
 @media(max-width:600px){.jq-dice{padding:14px}.jq-dice-card{gap:12px;padding:20px 16px}.jq-dice-title{font-size:14px;letter-spacing:2px}.jq-die{width:28px;height:28px;padding:4px}.jq-dice-round{width:100%}.jq-dice-rows{gap:8px;min-width:0}.jq-dice-msg{font-size:12px}}
+
+/* Touch browsers may keep :hover latched after a tap. Reserve hover feedback
+   for mouse-like pointers; touch controls use a brief :active state instead. */
+.jq-game button,.jq-game a{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.jq-game button{-webkit-user-select:none;user-select:none}
+@media (hover:none),(pointer:coarse){
+ .jq-game button:hover:not(.jq-primary):not(.jq-mode-option){background:#253e35;border-color:#607163}
+ .jq-game button.jq-primary:hover{background:linear-gradient(120deg,#dfc589,#b69c5e);border-color:#f2d799}
+ .jq-game .jq-mode-option:hover{background:#e9e4d5;border-color:#b9bfae}
+ .jq-game .jq-mode-option.is-active:hover{border:2px solid #34745a;background:#dcecdf}
+ .jq-game button:active:not(:disabled){filter:brightness(.92)}
+}
 </style>

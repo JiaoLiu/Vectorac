@@ -4,6 +4,7 @@ import {
   RED, BLACK, createInitialBoard, getLegalMoves, getMovesFrom, isInCheck,
   chooseMove, applyMove, findGeneral, resultForSideToMove
 } from '../.vuepress/components/xiangqi/engine.mjs'
+import { XIANGQI_PUZZLES, createPuzzleBoard, isCorrectPuzzleChoice, getPuzzlePage } from '../.vuepress/components/xiangqi/puzzles.mjs'
 
 function sparseBoard() {
   const board = Array.from({ length: 10 }, () => Array(9).fill(null))
@@ -128,4 +129,60 @@ test('AI varies among close-quality opening moves instead of repeating one fixed
   assert.notDeepEqual(alternate, first)
   assert.ok(getLegalMoves(board, BLACK).some((legal) => JSON.stringify(legal) === JSON.stringify(first)))
   assert.ok(getLegalMoves(board, BLACK).some((legal) => JSON.stringify(legal) === JSON.stringify(alternate)))
+})
+
+test('the eight introductory puzzles are legal, unique mate-in-one positions', () => {
+  const puzzles = XIANGQI_PUZZLES.filter((puzzle) => puzzle.kind !== 'choice')
+  assert.equal(puzzles.length, 8)
+  assert.deepEqual(new Set(puzzles.map((puzzle) => puzzle.side)), new Set([RED, BLACK]))
+  for (const puzzle of puzzles) {
+    const board = createPuzzleBoard(puzzle)
+    const opponent = puzzle.side === RED ? BLACK : RED
+    assert.equal(board.flat().filter(Boolean).filter((piece) => piece.type === 'K' && piece.side === RED).length, 1, `${puzzle.id} has one red general`)
+    assert.equal(board.flat().filter(Boolean).filter((piece) => piece.type === 'K' && piece.side === BLACK).length, 1, `${puzzle.id} has one black general`)
+    assert.equal(isInCheck(board, puzzle.side), false, `${puzzle.id} does not start with the solver illegally in check`)
+    assert.equal(isInCheck(board, opponent), false, `${puzzle.id} does not start with the opponent already checked`)
+    const legal = getLegalMoves(board, puzzle.side)
+    const solution = legal.find((move) => move.fromX === puzzle.solution.fromX && move.fromY === puzzle.solution.fromY && move.toX === puzzle.solution.toX && move.toY === puzzle.solution.toY)
+    assert.ok(solution, `${puzzle.id} solution is legal`)
+    const mates = legal.filter((move) => {
+      const result = resultForSideToMove(applyMove(board, move), opponent)
+      return result && result.checkmate && result.winner === puzzle.side
+    })
+    assert.equal(mates.length, 1, `${puzzle.id} has a single mate-in-one answer`)
+    assert.deepEqual(mates[0], solution, `${puzzle.id} answer is the unique mate`)
+  }
+})
+
+test('the Jianghu collection adds 108 sourced, legal win-or-draw first-move challenges', () => {
+  const puzzles = XIANGQI_PUZZLES.filter((puzzle) => puzzle.kind === 'choice')
+  assert.equal(puzzles.length, 108)
+  assert.equal(new Set(XIANGQI_PUZZLES.map((puzzle) => puzzle.id)).size, 116)
+  assert.equal(puzzles.filter((puzzle) => puzzle.target === 'red-win').length, 46)
+  assert.equal(puzzles.filter((puzzle) => puzzle.target === 'draw').length, 62)
+
+  for (const puzzle of puzzles) {
+    const board = createPuzzleBoard(puzzle)
+    const redMoves = getLegalMoves(board, RED)
+    assert.equal(board.flat().filter((piece) => piece && piece.side === RED && piece.type === 'K').length, 1, `${puzzle.id} has one red general`)
+    assert.equal(board.flat().filter((piece) => piece && piece.side === BLACK && piece.type === 'K').length, 1, `${puzzle.id} has one black general`)
+    assert.equal(isInCheck(board, RED), false, `${puzzle.id} does not start with red illegally in check`)
+    assert.equal(isInCheck(board, BLACK), false, `${puzzle.id} does not start with black illegally in check`)
+    assert.deepEqual(puzzle.options.map((option) => option.label), ['A', 'B', 'C', 'D', 'E'], `${puzzle.id} keeps all five source choices`)
+    assert.equal(puzzle.options.find((option) => option.label === 'E').move, null, `${puzzle.id} represents “none above” without inventing a move`)
+    assert.match(puzzle.source, /^https:\/\/www\.bilibili\.com\/video\//)
+    assert.ok(puzzle.solution === null || redMoves.some((move) => move.fromX === puzzle.solution.fromX && move.fromY === puzzle.solution.fromY && move.toX === puzzle.solution.toX && move.toY === puzzle.solution.toY), `${puzzle.id} answer move is legal when one is supplied`)
+    for (const option of puzzle.options.filter((item) => item.move)) {
+      assert.ok(redMoves.some((move) => move.fromX === option.move.fromX && move.fromY === option.move.fromY && move.toX === option.move.toX && move.toY === option.move.toY), `${puzzle.id} option ${option.label} is legal`)
+    }
+    assert.equal(isCorrectPuzzleChoice(puzzle, puzzle.answer), true)
+    assert.equal(isCorrectPuzzleChoice(puzzle, puzzle.options.find((option) => option.label !== puzzle.answer).label), false)
+  }
+})
+
+test('116 Xiangqi levels are paged in groups of ten rather than flooding the controls', () => {
+  assert.deepEqual(getPuzzlePage(XIANGQI_PUZZLES, 0).items.map((puzzle) => puzzle.id), XIANGQI_PUZZLES.slice(0, 10).map((puzzle) => puzzle.id))
+  assert.equal(getPuzzlePage(XIANGQI_PUZZLES, 11).pageCount, 12)
+  assert.equal(getPuzzlePage(XIANGQI_PUZZLES, 11).items.length, 6)
+  assert.equal(getPuzzlePage(XIANGQI_PUZZLES, 999).pageIndex, 11)
 })

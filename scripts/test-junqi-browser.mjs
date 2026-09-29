@@ -9,7 +9,8 @@ for(const [name,type] of [['chromium',chromium],['webkit',webkit]]){
  const browser=await type.launch({headless:true,...(name==='chromium'?{executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'}:{})})
  try{
   for(const viewport of [{width:1440,height:1000},{width:390,height:844},{width:844,height:390}]){
-   const page=await browser.newPage({viewport}),errors=[]
+   const mobile=viewport.width<900
+   const page=await browser.newPage({viewport,isMobile:mobile,hasTouch:mobile}),errors=[]
    page.on('pageerror',e=>errors.push(e.message));page.on('dialog',dialog=>{errors.push('unexpected native dialog: '+dialog.message());dialog.dismiss()})
    await page.route('**/*',r=>{const u=r.request().url();return /^https?:/.test(u)&&!u.startsWith('http://127.0.0.1:8080')?r.abort():r.continue()})
    await page.goto('http://127.0.0.1:8080/blogs/other/junqi.html')
@@ -95,10 +96,30 @@ for(const [name,type] of [['chromium',chromium],['webkit',webkit]]){
    await page.getByRole('button',{name:'重新布阵',exact:true}).click()
    await page.getByRole('dialog',{name:'重新布阵'}).waitFor()
    await page.getByRole('button',{name:'取消',exact:true}).click()
-   await page.getByRole('button',{name:'全屏',exact:true}).click()
+   const enterFullscreen=page.getByRole('button',{name:'全屏',exact:true})
+   if(mobile)await enterFullscreen.tap();else await enterFullscreen.click()
    assert.equal(await page.evaluate(()=>document.body.style.overflow),'hidden')
    const full=await page.locator('.jq-game').boundingBox()
    assert.ok(Math.abs(full.x)<2&&Math.abs(full.y)<2&&Math.abs(full.height-viewport.height)<2,'fullscreen is viewport-relative, not the animated article container')
+   if(viewport.width===844){
+    const toolbar=await page.locator('.jq-top-actions > *').evaluateAll(els=>els.map(el=>{const r=el.getBoundingClientRect();return{x:r.x,y:r.y,right:r.right,bottom:r.bottom}}))
+    assert.equal(toolbar.length,3,'landscape toolbar retains all three navigation controls')
+    for(let i=0;i<toolbar.length;i++)for(let j=i+1;j<toolbar.length;j++){
+     const a=toolbar[i],b=toolbar[j],overlap=a.x<b.right&&b.x<a.right&&a.y<b.bottom&&b.y<a.bottom
+     assert.equal(overlap,false,'landscape navigation buttons never overlap')
+    }
+    const rulesButton=page.locator('.jq-top-actions button').first()
+    await rulesButton.tap()
+    assert.equal(await page.locator('.jq-modal [role="dialog"]').count(),1,'touch tap opens the rules dialog')
+    await page.locator('.jq-modal header button').tap()
+    assert.equal(await page.locator('.jq-modal').count(),0,'touch tap closes the dialog')
+    const soundButton=page.locator('.jq-audio button').first()
+    await soundButton.tap()
+    assert.match(await soundButton.innerText(),/音效 关/,'touch tap changes the button state')
+    const touchState=await soundButton.evaluate(el=>({background:getComputedStyle(el).backgroundColor,active:el.matches(':active'),coarse:matchMedia('(pointer: coarse)').matches}))
+    assert.equal(touchState.active,false,'touch :active feedback clears after release')
+    if(touchState.coarse)assert.equal(touchState.background,'rgb(37, 62, 53)','touch hover does not remain as a pressed-looking style')
+   }
    if(viewport.width<900){await page.getByRole('button',{name:'放大棋盘',exact:true}).click();await page.getByRole('button',{name:'回到己方',exact:true}).click()}
    await page.locator('.jq-game').screenshot({path:join(out,`${name}-${viewport.width}-play.png`)})
    await page.getByRole('button',{name:'退出全屏',exact:true}).click()

@@ -1,8 +1,11 @@
-// Original quiet plucked accompaniment and short wooden-piece cues.
-// Audio is created/resumed only by a user gesture; music and effects are separate.
+// The music file starts after the first user gesture; generated cues remain on
+// Web Audio so they can be mixed separately and never delay the first move.
 export function createJunqiAudio() {
-  let ctx, musicBus, effectsBus, timer, step=0, enabled=true, music=true, paused=false, disposed=false
+  let ctx, effectsBus
+  let enabled=true, music=true, paused=false, disposed=false, unlocked=false
+  let bgm=null, bgmFailed=false
   const voices=new Set()
+
   function tone(frequency,start,duration,gain,bus,type='sine') {
     const osc=ctx.createOscillator(), envelope=ctx.createGain()
     osc.type=type;osc.frequency.value=frequency
@@ -13,23 +16,62 @@ export function createJunqiAudio() {
     osc.onended=()=>{voices.delete(osc);osc.disconnect();envelope.disconnect()}
     osc.start(start);osc.stop(start+duration+.02)
   }
-  function tick() {
-    if(!ctx||ctx.state!=='running'||!music||paused)return
-    const notes=[220,261.63,329.63,392,329.63,261.63,196,293.66,349.23,440,349.23,293.66]
-    const f=notes[step++%notes.length], t=ctx.currentTime
-    tone(f,t,1.8,.12,musicBus);tone(f*2,t,1.1,.025,musicBus)
-    if(step%6===1)tone(f/2,t,3,.07,musicBus)
+
+  function syncMusic() {
+    if(!unlocked||disposed||!music||paused){
+      if(bgm&&!bgm.paused)bgm.pause()
+      return
+    }
+
+    if(!bgmFailed){
+      if(!bgm){
+        try{
+          const a=new window.Audio('/audio/junqi/clash-defiant.mp3')
+          a.loop=true;a.preload='none';a.volume=.28
+          a.addEventListener('error',()=>{
+            if(disposed||bgm!==a)return
+            bgm=null;bgmFailed=true;syncMusic()
+          })
+          bgm=a
+          if(typeof navigator!=='undefined'&&'mediaSession' in navigator){
+            try{navigator.mediaSession.metadata=new MediaMetadata({title:'四国军棋 · 背景音乐',artist:'Kevin MacLeod',album:'Vectorac'})}catch(e){}
+          }
+        }catch(e){bgmFailed=true}
+      }
+      if(bgm){
+        const audio=bgm
+        if(audio.paused){
+          const p=audio.play()
+          if(p&&p.catch)p.catch(error=>{
+            if(error&&error.name!=='NotAllowedError'&&error.name!=='AbortError'&&bgm===audio){bgm=null;bgmFailed=true;syncMusic()}
+          })
+        }
+      }
+    }
   }
-  function schedule(){clearInterval(timer);if(!disposed&&ctx&&music&&!paused){tick();timer=setInterval(tick,650)}}
+
   return {
     unlock(){
       if(disposed)return
-      if(!ctx){const Audio=window.AudioContext||window.webkitAudioContext;if(!Audio)return;ctx=new Audio();musicBus=ctx.createGain();effectsBus=ctx.createGain();musicBus.gain.value=music&&!paused?.45:0;musicBus.connect(ctx.destination);effectsBus.connect(ctx.destination);if(ctx.state==='running')schedule()}
-      if(ctx.state!=='running')ctx.resume().then(()=>schedule()).catch(()=>{})
+      unlocked=true
+      if(!ctx){
+        const AudioContext=window.AudioContext||window.webkitAudioContext
+        if(AudioContext){
+          try{
+            ctx=new AudioContext();effectsBus=ctx.createGain()
+            effectsBus.connect(ctx.destination)
+          }catch(e){ctx=null}
+        }
+      }
+      if(ctx&&ctx.state!=='running'){
+        const resumed=ctx.resume()
+        syncMusic() // Start HTML audio synchronously while the user gesture is active.
+        resumed.catch(()=>{})
+      }else syncMusic()
     },
     effects(value){enabled=value},
-    music(value){music=value;if(musicBus)musicBus.gain.setTargetAtTime(music&&!paused?.45:0,ctx.currentTime,.08);schedule()},
-    pause(value){paused=value;if(musicBus)musicBus.gain.setTargetAtTime(music&&!paused?.45:0,ctx.currentTime,.08);if(!paused&&ctx&&ctx.state!=='running')ctx.resume().then(schedule).catch(()=>{});else schedule()},
+    music(value){music=value;syncMusic()},
+    pause(value){paused=value;syncMusic()},
     play(kind='move'){
       if(!enabled||paused||!ctx||ctx.state!=='running')return
       const t=ctx.currentTime
@@ -39,6 +81,11 @@ export function createJunqiAudio() {
       else if(kind==='dice'){for(let i=0;i<8;i++)tone(300+Math.random()*300,t+i*.1,.055,.12,effectsBus,'square')}
       else {for(let i=0;i<3;i++)tone([330,440,660][i],t+i*.13,.45,.12,effectsBus)}
     },
-    destroy(){disposed=true;clearInterval(timer);for(const voice of voices){try{voice.stop()}catch(e){}}voices.clear();if(ctx)ctx.close().catch(()=>{});ctx=null}
+    destroy(){
+      disposed=true
+      if(bgm){bgm.pause();bgm.removeAttribute('src');bgm.load();bgm=null}
+      for(const voice of voices){try{voice.stop()}catch(e){}}
+      voices.clear();if(ctx)ctx.close().catch(()=>{});ctx=null
+    }
   }
 }

@@ -3,6 +3,7 @@ import {
   getMovesFrom, applyMove, isInCheck, findGeneral, resultForSideToMove,
   otherSide, chooseMove
 } from './engine.mjs'
+import { XIANGQI_PUZZLES, createPuzzleBoard, isCorrectPuzzleChoice, getPuzzlePage } from './puzzles.mjs'
 
 const SIDE_LABEL = { red: '红方', black: '黑方' }
 const FILE_X = (x) => 38 + x * 58
@@ -12,10 +13,17 @@ function esc(value) {
   return String(value).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch])
 }
 
+function boardPoint(file, rank, side) {
+  const x = FILE_X(file)
+  const y = RANK_Y(rank)
+  return side === BLACK ? { x: 540 - x, y: 620 - y } : { x, y }
+}
+
 export default class XiangqiUI {
   constructor(root) {
     this.root = root
     this.board = createInitialBoard()
+    this.mode = 'match'
     this.playerSide = RED
     this.currentSide = RED
     this.landscape = false
@@ -34,10 +42,19 @@ export default class XiangqiUI {
     this._placeholder = null
     this._expanded = false
     this._destroyed = false
-    this.musicEnabled = false
+    this.musicEnabled = true
+    this.musicStarted = false
     this.soundEnabled = true
     this.audioContext = null
     this.bgm = null
+    this.puzzles = XIANGQI_PUZZLES
+    this.puzzleIndex = 0
+    this.puzzlePage = 0
+    this.completedPuzzles = new Set()
+    this.unlockedPuzzleCount = 1
+    this.puzzleMessage = ''
+    this.selectedPuzzleChoice = null
+    this.loadPuzzleProgress()
     if (typeof document !== 'undefined') document.body.classList.add('xq-page-active')
     this.boardEl = root.querySelector('[data-xq-board]')
     this.statusEl = root.querySelector('[data-xq-status]')
@@ -48,15 +65,19 @@ export default class XiangqiUI {
     this.resultTextEl = root.querySelector('[data-xq-result-text]')
     this.onClick = this._onClick.bind(this)
     this.onKeyDown = this._onKeyDown.bind(this)
+    this.onFirstGesture = this._tryNativeFullscreen.bind(this)
     root.addEventListener('click', this.onClick)
     root.addEventListener('keydown', this.onKeyDown)
+    if (typeof document !== 'undefined') document.addEventListener('pointerdown', this.onFirstGesture, { once: true })
     this.landscapeQuery = typeof window !== 'undefined' && window.matchMedia
       ? window.matchMedia('(max-height: 560px) and (orientation: landscape)')
       : null
     this.landscape = Boolean(this.landscapeQuery && this.landscapeQuery.matches)
+    this.placeLayoutControls()
     this.onLandscapeChange = (event) => {
       if (this.landscape === event.matches) return
       this.landscape = event.matches
+      this.placeLayoutControls()
       this.render()
     }
     if (this.landscapeQuery) {
@@ -64,12 +85,53 @@ export default class XiangqiUI {
       else if (this.landscapeQuery.addListener) this.landscapeQuery.addListener(this.onLandscapeChange)
     }
     this.render()
+    this.enterFullscreen()
+  }
+
+  placeLayoutControls() {
+    const actions = this.root.querySelector('.xq-top-actions')
+    const destination = this.root.querySelector(this.landscape ? '.xq-match-card' : '.xq-topbar')
+    if (!actions || !destination) return
+    if (this.landscape) destination.prepend(actions)
+    else destination.append(actions)
   }
 
   _onClick(event) {
-    const target = event.target.closest && event.target.closest('button, [data-xq-square]')
+    const target = event.target.closest && event.target.closest('button, a[data-xq-back], [data-xq-square]')
     if (!target || !this.root.contains(target)) return
     this.prepareAudio()
+
+    if (target.matches('a[data-xq-back]')) {
+      this.exitFullscreen()
+      return
+    }
+    if (target.matches('[data-xq-mode]')) {
+      this.setMode(target.dataset.xqMode)
+      return
+    }
+    if (target.matches('[data-xq-puzzle-level]')) {
+      this.startPuzzle(Number(target.dataset.xqPuzzleLevel))
+      return
+    }
+    if (target.matches('[data-xq-puzzle-page]')) {
+      const page = this.puzzlePage + Number(target.dataset.xqPuzzlePage)
+      const lastPage = Math.floor((this.puzzles.length - 1) / 10)
+      this.puzzlePage = Math.max(0, Math.min(lastPage, page))
+      this.render()
+      return
+    }
+    if (target.matches('[data-xq-puzzle-choice]')) {
+      this.answerPuzzleChoice(target.dataset.xqPuzzleChoice)
+      return
+    }
+    if (target.matches('[data-xq-puzzle-restart]')) {
+      this.restartPuzzle()
+      return
+    }
+    if (target.matches('[data-xq-next]')) {
+      this.startPuzzle(this.puzzleIndex + 1)
+      return
+    }
 
     if (target.matches('[data-xq-side]')) {
       if (this.playerSide !== target.dataset.xqSide) {
@@ -84,7 +146,8 @@ export default class XiangqiUI {
       return
     }
     if (target.matches('[data-xq-new]') || target.matches('[data-xq-again]')) {
-      this.newGame()
+      if (this.mode === 'puzzle') this.restartPuzzle()
+      else this.newGame()
       return
     }
     if (target.matches('[data-xq-undo]')) {
@@ -93,10 +156,6 @@ export default class XiangqiUI {
     }
     if (target.matches('[data-xq-hint]')) {
       this.showHint()
-      return
-    }
-    if (target.matches('[data-xq-fullscreen]')) {
-      this.toggleExpanded()
       return
     }
     if (target.matches('[data-xq-music]')) {
@@ -127,12 +186,45 @@ export default class XiangqiUI {
   }
 
   prepareAudio() {
-    if (this.audioContext || typeof window === 'undefined') return this.audioContext
-    const AudioContext = window.AudioContext || window.webkitAudioContext
-    if (!AudioContext) return null
-    try { this.audioContext = new AudioContext() } catch (e) { this.audioContext = null }
+    if (typeof window === 'undefined') return null
+    if (!this.audioContext) {
+      const AudioContext = window.AudioContext || window.webkitAudioContext
+      if (AudioContext) {
+        try { this.audioContext = new AudioContext() } catch (e) { this.audioContext = null }
+      }
+    }
     if (this.audioContext && this.audioContext.state === 'suspended') this.audioContext.resume().catch(() => {})
+    if (this.musicEnabled && !this.musicStarted) this.startMusic()
     return this.audioContext
+  }
+
+  startMusic() {
+    if (!this.musicEnabled || this.musicStarted || typeof Audio === 'undefined') return
+    if (!this.bgm) {
+      this.bgm = new Audio('/audio/xiangqi/guzheng-city.mp3')
+      this.bgm.loop = true
+      this.bgm.preload = 'auto'
+      this.bgm.volume = 0.18
+    }
+    const audio = this.bgm
+    try {
+      const playing = audio.play()
+      if (playing && typeof playing.then === 'function') {
+        playing.then(() => {
+          if (this.bgm === audio && this.musicEnabled) this.musicStarted = true
+          this.syncAudioControls()
+        }).catch(() => {
+          // Keep the preference enabled; a later user gesture can retry playback.
+          if (this.bgm === audio) this.musicStarted = false
+          this.syncAudioControls()
+        })
+      } else {
+        this.musicStarted = true
+      }
+    } catch (e) {
+      this.musicStarted = false
+    }
+    this.syncAudioControls()
   }
 
   playMoveSound(capture) {
@@ -174,24 +266,11 @@ export default class XiangqiUI {
   toggleMusic() {
     this.musicEnabled = !this.musicEnabled
     if (this.musicEnabled) {
-      if (!this.bgm) {
-        this.bgm = new Audio('/audio/xiangqi/guzheng-city.mp3')
-        this.bgm.loop = true
-        this.bgm.preload = 'none'
-        this.bgm.volume = 0.18
-      }
-      const audio = this.bgm
-      const playing = audio.play()
-      if (playing && typeof playing.catch === 'function') {
-        playing.catch(() => {
-          if (this.bgm === audio && this.musicEnabled) {
-            this.musicEnabled = false
-            this.syncAudioControls()
-          }
-        })
-      }
+      this.musicStarted = false
+      this.startMusic()
     } else if (this.bgm) {
       this.bgm.pause()
+      this.musicStarted = false
     }
     this.syncAudioControls()
   }
@@ -202,6 +281,7 @@ export default class XiangqiUI {
     if (music) {
       music.textContent = `♫ 背景音乐：${this.musicEnabled ? '开' : '关'}`
       music.setAttribute('aria-pressed', String(this.musicEnabled))
+      music.setAttribute('aria-label', this.musicEnabled && !this.musicStarted ? '背景音乐默认开启，首次点击游戏区域后开始播放' : `背景音乐${this.musicEnabled ? '开启' : '关闭'}`)
       music.classList.toggle('is-on', this.musicEnabled)
     }
     if (sound) {
@@ -235,6 +315,31 @@ export default class XiangqiUI {
 
   play(move) {
     if (this.phase !== 'playing') return
+    if (this.mode === 'puzzle') {
+      if (this.currentPuzzle.kind === 'choice') {
+        const choice = this.currentPuzzle.options.find((option) => option.move
+          && option.move.fromX === move.fromX && option.move.fromY === move.fromY
+          && option.move.toX === move.toX && option.move.toY === move.toY)
+        if (choice) this.answerPuzzleChoice(choice.label)
+        else {
+          this.puzzleMessage = '这是自由着法题：请从棋盘上尝试候选着，或在右侧选择 A–E。'
+          this.selected = null
+          this.legalFrom = []
+          this.render()
+        }
+        return
+      }
+      const nextBoard = applyMove(this.board, move)
+      const result = resultForSideToMove(nextBoard, otherSide(this.playerSide))
+      if (!result || !result.checkmate || result.winner !== this.playerSide) {
+        this.puzzleMessage = '这步还没有绝杀，再找找能封住将门的着法。'
+        this.selected = { x: move.fromX, y: move.fromY }
+        this.legalFrom = getMovesFrom(this.board, move.fromX, move.fromY, this.playerSide)
+        this.hintMove = null
+        this.render()
+        return
+      }
+    }
     const before = cloneBoard(this.board)
     const captured = this.board[move.toY][move.toX]
     const moving = this.board[move.fromY][move.fromX]
@@ -244,18 +349,69 @@ export default class XiangqiUI {
     this.animatingMove = {
       x: move.toX,
       y: move.toY,
-      dx: FILE_X(move.fromX) - FILE_X(move.toX),
-      dy: RANK_Y(move.fromY) - RANK_Y(move.toY)
+      dx: 0,
+      dy: 0
     }
+    const fromPoint = boardPoint(move.fromX, move.fromY, this.playerSide)
+    const toPoint = boardPoint(move.toX, move.toY, this.playerSide)
+    const frame = this.boardEl.getBoundingClientRect()
+    // The board viewBox stays 540x620 in both orientations; only the controls
+    // move on landscape, so animation deltas must use the same coordinate space.
+    const viewWidth = 540
+    const viewHeight = 620
+    this.animatingMove.dx = (fromPoint.x - toPoint.x) * frame.width / viewWidth
+    this.animatingMove.dy = (fromPoint.y - toPoint.y) * frame.height / viewHeight
     this.captureAnimation = captured ? { x: move.toX, y: move.toY } : null
     this.playMoveSound(Boolean(captured))
     this.currentSide = otherSide(this.currentSide)
     this.selected = null
     this.legalFrom = []
     this.hintMove = null
-    this._checkFinished()
+    if (this.mode === 'puzzle') {
+      this.phase = 'over'
+      this.winner = this.playerSide
+      this.completePuzzle()
+      this.resultEl.hidden = false
+      this.resultTitleEl.textContent = `${this.currentPuzzle.title} · 绝杀成功`
+      this.resultTextEl.textContent = this.puzzleIndex < this.puzzles.length - 1
+        ? `第 ${this.puzzleIndex + 1} 关通过，已解锁第 ${this.puzzleIndex + 2} 关。`
+        : '全部残局关卡通关，棋力见长！'
+    } else {
+      this._checkFinished()
+    }
     this.render()
-    if (this.phase === 'playing' && this.currentSide !== this.playerSide) this.scheduleAI()
+    if (this.mode === 'match' && this.phase === 'playing' && this.currentSide !== this.playerSide) this.scheduleAI()
+  }
+
+  answerPuzzleChoice(label) {
+    const puzzle = this.currentPuzzle
+    if (this.mode !== 'puzzle' || !puzzle || puzzle.kind !== 'choice' || this.phase !== 'playing') return
+    const choice = puzzle.options.find((option) => option.label === label)
+    if (!choice) return
+    this.selectedPuzzleChoice = label
+    this.selected = null
+    this.legalFrom = []
+    this.hintMove = null
+    if (!isCorrectPuzzleChoice(puzzle, label)) {
+      this.puzzleMessage = '还不是正解。先确认目标是争胜还是谋和，再看黑方最佳应对。'
+      this.render()
+      return
+    }
+    this.puzzleMessage = ''
+    this.hintMove = choice.move ? { ...choice.move } : null
+    this.phase = 'over'
+    this.winner = puzzle.target === 'red-win' ? RED : null
+    this.completePuzzle()
+    this.resultEl.hidden = false
+    this.resultTitleEl.textContent = puzzle.target === 'draw' ? '判断正确 · 成功谋和' : '判断正确 · 红方取胜'
+    const answerText = choice.label === 'E'
+      ? '四个给定着法都不符合目标，正确选择是“以上都不对”。'
+      : `关键首着：${choice.text}。`
+    const nextText = this.puzzleIndex < this.puzzles.length - 1
+      ? `第 ${this.puzzleIndex + 1} 关通过，已解锁第 ${this.puzzleIndex + 2} 关。`
+      : '全部残局关卡通关，棋力见长！'
+    this.resultTextEl.textContent = `${answerText} ${nextText}`
+    this.render()
   }
 
   _checkFinished() {
@@ -308,13 +464,21 @@ export default class XiangqiUI {
 
   showHint() {
     if (this.phase !== 'playing' || this.thinking || this.currentSide !== this.playerSide) return
-    const move = chooseMove(this.board, this.playerSide, this.difficulty)
+    const move = this.mode === 'puzzle' ? this.currentPuzzle.solution : chooseMove(this.board, this.playerSide, this.difficulty)
+    if (this.mode === 'puzzle' && this.currentPuzzle.kind === 'choice' && !move) {
+      this.puzzleMessage = '提示：A–D 都不是正解；試試 E「以上選項都不對」。'
+      this.render()
+      return
+    }
     if (!move) return
     this.hintMove = move
     this.selected = { x: move.fromX, y: move.fromY }
     this.legalFrom = getMovesFrom(this.board, move.fromX, move.fromY, this.playerSide)
+    this.puzzleMessage = this.mode === 'puzzle'
+      ? `提示：${this.currentPuzzle.kind === 'choice' ? this.currentPuzzle.options.find((option) => option.label === this.currentPuzzle.answer).text : this._moveLabel(move)}`
+      : ''
     this.render()
-    this.statusEl.textContent = `试试这步：${this._moveLabel(move)}`
+    this.statusEl.textContent = this.mode === 'puzzle' ? this.puzzleMessage : `试试这步：${this._moveLabel(move)}`
   }
 
   _moveLabel(move) {
@@ -336,33 +500,130 @@ export default class XiangqiUI {
     this.history = []
     this.phase = 'playing'
     this.winner = null
+    this.puzzleMessage = ''
+    this.selectedPuzzleChoice = null
     this.thinking = false
     this.resultEl.hidden = true
     this.render()
     if (this.currentSide !== this.playerSide) this.scheduleAI()
   }
 
-  toggleExpanded() {
-    if (!this._expanded) {
-      this._placeholder = document.createComment('xiangqi-root-placeholder')
-      this.root.parentNode.insertBefore(this._placeholder, this.root)
-      document.body.appendChild(this.root)
-      document.body.classList.add('xq-lock')
-      this.root.classList.add('xq-expanded')
-      this._expanded = true
-      this.root.querySelector('[data-xq-fullscreen]').textContent = '收起棋盘'
-    } else {
-      this.root.classList.remove('xq-expanded')
-      document.body.classList.remove('xq-lock')
-      if (this._placeholder && this._placeholder.parentNode) {
-        this._placeholder.parentNode.insertBefore(this.root, this._placeholder)
-        this._placeholder.remove()
-      }
-      this._placeholder = null
-      this._expanded = false
-      const button = this.root.querySelector('[data-xq-fullscreen]')
-      if (button) button.textContent = '沉浸对弈'
+  loadPuzzleProgress() {
+    if (typeof localStorage === 'undefined') return
+    try {
+      const saved = JSON.parse(localStorage.getItem('vectorac.xiangqi.puzzles.v1') || '{}')
+      const knownIds = new Set(this.puzzles.map((puzzle) => puzzle.id))
+      this.completedPuzzles = new Set(Array.isArray(saved.completed) ? saved.completed.filter((id) => knownIds.has(id)) : [])
+      const highestCompleted = this.puzzles.reduce((highest, puzzle, index) => this.completedPuzzles.has(puzzle.id) ? Math.max(highest, index + 1) : highest, 0)
+      const unlocked = Number(saved.unlocked)
+      this.unlockedPuzzleCount = Math.max(1, Math.min(this.puzzles.length, Number.isInteger(unlocked) ? unlocked : highestCompleted + 1))
+    } catch (e) {
+      this.completedPuzzles = new Set()
+      this.unlockedPuzzleCount = 1
     }
+  }
+
+  savePuzzleProgress() {
+    if (typeof localStorage === 'undefined') return
+    try {
+      localStorage.setItem('vectorac.xiangqi.puzzles.v1', JSON.stringify({
+        unlocked: this.unlockedPuzzleCount,
+        completed: Array.from(this.completedPuzzles)
+      }))
+    } catch (e) { /* progress is still usable for this visit */ }
+  }
+
+  completePuzzle() {
+    this.completedPuzzles.add(this.currentPuzzle.id)
+    this.unlockedPuzzleCount = Math.max(this.unlockedPuzzleCount, Math.min(this.puzzles.length, this.puzzleIndex + 2))
+    this.savePuzzleProgress()
+  }
+
+  setMode(mode) {
+    if (mode === this.mode || (mode !== 'match' && mode !== 'puzzle')) return
+    if (mode === 'puzzle') {
+      this.mode = 'puzzle'
+      this.startPuzzle(Math.min(this.puzzleIndex, this.unlockedPuzzleCount - 1))
+    } else {
+      this.mode = 'match'
+      this.newGame()
+    }
+  }
+
+  startPuzzle(index) {
+    if (!Number.isInteger(index) || index < 0 || index >= this.unlockedPuzzleCount || index >= this.puzzles.length) return
+    clearTimeout(this._aiTimer)
+    this.mode = 'puzzle'
+    this.puzzleIndex = index
+    this.puzzlePage = Math.floor(index / 10)
+    this.currentPuzzle = this.puzzles[index]
+    this.playerSide = this.currentPuzzle.side
+    this.board = createPuzzleBoard(this.currentPuzzle)
+    this.currentSide = this.currentPuzzle.side
+    this.selected = null
+    this.legalFrom = []
+    this.hintMove = null
+    this.lastMove = null
+    this.animatingMove = null
+    this.captureAnimation = null
+    this.history = []
+    this.phase = 'playing'
+    this.winner = null
+    this.thinking = false
+    this.puzzleMessage = ''
+    this.selectedPuzzleChoice = null
+    this.resultEl.hidden = true
+    this.render()
+  }
+
+  restartPuzzle() {
+    this.startPuzzle(this.puzzleIndex)
+  }
+
+  enterFullscreen() {
+    if (this._expanded || typeof document === 'undefined' || !document.body) return
+    if (this.root.parentElement && this.root.parentElement !== document.body) {
+      this._placeholder = document.createComment('xiangqi-root-placeholder')
+      this.root.parentElement.insertBefore(this._placeholder, this.root)
+      document.body.appendChild(this.root)
+    }
+    document.body.classList.add('xq-lock')
+    this.root.classList.add('xq-expanded')
+    this._expanded = true
+    this._tryNativeFullscreen()
+  }
+
+  exitFullscreen() {
+    if (!this._expanded || typeof document === 'undefined') return
+    try {
+      if (document.fullscreenElement === this.root || document.webkitFullscreenElement === this.root) {
+        const exit = document.exitFullscreen || document.webkitExitFullscreen
+        if (exit) {
+          const result = exit.call(document)
+          if (result && result.catch) result.catch(() => {})
+        }
+      }
+    } catch (e) { /* CSS 全屏仍可正常退出 */ }
+    this.root.classList.remove('xq-expanded')
+    document.body.classList.remove('xq-lock')
+    if (this._placeholder && this._placeholder.parentElement) {
+      this._placeholder.parentElement.insertBefore(this.root, this._placeholder)
+      this._placeholder.remove()
+    }
+    this._placeholder = null
+    this._expanded = false
+  }
+
+  _tryNativeFullscreen() {
+    if (!this._expanded || typeof document === 'undefined' || typeof window === 'undefined') return
+    try {
+      const coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches
+      if (!coarse || document.fullscreenElement || document.webkitFullscreenElement) return
+      const request = this.root.requestFullscreen || this.root.webkitRequestFullscreen
+      if (!request) return
+      const result = request.call(this.root)
+      if (result && result.catch) result.catch(() => {})
+    } catch (e) { /* 不支持原生全屏时保留 CSS 沉浸模式 */ }
   }
 
   render() {
@@ -373,13 +634,77 @@ export default class XiangqiUI {
     const check = isInCheck(this.board, this.currentSide)
     this.statusEl.classList.toggle('is-thinking', this.thinking)
     this.statusEl.classList.toggle('is-check', check && !this.thinking)
-    this.statusEl.textContent = this.thinking ? '电脑正在思考…' : this.phase === 'over' ? '本局已结束' : check ? `${SIDE_LABEL[this.currentSide]}被将军，请应将` : `轮到${SIDE_LABEL[this.currentSide]}行棋`
+    this.statusEl.classList.toggle('is-puzzle-error', this.mode === 'puzzle' && Boolean(this.puzzleMessage) && !this.puzzleMessage.startsWith('提示：'))
+    const puzzlePrompt = this.mode === 'puzzle'
+      ? this.currentPuzzle && this.currentPuzzle.kind === 'choice' ? ' · 判断红方胜和' : ' · 找到一步绝杀'
+      : ''
+    this.statusEl.textContent = this.puzzleMessage || (this.thinking ? '电脑正在思考…' : this.phase === 'over' ? (this.mode === 'puzzle' ? '本关已完成' : '本局已结束') : check ? `${SIDE_LABEL[this.currentSide]}被将军，请应将` : `轮到${SIDE_LABEL[this.currentSide]}行棋${puzzlePrompt}`)
     this.moveCountEl.textContent = `${this.history.length} 手`
+    this.root.querySelectorAll('[data-xq-mode]').forEach((button) => button.classList.toggle('is-active', button.dataset.xqMode === this.mode))
+    const matchSettings = this.root.querySelector('[data-xq-match-settings]')
+    const matchActions = this.root.querySelector('[data-xq-match-actions]')
+    const puzzlePanel = this.root.querySelector('[data-xq-puzzle-panel]')
+    if (matchSettings) matchSettings.hidden = this.mode === 'puzzle'
+    if (matchActions) matchActions.hidden = this.mode === 'puzzle'
+    if (puzzlePanel) puzzlePanel.hidden = this.mode !== 'puzzle'
+    const title = this.root.querySelector('[data-xq-match-title]')
+    const live = this.root.querySelector('.xq-match-live')
+    if (title) title.textContent = this.mode === 'puzzle' ? '残局闯关' : '本局对弈'
+    if (live) live.innerHTML = `<i></i>${this.mode === 'puzzle' ? '逐关挑战' : '单机'}`
     this.root.querySelectorAll('[data-xq-side]').forEach((button) => button.classList.toggle('is-active', button.dataset.xqSide === this.playerSide))
     this.root.querySelector('[data-xq-player-label]').textContent = `${SIDE_LABEL[this.playerSide]} · 你`
-    this.root.querySelector('[data-xq-ai-label]').textContent = `${SIDE_LABEL[otherSide(this.playerSide)]} · 电脑`
+    this.root.querySelector('[data-xq-ai-label]').textContent = `${SIDE_LABEL[otherSide(this.playerSide)]} · ${this.mode === 'puzzle' ? '守方' : '电脑'}`
     this.root.querySelector('[data-xq-undo]').disabled = this.thinking || this.phase === 'over' || !this.history.some((entry) => entry.side === this.playerSide)
-    this.root.querySelector('[data-xq-hint]').disabled = this.thinking || this.phase !== 'playing' || this.currentSide !== this.playerSide
+    this.root.querySelectorAll('[data-xq-hint]').forEach((button) => {
+      button.disabled = this.thinking || this.phase !== 'playing' || this.currentSide !== this.playerSide
+      if (this.mode === 'puzzle' && button.closest('[data-xq-puzzle-panel]')) button.textContent = this.hintMove ? '↻ 再看提示' : '✦ 提示'
+      else if (this.mode === 'match') button.textContent = '✦ 着法提示'
+    })
+    const again = this.root.querySelector('[data-xq-again]')
+    const next = this.root.querySelector('[data-xq-next]')
+    if (again) again.textContent = this.mode === 'puzzle' ? '重试本关' : '再来一局'
+    if (next) next.hidden = this.mode !== 'puzzle' || this.phase !== 'over' || this.puzzleIndex >= this.puzzles.length - 1
+    const levelList = this.root.querySelector('[data-xq-puzzle-levels]')
+    if (levelList && this.currentPuzzle) {
+      const page = getPuzzlePage(this.puzzles, this.puzzlePage)
+      this.puzzlePage = page.pageIndex
+      levelList.innerHTML = page.items.map((puzzle, offset) => {
+        const index = page.startIndex + offset
+        const locked = index >= this.unlockedPuzzleCount
+        const complete = this.completedPuzzles.has(puzzle.id)
+        const current = index === this.puzzleIndex
+        const label = locked ? '锁' : complete ? '✓' : String(index + 1)
+        return `<button type="button" class="xq-puzzle-level${current ? ' is-current' : ''}${complete ? ' is-complete' : ''}" data-xq-puzzle-level="${index}" aria-label="第 ${index + 1} 关${locked ? '，未解锁' : ''}"${locked ? ' disabled' : ''}>${label}</button>`
+      }).join('')
+      const pageLabel = this.root.querySelector('[data-xq-puzzle-page-label]')
+      if (pageLabel) pageLabel.textContent = `${page.startIndex + 1}–${page.startIndex + page.items.length} / ${this.puzzles.length}`
+      this.root.querySelectorAll('[data-xq-puzzle-page]').forEach((button) => {
+        const nextPage = this.puzzlePage + Number(button.dataset.xqPuzzlePage)
+        button.disabled = nextPage < 0 || nextPage > Math.floor((this.puzzles.length - 1) / 10)
+      })
+      this.root.querySelector('[data-xq-puzzle-title]').textContent = `第 ${this.puzzleIndex + 1} 关 · ${this.currentPuzzle.title}`
+      this.root.querySelector('[data-xq-puzzle-lesson]').textContent = this.currentPuzzle.lesson
+      this.root.querySelector('[data-xq-puzzle-progress]').textContent = `已通关 ${this.completedPuzzles.size} / ${this.puzzles.length} · ${this.currentPuzzle.side === RED ? '红方先行' : '黑方先行'}`
+      const choices = this.root.querySelector('[data-xq-puzzle-choices]')
+      if (choices) {
+        choices.hidden = this.currentPuzzle.kind !== 'choice'
+        choices.innerHTML = this.currentPuzzle.kind === 'choice'
+          ? this.currentPuzzle.options.map((option) => {
+            const selected = this.selectedPuzzleChoice === option.label
+            const state = selected ? this.phase === 'over' ? ' is-correct' : ' is-wrong' : ''
+            return `<button type="button" class="xq-puzzle-choice${state}" data-xq-puzzle-choice="${option.label}" aria-pressed="${selected}"${this.phase === 'over' ? ' disabled' : ''}><b>${option.label}</b><span>${esc(option.text)}</span></button>`
+          }).join('')
+          : ''
+      }
+      const source = this.root.querySelector('[data-xq-puzzle-source]')
+      if (source) {
+        source.hidden = this.currentPuzzle.kind !== 'choice'
+        source.innerHTML = this.currentPuzzle.kind === 'choice'
+          ? `<a href="https://github.com/destinybird/Jianghu108" target="_blank" rel="noopener">题库来源 · Apache-2.0</a><a href="${esc(this.currentPuzzle.source)}" target="_blank" rel="noopener">查看本题讲解 ↗</a>`
+          : ''
+      }
+    }
+    this.syncAudioControls()
     this.historyEl.innerHTML = this.history.length
       ? this.history.slice(-6).reverse().map((entry, i) => `<div class="xq-history-row"><span>${this.history.length - i}</span><b class="${entry.side}">${SIDE_LABEL[entry.side]}</b><span>${esc(PIECE_LABELS[entry.side][entry.piece])} ${entry.move.fromX + 1},${entry.move.fromY + 1}→${entry.move.toX + 1},${entry.move.toY + 1}${entry.captured ? ` · 吃${esc(PIECE_LABELS[otherSide(entry.side)][entry.captured])}` : ''}</span></div>`).join('')
       : '<div class="xq-history-empty">棋盘已摆好，轮到红方先行。</div>'
@@ -419,14 +744,15 @@ export default class XiangqiUI {
         const chosen = this.selected && this.selected.x === file && this.selected.y === rank
         const arriving = this.animatingMove && this.animatingMove.x === file && this.animatingMove.y === rank ? this.animatingMove : null
         const label = PIECE_LABELS[piece.side][piece.type]
-        const labelTransform = this.landscape
-          ? (this.playerSide === BLACK ? 'rotate(90)' : 'rotate(-90)')
-          : (this.playerSide === BLACK ? 'rotate(180)' : '')
+        const labelTransform = ''
+        const pieceTransform = this.playerSide === BLACK ? 'rotate(180)' : ''
+        const arrivalX = arriving && arriving.dx
+        const arrivalY = arriving && arriving.dy
         pieceGroups.push(`<g class="xq-piece ${piece.side}${chosen ? ' is-selected' : ''}${arriving ? ' xq-piece-arrival' : ''}" data-xq-square data-x="${file}" data-y="${rank}" role="button" aria-label="${SIDE_LABEL[piece.side]}${label}" tabindex="0" transform="translate(${x(file)} ${y(rank)})">
-          <ellipse class="xq-piece-shadow" cy="7" rx="24" ry="20"/>
-          <g class="xq-piece-body"${arriving ? ` style="--xq-dx:${arriving.dx}px;--xq-dy:${arriving.dy}px"` : ''}><ellipse class="xq-piece-side" cy="4" rx="23" ry="19.2"/><ellipse class="xq-piece-bevel" cy="1.4" rx="22.4" ry="18.6"/><ellipse class="xq-piece-face" rx="21" ry="17.5"/><ellipse class="xq-piece-rim" rx="16.5" ry="13.2"/><ellipse class="xq-piece-inner-rim" rx="15.1" ry="11.9"/>
+          <g class="xq-piece-upright" transform="${pieceTransform}"><ellipse class="xq-piece-shadow" cy="7" rx="24" ry="20"/>
+          <g class="xq-piece-body"${arriving ? ` style="--xq-dx:${arrivalX}px;--xq-dy:${arrivalY}px"` : ''}><ellipse class="xq-piece-side" cy="4" rx="23" ry="19.2"/><ellipse class="xq-piece-bevel" cy="1.4" rx="22.4" ry="18.6"/><ellipse class="xq-piece-face" rx="21" ry="17.5"/><ellipse class="xq-piece-rim" rx="16.5" ry="13.2"/><ellipse class="xq-piece-inner-rim" rx="15.1" ry="11.9"/>
           <ellipse class="xq-piece-gloss" cx="-6" cy="-8" rx="8" ry="3"/><text class="xq-piece-label-shadow" text-anchor="middle" dominant-baseline="central" transform="${labelTransform}" dx="0.7" dy="1.2">${label}</text><text class="xq-piece-label" text-anchor="middle" dominant-baseline="central" transform="${labelTransform}">${label}</text></g>
-          <circle class="xq-piece-hit" r="27"/>
+          <circle class="xq-piece-hit" r="27"/></g>
         </g>`)
       }
     }
@@ -445,11 +771,11 @@ export default class XiangqiUI {
     const starPoints = [[1, 2], [7, 2], [0, 3], [2, 3], [4, 3], [6, 3], [8, 3], [0, 6], [2, 6], [4, 6], [6, 6], [8, 6], [1, 7], [7, 7]]
       .map(([file, rank]) => `<g class="xq-star" transform="translate(${x(file)} ${y(rank)})"><path d="M-5-8h-4v-4 M5-8h4v-4 M-5 8h-4v4 M5 8h4v4"/></g>`).join('')
 
-    const viewBox = this.landscape ? '0 0 620 540' : '0 0 540 620'
-    const boardTransform = this.landscape ? 'translate(620 0) rotate(90)' : ''
-    const riverTransform = this.landscape
-      ? (this.playerSide === BLACK ? 'rotate(90 270 310)' : 'rotate(-90 270 310)')
-      : (this.playerSide === BLACK ? 'rotate(180 270 310)' : '')
+    // Keep the board upright in every viewport: landscape only moves controls to the right.
+    // The black player sees the same top/bottom arrangement with logical ranks rotated 180°.
+    const viewBox = '0 0 540 620'
+    const boardTransform = this.playerSide === BLACK ? 'translate(540 620) rotate(180)' : ''
+    const riverTransform = this.playerSide === BLACK ? 'rotate(180 270 310)' : ''
 
     return `<svg class="xq-board-svg${this.playerSide === BLACK ? ' is-flipped' : ''}${this.landscape ? ' is-landscape' : ''}" viewBox="${viewBox}" role="grid" aria-label="中国象棋棋盘，点击棋子选择，再点击落点">
       <defs>
@@ -459,10 +785,9 @@ export default class XiangqiUI {
         <linearGradient id="xq-black-piece" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff5de"/><stop offset=".48" stop-color="#e8ddc5"/><stop offset="1" stop-color="#c4b28e"/></linearGradient>
         <linearGradient id="xq-board-side" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a96e3b"/><stop offset="1" stop-color="#5f3824"/></linearGradient>
         <pattern id="xq-wood-grain" width="260" height="88" patternUnits="userSpaceOnUse"><path d="M-12 15 C34 4 74 24 122 13 S214 7 274 18 M-18 52 C28 43 72 61 126 50 S218 44 280 56 M-10 76 C42 68 77 83 138 73 S222 69 270 79" fill="none" stroke="#81502b" stroke-opacity=".18" stroke-width="1.2"/><path d="M-8 18 C38 8 75 27 122 16 S214 10 270 21 M-16 55 C32 46 72 64 126 53 S216 48 276 59" fill="none" stroke="#fff0bd" stroke-opacity=".2" stroke-width=".8"/></pattern>
-        <filter id="xq-board-shadow" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="9" stdDeviation="9" flood-color="#633b1d" flood-opacity=".26"/></filter>
       </defs>
       <g class="xq-board-orientation" transform="${boardTransform}">
-      <rect class="xq-board-wood" x="7" y="11" width="526" height="606" rx="25" filter="url(#xq-board-shadow)"/>
+      <rect class="xq-board-wood" x="7" y="11" width="526" height="606" rx="25"/>
       <rect class="xq-board-side" x="10" y="10" width="520" height="598" rx="24"/>
       <rect class="xq-board-bevel" x="14" y="13" width="512" height="590" rx="21"/>
       <rect class="xq-board-surface" x="19" y="18" width="502" height="580" rx="15"/>
@@ -475,8 +800,8 @@ export default class XiangqiUI {
       <g class="xq-river-labels" transform="${riverTransform}"><text x="238" y="311">楚 河</text><text x="302" y="311">汉 界</text></g>
       <g class="xq-board-marks">${marks.join('')}</g>
       <g class="xq-square-hits">${hitTargets.join('')}</g>
-      <g class="xq-board-pieces">${pieceGroups.join('')}</g>
       <path class="xq-corner-flourish" d="M44 45h12m-12 0v12 M496 45h-12m12 0v12 M44 575h12m-12 0v-12 M496 575h-12m12 0v-12"/>
+      <g class="xq-board-pieces">${pieceGroups.join('')}</g>
       </g>
     </svg>`
   }
@@ -486,6 +811,7 @@ export default class XiangqiUI {
     clearTimeout(this._aiTimer)
     this.root.removeEventListener('click', this.onClick)
     this.root.removeEventListener('keydown', this.onKeyDown)
+    if (typeof document !== 'undefined') document.removeEventListener('pointerdown', this.onFirstGesture)
     if (this.landscapeQuery) {
       if (this.landscapeQuery.removeEventListener) this.landscapeQuery.removeEventListener('change', this.onLandscapeChange)
       else if (this.landscapeQuery.removeListener) this.landscapeQuery.removeListener(this.onLandscapeChange)
@@ -498,6 +824,6 @@ export default class XiangqiUI {
     if (this.audioContext && this.audioContext.state !== 'closed') this.audioContext.close().catch(() => {})
     this.audioContext = null
     if (typeof document !== 'undefined') document.body.classList.remove('xq-page-active')
-    if (this._expanded) this.toggleExpanded()
+    if (this._expanded) this.exitFullscreen()
   }
 }

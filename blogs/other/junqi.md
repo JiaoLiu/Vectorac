@@ -26,6 +26,8 @@ AI 每局重新布阵，沿铁路展开攻势，也会根据交战情报护旗�
 
 手机默认放大棋盘，可滑动巡视，点击「全局总览」查看完整战场，或「回到己方」回到自己的阵地。走棋与碰撞有不同音效；背景音乐默认开启，首次点击后开始播放，音乐与音效可以独立关闭。切到后台时静音，回来继续对局。
 
+背景音乐：[《Clash Defiant》· Kevin MacLeod（incompetech.com）](https://incompetech.com/music/royalty-free/index.html?Search=Search&isrc=USUAN1600003)，[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) 授权。低沉弦乐、战号与打击乐营造紧张的战场氛围，循环播放；网页音频为 128 kbps 转码版，曲目内容未剪辑。详见音频目录的署名文件。
+
 ### 先布阵，再出征
 
 每方 25 枚棋子：军旗、司令、军长各 1；师长、旅长、团长、营长、炸弹各 2；连长、排长、工兵、地雷各 3。

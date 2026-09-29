@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {BOARD,TYPES,ARMIES,createGame,canDeploy,swapFormation,armyNode,legalMoves,battle,startGame,rollOpening,move,visibleType,chooseAI,restoreGame,surrender} from '../.vuepress/components/junqi/engine.mjs'
+import {BOARD,TYPES,ARMIES,createGame,canDeploy,swapFormation,armyNode,legalMoves,battle,startGame,rollOpening,move,visibleType,chooseAI,restoreGame,surrender,nextClockwiseSeat,at} from '../.vuepress/components/junqi/engine.mjs'
 const piece=(id,type,seat,pos)=>({id,type,seat,pos,moved:false})
 function fixture(extra=[]){const s=createGame({seed:123});s.phase='play';s.pieces=[0,1,2,3].map(seat=>piece('flag'+seat,'flag',seat,armyNode(seat,5,1))).concat(extra);return s}
 test('129 nodes, four five-camp armies, reciprocal railway and road graph',()=>{
@@ -36,6 +36,27 @@ test('dice decide the opening seat, unique highest breaks ties by rerolling',()=
   seats.add(roll.first)
  }
  assert.ok(seats.size>1,'先手随掷骰变化，而不是固定青龙：'+[...seats].sort().join(','))
+})
+test('dice chooses only the opening seat; every starting seat then follows the same clockwise cycle',()=>{
+ for(let first=0;first<4;first++){
+  const s=createGame({seed:100+first})
+  s.pieces=[]
+  for(let seat=0;seat<4;seat++){
+   s.pieces.push(piece(`flag-${seat}`,'flag',seat,armyNode(seat,5,1)))
+   s.pieces.push(piece(`commander-${seat}`,'commander',seat,armyNode(seat,0,2)))
+  }
+  startGame(s,{first,rounds:[]})
+  let expected=first
+  for(let turn=0;turn<8;turn++){
+   assert.equal(s.turn,expected,`dice winner ${first}: fixed order at move ${turn+1}`)
+   const p=s.pieces.find(p=>p.seat===expected&&p.type==='commander')
+   const to=legalMoves(s,p.id).find(pos=>BOARD.byId[pos].seat===expected&&BOARD.byId[pos].kind!=='camp'&&!at(s,pos))
+   assert.ok(to,`army ${expected} has a safe move for the order test`)
+   assert.equal(move(s,p.id,to),true)
+   expected=nextClockwiseSeat(expected)
+   assert.equal(s.turn,expected,`after army ${p.seat}, the next seat is clockwise`)
+  }
+ }
 })
 test('railway long moves, engineer turns, normal piece cannot make a right-angle turn',()=>{
  const p=piece('p','general',0,armyNode(0,0,2)),s=fixture([p])

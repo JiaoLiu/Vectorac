@@ -5,7 +5,7 @@ meta:
   - name: viewport
     content: width=device-width, initial-scale=1, viewport-fit=cover
   - name: description
-    content: 中国象棋网页版，红黑对弈、本地 AI 三档难度、悔棋和着法提示，支持手机与沉浸模式。
+    content: 中国象棋网页版，人机对弈与残局闯关，红黑双方、本地 AI 三档难度，支持手机横竖屏。
   - name: apple-mobile-web-app-capable
     content: 'yes'
   - name: mobile-web-app-capable
@@ -24,7 +24,7 @@ meta:
     </div>
     <div class="xq-top-actions">
       <span class="xq-move-count" data-xq-move-count>0 手</span>
-      <button type="button" class="xq-btn xq-btn-quiet" data-xq-fullscreen>沉浸对弈</button>
+      <a class="xq-btn xq-btn-quiet xq-lobby-entry" data-xq-back href="/blogs/other/games.html">返回游戏列表</a>
       <button type="button" class="xq-btn xq-btn-quiet xq-feedback-entry" data-game-feedback aria-label="反馈中国象棋问题">反馈</button>
     </div>
   </div>
@@ -34,14 +34,15 @@ meta:
       <div class="xq-board-frame"><div class="xq-board" data-xq-board></div>
         <div class="xq-result" data-xq-result hidden>
           <div class="xq-result-card"><div class="xq-result-stamp">对局结束</div><h2 data-xq-result-title>本局结束</h2><p data-xq-result-text></p>
-            <div class="xq-result-actions"><button type="button" class="xq-btn xq-btn-primary" data-xq-again>再来一局</button><button type="button" class="xq-btn xq-btn-quiet" data-xq-result-close>看看棋盘</button></div>
+            <div class="xq-result-actions"><button type="button" class="xq-btn xq-btn-primary" data-xq-next hidden>下一关</button><button type="button" class="xq-btn xq-btn-primary" data-xq-again>再来一局</button><button type="button" class="xq-btn xq-btn-quiet" data-xq-result-close>看看棋盘</button></div>
           </div>
         </div>
       </div>
     </section>
     <div class="xq-side">
       <section class="xq-match-card">
-        <div class="xq-match-title"><span>本局对弈</span><span class="xq-match-live"><i></i> 单机</span></div>
+        <div class="xq-match-title"><span data-xq-match-title>本局对弈</span><span class="xq-match-live"><i></i> 单机</span></div>
+        <div class="xq-mode-switch" role="group" aria-label="选择游戏模式"><button type="button" class="is-active" data-xq-mode="match">人机对弈</button><button type="button" data-xq-mode="puzzle">残局闯关</button></div>
         <div class="xq-players">
           <div class="xq-player black-player"><div class="xq-player-token">将</div><div><b data-xq-ai-label>黑方 · 电脑</b><small>沉着应战</small></div><span class="xq-player-crown">AI</span></div>
           <div class="xq-vs">VS</div>
@@ -49,19 +50,30 @@ meta:
         </div>
         <div class="xq-status" data-xq-status role="status" aria-live="polite">轮到红方行棋</div>
         <div class="xq-audio-controls" aria-label="音频设置">
-          <button type="button" class="xq-audio-toggle" data-xq-music aria-pressed="false">♫ 背景音乐：关</button>
+          <button type="button" class="xq-audio-toggle is-on" data-xq-music aria-pressed="true" aria-label="背景音乐默认开启，首次点击游戏区域后开始播放">♫ 背景音乐：开</button>
           <button type="button" class="xq-audio-toggle is-on" data-xq-sound aria-pressed="true">♩ 落子音效：开</button>
         </div>
         <div class="xq-audio-credit"><a href="https://incompetech.com/music/royalty-free/index.html?isrc=USUAN2100001" target="_blank" rel="noopener">《Guzheng City》 · Kevin MacLeod · CC BY 4.0</a></div>
-        <div class="xq-setting-block">
-          <div class="xq-setting-label">选择执棋方</div>
-          <div class="xq-segment" role="group" aria-label="选择执棋方"><button type="button" data-xq-side="red">执红先行</button><button type="button" data-xq-side="black">执黑后手</button></div>
+        <div data-xq-match-settings>
+          <div class="xq-setting-block">
+            <div class="xq-setting-label">选择执棋方</div>
+            <div class="xq-segment" role="group" aria-label="选择执棋方"><button type="button" data-xq-side="red">执红先行</button><button type="button" data-xq-side="black">执黑后手</button></div>
+          </div>
+          <div class="xq-setting-block">
+            <div class="xq-setting-label">电脑难度</div>
+            <div class="xq-segment xq-levels" role="group" aria-label="电脑难度"><button type="button" data-xq-level="easy">轻松</button><button type="button" class="is-active" data-xq-level="medium">标准</button><button type="button" data-xq-level="hard">挑战</button></div>
+          </div>
         </div>
-        <div class="xq-setting-block">
-          <div class="xq-setting-label">电脑难度</div>
-          <div class="xq-segment xq-levels" role="group" aria-label="电脑难度"><button type="button" data-xq-level="easy">轻松</button><button type="button" class="is-active" data-xq-level="medium">标准</button><button type="button" data-xq-level="hard">挑战</button></div>
-        </div>
-        <div class="xq-actions">
+        <section class="xq-puzzle-panel" data-xq-puzzle-panel hidden aria-label="残局闯关">
+          <div class="xq-puzzle-heading"><strong data-xq-puzzle-title>第 1 关</strong><span data-xq-puzzle-progress></span></div>
+          <p data-xq-puzzle-lesson></p>
+          <div class="xq-puzzle-page-nav"><button type="button" data-xq-puzzle-page="-1" aria-label="上一页关卡">‹</button><span data-xq-puzzle-page-label></span><button type="button" data-xq-puzzle-page="1" aria-label="下一页关卡">›</button></div>
+          <div class="xq-puzzle-levels" data-xq-puzzle-levels aria-label="关卡列表"></div>
+          <div class="xq-puzzle-choices" data-xq-puzzle-choices hidden aria-label="候选着法"></div>
+          <div class="xq-puzzle-source" data-xq-puzzle-source hidden></div>
+          <div class="xq-puzzle-actions"><button type="button" class="xq-btn" data-xq-puzzle-restart>重摆本关</button><button type="button" class="xq-btn" data-xq-hint>✦ 提示</button></div>
+        </section>
+        <div class="xq-actions" data-xq-match-actions>
           <button type="button" class="xq-btn xq-btn-primary" data-xq-new>新开一局</button>
           <button type="button" class="xq-btn" data-xq-hint>✦ 着法提示</button>
           <button type="button" class="xq-btn" data-xq-undo disabled>↶ 悔棋</button>
@@ -89,7 +101,7 @@ meta:
 .xq-root *{box-sizing:border-box}.xq-root button{font:inherit}.xq-root [hidden]{display:none!important}
 .xq-topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 16px;padding:13px 18px;border-radius:17px;background:linear-gradient(115deg,#123c35,#206553 68%,#1e4a3e);color:#fff6dd;box-shadow:0 10px 25px #174e421f}
 .xq-brand{display:flex;align-items:center;gap:12px}.xq-brand-mark{width:45px;height:45px;display:grid;place-items:center;position:relative;border:1px solid #f1cd80;border-radius:50%;background:linear-gradient(145deg,#f5dfaa,#d9aa55);color:#b53e30;font-size:24px;font-weight:900;box-shadow:inset 0 0 0 4px #fff1d0}.xq-brand-mark i{position:absolute;right:-8px;bottom:-5px;display:grid;place-items:center;width:23px;height:23px;border-radius:50%;background:#202b27;color:#f1cd80;border:2px solid #eed28f;font-size:12px;font-style:normal}.xq-kicker{font-size:10px;letter-spacing:2px;color:#d8c18d}.xq-brand h1{margin:1px 0 0;color:#fff7e3;font-size:22px;letter-spacing:2px;line-height:1.2}.xq-top-actions{display:flex;align-items:center;gap:8px}.xq-move-count{color:#ddc891;font-size:12px;letter-spacing:1px;margin-right:4px}
-.xq-btn{border:1px solid #d9d4c3;background:#fffdf5;color:#45564c;border-radius:12px;padding:10px 14px;min-height:42px;font-size:13px;font-weight:750;cursor:pointer;transition:transform .16s ease,box-shadow .16s ease,background .16s ease;box-shadow:0 3px 0 #c9c2ad}.xq-btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 5px 0 #c9c2ad}.xq-btn:active:not(:disabled){transform:translateY(2px);box-shadow:0 1px 0 #c9c2ad}.xq-btn:disabled{opacity:.42;cursor:not-allowed}.xq-btn-quiet{background:#ffffff14;border-color:#ffffff30;color:#fff4db;box-shadow:none}.xq-btn-quiet:hover:not(:disabled){background:#ffffff23;box-shadow:none}.xq-btn-primary{background:linear-gradient(135deg,#e9bc62,#d79a3f);border-color:#cb913c;color:#422e12;box-shadow:0 3px 0 #a86e2d}
+.xq-btn{border:1px solid #d9d4c3;background:#fffdf5;color:#45564c;border-radius:12px;padding:10px 14px;min-height:42px;font-size:13px;font-weight:750;cursor:pointer;transition:transform .16s ease,box-shadow .16s ease,background .16s ease;box-shadow:0 3px 0 #c9c2ad}.xq-root a.xq-btn{display:inline-flex;align-items:center;justify-content:center;text-decoration:none}.xq-btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 5px 0 #c9c2ad}.xq-btn:active:not(:disabled){transform:translateY(2px);box-shadow:0 1px 0 #c9c2ad}.xq-btn:disabled{opacity:.42;cursor:not-allowed}.xq-btn-quiet{background:#ffffff14;border-color:#ffffff30;color:#fff4db;box-shadow:none}.xq-btn-quiet:hover:not(:disabled){background:#ffffff23;box-shadow:none}.xq-btn-primary{background:linear-gradient(135deg,#e9bc62,#d79a3f);border-color:#cb913c;color:#422e12;box-shadow:0 3px 0 #a86e2d}
 .xq-layout{display:grid;grid-template-columns:minmax(0,1fr) 310px;align-items:start;gap:16px}.xq-board-card,.xq-match-card,.xq-history-card,.xq-rules-card{border:1px solid #e9dfc7;border-radius:20px;background:linear-gradient(145deg,#fffdf7,#f7f0df);box-shadow:0 14px 34px #563c2010}.xq-board-card{padding:14px 16px 12px;overflow:hidden}.xq-board-caption,.xq-board-foot{display:flex;justify-content:space-between;align-items:center;color:#938365;font-size:11px;letter-spacing:.5px}.xq-board-caption{padding:0 2px 11px}.xq-board-live,.xq-match-live{display:inline-flex;align-items:center;gap:6px;color:#4d8065;font-weight:800;letter-spacing:1px}.xq-board-live i,.xq-match-live i{width:7px;height:7px;border-radius:50%;background:#4ca576;box-shadow:0 0 0 3px #4ca57622}.xq-board-frame{position:relative;margin:auto;width:min(100%,540px);aspect-ratio:540/620;padding:0}.xq-board{width:100%;height:100%}.xq-board-svg{display:block;width:100%;height:100%;overflow:visible;touch-action:manipulation}.xq-board-svg.is-flipped{transform:rotate(180deg)}.xq-board-frame:after{content:"";position:absolute;inset:2.2%;border:1px solid #8f592229;border-radius:20px;pointer-events:none}.xq-board-frame{isolation:isolate}.xq-board-surface{fill:url(#xq-board-wood);stroke:#925b2c;stroke-width:2}.xq-board-frame{fill:#6f472e}.xq-board-inset{fill:none;stroke:#fff0c4;stroke-width:2;opacity:.85}.xq-river{fill:#f4d79a;opacity:.52}.xq-grid-lines line,.xq-grid-lines path{fill:none;stroke:#65452f;stroke-width:2.15;stroke-linecap:round;stroke-linejoin:round}.xq-grid-lines path{stroke-width:1.9}.xq-star path{fill:none;stroke:#775435;stroke-width:1.65;stroke-linecap:round}.xq-river-labels{font-family:serif;font-weight:800;font-size:17px;letter-spacing:3px;fill:#976c3e;text-anchor:middle;opacity:.88}.xq-board-marks{pointer-events:none}.xq-last-square{fill:#4dba9040;stroke:#21805e;stroke-width:1.4}.xq-move-target{fill:#398661e8;stroke:#eff9df;stroke-width:2.4;filter:drop-shadow(0 1px 2px #183c2780)}.xq-capture-target{fill:#d84f3b23;stroke:#c74835;stroke-width:3}.xq-hint-line{stroke:#f5ce68;stroke-width:7;stroke-linecap:round;opacity:.7;filter:drop-shadow(0 1px 3px #7b5525)}.xq-check-ring{fill:#e23e3430;stroke:#d53b30;stroke-width:3;stroke-dasharray:6 4;animation:xq-pulse 1.2s ease-in-out infinite}.xq-piece{cursor:pointer;outline:none}.xq-piece-shadow{fill:#5b3b20;opacity:.34;transform:translate(0 3px)}.xq-piece-face{fill:url(#xq-red-piece);stroke:#a56f3c;stroke-width:1.5}.xq-piece.black .xq-piece-face{fill:url(#xq-black-piece);stroke:#60584c}.xq-piece-rim{fill:none;stroke:#c59042;stroke-width:1.6}.xq-piece.black .xq-piece-rim{stroke:#655e53}.xq-piece-label{fill:#bd3a31;font-family:"STKaiti","KaiTi",serif;font-size:24px;font-weight:900;pointer-events:none}.xq-piece.black .xq-piece-label{fill:#262d29}.xq-piece-hit,.xq-square-hit{fill:transparent;stroke:transparent;cursor:pointer}.xq-piece-hit{pointer-events:all}.xq-square-hit{pointer-events:all}.xq-piece.is-selected .xq-piece-face{stroke:#e2a63c;stroke-width:4;filter:drop-shadow(0 0 5px #f7c85d)}.xq-piece.is-selected .xq-piece-rim{stroke:#fff2bf;stroke-width:2}.xq-corner-flourish{fill:none;stroke:#fff0c6;stroke-width:2;opacity:.7;pointer-events:none}.xq-board-foot{padding:7px 2px 0;border-top:1px solid #ad86502a;font-size:10px}
 .xq-side{display:grid;gap:12px}.xq-match-card{padding:16px}.xq-match-title,.xq-section-heading{display:flex;align-items:center;justify-content:space-between;font-weight:850;color:#35483d;font-size:15px}.xq-match-live{font-size:9px;letter-spacing:.7px}.xq-players{display:grid;grid-template-columns:1fr 28px 1fr;align-items:center;margin:14px 0 12px}.xq-player{min-width:0;display:flex;align-items:center;gap:8px;padding:9px 8px;border:1px solid #e7dfcf;border-radius:14px;background:#fffaf0}.xq-player.black-player{background:#eff1e9}.xq-player-token{display:grid;place-items:center;flex:0 0 36px;height:36px;border:2px solid #c98d48;border-radius:50%;background:linear-gradient(145deg,#fff5dd,#e9c68d);color:#c43e32;font-family:serif;font-size:21px;font-weight:900;box-shadow:inset 0 0 0 3px #fff9e9}.black-player .xq-player-token{border-color:#696355;color:#262d29;background:linear-gradient(145deg,#f6edd8,#d5c5a4)}.xq-player b,.xq-player small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.xq-player b{font-size:11px;color:#34473d}.xq-player small{margin-top:3px;color:#98a091;font-size:9px}.xq-player-crown{margin-left:auto;color:#ad9a6e;font-size:8px;font-weight:900;letter-spacing:.5px}.xq-vs{text-align:center;color:#bf9d5c;font-size:10px;font-weight:900}.xq-status{min-height:40px;display:flex;align-items:center;justify-content:center;padding:7px 10px;border-radius:11px;background:#eaf1e8;color:#38694f;font-size:12px;font-weight:800;text-align:center}.xq-status.is-thinking{background:#fff4d6;color:#9e7028}.xq-status.is-check{background:#fff0e9;color:#c24434}.xq-setting-block{margin-top:13px}.xq-setting-label{margin-bottom:7px;color:#7d8577;font-size:10px;font-weight:800;letter-spacing:1px}.xq-segment{display:flex;gap:4px;padding:3px;border-radius:11px;background:#ece8dc}.xq-segment button{flex:1;min-height:34px;border:0;border-radius:8px;background:transparent;color:#7c8176;font-size:11px;font-weight:750;cursor:pointer}.xq-segment button.is-active{background:#fffdf6;color:#355b49;box-shadow:0 2px 5px #543d2017}.xq-levels button.is-active{background:#d9eee0;color:#286647}.xq-actions{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-top:15px}.xq-actions .xq-btn{padding:8px 5px;min-height:39px;font-size:10px;white-space:nowrap}.xq-actions .xq-btn-primary{grid-column:1/-1;font-size:12px}.xq-history-card{padding:14px 16px}.xq-section-note{font-size:8px;letter-spacing:1px;color:#b8ae94}.xq-history{display:grid;gap:5px;margin-top:10px;max-height:190px;overflow:auto}.xq-history-row{display:grid;grid-template-columns:22px 38px 1fr;align-items:center;gap:6px;color:#69766d;font-size:10px;padding:5px 7px;border-radius:8px;background:#ffffffa8}.xq-history-row>span:first-child{color:#b5a98a;font-variant-numeric:tabular-nums}.xq-history-row b{font-size:9px}.xq-history-row b.red{color:#bd4639}.xq-history-row b.black{color:#303a33}.xq-history-empty{padding:12px 5px;color:#a39c89;font-size:11px;text-align:center}.xq-rules-card{padding:0 15px}.xq-rules-card summary{display:flex;justify-content:space-between;padding:13px 0;color:#586a5d;font-size:12px;font-weight:800;cursor:pointer;list-style:none}.xq-rules-card summary::-webkit-details-marker{display:none}.xq-rules-copy{padding:0 0 10px;color:#7b8376;font-size:10px;line-height:1.75}.xq-rules-copy p{margin:5px 0}.xq-rules-copy b{color:#405b49}.xq-footer{display:flex;justify-content:space-between;margin:12px 4px;color:#a69c83;font-size:10px;letter-spacing:.5px}
 .xq-result{position:absolute;z-index:4;inset:0;display:grid;place-items:center;padding:16px;border-radius:20px;background:#132d26b8;backdrop-filter:blur(4px)}.xq-result-card{width:min(100%,340px);padding:24px 20px;text-align:center;border:1px solid #eed38e;border-radius:22px;background:linear-gradient(155deg,#fff8e4,#e9d19c);box-shadow:0 18px 45px #18251d55;animation:xq-pop .24s ease-out}.xq-result-stamp{display:inline-block;padding:5px 11px;border:1px solid #c9a75e;border-radius:999px;color:#97713a;font-size:9px;letter-spacing:2px}.xq-result-card h2{margin:13px 0 5px;color:#344e40;font-size:24px}.xq-result-card p{margin:0 0 17px;color:#788171;font-size:12px}.xq-result-actions{display:flex;justify-content:center;gap:8px}.xq-result-actions .xq-btn{font-size:11px}.xq-root.xq-expanded{position:fixed;z-index:9999;inset:0;max-width:none;width:100%;height:100vh;height:100dvh;height:100svh;overflow:auto;margin:0;padding:max(8px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));background:radial-gradient(ellipse at 50% 5%,#f9efda,#e5d3ad 72%);}.xq-expanded .xq-topbar{max-width:1180px;margin:0 auto 8px}.xq-expanded .xq-layout{max-width:1180px;margin:auto;align-items:center}.xq-expanded .xq-board-card{padding:9px 12px}.xq-expanded .xq-board-frame{width:min(100%,calc((100svh - 116px)*.87),580px)}.xq-expanded .xq-side{width:100%;max-width:310px}.xq-expanded .xq-footer{max-width:1180px;margin:8px auto 0}body.xq-lock{overflow:hidden!important}body.xq-lock #cw-fab,body.xq-lock #cw-panel{display:none!important}
@@ -98,6 +110,12 @@ meta:
 @media(max-width:640px){.xq-root{margin:10px auto 20px}.xq-topbar{padding:10px 12px;border-radius:14px}.xq-brand-mark{width:39px;height:39px;font-size:21px}.xq-brand h1{font-size:19px}.xq-kicker{font-size:8px}.xq-top-actions{gap:5px}.xq-top-actions .xq-btn{padding:7px 9px;min-height:36px;font-size:10px}.xq-move-count{font-size:10px}.xq-layout{grid-template-columns:1fr;gap:10px}.xq-board-card{padding:9px 8px 7px;border-radius:16px}.xq-board-frame{width:min(100%,540px)}.xq-board-caption{font-size:9px;padding:0 3px 7px}.xq-board-foot{font-size:9px}.xq-side{grid-template-columns:1fr;gap:9px}.xq-match-card{padding:12px}.xq-players{margin:10px 0}.xq-actions{margin-top:11px}.xq-history-card{padding:11px 13px}.xq-history{max-height:130px}.xq-footer{font-size:9px}.xq-expanded{display:flex;flex-direction:column}.xq-expanded .xq-topbar{width:100%;flex:none;padding:8px 10px}.xq-expanded .xq-layout{display:flex;flex-direction:column;flex:1 0 auto;width:100%;gap:8px}.xq-expanded .xq-board-card{width:100%;flex:none;padding:6px}.xq-expanded .xq-board-frame{width:min(100%,calc((100svh - 305px)*.87),500px)}.xq-expanded .xq-board-caption,.xq-expanded .xq-board-foot{font-size:8px}.xq-expanded .xq-side{display:grid;grid-template-columns:1fr 1fr;width:100%;max-width:none;gap:7px}.xq-expanded .xq-match-card{grid-column:1/-1;padding:8px 10px}.xq-expanded .xq-players{grid-template-columns:1fr 23px 1fr;margin:6px 0}.xq-expanded .xq-player{padding:5px 7px}.xq-expanded .xq-player-token{width:28px;height:28px;flex-basis:28px;font-size:16px}.xq-expanded .xq-player small{display:none}.xq-expanded .xq-status{min-height:30px}.xq-expanded .xq-setting-block{display:inline-block;width:calc(50% - 4px);vertical-align:top;margin:7px 6px 0 0}.xq-expanded .xq-setting-block:nth-of-type(2){margin-right:0}.xq-expanded .xq-segment button{min-height:30px}.xq-expanded .xq-actions{display:flex;gap:5px;margin-top:7px}.xq-expanded .xq-actions .xq-btn,.xq-expanded .xq-actions .xq-btn-primary{flex:1;grid-column:auto;min-height:34px;padding:6px 4px;font-size:10px}.xq-expanded .xq-history-card,.xq-expanded .xq-rules-card{padding:8px 10px}.xq-expanded .xq-history-card{max-height:84px;overflow:auto}.xq-expanded .xq-history{max-height:48px;margin-top:4px}.xq-expanded .xq-history-row{padding:3px 5px}.xq-expanded .xq-rules-copy{font-size:9px;line-height:1.5}.xq-expanded .xq-footer{display:none}}
 @media(max-height:560px) and (orientation:landscape){.xq-root.xq-expanded{overflow:hidden}.xq-expanded .xq-topbar{padding:5px 10px;margin-bottom:5px}.xq-expanded .xq-brand-mark{width:30px;height:30px;font-size:16px}.xq-expanded .xq-brand-mark i{width:18px;height:18px;font-size:9px}.xq-expanded .xq-brand h1{font-size:15px}.xq-expanded .xq-kicker,.xq-expanded .xq-move-count{display:none}.xq-expanded .xq-top-actions .xq-btn{min-height:29px;padding:4px 8px}.xq-expanded .xq-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,29%);align-items:stretch;gap:8px;min-height:0;height:calc(100% - 44px)}.xq-expanded .xq-board-card{display:flex;flex-direction:column;min-height:0;padding:5px}.xq-expanded .xq-board-caption{padding:0 3px 3px;font-size:8px}.xq-expanded .xq-board-frame{width:min(100%,calc((100svh - 55px)*.87));height:auto;max-height:calc(100% - 24px);aspect-ratio:540/620}.xq-expanded .xq-side{grid-template-columns:1fr;align-content:start;overflow:auto;max-width:none;gap:6px}.xq-expanded .xq-match-card{padding:7px}.xq-expanded .xq-match-title{font-size:12px}.xq-expanded .xq-players{margin:6px 0}.xq-expanded .xq-player{padding:4px}.xq-expanded .xq-player-token{width:27px;height:27px;flex-basis:27px;font-size:15px}.xq-expanded .xq-status{min-height:28px;padding:4px;font-size:10px}.xq-expanded .xq-setting-block{margin-top:6px}.xq-expanded .xq-setting-label{margin-bottom:3px;font-size:8px}.xq-expanded .xq-segment button{min-height:27px;font-size:9px}.xq-expanded .xq-actions{margin-top:6px}.xq-expanded .xq-actions .xq-btn,.xq-expanded .xq-actions .xq-btn-primary{min-height:29px;font-size:9px}.xq-expanded .xq-history-card,.xq-expanded .xq-rules-card{padding:6px 8px}.xq-expanded .xq-history{max-height:78px}.xq-expanded .xq-footer{display:none}}
 @media(prefers-reduced-motion:reduce){.xq-root *{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+@media(max-height:560px) and (orientation:landscape){
+  .xq-root .xq-topbar{display:none}
+  .xq-match-card>.xq-top-actions{display:flex;justify-content:flex-end;gap:6px;margin:0 0 6px;padding-bottom:6px;border-bottom:1px solid #ded4bf}
+  .xq-match-card>.xq-top-actions .xq-btn{min-height:32px;padding:5px 9px;font-size:11px;color:#355b49;border-color:#ded4bf;background:#f2ecde}
+  .xq-match-card>.xq-top-actions .xq-move-count{display:none}
+}
 </style>
 <style>.xq-board-wood{fill:#6f472e}</style>
 
@@ -214,7 +232,7 @@ meta:
 .xq-piece.black .xq-piece-label{fill:#262d29}
 .xq-expanded{box-sizing:border-box}
 @media(max-height:560px) and (orientation:landscape){
-  .xq-board-frame{aspect-ratio:620/540;transform:perspective(1500px) rotateX(1.8deg)}
+  .xq-board-frame{aspect-ratio:540/620;transform:none}
   .xq-root:not(.xq-expanded){max-width:none;width:100%;margin:0 auto;padding:max(3px,env(safe-area-inset-top)) max(5px,env(safe-area-inset-right)) max(3px,env(safe-area-inset-bottom)) max(5px,env(safe-area-inset-left))}
   .xq-root:not(.xq-expanded) .xq-topbar{padding:4px 9px;margin:0 0 4px;border-radius:10px}
   .xq-root:not(.xq-expanded) .xq-brand-mark{width:29px;height:29px;font-size:15px}
@@ -225,8 +243,8 @@ meta:
   .xq-root:not(.xq-expanded) .xq-top-actions .xq-btn{min-height:29px;padding:4px 8px;font-size:9px}
   .xq-root:not(.xq-expanded) .xq-layout{grid-template-columns:minmax(0,1fr) minmax(218px,27%);align-items:center;gap:6px}
   .xq-root:not(.xq-expanded) .xq-board-card{display:grid;place-items:center;padding:0;min-height:0}
-  .xq-root:not(.xq-expanded) .xq-board-frame{width:min(100%,calc((100svh - 108px)*1.148));max-width:none;max-height:calc(100svh - 108px);aspect-ratio:620/540}
-  .xq-root:not(.xq-expanded) .xq-side{max-height:calc(100svh - 54px);overflow:auto;align-content:center;gap:5px}
+  .xq-root:not(.xq-expanded) .xq-board-frame{width:min(100%,calc((100svh - 18px - env(safe-area-inset-top) - env(safe-area-inset-bottom))*.87097));height:auto;max-width:none;max-height:none;aspect-ratio:540/620}
+  .xq-root:not(.xq-expanded) .xq-side{max-height:calc(100svh - 68px);min-height:0;overflow:auto;align-content:start;gap:5px}
   .xq-root:not(.xq-expanded) .xq-match-card{padding:6px}
   .xq-root:not(.xq-expanded) .xq-match-title{font-size:11px}
   .xq-root:not(.xq-expanded) .xq-players{margin:5px 0}
@@ -244,7 +262,7 @@ meta:
   .xq-root:not(.xq-expanded) .xq-actions .xq-btn,.xq-root:not(.xq-expanded) .xq-actions .xq-btn-primary{min-height:32px;padding:4px;font-size:9px}
   .xq-root:not(.xq-expanded) .xq-history-card,.xq-root:not(.xq-expanded) .xq-rules-card,.xq-root:not(.xq-expanded) .xq-footer{display:none}
 
-  .xq-root.xq-expanded{height:100svh;overflow:hidden;padding:max(4px,env(safe-area-inset-top)) max(7px,env(safe-area-inset-right)) max(4px,env(safe-area-inset-bottom)) max(7px,env(safe-area-inset-left));display:grid;grid-template-rows:auto minmax(0,1fr)}
+  .xq-root.xq-expanded{height:100svh;overflow:hidden;padding:max(4px,env(safe-area-inset-top)) max(7px,env(safe-area-inset-right)) max(4px,env(safe-area-inset-bottom)) max(7px,env(safe-area-inset-left));display:grid;grid-template-rows:minmax(0,1fr)}
   .xq-expanded .xq-topbar{width:100%;max-width:none;padding:4px 9px;margin:0 auto 4px;border-radius:10px}
   .xq-expanded .xq-brand-mark{width:29px;height:29px;font-size:15px}
   .xq-expanded .xq-brand-mark i{width:17px;height:17px;font-size:9px}
@@ -252,10 +270,10 @@ meta:
   .xq-expanded .xq-kicker,.xq-expanded .xq-move-count{display:none}
   .xq-expanded .xq-top-actions{gap:5px}
   .xq-expanded .xq-top-actions .xq-btn{min-height:29px;padding:4px 8px;font-size:9px}
-  .xq-expanded .xq-layout{display:grid;width:100%;max-width:none;height:auto;min-height:0;grid-template-columns:minmax(0,1fr) minmax(218px,26%);align-items:center;gap:6px}
+  .xq-expanded .xq-layout{display:grid;width:100%;max-width:none;height:100%;min-height:0;margin:0;grid-template-columns:minmax(0,1fr) minmax(218px,26%);align-items:center;gap:6px}
   .xq-expanded .xq-board-card{display:grid;place-items:center;min-height:0;padding:0}
-  .xq-expanded .xq-board-frame{width:min(100%,calc((100svh - 58px)*1.148));max-width:none;max-height:100%;aspect-ratio:620/540}
-  .xq-expanded .xq-side{max-width:none;max-height:100%;overflow:auto;align-content:center;gap:5px}
+  .xq-expanded .xq-board-frame{width:min(100%,calc((100svh - 12px - env(safe-area-inset-top) - env(safe-area-inset-bottom))*.87097));height:auto;max-width:none;max-height:none;aspect-ratio:540/620}
+  .xq-expanded .xq-side{height:100%;min-height:0;max-width:none;max-height:100%;overflow:auto;align-content:start;gap:5px}
   .xq-expanded .xq-match-card{max-width:none;padding:6px}
   .xq-expanded .xq-match-title{font-size:11px}
   .xq-expanded .xq-players{margin:5px 0}
@@ -271,6 +289,64 @@ meta:
   .xq-expanded .xq-actions{gap:4px;margin-top:5px}
   .xq-expanded .xq-actions .xq-btn,.xq-expanded .xq-actions .xq-btn-primary{min-height:32px;padding:4px;font-size:9px}
   .xq-expanded .xq-history-card,.xq-expanded .xq-rules-card,.xq-expanded .xq-footer{display:none}
+}
+
+/* New mode: bite-sized endgame puzzles with visible unlock/progress states. */
+.xq-mode-switch{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin:11px 0 4px;padding:3px;border:1px solid #e4dcc9;border-radius:12px;background:#eee9dc}
+.xq-mode-switch button{min-height:36px;border:0;border-radius:9px;background:transparent;color:#7c8176;font:inherit;font-size:11px;font-weight:850;cursor:pointer}
+.xq-mode-switch button.is-active{background:#fffdf6;color:#315c49;box-shadow:0 2px 6px #543d2017}
+.xq-puzzle-panel{margin-top:10px;padding:10px;border:1px solid #e6d6af;border-radius:14px;background:linear-gradient(145deg,#fff9e8,#f4ead1)}
+.xq-puzzle-heading{display:flex;align-items:baseline;justify-content:space-between;gap:8px;color:#405440}
+.xq-puzzle-heading strong{font-size:13px}
+.xq-puzzle-heading span{color:#9e8757;font-size:9px;white-space:nowrap}
+.xq-puzzle-panel>p{min-height:32px;margin:7px 0;color:#7b7767;font-size:10px;line-height:1.55}
+.xq-puzzle-levels{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:5px}
+.xq-puzzle-level{min-width:0;min-height:32px;border:1px solid #ded4bb;border-radius:9px;background:#fffdf6;color:#6f776a;font:inherit;font-size:11px;font-weight:850;cursor:pointer}
+.xq-puzzle-level.is-current{border-color:#368165;background:#e3f0e5;color:#286348;box-shadow:0 0 0 2px #36816520}
+.xq-puzzle-level.is-complete{border-color:#d9b264;background:#f7eac5;color:#9a722b}
+.xq-puzzle-level:disabled{border-style:dashed;background:#eee9dd;color:#b2aa96;cursor:not-allowed}
+.xq-puzzle-page-nav{display:flex;align-items:center;justify-content:center;gap:10px;margin:0 0 6px;color:#98845c;font-size:9px;font-variant-numeric:tabular-nums}
+.xq-puzzle-page-nav button{width:25px;height:23px;border:1px solid #ded3b9;border-radius:7px;background:#fffdf6;color:#6c735f;font-size:16px;line-height:1;cursor:pointer}
+.xq-puzzle-page-nav button:disabled{opacity:.35;cursor:not-allowed}
+.xq-puzzle-choices{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:7px}
+.xq-puzzle-choice{display:flex;align-items:center;gap:6px;min-width:0;min-height:34px;padding:5px 7px;border:1px solid #e2d8c1;border-radius:9px;background:#fffdf6;color:#48554a;text-align:left;font:inherit;font-size:9px;line-height:1.35;cursor:pointer}
+.xq-puzzle-choice:nth-child(5){grid-column:1/-1}
+.xq-puzzle-choice b{display:grid;place-items:center;flex:0 0 19px;width:19px;height:19px;border-radius:6px;background:#f0e6cb;color:#886a32;font-size:10px}
+.xq-puzzle-choice span{min-width:0;overflow-wrap:anywhere}
+.xq-puzzle-choice:hover:not(:disabled){border-color:#c6a85c;background:#fff8e7}
+.xq-puzzle-choice.is-wrong{border-color:#cf6c5e;background:#fff0e9;color:#ad483b}
+.xq-puzzle-choice.is-correct{border-color:#4d9c70;background:#e7f3e8;color:#286348}
+.xq-puzzle-choice:disabled{cursor:default}
+.xq-puzzle-source{display:flex;justify-content:space-between;gap:8px;margin-top:6px;font-size:8px;line-height:1.3}
+.xq-puzzle-source a{color:#8c7953;text-decoration:none}
+.xq-puzzle-source a:hover{text-decoration:underline}
+.xq-puzzle-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
+.xq-puzzle-actions .xq-btn{min-height:34px;padding:5px;font-size:10px}
+.xq-result-actions [data-xq-next]{background:linear-gradient(135deg,#e9bc62,#d79a3f);border-color:#cb913c;color:#422e12}
+.xq-status.is-puzzle-error{background:#fff0e9;color:#b84837}
+.xq-board-svg.is-flipped{transform:none}
+@media(max-width:640px){
+  .xq-mode-switch{margin:7px 0 2px}
+  .xq-mode-switch button{min-height:34px}
+  .xq-puzzle-panel{padding:8px;margin-top:7px}
+  .xq-puzzle-panel>p{min-height:0;margin:5px 0 7px}
+  .xq-puzzle-levels{gap:4px}
+  .xq-puzzle-level{min-height:34px}
+  .xq-puzzle-choice{min-height:36px;font-size:10px}
+}
+@media(max-height:560px) and (orientation:landscape){
+  .xq-root:not(.xq-expanded) .xq-match-card,.xq-expanded .xq-match-card{padding:6px}
+  .xq-root:not(.xq-expanded) .xq-mode-switch,.xq-expanded .xq-mode-switch{margin:5px 0 2px}
+  .xq-root:not(.xq-expanded) .xq-mode-switch button,.xq-expanded .xq-mode-switch button{min-height:29px;font-size:10px}
+  .xq-root:not(.xq-expanded) .xq-puzzle-panel,.xq-expanded .xq-puzzle-panel{margin-top:5px;padding:7px}
+  .xq-root:not(.xq-expanded) .xq-puzzle-panel>p,.xq-expanded .xq-puzzle-panel>p{min-height:0;margin:4px 0;font-size:9px}
+  .xq-root:not(.xq-expanded) .xq-puzzle-levels,.xq-expanded .xq-puzzle-levels{grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+  .xq-root:not(.xq-expanded) .xq-puzzle-level,.xq-expanded .xq-puzzle-level{min-height:28px}
+  .xq-root:not(.xq-expanded) .xq-puzzle-choice,.xq-expanded .xq-puzzle-choice{min-height:30px;padding:4px;font-size:8px}
+  .xq-root:not(.xq-expanded) .xq-puzzle-choice b,.xq-expanded .xq-puzzle-choice b{flex-basis:16px;width:16px;height:16px;font-size:8px}
+  .xq-root:not(.xq-expanded) .xq-puzzle-source,.xq-expanded .xq-puzzle-source{font-size:7px}
+  .xq-root:not(.xq-expanded) .xq-puzzle-actions,.xq-expanded .xq-puzzle-actions{margin-top:5px}
+  .xq-root:not(.xq-expanded) .xq-puzzle-actions .xq-btn,.xq-expanded .xq-puzzle-actions .xq-btn{min-height:29px;padding:4px;font-size:9px}
 }
 </style>
 

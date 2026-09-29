@@ -1,6 +1,9 @@
 // 四国军棋：纯规则引擎。棋盘拓扑、隐藏视图与 AI 不依赖 DOM。
 export const RULE_VERSION = 1
 export const ARMIES = ['青龙', '赤虎', '玄武', '朱雀']
+// Physical clockwise order on the cross board: bottom, left, top, right.
+const NEXT_CLOCKWISE_SEAT = Object.freeze([1, 2, 3, 0])
+export function nextClockwiseSeat(seat) { return NEXT_CLOCKWISE_SEAT[seat] }
 export const TYPES = {
   flag: { name: '军旗', count: 1, rank: 0 }, mine: { name: '地雷', count: 3, rank: 0 },
   bomb: { name: '炸弹', count: 2, rank: 0 }, engineer: { name: '工兵', count: 3, rank: 1 },
@@ -93,8 +96,8 @@ export function swapFormation(s, first, second) {
   if (!a || !b || a.seat !== b.seat || !canDeploy(a.type, BOARD.byId[b.pos], a.seat) || !canDeploy(b.type, BOARD.byId[a.pos], b.seat)) return false
   ;[a.pos, b.pos] = [b.pos, a.pos]; return true
 }
-// 掷骰定先手：四方各掷两颗骰子，点数之和最大者先行；并列最高点时只在并列者之间重掷。
-// 结果只由种子决定，因此同一局可复现，也不给任何一方固定先手。
+// 掷骰只定先手：之后各家始终按棋盘座次顺时针轮行。
+// 四方各掷两颗骰子，点数之和最大者先行；并列最高点时只在并列者之间重掷。
 export function rollOpening(s) {
   let contenders = [0, 1, 2, 3].filter(seat => s.alive[seat])
   const rounds = []
@@ -111,7 +114,7 @@ export function startGame(s, opening) {
   const roll = opening || rollOpening(s)
   const round = roll.rounds[roll.rounds.length - 1] || []
   s.phase = 'play'; s.turn = roll.first
-  s.logs = [`${ARMIES[roll.first]}掷骰得先手，对家同盟顺时针行棋。`,
+  s.logs = [`${ARMIES[roll.first]}掷骰得先手；之后固定按座次顺时针轮行。`,
     '定先手点数：' + round.map(r => `${ARMIES[r.seat]} ${r.dice[0] + r.dice[1]}`).join('、') + (roll.rounds.length > 1 ? `（并列最高点重掷 ${roll.rounds.length - 1} 次）` : '')]
   settleTurn(s); return true
 }
@@ -159,7 +162,7 @@ function settleTurn(s) {
       eliminate(s, s.turn, '无棋可走')
       if (checkWinner(s)) return
     }
-    s.turn = (s.turn + 1) % 4
+    s.turn = nextClockwiseSeat(s.turn)
   }
 }
 export function move(s, pieceId, to) {
@@ -193,7 +196,7 @@ export function move(s, pieceId, to) {
   s.logs = s.logs.slice(0, 60)
   if (checkWinner(s)) return true
   if (s.quiet >= 70) { s.phase = 'finished'; s.winner = 'draw'; s.logs.unshift('连续 70 手无碰撞，和棋。'); return true }
-  s.turn = (s.turn + 1) % 4; settleTurn(s); return true
+  s.turn = nextClockwiseSeat(s.turn); settleTurn(s); return true
 }
 export function surrender(s, seat) {
   if (s.phase !== 'play' || !s.alive[seat]) return false
