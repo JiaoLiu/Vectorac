@@ -53,13 +53,15 @@ for (const side of ['black', 'red']) {
 const pieceMarkup = pieces.map(({ side, label, file, rank }) => {
   const px = xAt(file, rank).toFixed(1)
   const py = yAt(rank).toFixed(1)
-  return `<g class="piece ${side}" transform="translate(${px} ${py})">
-    <ellipse class="shadow" cy="5" rx="22" ry="15"/>
-    <ellipse class="side" cy="2" rx="21" ry="15"/>
+  const perspective = (0.84 + rank * 0.027).toFixed(3)
+  return `<g class="piece ${side}" transform="translate(${px} ${py}) scale(${perspective})">
+    <ellipse class="shadow" cy="7" rx="22" ry="15"/>
+    <ellipse class="side" cy="4" rx="21.5" ry="15.4"/>
+    <ellipse class="bevel" cy="1.5" rx="20.8" ry="14.9"/>
     <ellipse class="face" cy="-1" rx="20" ry="14"/>
     <ellipse class="rim" cy="-1" rx="15.5" ry="10.7"/>
     <ellipse class="shine" cx="-6" cy="-6" rx="7" ry="2.4"/>
-    <text y="4" text-anchor="middle">${label}</text>
+    <text y="4" text-anchor="middle" transform="${side === 'black' ? 'rotate(180)' : ''}">${label}</text>
   </g>`
 }).join('\n')
 
@@ -91,6 +93,7 @@ const svg = `<?xml version="1.0" encoding="UTF-8"?>
     .river-labels{font-family:"Kaiti SC","STKaiti","KaiTi",serif;font-size:29px;font-weight:700;letter-spacing:9px;text-anchor:middle;fill:#96643b;opacity:.92}
     .piece .shadow{fill:#422719;opacity:.36}
     .piece .side{fill:#9e673a;stroke:#684221;stroke-width:1.6}
+    .piece .bevel{fill:#eac17b;stroke:#9c6738;stroke-width:1.1}
     .piece .face{fill:url(#red-piece);stroke:#a8743c;stroke-width:2}
     .piece.black .face{fill:url(#black-piece);stroke:#635849}
     .piece .rim{fill:none;stroke:#c2914a;stroke-width:1.8}

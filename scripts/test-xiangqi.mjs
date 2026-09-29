@@ -113,3 +113,19 @@ test('AI returns a legal move without mutating the supplied position', () => {
   assert.equal(JSON.stringify(board), before)
   assert.equal(findGeneral(applyMove(board, move), RED).y, 9)
 })
+
+test('AI avoids the tempting opening cannon capture that loses to the next exchange', () => {
+  const board = createInitialBoard()
+  const move = chooseMove(board, BLACK, 'medium', () => 0)
+  assert.ok(getLegalMoves(board, BLACK).some((legal) => JSON.stringify(legal) === JSON.stringify(move)))
+  assert.equal(move.capture, null)
+})
+
+test('AI varies among close-quality opening moves instead of repeating one fixed line', () => {
+  const board = createInitialBoard()
+  const first = chooseMove(board, BLACK, 'medium', () => 0)
+  const alternate = chooseMove(board, BLACK, 'medium', () => 0.999999)
+  assert.notDeepEqual(alternate, first)
+  assert.ok(getLegalMoves(board, BLACK).some((legal) => JSON.stringify(legal) === JSON.stringify(first)))
+  assert.ok(getLegalMoves(board, BLACK).some((legal) => JSON.stringify(legal) === JSON.stringify(alternate)))
+})

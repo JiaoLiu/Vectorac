@@ -107,7 +107,7 @@ meta:
 .xq-root{max-width:1160px;margin:0 auto 18px}
 .xq-layout{grid-template-columns:minmax(0,1fr) 320px;gap:14px}
 .xq-board-card{padding:0;border:0;border-radius:0;background:transparent;box-shadow:none;overflow:visible}
-.xq-board-frame{width:min(100%,900px,calc((100svh - 230px)*.87));aspect-ratio:540/620;filter:drop-shadow(0 14px 11px #4b2d1e35);transform:perspective(1200px) rotateX(1.2deg);transform-origin:center bottom}
+.xq-board-frame{width:min(100%,540px);aspect-ratio:540/620;filter:drop-shadow(0 14px 11px #4b2d1e35);transform:perspective(1200px) rotateX(1.2deg);transform-origin:center bottom}
 .xq-board-frame:after{content:none}
 .xq-board-svg{overflow:visible}
 .xq-board-wood{fill:#6c4025;stroke:#4c2e1d;stroke-width:2}
@@ -190,6 +190,88 @@ meta:
 }
 @media(max-height:560px) and (orientation:landscape){.xq-expanded .xq-board-frame{width:min(100%,calc((100svh - 46px)*.87));max-height:calc(100% - 12px)}}
 @media(prefers-reduced-motion:reduce){.xq-piece-arrival .xq-piece-body,.xq-capture-burst{animation-duration:.01ms!important}}
+
+/* Give the board a carved, layered wood finish rather than a flat card-like plane. */
+.xq-board-wood{fill:#65412a;stroke:#4c2e1d;stroke-width:2.5}
+.xq-board-side{fill:url(#xq-board-side);stroke:#4c2e1d;stroke-width:2}
+.xq-board-bevel{fill:#d49a52;stroke:#f7d89c;stroke-width:1.5}
+.xq-board-surface{fill:url(#xq-board-wood);stroke:#87532f;stroke-width:2.8}
+.xq-board-grain{fill:url(#xq-wood-grain);opacity:.56;pointer-events:none}
+.xq-board-inset{stroke:#fff0c4;stroke-width:2.1;opacity:.76}
+.xq-grid-underlay line,.xq-grid-underlay path{fill:none;stroke:#fff0bd;stroke-width:3.2;stroke-linecap:round;stroke-linejoin:round;opacity:.3}
+.xq-grid-lines line,.xq-grid-lines path{stroke:#563a27;stroke-width:2.2}
+.xq-river{fill:#f5dcaa;opacity:.72}
+.xq-piece-shadow{fill:#302014;opacity:.5;transform:translate(0 6px)}
+.xq-piece-side{fill:#966332;stroke:#5b3a22;stroke-width:1.2}
+.xq-piece-bevel{fill:url(#xq-piece-bevel);stroke:#85572e;stroke-width:.85}
+.xq-piece-face{stroke:#a56f3c;stroke-width:1.65}
+.xq-piece.black .xq-piece-face{stroke:#625849}
+.xq-piece-rim{stroke:#bd873d;stroke-width:1.7}
+.xq-piece.black .xq-piece-rim{stroke:#776b58}
+.xq-piece-inner-rim{fill:none;stroke:#fff5d8;stroke-width:.75;opacity:.78;pointer-events:none}
+.xq-piece-label-shadow{fill:#633520;opacity:.35;font-family:"STKaiti","KaiTi",serif;font-size:24px;font-weight:900;pointer-events:none}
+.xq-piece.red .xq-piece-label{fill:#b8322c}
+.xq-piece.black .xq-piece-label{fill:#262d29}
+.xq-expanded{box-sizing:border-box}
+@media(max-height:560px) and (orientation:landscape){
+  .xq-board-frame{aspect-ratio:620/540;transform:perspective(1500px) rotateX(1.8deg)}
+  .xq-root:not(.xq-expanded){max-width:none;width:100%;margin:0 auto;padding:3px clamp(5px,1vw,12px)}
+  .xq-root:not(.xq-expanded) .xq-topbar{padding:4px 9px;margin:0 0 4px;border-radius:10px}
+  .xq-root:not(.xq-expanded) .xq-brand-mark{width:29px;height:29px;font-size:15px}
+  .xq-root:not(.xq-expanded) .xq-brand-mark i{width:17px;height:17px;font-size:9px}
+  .xq-root:not(.xq-expanded) .xq-brand h1{font-size:14px}
+  .xq-root:not(.xq-expanded) .xq-kicker,.xq-root:not(.xq-expanded) .xq-move-count{display:none}
+  .xq-root:not(.xq-expanded) .xq-top-actions{gap:5px}
+  .xq-root:not(.xq-expanded) .xq-top-actions .xq-btn{min-height:29px;padding:4px 8px;font-size:9px}
+  .xq-root:not(.xq-expanded) .xq-layout{grid-template-columns:minmax(0,1fr) minmax(218px,27%);align-items:center;gap:6px}
+  .xq-root:not(.xq-expanded) .xq-board-card{display:grid;place-items:center;padding:0;min-height:0}
+  .xq-root:not(.xq-expanded) .xq-board-frame{width:min(100%,calc((100svh - 108px)*1.148));max-width:none;max-height:calc(100svh - 108px);aspect-ratio:620/540}
+  .xq-root:not(.xq-expanded) .xq-side{max-height:calc(100svh - 54px);overflow:auto;align-content:center;gap:5px}
+  .xq-root:not(.xq-expanded) .xq-match-card{padding:6px}
+  .xq-root:not(.xq-expanded) .xq-match-title{font-size:11px}
+  .xq-root:not(.xq-expanded) .xq-players{margin:5px 0}
+  .xq-root:not(.xq-expanded) .xq-player{padding:3px;gap:4px}
+  .xq-root:not(.xq-expanded) .xq-player-token{width:27px;height:27px;flex-basis:27px;font-size:15px}
+  .xq-root:not(.xq-expanded) .xq-player small,.xq-root:not(.xq-expanded) .xq-player-crown{display:none}
+  .xq-root:not(.xq-expanded) .xq-status{min-height:30px;padding:4px;font-size:10px}
+  .xq-root:not(.xq-expanded) .xq-audio-controls{gap:4px;margin-top:5px}
+  .xq-root:not(.xq-expanded) .xq-audio-toggle{min-height:32px;padding:4px;font-size:9px}
+  .xq-root:not(.xq-expanded) .xq-audio-credit{display:none}
+  .xq-root:not(.xq-expanded) .xq-setting-block{margin-top:5px}
+  .xq-root:not(.xq-expanded) .xq-setting-label{margin-bottom:3px;font-size:9px}
+  .xq-root:not(.xq-expanded) .xq-segment button{min-height:32px;font-size:9px}
+  .xq-root:not(.xq-expanded) .xq-actions{gap:4px;margin-top:5px}
+  .xq-root:not(.xq-expanded) .xq-actions .xq-btn,.xq-root:not(.xq-expanded) .xq-actions .xq-btn-primary{min-height:32px;padding:4px;font-size:9px}
+  .xq-root:not(.xq-expanded) .xq-history-card,.xq-root:not(.xq-expanded) .xq-rules-card,.xq-root:not(.xq-expanded) .xq-footer{display:none}
+
+  .xq-root.xq-expanded{height:100svh;overflow:hidden;padding:max(4px,env(safe-area-inset-top)) max(7px,env(safe-area-inset-right)) max(4px,env(safe-area-inset-bottom)) max(7px,env(safe-area-inset-left));display:grid;grid-template-rows:auto minmax(0,1fr)}
+  .xq-expanded .xq-topbar{width:100%;max-width:none;padding:4px 9px;margin:0 auto 4px;border-radius:10px}
+  .xq-expanded .xq-brand-mark{width:29px;height:29px;font-size:15px}
+  .xq-expanded .xq-brand-mark i{width:17px;height:17px;font-size:9px}
+  .xq-expanded .xq-brand h1{font-size:14px}
+  .xq-expanded .xq-kicker,.xq-expanded .xq-move-count{display:none}
+  .xq-expanded .xq-top-actions{gap:5px}
+  .xq-expanded .xq-top-actions .xq-btn{min-height:29px;padding:4px 8px;font-size:9px}
+  .xq-expanded .xq-layout{width:100%;max-width:none;height:auto;min-height:0;grid-template-columns:minmax(0,1fr) minmax(218px,26%);align-items:center;gap:6px}
+  .xq-expanded .xq-board-card{display:grid;place-items:center;min-height:0;padding:0}
+  .xq-expanded .xq-board-frame{width:min(100%,calc((100svh - 58px)*1.148));max-width:none;max-height:100%;aspect-ratio:620/540}
+  .xq-expanded .xq-side{max-width:none;max-height:100%;overflow:auto;align-content:center;gap:5px}
+  .xq-expanded .xq-match-card{max-width:none;padding:6px}
+  .xq-expanded .xq-match-title{font-size:11px}
+  .xq-expanded .xq-players{margin:5px 0}
+  .xq-expanded .xq-player{padding:3px;gap:4px}
+  .xq-expanded .xq-player-token{width:27px;height:27px;flex-basis:27px;font-size:15px}
+  .xq-expanded .xq-player small,.xq-expanded .xq-player-crown,.xq-expanded .xq-audio-credit{display:none}
+  .xq-expanded .xq-status{min-height:30px;padding:4px;font-size:10px}
+  .xq-expanded .xq-audio-controls{gap:4px;margin-top:5px}
+  .xq-expanded .xq-audio-toggle{min-height:32px;padding:4px;font-size:9px}
+  .xq-expanded .xq-setting-block{margin-top:5px}
+  .xq-expanded .xq-setting-label{margin-bottom:3px;font-size:9px}
+  .xq-expanded .xq-segment button{min-height:32px;font-size:9px}
+  .xq-expanded .xq-actions{gap:4px;margin-top:5px}
+  .xq-expanded .xq-actions .xq-btn,.xq-expanded .xq-actions .xq-btn-primary{min-height:32px;padding:4px;font-size:9px}
+  .xq-expanded .xq-history-card,.xq-expanded .xq-rules-card,.xq-expanded .xq-footer{display:none}
+}
 </style>
 
 <script>

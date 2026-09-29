@@ -18,6 +18,7 @@ export default class XiangqiUI {
     this.board = createInitialBoard()
     this.playerSide = RED
     this.currentSide = RED
+    this.landscape = false
     this.difficulty = 'medium'
     this.selected = null
     this.legalFrom = []
@@ -49,6 +50,19 @@ export default class XiangqiUI {
     this.onKeyDown = this._onKeyDown.bind(this)
     root.addEventListener('click', this.onClick)
     root.addEventListener('keydown', this.onKeyDown)
+    this.landscapeQuery = typeof window !== 'undefined' && window.matchMedia
+      ? window.matchMedia('(max-height: 560px) and (orientation: landscape)')
+      : null
+    this.landscape = Boolean(this.landscapeQuery && this.landscapeQuery.matches)
+    this.onLandscapeChange = (event) => {
+      if (this.landscape === event.matches) return
+      this.landscape = event.matches
+      this.render()
+    }
+    if (this.landscapeQuery) {
+      if (this.landscapeQuery.addEventListener) this.landscapeQuery.addEventListener('change', this.onLandscapeChange)
+      else if (this.landscapeQuery.addListener) this.landscapeQuery.addListener(this.onLandscapeChange)
+    }
     this.render()
   }
 
@@ -405,10 +419,13 @@ export default class XiangqiUI {
         const chosen = this.selected && this.selected.x === file && this.selected.y === rank
         const arriving = this.animatingMove && this.animatingMove.x === file && this.animatingMove.y === rank ? this.animatingMove : null
         const label = PIECE_LABELS[piece.side][piece.type]
+        const labelTransform = this.landscape
+          ? (this.playerSide === BLACK ? 'rotate(90)' : 'rotate(-90)')
+          : (this.playerSide === BLACK ? 'rotate(180)' : '')
         pieceGroups.push(`<g class="xq-piece ${piece.side}${chosen ? ' is-selected' : ''}${arriving ? ' xq-piece-arrival' : ''}" data-xq-square data-x="${file}" data-y="${rank}" role="button" aria-label="${SIDE_LABEL[piece.side]}${label}" tabindex="0" transform="translate(${x(file)} ${y(rank)})">
-          <ellipse class="xq-piece-shadow" cy="4" rx="24" ry="20"/>
-          <g class="xq-piece-body"${arriving ? ` style="--xq-dx:${arriving.dx}px;--xq-dy:${arriving.dy}px"` : ''}><ellipse class="xq-piece-side" cy="2" rx="22.5" ry="19"/><ellipse class="xq-piece-face" rx="21" ry="17.5"/><ellipse class="xq-piece-rim" rx="16.5" ry="13.2"/>
-          <ellipse class="xq-piece-gloss" cx="-6" cy="-8" rx="8" ry="3"/><text class="xq-piece-label" text-anchor="middle" dominant-baseline="central" transform="${this.playerSide === BLACK ? 'rotate(180)' : ''}">${label}</text></g>
+          <ellipse class="xq-piece-shadow" cy="7" rx="24" ry="20"/>
+          <g class="xq-piece-body"${arriving ? ` style="--xq-dx:${arriving.dx}px;--xq-dy:${arriving.dy}px"` : ''}><ellipse class="xq-piece-side" cy="4" rx="23" ry="19.2"/><ellipse class="xq-piece-bevel" cy="1.4" rx="22.4" ry="18.6"/><ellipse class="xq-piece-face" rx="21" ry="17.5"/><ellipse class="xq-piece-rim" rx="16.5" ry="13.2"/><ellipse class="xq-piece-inner-rim" rx="15.1" ry="11.9"/>
+          <ellipse class="xq-piece-gloss" cx="-6" cy="-8" rx="8" ry="3"/><text class="xq-piece-label-shadow" text-anchor="middle" dominant-baseline="central" transform="${labelTransform}" dx="0.7" dy="1.2">${label}</text><text class="xq-piece-label" text-anchor="middle" dominant-baseline="central" transform="${labelTransform}">${label}</text></g>
           <circle class="xq-piece-hit" r="27"/>
         </g>`)
       }
@@ -428,26 +445,39 @@ export default class XiangqiUI {
     const starPoints = [[1, 2], [7, 2], [0, 3], [2, 3], [4, 3], [6, 3], [8, 3], [0, 6], [2, 6], [4, 6], [6, 6], [8, 6], [1, 7], [7, 7]]
       .map(([file, rank]) => `<g class="xq-star" transform="translate(${x(file)} ${y(rank)})"><path d="M-5-8h-4v-4 M5-8h4v-4 M-5 8h-4v4 M5 8h4v4"/></g>`).join('')
 
-    return `<svg class="xq-board-svg${this.playerSide === BLACK ? ' is-flipped' : ''}" viewBox="0 0 540 620" role="grid" aria-label="中国象棋棋盘，点击棋子选择，再点击落点">
+    const viewBox = this.landscape ? '0 0 620 540' : '0 0 540 620'
+    const boardTransform = this.landscape ? 'translate(620 0) rotate(90)' : ''
+    const riverTransform = this.landscape
+      ? (this.playerSide === BLACK ? 'rotate(90 270 310)' : 'rotate(-90 270 310)')
+      : (this.playerSide === BLACK ? 'rotate(180 270 310)' : '')
+
+    return `<svg class="xq-board-svg${this.playerSide === BLACK ? ' is-flipped' : ''}${this.landscape ? ' is-landscape' : ''}" viewBox="${viewBox}" role="grid" aria-label="中国象棋棋盘，点击棋子选择，再点击落点">
       <defs>
         <linearGradient id="xq-board-wood" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f6d999"/><stop offset=".5" stop-color="#e9bd70"/><stop offset="1" stop-color="#cf9148"/></linearGradient>
+        <linearGradient id="xq-piece-bevel" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff5da"/><stop offset=".42" stop-color="#d3a461"/><stop offset="1" stop-color="#85572e"/></linearGradient>
         <linearGradient id="xq-red-piece" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff8e8"/><stop offset=".48" stop-color="#f3dfbd"/><stop offset="1" stop-color="#d7b278"/></linearGradient>
         <linearGradient id="xq-black-piece" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff5de"/><stop offset=".48" stop-color="#e8ddc5"/><stop offset="1" stop-color="#c4b28e"/></linearGradient>
         <linearGradient id="xq-board-side" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a96e3b"/><stop offset="1" stop-color="#5f3824"/></linearGradient>
+        <pattern id="xq-wood-grain" width="260" height="88" patternUnits="userSpaceOnUse"><path d="M-12 15 C34 4 74 24 122 13 S214 7 274 18 M-18 52 C28 43 72 61 126 50 S218 44 280 56 M-10 76 C42 68 77 83 138 73 S222 69 270 79" fill="none" stroke="#81502b" stroke-opacity=".18" stroke-width="1.2"/><path d="M-8 18 C38 8 75 27 122 16 S214 10 270 21 M-16 55 C32 46 72 64 126 53 S216 48 276 59" fill="none" stroke="#fff0bd" stroke-opacity=".2" stroke-width=".8"/></pattern>
         <filter id="xq-board-shadow" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="9" stdDeviation="9" flood-color="#633b1d" flood-opacity=".26"/></filter>
       </defs>
+      <g class="xq-board-orientation" transform="${boardTransform}">
       <rect class="xq-board-wood" x="7" y="11" width="526" height="606" rx="25" filter="url(#xq-board-shadow)"/>
-      <rect class="xq-board-side" x="8" y="7" width="524" height="601" rx="24"/>
-      <rect class="xq-board-surface" x="16" y="15" width="508" height="585" rx="18"/>
-      <rect class="xq-board-inset" x="26" y="25" width="488" height="565" rx="11"/>
+      <rect class="xq-board-side" x="10" y="10" width="520" height="598" rx="24"/>
+      <rect class="xq-board-bevel" x="14" y="13" width="512" height="590" rx="21"/>
+      <rect class="xq-board-surface" x="19" y="18" width="502" height="580" rx="15"/>
+      <rect class="xq-board-grain" x="20" y="19" width="500" height="578" rx="14"/>
+      <rect class="xq-board-inset" x="27" y="26" width="486" height="564" rx="8"/>
       <rect class="xq-river" x="39" y="${y(4) + 2}" width="462" height="${y(5) - y(4) - 4}" rx="9"/>
+      <g class="xq-grid-underlay" transform="translate(0 1.4)">${horizontal}${vertical}${palace}</g>
       <g class="xq-grid-lines">${horizontal}${vertical}${palace}</g>
       <g class="xq-star-points">${starPoints}</g>
-      <g class="xq-river-labels" transform="${this.playerSide === BLACK ? 'rotate(180 270 310)' : ''}"><text x="238" y="311">楚 河</text><text x="302" y="311">汉 界</text></g>
+      <g class="xq-river-labels" transform="${riverTransform}"><text x="238" y="311">楚 河</text><text x="302" y="311">汉 界</text></g>
       <g class="xq-board-marks">${marks.join('')}</g>
       <g class="xq-square-hits">${hitTargets.join('')}</g>
       <g class="xq-board-pieces">${pieceGroups.join('')}</g>
       <path class="xq-corner-flourish" d="M44 45h12m-12 0v12 M496 45h-12m12 0v12 M44 575h12m-12 0v-12 M496 575h-12m12 0v-12"/>
+      </g>
     </svg>`
   }
 
@@ -456,6 +486,10 @@ export default class XiangqiUI {
     clearTimeout(this._aiTimer)
     this.root.removeEventListener('click', this.onClick)
     this.root.removeEventListener('keydown', this.onKeyDown)
+    if (this.landscapeQuery) {
+      if (this.landscapeQuery.removeEventListener) this.landscapeQuery.removeEventListener('change', this.onLandscapeChange)
+      else if (this.landscapeQuery.removeListener) this.landscapeQuery.removeListener(this.onLandscapeChange)
+    }
     if (this.bgm) {
       this.bgm.pause()
       this.bgm.removeAttribute('src')

@@ -242,10 +242,7 @@ function ordered(moves, board, limit) {
 }
 
 function search(board, side, depth, alpha, beta, ply) {
-  if (depth <= 0) {
-    const score = evaluateRed(board)
-    return side === RED ? score : -score
-  }
+  if (depth <= 0) return quiescence(board, side, alpha, beta, ply, 3)
   const allMoves = getLegalMoves(board, side)
   if (!allMoves.length) return -1000000 + ply
   const moves = ordered(allMoves, board, depth === 1 ? 7 : 10)
@@ -261,22 +258,72 @@ function search(board, side, depth, alpha, beta, ply) {
   return best
 }
 
-/** 返回 AI 的一个合法着法。difficulty: easy | medium | hard。 */
-export function chooseMove(board, side, difficulty = 'medium') {
+// 搜索到普通层数边界时继续看完短促的吃子交换，避免把“吃了一个子、下一手马上被吃”误判成好棋。
+function quiescence(board, side, alpha, beta, ply, remaining) {
+  const legalMoves = getLegalMoves(board, side)
+  if (!legalMoves.length) return -1000000 + ply
+  const checked = isInCheck(board, side)
+  const redScore = evaluateRed(board)
+  const standPat = side === RED ? redScore : -redScore
+  if (remaining <= 0) return standPat
+
+  if (!checked) {
+    if (standPat >= beta) return standPat
+    alpha = Math.max(alpha, standPat)
+  }
+
+  const tacticalMoves = checked
+    ? ordered(legalMoves, board, 12)
+    : ordered(legalMoves.filter((move) => move.capture), board, 8)
+  if (!tacticalMoves.length) return checked ? -1000000 + ply : standPat
+
+  let best = checked ? -Infinity : standPat
+  for (const move of tacticalMoves) {
+    const undo = applyInPlace(board, move)
+    const value = -quiescence(board, otherSide(side), -beta, -alpha, ply + 1, remaining - 1)
+    undoInPlace(board, move, undo)
+    if (value > best) best = value
+    if (value > alpha) alpha = value
+    if (alpha >= beta) break
+  }
+  return best
+}
+
+function chooseByScore(scoredMoves, difficulty, opening, rng) {
+  const best = Math.max(...scoredMoves.map((item) => item.score))
+  const window = difficulty === 'easy'
+    ? (opening ? 230 : 160)
+    : difficulty === 'hard'
+      ? (opening ? 22 : 8)
+      : (opening ? 92 : 38)
+  const temperature = difficulty === 'easy' ? 95 : difficulty === 'hard' ? 7 : 34
+  const candidates = scoredMoves.filter((item) => item.score >= best - window)
+  const weighted = candidates.map((item) => ({
+    ...item,
+    weight: Math.exp((item.score - best) / temperature)
+  }))
+  const total = weighted.reduce((sum, item) => sum + item.weight, 0)
+  const sample = Math.min(0.999999999, Math.max(0, Number(rng()) || 0)) * total
+  let cursor = 0
+  for (const item of weighted) {
+    cursor += item.weight
+    if (sample < cursor) return item.move
+  }
+  return weighted[weighted.length - 1].move
+}
+
+/** 返回 AI 的一个合法着法。可注入 rng 以便测试开局变化和复现局面。 */
+export function chooseMove(board, side, difficulty = 'medium', rng = Math.random) {
   const depth = difficulty === 'hard' ? 3 : difficulty === 'easy' ? 1 : 2
   const moves = ordered(getLegalMoves(board, side), board, 40)
   if (!moves.length) return null
-  let best = -Infinity
-  let bestMoves = []
+  const scoredMoves = []
   for (const move of moves) {
     const undo = applyInPlace(board, move)
     const value = -search(board, otherSide(side), depth - 1, -Infinity, Infinity, 1)
     undoInPlace(board, move, undo)
-    const adjusted = value + (difficulty === 'easy' ? Math.random() * 36 : 0)
-    if (adjusted > best) {
-      best = adjusted
-      bestMoves = [move]
-    } else if (adjusted === best) bestMoves.push(move)
+    scoredMoves.push({ move, score: value })
   }
-  return bestMoves[0]
+  const opening = board.flat().filter(Boolean).length >= 28
+  return chooseByScore(scoredMoves, difficulty, opening, rng)
 }

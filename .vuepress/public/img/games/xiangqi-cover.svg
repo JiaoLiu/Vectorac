@@ -17,261 +17,293 @@
     <polygon points="276.3,683.8 1323.7,683.8 1333.3,710.2 266.7,710.2" fill="#f5d89d" opacity=".48"/>
     <g class="grid"><line x1="315.0" y1="578.0" x2="1285.0" y2="578.0" /><line x1="305.3" y1="604.4" x2="1294.7" y2="604.4" /><line x1="295.7" y1="630.9" x2="1304.3" y2="630.9" /><line x1="286.0" y1="657.3" x2="1314.0" y2="657.3" /><line x1="276.3" y1="683.8" x2="1323.7" y2="683.8" /><line x1="266.7" y1="710.2" x2="1333.3" y2="710.2" /><line x1="257.0" y1="736.7" x2="1343.0" y2="736.7" /><line x1="247.3" y1="763.1" x2="1352.7" y2="763.1" /><line x1="237.7" y1="789.6" x2="1362.3" y2="789.6" /><line x1="228.0" y1="816.0" x2="1372.0" y2="816.0" /><line x1="315.0" y1="578.0" x2="228.0" y2="816.0" /><line x1="436.3" y1="578.0" x2="407.3" y2="683.8" /><line x1="400.0" y1="710.2" x2="371.0" y2="816.0" /><line x1="557.5" y1="578.0" x2="538.2" y2="683.8" /><line x1="533.3" y1="710.2" x2="514.0" y2="816.0" /><line x1="678.8" y1="578.0" x2="669.1" y2="683.8" /><line x1="666.7" y1="710.2" x2="657.0" y2="816.0" /><line x1="800.0" y1="578.0" x2="800.0" y2="683.8" /><line x1="800.0" y1="710.2" x2="800.0" y2="816.0" /><line x1="921.3" y1="578.0" x2="930.9" y2="683.8" /><line x1="933.3" y1="710.2" x2="943.0" y2="816.0" /><line x1="1042.5" y1="578.0" x2="1061.8" y2="683.8" /><line x1="1066.7" y1="710.2" x2="1086.0" y2="816.0" /><line x1="1163.8" y1="578.0" x2="1192.8" y2="683.8" /><line x1="1200.0" y1="710.2" x2="1229.0" y2="816.0" /><line x1="1285.0" y1="578.0" x2="1372.0" y2="816.0" /><line x1="678.8" y1="578.0" x2="926.1" y2="630.9" class="palace"/><line x1="921.3" y1="578.0" x2="673.9" y2="630.9" class="palace"/><line x1="661.8" y1="763.1" x2="943.0" y2="816.0" class="palace"/><line x1="938.2" y1="763.1" x2="657.0" y2="816.0" class="palace"/></g>
     <g class="river-labels"><text x="486" y="703">楚河</text><text x="1114" y="703">汉界</text></g>
-    <g class="pieces"><g class="piece black" transform="translate(315.0 578.0)">
-    <ellipse class="shadow" cy="5" rx="22" ry="15"/>
-    <ellipse class="side" cy="2" rx="21" ry="15"/>
+    <g class="pieces"><g class="piece black" transform="translate(315.0 578.0) scale(0.840)">
+    <ellipse class="shadow" cy="7" rx="22" ry="15"/>
+    <ellipse class="side" cy="4" rx="21.5" ry="15.4"/>
+    <ellipse class="bevel" cy="1.5" rx="20.8" ry="14.9"/>
     <ellipse class="face" cy="-1" rx="20" ry="14"/>
     <ellipse class="rim" cy="-1" rx="15.5" ry="10.7"/>
     <ellipse class="shine" cx="-6" cy="-6" rx="7" ry="2.4"/>
-    <text y="4" text-anchor="middle">车</text>
+    <text y="4" text-anchor="middle" transform="rotate(180)">车</text>
   </g>
-<g class="piece black" transform="translate(436.3 578.0)">
-    <ellipse class="shadow" cy="5" rx="22" ry="15"/>
-    <ellipse class="side" cy="2" rx="21" ry="15"/>
+<g class="piece black" transform="translate(436.3 578.0) scale(0.840)">
+    <ellipse class="shadow" cy="7" rx="22" ry="15"/>
+    <ellipse class="side" cy="4" rx="21.5" ry="15.4"/>
+    <ellipse class="bevel" cy="1.5" rx="20.8" ry="14.9"/>
     <ellipse class="face" cy="-1" rx="20" ry="14"/>
     <ellipse class="rim" cy="-1" rx="15.5" ry="10.7"/>
     <ellipse class="shine" cx="-6" cy="-6" rx="7" ry="2.4"/>
-    <text y="4" text-anchor="middle">马</text>
+    <text y="4" text-anchor="middle" transform="rotate(180)">马</text>
   </g>
-<g class="piece black" transform="translate(557.5 578.0)">
-    <ellipse class="shadow" cy="5" rx="22" ry="15"/>
-    <ellipse class="side" cy="2" rx="21" ry="15"/>
+<g class="piece black" transform="translate(557.5 578.0) scale(0.840)">
+    <ellipse class="shadow" cy="7" rx="22" ry="15"/>
+    <ellipse class="side" cy="4" rx="21.5" ry="15.4"/>
+    <ellipse class="bevel" cy="1.5" rx="20.8" ry="14.9"/>
     <ellipse class="face" cy="-1" rx="20" ry="14"/>
     <ellipse class="rim" cy="-1" rx="15.5" ry="10.7"/>
     <ellipse class="shine" cx="-6" cy="-6" rx="7" ry="2.4"/>
-    <text y="4" text-anchor="middle">象</text>
+    <text y="4" text-anchor="middle" transform="rotate(180)">象</text>
   </g>
-<g class="piece black" transform="translate(678.8 578.0)">
-    <ellipse class="shadow" cy="5" rx="22" ry="15"/>
-    <ellipse class="side" cy="2" rx="21" ry="15"/>
+<g class="piece black" transform="translate(678.8 578.0) scale(0.840)">
+    <ellipse class="shadow" cy="7" rx="22" ry="15"/>
+    <ellipse class="side" cy="4" rx="21.5" ry="15.4"/>
+    <ellipse class="bevel" cy="1.5" rx="20.8" ry="14.9"/>
     <ellipse class="face" cy="-1" rx="20" ry="14"/>
     <ellipse class="rim" cy="-1" rx="15.5" ry="10.7"/>
     <ellipse class="shine" cx="-6" cy="-6" rx="7" ry="2.4"/>
-    <text y="4" text-anchor="middle">士</text>
+    <text y="4" text-anchor="middle" transform="rotate(180)">士</text>
   </g>
-<g class="piece black" transform="translate(800.0 578.0)">
-    <ellipse class="shadow" cy="5" rx="22" ry="15"/>
-    <ellipse class="side" cy="2" rx="21" ry="15"/>
+<g class="piece black" transform="translate(800.0 578.0) scale(0.840)">
+    <ellipse class="shadow" cy="7" rx="22" ry="15"/>
+    <ellipse class="side" cy="4" rx="21.5" ry="15.4"/>
+    <ellipse class="bevel" cy="1.5" rx="20.8" ry="14.9"/>
     <ellipse class="face" cy="-1" rx="20" ry="14"/>
     <ellipse class="rim" cy="-1" rx="15.5" ry="10.7"/>
     <ellipse class="shine" cx="-6" cy="-6" rx="7" ry="2.4"/>
-    <text y="4" text-anchor="middle">将</text>
+    <text y="4" text-anchor="middle" transform="rotate(180)">将</text>
   </g>
-<g class="piece black" transform="translate(921.3 578.0)">
-    <ellipse class="shadow" cy="5" rx="22" ry="15"/>
-    <ellipse class="side" cy="2" rx="21" ry="15"/>
+<g class="piece black" transform="translate(921.3 578.0) scale(0.840)">
+    <ellipse class="shadow" cy="7" rx="22" ry="15"/>
+    <ellipse class="side" cy="4" rx="21.5" ry="15.4"/>
+    <ellipse class="bevel" cy="1.5" rx="20.8" ry="14.9"/>
     <ellipse class="face" cy="-1" rx="20" ry="14"/>
     <ellipse class="rim" cy="-1" rx="15.5" ry="10.7"/>
     <ellipse class="shine" cx="-6" cy="-6" rx="7" ry="2.4"/>
-    <text y="4" text-anchor="middle">士</text>
+    <text y="4" text-anchor="middle" transform="rotate(180)">士</text>
   </g>
-<g class="piece black" transform="translate(1042.5 578.0)">
-    <ellipse class="shadow" cy="5" rx="22" ry="15"/>
-    <ellipse class="side" cy="2" rx="21" ry="15"/>
+<g class="piece black" transform="translate(1042.5 578.0) scale(0.840)">
+    <ellipse class="shadow" cy="7" rx="22" ry="15"/>
+    <ellipse class="side" cy="4" rx="21.5" ry="15.4"/>
+    <ellipse class="bevel" cy="1.5" rx="20.8" ry="14.9"/>
     <ellipse class="face" cy="-1" rx="20" ry="14"/>
     <ellipse class="rim" cy="-1" rx="15.5" ry="10.7"/>
     <ellipse class="shine" cx="-6" cy="-6" rx="7" ry="2.4"/>
-    <text y="4" text-anchor="middle">象</text>
+    <text y="4" text-anchor="middle" transform="rotate(180)">象</text>
   </g>
-<g class="piece black" transform="translate(1163.8 578.0)">
-    <ellipse class="shadow" cy="5" rx="22" ry="15"/>
-    <ellipse class="side" cy="2" rx="21" ry="15"/>
+<g class="piece black" transform="translate(1163.8 578.0) scale(0.840)">
+    <ellipse class="shadow" cy="7" rx="22" ry="15"/>
+    <ellipse class="side" cy="4" rx="21.5" ry="15.4"/>
+    <ellipse class="bevel" cy="1.5" rx="20.8" ry="14.9"/>
     <ellipse class="face" cy="-1" rx="20" ry="14"/>
     <ellipse class="rim" cy="-1" rx="15.5" ry="10.7"/>
     <ellipse class="shine" cx="-6" cy="-6" rx="7" ry="2.4"/>
-    <text y="4" text-anchor="middle">马</text>
+    <text y="4" text-anchor="middle" transform="rotate(180)">马</text>
   </g>
-<g class="piece black" transform="translate(1285.0 578.0)">
-    <ellipse class="shadow" cy="5" rx="22" ry="15"/>
-    <ellipse class="side" cy="2" rx="21" ry="15"/>
+<g class="piece black" transform="translate(1285.0 578.0) scale(0.840)">
+    <ellipse class="shadow" cy="7" rx="22" ry="15"/>
+    <ellipse class="side" cy="4" rx="21.5" ry="15.4"/>
+    <ellipse class="bevel" cy="1.5" rx="20.8" ry="14.9"/>
     <ellipse class="face" cy="-1" rx="20" ry="14"/>
     <ellipse class="rim" cy="-1" rx="15.5" ry="10.7"/>
     <ellipse class="shine" cx="-6" cy="-6" rx="7" ry="2.4"/>
-    <text y="4" text-anchor="middle">车</text>
+    <text y="4" text-anchor="middle" transform="rotate(180)">车</text>
   </g>
-<g class="piece black" transform="translate(421.8 630.9)">
-    <ellipse class="shadow" cy="5" rx="22" ry="15"/>
-    <ellipse class="side" cy="2" rx="21" ry="15"/>
+<g class="piece black" transform="translate(421.8 630.9) scale(0.894)">
+    <ellipse class="shadow" cy="7" rx="22" ry="15"/>
+    <ellipse class="side" cy="4" rx="21.5" ry="15.4"/>
+    <ellipse class="bevel" cy="1.5" rx="20.8" ry="14.9"/>
     <ellipse class="face" cy="-1" rx="20" ry="14"/>
     <ellipse class="rim" cy="-1" rx="15.5" ry="10.7"/>
     <ellipse class="shine" cx="-6" cy="-6" rx="7" ry="2.4"/>
-    <text y="4" text-anchor="middle">炮</text>
+    <text y="4" text-anchor="middle" transform="rotate(180)">炮</text>
   </g>
-<g class="piece black" transform="translate(1178.3 630.9)">
-    <ellipse class="shadow" cy="5" rx="22" ry="15"/>
-    <ellipse class="side" cy="2" rx="21" ry="15"/>
+<g class="piece black" transform="translate(1178.3 630.9) scale(0.894)">
+    <ellipse class="shadow" cy="7" rx="22" ry="15"/>
+    <ellipse class="side" cy="4" rx="21.5" ry="15.4"/>
+    <ellipse class="bevel" cy="1.5" rx="20.8" ry="14.9"/>
     <ellipse class="face" cy="-1" rx="20" ry="14"/>
     <ellipse class="rim" cy="-1" rx="15.5" ry="10.7"/>
     <ellipse class="shine" cx="-6" cy="-6" rx="7" ry="2.4"/>
-    <text y="4" text-anchor="middle">炮</text>
+    <text y="4" text-anchor="middle" transform="rotate(180)">炮</text>
   </g>
-<g class="piece black" transform="translate(286.0 657.3)">
-    <ellipse class="shadow" cy="5" rx="22" ry="15"/>
-    <ellipse class="side" cy="2" rx="21" ry="15"/>
+<g class="piece black" transform="translate(286.0 657.3) scale(0.921)">
+    <ellipse class="shadow" cy="7" rx="22" ry="15"/>
+    <ellipse class="side" cy="4" rx="21.5" ry="15.4"/>
+    <ellipse class="bevel" cy="1.5" rx="20.8" ry="14.9"/>
     <ellipse class="face" cy="-1" rx="20" ry="14"/>
     <ellipse class="rim" cy="-1" rx="15.5" ry="10.7"/>
     <ellipse class="shine" cx="-6" cy="-6" rx="7" ry="2.4"/>
-    <text y="4" text-anchor="middle">卒</text>
+    <text y="4" text-anchor="middle" transform="rotate(180)">卒</text>
   </g>
-<g class="piece black" transform="translate(543.0 657.3)">
-    <ellipse class="shadow" cy="5" rx="22" ry="15"/>
-    <ellipse class="side" cy="2" rx="21" ry="15"/>
+<g class="piece black" transform="translate(543.0 657.3) scale(0.921)">
+    <ellipse class="shadow" cy="7" rx="22" ry="15"/>
+    <ellipse class="side" cy="4" rx="21.5" ry="15.4"/>
+    <ellipse class="bevel" cy="1.5" rx="20.8" ry="14.9"/>
     <ellipse class="face" cy="-1" rx="20" ry="14"/>
     <ellipse class="rim" cy="-1" rx="15.5" ry="10.7"/>
     <ellipse class="shine" cx="-6" cy="-6" rx="7" ry="2.4"/>
-    <text y="4" text-anchor="middle">卒</text>
+    <text y="4" text-anchor="middle" transform="rotate(180)">卒</text>
   </g>
-<g class="piece black" transform="translate(800.0 657.3)">
-    <ellipse class="shadow" cy="5" rx="22" ry="15"/>
-    <ellipse class="side" cy="2" rx="21" ry="15"/>
+<g class="piece black" transform="translate(800.0 657.3) scale(0.921)">
+    <ellipse class="shadow" cy="7" rx="22" ry="15"/>
+    <ellipse class="side" cy="4" rx="21.5" ry="15.4"/>
+    <ellipse class="bevel" cy="1.5" rx="20.8" ry="14.9"/>
     <ellipse class="face" cy="-1" rx="20" ry="14"/>
     <ellipse class="rim" cy="-1" rx="15.5" ry="10.7"/>
     <ellipse class="shine" cx="-6" cy="-6" rx="7" ry="2.4"/>
-    <text y="4" text-anchor="middle">卒</text>
+    <text y="4" text-anchor="middle" transform="rotate(180)">卒</text>
   </g>
-<g class="piece black" transform="translate(1057.0 657.3)">
-    <ellipse class="shadow" cy="5" rx="22" ry="15"/>
-    <ellipse class="side" cy="2" rx="21" ry="15"/>
+<g class="piece black" transform="translate(1057.0 657.3) scale(0.921)">
+    <ellipse class="shadow" cy="7" rx="22" ry="15"/>
+    <ellipse class="side" cy="4" rx="21.5" ry="15.4"/>
+    <ellipse class="bevel" cy="1.5" rx="20.8" ry="14.9"/>
     <ellipse class="face" cy="-1" rx="20" ry="14"/>
     <ellipse class="rim" cy="-1" rx="15.5" ry="10.7"/>
     <ellipse class="shine" cx="-6" cy="-6" rx="7" ry="2.4"/>
-    <text y="4" text-anchor="middle">卒</text>
+    <text y="4" text-anchor="middle" transform="rotate(180)">卒</text>
   </g>
-<g class="piece black" transform="translate(1314.0 657.3)">
-    <ellipse class="shadow" cy="5" rx="22" ry="15"/>
-    <ellipse class="side" cy="2" rx="21" ry="15"/>
+<g class="piece black" transform="translate(1314.0 657.3) scale(0.921)">
+    <ellipse class="shadow" cy="7" rx="22" ry="15"/>
+    <ellipse class="side" cy="4" rx="21.5" ry="15.4"/>
+    <ellipse class="bevel" cy="1.5" rx="20.8" ry="14.9"/>
     <ellipse class="face" cy="-1" rx="20" ry="14"/>
     <ellipse class="rim" cy="-1" rx="15.5" ry="10.7"/>
     <ellipse class="shine" cx="-6" cy="-6" rx="7" ry="2.4"/>
-    <text y="4" text-anchor="middle">卒</text>
+    <text y="4" text-anchor="middle" transform="rotate(180)">卒</text>
   </g>
-<g class="piece red" transform="translate(228.0 816.0)">
-    <ellipse class="shadow" cy="5" rx="22" ry="15"/>
-    <ellipse class="side" cy="2" rx="21" ry="15"/>
+<g class="piece red" transform="translate(228.0 816.0) scale(1.083)">
+    <ellipse class="shadow" cy="7" rx="22" ry="15"/>
+    <ellipse class="side" cy="4" rx="21.5" ry="15.4"/>
+    <ellipse class="bevel" cy="1.5" rx="20.8" ry="14.9"/>
     <ellipse class="face" cy="-1" rx="20" ry="14"/>
     <ellipse class="rim" cy="-1" rx="15.5" ry="10.7"/>
     <ellipse class="shine" cx="-6" cy="-6" rx="7" ry="2.4"/>
-    <text y="4" text-anchor="middle">车</text>
+    <text y="4" text-anchor="middle" transform="">车</text>
   </g>
-<g class="piece red" transform="translate(371.0 816.0)">
-    <ellipse class="shadow" cy="5" rx="22" ry="15"/>
-    <ellipse class="side" cy="2" rx="21" ry="15"/>
+<g class="piece red" transform="translate(371.0 816.0) scale(1.083)">
+    <ellipse class="shadow" cy="7" rx="22" ry="15"/>
+    <ellipse class="side" cy="4" rx="21.5" ry="15.4"/>
+    <ellipse class="bevel" cy="1.5" rx="20.8" ry="14.9"/>
     <ellipse class="face" cy="-1" rx="20" ry="14"/>
     <ellipse class="rim" cy="-1" rx="15.5" ry="10.7"/>
     <ellipse class="shine" cx="-6" cy="-6" rx="7" ry="2.4"/>
-    <text y="4" text-anchor="middle">马</text>
+    <text y="4" text-anchor="middle" transform="">马</text>
   </g>
-<g class="piece red" transform="translate(514.0 816.0)">
-    <ellipse class="shadow" cy="5" rx="22" ry="15"/>
-    <ellipse class="side" cy="2" rx="21" ry="15"/>
+<g class="piece red" transform="translate(514.0 816.0) scale(1.083)">
+    <ellipse class="shadow" cy="7" rx="22" ry="15"/>
+    <ellipse class="side" cy="4" rx="21.5" ry="15.4"/>
+    <ellipse class="bevel" cy="1.5" rx="20.8" ry="14.9"/>
     <ellipse class="face" cy="-1" rx="20" ry="14"/>
     <ellipse class="rim" cy="-1" rx="15.5" ry="10.7"/>
     <ellipse class="shine" cx="-6" cy="-6" rx="7" ry="2.4"/>
-    <text y="4" text-anchor="middle">相</text>
+    <text y="4" text-anchor="middle" transform="">相</text>
   </g>
-<g class="piece red" transform="translate(657.0 816.0)">
-    <ellipse class="shadow" cy="5" rx="22" ry="15"/>
-    <ellipse class="side" cy="2" rx="21" ry="15"/>
+<g class="piece red" transform="translate(657.0 816.0) scale(1.083)">
+    <ellipse class="shadow" cy="7" rx="22" ry="15"/>
+    <ellipse class="side" cy="4" rx="21.5" ry="15.4"/>
+    <ellipse class="bevel" cy="1.5" rx="20.8" ry="14.9"/>
     <ellipse class="face" cy="-1" rx="20" ry="14"/>
     <ellipse class="rim" cy="-1" rx="15.5" ry="10.7"/>
     <ellipse class="shine" cx="-6" cy="-6" rx="7" ry="2.4"/>
-    <text y="4" text-anchor="middle">仕</text>
+    <text y="4" text-anchor="middle" transform="">仕</text>
   </g>
-<g class="piece red" transform="translate(800.0 816.0)">
-    <ellipse class="shadow" cy="5" rx="22" ry="15"/>
-    <ellipse class="side" cy="2" rx="21" ry="15"/>
+<g class="piece red" transform="translate(800.0 816.0) scale(1.083)">
+    <ellipse class="shadow" cy="7" rx="22" ry="15"/>
+    <ellipse class="side" cy="4" rx="21.5" ry="15.4"/>
+    <ellipse class="bevel" cy="1.5" rx="20.8" ry="14.9"/>
     <ellipse class="face" cy="-1" rx="20" ry="14"/>
     <ellipse class="rim" cy="-1" rx="15.5" ry="10.7"/>
     <ellipse class="shine" cx="-6" cy="-6" rx="7" ry="2.4"/>
-    <text y="4" text-anchor="middle">帅</text>
+    <text y="4" text-anchor="middle" transform="">帅</text>
   </g>
-<g class="piece red" transform="translate(943.0 816.0)">
-    <ellipse class="shadow" cy="5" rx="22" ry="15"/>
-    <ellipse class="side" cy="2" rx="21" ry="15"/>
+<g class="piece red" transform="translate(943.0 816.0) scale(1.083)">
+    <ellipse class="shadow" cy="7" rx="22" ry="15"/>
+    <ellipse class="side" cy="4" rx="21.5" ry="15.4"/>
+    <ellipse class="bevel" cy="1.5" rx="20.8" ry="14.9"/>
     <ellipse class="face" cy="-1" rx="20" ry="14"/>
     <ellipse class="rim" cy="-1" rx="15.5" ry="10.7"/>
     <ellipse class="shine" cx="-6" cy="-6" rx="7" ry="2.4"/>
-    <text y="4" text-anchor="middle">仕</text>
+    <text y="4" text-anchor="middle" transform="">仕</text>
   </g>
-<g class="piece red" transform="translate(1086.0 816.0)">
-    <ellipse class="shadow" cy="5" rx="22" ry="15"/>
-    <ellipse class="side" cy="2" rx="21" ry="15"/>
+<g class="piece red" transform="translate(1086.0 816.0) scale(1.083)">
+    <ellipse class="shadow" cy="7" rx="22" ry="15"/>
+    <ellipse class="side" cy="4" rx="21.5" ry="15.4"/>
+    <ellipse class="bevel" cy="1.5" rx="20.8" ry="14.9"/>
     <ellipse class="face" cy="-1" rx="20" ry="14"/>
     <ellipse class="rim" cy="-1" rx="15.5" ry="10.7"/>
     <ellipse class="shine" cx="-6" cy="-6" rx="7" ry="2.4"/>
-    <text y="4" text-anchor="middle">相</text>
+    <text y="4" text-anchor="middle" transform="">相</text>
   </g>
-<g class="piece red" transform="translate(1229.0 816.0)">
-    <ellipse class="shadow" cy="5" rx="22" ry="15"/>
-    <ellipse class="side" cy="2" rx="21" ry="15"/>
+<g class="piece red" transform="translate(1229.0 816.0) scale(1.083)">
+    <ellipse class="shadow" cy="7" rx="22" ry="15"/>
+    <ellipse class="side" cy="4" rx="21.5" ry="15.4"/>
+    <ellipse class="bevel" cy="1.5" rx="20.8" ry="14.9"/>
     <ellipse class="face" cy="-1" rx="20" ry="14"/>
     <ellipse class="rim" cy="-1" rx="15.5" ry="10.7"/>
     <ellipse class="shine" cx="-6" cy="-6" rx="7" ry="2.4"/>
-    <text y="4" text-anchor="middle">马</text>
+    <text y="4" text-anchor="middle" transform="">马</text>
   </g>
-<g class="piece red" transform="translate(1372.0 816.0)">
-    <ellipse class="shadow" cy="5" rx="22" ry="15"/>
-    <ellipse class="side" cy="2" rx="21" ry="15"/>
+<g class="piece red" transform="translate(1372.0 816.0) scale(1.083)">
+    <ellipse class="shadow" cy="7" rx="22" ry="15"/>
+    <ellipse class="side" cy="4" rx="21.5" ry="15.4"/>
+    <ellipse class="bevel" cy="1.5" rx="20.8" ry="14.9"/>
     <ellipse class="face" cy="-1" rx="20" ry="14"/>
     <ellipse class="rim" cy="-1" rx="15.5" ry="10.7"/>
     <ellipse class="shine" cx="-6" cy="-6" rx="7" ry="2.4"/>
-    <text y="4" text-anchor="middle">车</text>
+    <text y="4" text-anchor="middle" transform="">车</text>
   </g>
-<g class="piece red" transform="translate(385.5 763.1)">
-    <ellipse class="shadow" cy="5" rx="22" ry="15"/>
-    <ellipse class="side" cy="2" rx="21" ry="15"/>
+<g class="piece red" transform="translate(385.5 763.1) scale(1.029)">
+    <ellipse class="shadow" cy="7" rx="22" ry="15"/>
+    <ellipse class="side" cy="4" rx="21.5" ry="15.4"/>
+    <ellipse class="bevel" cy="1.5" rx="20.8" ry="14.9"/>
     <ellipse class="face" cy="-1" rx="20" ry="14"/>
     <ellipse class="rim" cy="-1" rx="15.5" ry="10.7"/>
     <ellipse class="shine" cx="-6" cy="-6" rx="7" ry="2.4"/>
-    <text y="4" text-anchor="middle">炮</text>
+    <text y="4" text-anchor="middle" transform="">炮</text>
   </g>
-<g class="piece red" transform="translate(1214.5 763.1)">
-    <ellipse class="shadow" cy="5" rx="22" ry="15"/>
-    <ellipse class="side" cy="2" rx="21" ry="15"/>
+<g class="piece red" transform="translate(1214.5 763.1) scale(1.029)">
+    <ellipse class="shadow" cy="7" rx="22" ry="15"/>
+    <ellipse class="side" cy="4" rx="21.5" ry="15.4"/>
+    <ellipse class="bevel" cy="1.5" rx="20.8" ry="14.9"/>
     <ellipse class="face" cy="-1" rx="20" ry="14"/>
     <ellipse class="rim" cy="-1" rx="15.5" ry="10.7"/>
     <ellipse class="shine" cx="-6" cy="-6" rx="7" ry="2.4"/>
-    <text y="4" text-anchor="middle">炮</text>
+    <text y="4" text-anchor="middle" transform="">炮</text>
   </g>
-<g class="piece red" transform="translate(257.0 736.7)">
-    <ellipse class="shadow" cy="5" rx="22" ry="15"/>
-    <ellipse class="side" cy="2" rx="21" ry="15"/>
+<g class="piece red" transform="translate(257.0 736.7) scale(1.002)">
+    <ellipse class="shadow" cy="7" rx="22" ry="15"/>
+    <ellipse class="side" cy="4" rx="21.5" ry="15.4"/>
+    <ellipse class="bevel" cy="1.5" rx="20.8" ry="14.9"/>
     <ellipse class="face" cy="-1" rx="20" ry="14"/>
     <ellipse class="rim" cy="-1" rx="15.5" ry="10.7"/>
     <ellipse class="shine" cx="-6" cy="-6" rx="7" ry="2.4"/>
-    <text y="4" text-anchor="middle">兵</text>
+    <text y="4" text-anchor="middle" transform="">兵</text>
   </g>
-<g class="piece red" transform="translate(528.5 736.7)">
-    <ellipse class="shadow" cy="5" rx="22" ry="15"/>
-    <ellipse class="side" cy="2" rx="21" ry="15"/>
+<g class="piece red" transform="translate(528.5 736.7) scale(1.002)">
+    <ellipse class="shadow" cy="7" rx="22" ry="15"/>
+    <ellipse class="side" cy="4" rx="21.5" ry="15.4"/>
+    <ellipse class="bevel" cy="1.5" rx="20.8" ry="14.9"/>
     <ellipse class="face" cy="-1" rx="20" ry="14"/>
     <ellipse class="rim" cy="-1" rx="15.5" ry="10.7"/>
     <ellipse class="shine" cx="-6" cy="-6" rx="7" ry="2.4"/>
-    <text y="4" text-anchor="middle">兵</text>
+    <text y="4" text-anchor="middle" transform="">兵</text>
   </g>
-<g class="piece red" transform="translate(800.0 736.7)">
-    <ellipse class="shadow" cy="5" rx="22" ry="15"/>
-    <ellipse class="side" cy="2" rx="21" ry="15"/>
+<g class="piece red" transform="translate(800.0 736.7) scale(1.002)">
+    <ellipse class="shadow" cy="7" rx="22" ry="15"/>
+    <ellipse class="side" cy="4" rx="21.5" ry="15.4"/>
+    <ellipse class="bevel" cy="1.5" rx="20.8" ry="14.9"/>
     <ellipse class="face" cy="-1" rx="20" ry="14"/>
     <ellipse class="rim" cy="-1" rx="15.5" ry="10.7"/>
     <ellipse class="shine" cx="-6" cy="-6" rx="7" ry="2.4"/>
-    <text y="4" text-anchor="middle">兵</text>
+    <text y="4" text-anchor="middle" transform="">兵</text>
   </g>
-<g class="piece red" transform="translate(1071.5 736.7)">
-    <ellipse class="shadow" cy="5" rx="22" ry="15"/>
-    <ellipse class="side" cy="2" rx="21" ry="15"/>
+<g class="piece red" transform="translate(1071.5 736.7) scale(1.002)">
+    <ellipse class="shadow" cy="7" rx="22" ry="15"/>
+    <ellipse class="side" cy="4" rx="21.5" ry="15.4"/>
+    <ellipse class="bevel" cy="1.5" rx="20.8" ry="14.9"/>
     <ellipse class="face" cy="-1" rx="20" ry="14"/>
     <ellipse class="rim" cy="-1" rx="15.5" ry="10.7"/>
     <ellipse class="shine" cx="-6" cy="-6" rx="7" ry="2.4"/>
-    <text y="4" text-anchor="middle">兵</text>
+    <text y="4" text-anchor="middle" transform="">兵</text>
   </g>
-<g class="piece red" transform="translate(1343.0 736.7)">
-    <ellipse class="shadow" cy="5" rx="22" ry="15"/>
-    <ellipse class="side" cy="2" rx="21" ry="15"/>
+<g class="piece red" transform="translate(1343.0 736.7) scale(1.002)">
+    <ellipse class="shadow" cy="7" rx="22" ry="15"/>
+    <ellipse class="side" cy="4" rx="21.5" ry="15.4"/>
+    <ellipse class="bevel" cy="1.5" rx="20.8" ry="14.9"/>
     <ellipse class="face" cy="-1" rx="20" ry="14"/>
     <ellipse class="rim" cy="-1" rx="15.5" ry="10.7"/>
     <ellipse class="shine" cx="-6" cy="-6" rx="7" ry="2.4"/>
-    <text y="4" text-anchor="middle">兵</text>
+    <text y="4" text-anchor="middle" transform="">兵</text>
   </g></g>
   </g>
   <style>
@@ -280,6 +312,7 @@
     .river-labels{font-family:"Kaiti SC","STKaiti","KaiTi",serif;font-size:29px;font-weight:700;letter-spacing:9px;text-anchor:middle;fill:#96643b;opacity:.92}
     .piece .shadow{fill:#422719;opacity:.36}
     .piece .side{fill:#9e673a;stroke:#684221;stroke-width:1.6}
+    .piece .bevel{fill:#eac17b;stroke:#9c6738;stroke-width:1.1}
     .piece .face{fill:url(#red-piece);stroke:#a8743c;stroke-width:2}
     .piece.black .face{fill:url(#black-piece);stroke:#635849}
     .piece .rim{fill:none;stroke:#c2914a;stroke-width:1.8}
