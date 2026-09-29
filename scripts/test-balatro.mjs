@@ -54,12 +54,15 @@ test('J, Q and K have distinct double-ended art while indices and seals remain l
  }
  for(const rank of [11,12,13])assert.doesNotMatch(playingCard({rank,suit:0,seal:'blue'},true),/bp-court-|>P<\/text>/,'face-down cards reveal no court identity or seal')
 })
-test('the game introduction and gallery cover describe and show the refreshed J, Q and K art',()=>{
- const cover=readFileSync(new URL('../.vuepress/public/img/games/balatro-cover.svg',import.meta.url),'utf8')
+test('gallery uses illustrated cover but in-game entry retains the minimal SVG',()=>{
+ const cover=readFileSync(new URL('../.vuepress/public/img/games/balatro-cover.png',import.meta.url))
  const intro=readFileSync(new URL('../blogs/other/cardforge.md',import.meta.url),'utf8')
  const gallery=readFileSync(new URL('../blogs/other/games.md',import.meta.url),'utf8')
- for(const court of ['jack','queen','king'])assert.match(cover,new RegExp(`id="court-${court}"`),`${court} appears in the cover`)
- assert.match(cover,/新版双面杰克、皇后与国王牌面/);assert.match(intro,/新版双面人像牌面/)
+ assert.equal(cover.subarray(1,4).toString(),'PNG');assert.ok(cover.readUInt32BE(16)>=1280)
+ assert.match(gallery,/balatro-cover\.png/)
+ const ui=readFileSync(new URL('../.vuepress/components/balatro/ui.js',import.meta.url),'utf8')
+ assert.match(ui,/balatro-cover\.svg/);assert.doesNotMatch(ui,/balatro-cover\.png/)
+ assert.match(intro,/新版双面人像牌面/)
  assert.match(intro,/约 2.5 秒后消失/);assert.match(gallery,/双面 J\/Q\/K 人头牌/)
 })
 const examples=[['high',[14,11,9,5,2]],['pair',[8,8,13,5,2]],['two',[8,8,4,4,2]],['three',[8,8,8,5,2]],['straight',[14,2,3,4,5]],['flush',[14,11,9,5,2],[1,1,1,1,1]],['full',[8,8,8,5,5]],['four',[8,8,8,8,2]],['sf',[5,6,7,8,9],[2,2,2,2,2]],['five',[8,8,8,8,8]],['ffull',[8,8,8,5,5],[1,1,1,1,1]],['ffive',[8,8,8,8,8],[0,0,0,0,0]]]

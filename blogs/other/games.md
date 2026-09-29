@@ -40,8 +40,17 @@
     </div>
   </a>
 
+  <a href="/blogs/other/junqi.html" class="game-card">
+    <div class="game-card-cover"><img src="/img/games/junqi.png" alt="四国军棋：四方布阵，对家同盟" loading="lazy"></div>
+    <div class="game-card-body">
+      <div class="game-card-title">四国军棋</div>
+      <div class="game-card-desc">2 对 2 同盟 · AI 队友 · 自由布阵 · 双明 / 四暗 / 全明</div>
+      <span class="game-card-btn">开始游戏</span>
+    </div>
+  </a>
+
   <a href="/blogs/other/cardforge.html" class="game-card">
-    <div class="game-card-cover"><img src="/img/games/balatro-cover.svg" alt="小丑牌：新版双面 J、Q、K 人头牌与筹码倍率" loading="lazy"></div>
+    <div class="game-card-cover"><img src="/img/games/balatro-cover.png" alt="小丑牌：魔法小丑、扑克牌与筹码" loading="lazy"></div>
     <div class="game-card-body">
       <div class="game-card-title">小丑牌</div>
       <div class="game-card-desc">扑克 Roguelike · 双面 J/Q/K 人头牌 · 小丑组合 · 盲注挑战</div>
