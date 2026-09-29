@@ -1,0 +1,473 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.8",
+  "base_commit_sha": "d9013804fcbd200f1b90d1e704f61c316a61d79c",
+  "prompts": {
+    "005cae9c1dbc73d5": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a7d220af85496fd0502022c",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 16,
+      "overriden_lines": 0
+    },
+    "056992989d58fd24": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a38e6391d55a586f6a882f6",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 885,
+      "overriden_lines": 0
+    },
+    "076cd075fc982088": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6ab094a9d2a55b0267c03982",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 13,
+      "overriden_lines": 0
+    },
+    "1efb2cdd1e5a75ab": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6aac9e69d2a55b0267c00651",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 194,
+      "overriden_lines": 0
+    },
+    "26c5942801a23ac1": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6ab1d3e7d2a55b0267c0460f",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 23,
+      "overriden_lines": 0
+    },
+    "2f1af447cbbb2318": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a9a6a0f994bdfd3aac25077",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 261,
+      "overriden_lines": 0
+    },
+    "32a9729784f18ef1": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6aa0c0f23a379370e56fccd6",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 809,
+      "overriden_lines": 0
+    },
+    "49bd55c166d50799": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6ab0980ad2a55b0267c039fc",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1196,
+      "overriden_lines": 0
+    },
+    "4a68a259acc17f46": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a7152c27fd21251a8b13b6c",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 228,
+      "overriden_lines": 0
+    },
+    "5f2ae642c403f7ed": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6aa371d13a379370e56fda4b",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 200,
+      "overriden_lines": 0
+    },
+    "82fbbf65aa138f10": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d615-f1ff-7841-8409-3884dbb9c23b",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 9,
+      "overriden_lines": 0
+    },
+    "a1cd53983a2dd32f": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a9a80e2994bdfd3aac25415",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 225,
+      "overriden_lines": 0
+    },
+    "b0d20b6344c73b1d": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6ab88c0ed2a55b0267c0a4ac",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 246,
+      "overriden_lines": 0
+    },
+    "bfcf2812a5394d1a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ffe24-0691-79c0-9329-ff854e9d5202",
+        "model": "gpt-6-luna"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 103,
+      "overriden_lines": 0
+    },
+    "c56a32e809737a22": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a82d2b6f85496fd05021002",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 584,
+      "overriden_lines": 0
+    },
+    "c8c57fc2ff498eb1": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6ab251edd2a55b0267c056e6",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 2396,
+      "overriden_lines": 0
+    },
+    "cc00914bf98624a9": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6ab1e26dd2a55b0267c048f9",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1866,
+      "overriden_lines": 0
+    },
+    "f58fab71a540773a": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a97c6b8b6e5888c03083198",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    },
+    "f80830a51a6eab6f": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a9faac33a379370e56fc8c3",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 148,
+      "overriden_lines": 0
+    },
+    "ff6feec799719add": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06bd4-83e2-7680-a983-22c87f9788d0",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 10,
+      "overriden_lines": 0
+    }
+  },
+  "commit_stats": {
+    "git_diff_added_lines": 16078,
+    "git_diff_deleted_lines": 127,
+    "ai_additions": 0,
+    "ai_accepted": 0,
+    "BYMC": 16055,
+    "mixed_additions": 0,
+    "BYAC": 0,
+    "BYRC": 0,
+    "per_file": {
+      ".vuepress/components/FourKingdoms.vue": {
+        "BYMC": [
+          "96",
+          "235",
+          "238-240",
+          "250-251",
+          "284-295"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      ".vuepress/components/junqi/audio.js": {
+        "BYMC": [
+          "1-2",
+          "4-6",
+          "8",
+          "19-50",
+          "52",
+          "56-70",
+          "73-74",
+          "84-89"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      ".vuepress/components/junqi/engine.mjs": {
+        "BYMC": [
+          "4-6",
+          "99-100",
+          "117",
+          "165",
+          "199"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      ".vuepress/components/xiangqi/jianghu108.mjs": {
+        "BYMC": [
+          "1-14884"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      ".vuepress/components/xiangqi/licenses/Apache-2.0-Jianghu108.txt": {
+        "BYMC": [
+          "1-201"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      ".vuepress/components/xiangqi/puzzles.mjs": {
+        "BYMC": [
+          "1-95"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      ".vuepress/components/xiangqi/ui.js": {
+        "BYMC": [
+          "6",
+          "16-21",
+          "26",
+          "45-46",
+          "50-57",
+          "68",
+          "71",
+          "76",
+          "80",
+          "88-96",
+          "100",
+          "104-134",
+          "149-150",
+          "189-195",
+          "197",
+          "201-202",
+          "206",
+          "210-227",
+          "269-270",
+          "273",
+          "284",
+          "318-342",
+          "352-353",
+          "355-363",
+          "370-381",
+          "383-413",
+          "467-472",
+          "477-479",
+          "481",
+          "503-504",
+          "511-522",
+          "524-585",
+          "587",
+          "589",
+          "593-604",
+          "606-610",
+          "615-626",
+          "637-641",
+          "643-653",
+          "656",
+          "658-707",
+          "747-750",
+          "752-753",
+          "755",
+          "774-778",
+          "790",
+          "804",
+          "814",
+          "827"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      ".vuepress/public/audio/junqi/CREDITS.md": {
+        "BYMC": [
+          "1-16"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "blogs/other/junqi.md": {
+        "BYMC": [
+          "29-30"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "blogs/other/xiangqi.md": {
+        "BYMC": [
+          "8",
+          "27",
+          "37",
+          "44-45",
+          "53",
+          "57-61",
+          "65",
+          "67-76",
+          "104",
+          "113-118",
+          "235",
+          "246-247",
+          "265",
+          "273",
+          "275-276",
+          "293-349"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-junqi-audio.mjs": {
+        "BYMC": [
+          "7",
+          "16-24",
+          "28-30",
+          "33-38",
+          "41-101"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-junqi-browser.mjs": {
+        "BYMC": [
+          "12-13",
+          "99-100",
+          "104-122"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-junqi.mjs": {
+        "BYMC": [
+          "3",
+          "40-59"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-xiangqi-layout-browser.mjs": {
+        "BYMC": [
+          "1-118"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-xiangqi.mjs": {
+        "BYMC": [
+          "7",
+          "133-187"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      }
+    }
+  },
+  "commit_timestamp": 1790678573,
+  "requirement_id": ""
+}
