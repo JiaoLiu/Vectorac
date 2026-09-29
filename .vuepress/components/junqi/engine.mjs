@@ -93,7 +93,28 @@ export function swapFormation(s, first, second) {
   if (!a || !b || a.seat !== b.seat || !canDeploy(a.type, BOARD.byId[b.pos], a.seat) || !canDeploy(b.type, BOARD.byId[a.pos], b.seat)) return false
   ;[a.pos, b.pos] = [b.pos, a.pos]; return true
 }
-export function startGame(s) { if (s.phase !== 'setup') return false; s.phase = 'play'; s.logs = ['完成调度，青龙先行。对家同盟，顺时针行棋。']; settleTurn(s); return true }
+// 掷骰定先手：四方各掷两颗骰子，点数之和最大者先行；并列最高点时只在并列者之间重掷。
+// 结果只由种子决定，因此同一局可复现，也不给任何一方固定先手。
+export function rollOpening(s) {
+  let contenders = [0, 1, 2, 3].filter(seat => s.alive[seat])
+  const rounds = []
+  while (contenders.length > 1) {
+    const rolls = contenders.map(seat => ({ seat, dice: [1 + Math.floor(random(s) * 6), 1 + Math.floor(random(s) * 6)] }))
+    rounds.push(rolls)
+    const best = Math.max(...rolls.map(r => r.dice[0] + r.dice[1]))
+    contenders = rolls.filter(r => r.dice[0] + r.dice[1] === best).map(r => r.seat)
+  }
+  return { rounds, first: contenders[0] }
+}
+export function startGame(s, opening) {
+  if (s.phase !== 'setup') return false
+  const roll = opening || rollOpening(s)
+  const round = roll.rounds[roll.rounds.length - 1] || []
+  s.phase = 'play'; s.turn = roll.first
+  s.logs = [`${ARMIES[roll.first]}掷骰得先手，对家同盟顺时针行棋。`,
+    '定先手点数：' + round.map(r => `${ARMIES[r.seat]} ${r.dice[0] + r.dice[1]}`).join('、') + (roll.rounds.length > 1 ? `（并列最高点重掷 ${roll.rounds.length - 1} 次）` : '')]
+  settleTurn(s); return true
+}
 export function at(s, pos) { return s.pieces.find(p => p.pos === pos) }
 export function legalMoves(s, pieceId) {
   const p = s.pieces.find(p => p.id === pieceId)

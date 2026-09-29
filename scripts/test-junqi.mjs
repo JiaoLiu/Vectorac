@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {BOARD,TYPES,createGame,canDeploy,swapFormation,armyNode,legalMoves,battle,startGame,move,visibleType,chooseAI,restoreGame,surrender} from '../.vuepress/components/junqi/engine.mjs'
+import {BOARD,TYPES,ARMIES,createGame,canDeploy,swapFormation,armyNode,legalMoves,battle,startGame,rollOpening,move,visibleType,chooseAI,restoreGame,surrender} from '../.vuepress/components/junqi/engine.mjs'
 const piece=(id,type,seat,pos)=>({id,type,seat,pos,moved:false})
 function fixture(extra=[]){const s=createGame({seed:123});s.phase='play';s.pieces=[0,1,2,3].map(seat=>piece('flag'+seat,'flag',seat,armyNode(seat,5,1))).concat(extra);return s}
 test('129 nodes, four five-camp armies, reciprocal railway and road graph',()=>{
@@ -18,6 +18,24 @@ test('invalid formation swaps are atomic and setup ends on departure',()=>{
  const s=createGame({seed:7}),flag=s.pieces.find(p=>p.seat===0&&p.type==='flag'),front=s.pieces.find(p=>p.pos===armyNode(0,0,0)),before=JSON.stringify(s)
  assert.equal(swapFormation(s,flag.id,front.id),false);assert.equal(JSON.stringify(s),before)
  startGame(s);assert.equal(s.phase,'play');assert.equal(swapFormation(s,flag.id,front.id),false)
+})
+test('dice decide the opening seat, unique highest breaks ties by rerolling',()=>{
+ const seats=new Set()
+ for(let seed=0;seed<60;seed++){
+  const roll=rollOpening(createGame({seed}))
+  assert.deepEqual(roll,rollOpening(createGame({seed})),'opening roll is reproducible from the seed')
+  const last=roll.rounds[roll.rounds.length-1]
+  const sum=r=>r.dice[0]+r.dice[1]
+  assert.ok(roll.rounds.every(round=>round.every(r=>r.dice.every(v=>v>=1&&v<=6))))
+  const best=Math.max(...last.map(sum))
+  assert.equal(last.filter(r=>sum(r)===best).length,1,'a single seat owns the highest total')
+  assert.equal(sum(last.find(r=>r.seat===roll.first)),best)
+  const s=createGame({seed});startGame(s,roll)
+  assert.equal(s.phase,'play');assert.equal(s.turn,roll.first,'the dice winner moves first, not seat 0')
+  assert.match(s.logs[0],new RegExp('^'+ARMIES[roll.first]+'掷骰得先手'))
+  seats.add(roll.first)
+ }
+ assert.ok(seats.size>1,'先手随掷骰变化，而不是固定青龙：'+[...seats].sort().join(','))
 })
 test('railway long moves, engineer turns, normal piece cannot make a right-angle turn',()=>{
  const p=piece('p','general',0,armyNode(0,0,2)),s=fixture([p])

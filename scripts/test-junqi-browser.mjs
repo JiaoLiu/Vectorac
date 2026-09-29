@@ -19,6 +19,10 @@ for(const [name,type] of [['chromium',chromium],['webkit',webkit]]){
    assert.equal(await page.locator('.jq-site').count(),129)
    assert.equal(await page.locator('.jq-piece').count(),100)
    assert.equal(await page.locator('.jq-piece text').count(),25)
+   // 左右两家战区是下方战区旋转 90° 的镜像：棋子长边与铁路方向垂直。
+   const tiles=await page.evaluate(()=>{const box=s=>{const r=document.querySelector(s).getBoundingClientRect();return [r.width,r.height]};return {own:box('[data-node="0:0:0"] .jq-piece'),top:box('[data-node="2:0:0"] .jq-piece'),left:box('[data-node="1:0:0"] .jq-piece'),right:box('[data-node="3:0:0"] .jq-piece')}})
+   assert.ok(tiles.own[0]>tiles.own[1]&&tiles.top[0]>tiles.top[1],'上下两家的棋子仍是横向')
+   assert.ok(tiles.left[1]>tiles.left[0]&&tiles.right[1]>tiles.right[0],'左右两家的棋子竖放，与上下不同')
    if(viewport.width<900){
     const sizes=await page.evaluate(()=>{const w=document.querySelector('.jq-board-window'),s=document.querySelector('.jq-board');return {window:w.clientWidth,board:s.getBoundingClientRect().width,scroll:w.scrollTop}})
     assert.ok(sizes.board>=700&&sizes.board>sizes.window);assert.ok(sizes.scroll>0)
@@ -50,8 +54,27 @@ for(const [name,type] of [['chromium',chromium],['webkit',webkit]]){
    await page.getByRole('button',{name:'保存阵型',exact:true}).click()
    await page.getByRole('button',{name:/完成调度/}).click()
    if(await page.getByRole('dialog',{name:'确认出征'}).count())await page.getByRole('button',{name:'确认',exact:true}).click()
+   // 出征先掷骰定先手，落定后自动收起覆盖层并开局。
+   await page.waitForSelector('.jq-dice')
+   assert.equal(await page.locator('.jq-dice-rows').first().locator('li').count(),4,'第一轮四方各掷一次')
+   await page.locator('.jq-dice').screenshot({path:join(out,`${name}-${viewport.width}-dice.png`)})
+   await page.waitForFunction(()=>document.querySelector('.jq-dice')&&document.querySelector('.jq-dice').classList.contains('is-settled'))
+   const dice=await page.evaluate(()=>{
+    const rounds=[...document.querySelectorAll('.jq-dice-rows')].map(ul=>[...ul.querySelectorAll('li')].map(li=>({army:li.querySelector('.jq-dice-army').textContent,sum:Number(li.querySelector('strong').textContent),first:li.classList.contains('is-first')})))
+    const last=rounds[rounds.length-1]
+    return {rounds:rounds.length,marked:last.filter(r=>r.first).length,winner:last.find(r=>r.first),best:Math.max(...last.map(r=>r.sum))}
+   })
+   assert.equal(dice.marked,1,'只有一家被标记为先手')
+   assert.ok(dice.winner,'决胜轮必须分出先手')
+   assert.equal(dice.winner.sum,dice.best,'先手是决胜轮里点数最高的一家')
+   assert.equal(await page.locator('.jq-dice-msg').innerText(),dice.rounds>1?`${dice.winner.army}掷出 ${dice.winner.sum} 点取得先手（并列最高点重掷 ${dice.rounds-1} 次）`:`${dice.winner.army}掷出 ${dice.winner.sum} 点取得先手`)
    await page.waitForFunction(()=>document.querySelector('.jq-game').__vue__.game.phase==='play')
+   assert.equal(await page.locator('.jq-dice').count(),0)
+   const winner=dice.winner.army
+   assert.ok(await page.evaluate(a=>document.querySelector('.jq-game').__vue__.game.logs.some(l=>l.startsWith(a+'掷骰得先手')),winner))
    assert.ok(await page.locator('.jq-mode-trigger').isDisabled())
+   // 先手可能不是己方：等轮到自己再走子。
+   await page.waitForFunction(()=>document.querySelector('.jq-game').__vue__.game.turn===0,{},{timeout:15000})
    // Front-row piece always has a railway exit (only mobile types may deploy there).
    await page.locator('[data-node="0:0:0"]').click()
    const target=await page.evaluate(()=>document.querySelector('.jq-game').__vue__.destinations[0])

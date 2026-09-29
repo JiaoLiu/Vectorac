@@ -36,6 +36,7 @@ export function createJunqiAudio() {
       if(kind==='move'){tone(620,t,.075,.19,effectsBus,'triangle');tone(190,t,.11,.14,effectsBus)}
       else if(kind==='both'){tone(95,t,.23,.22,effectsBus,'triangle');tone(145,t+.035,.18,.13,effectsBus)}
       else if(kind==='win'||kind==='lose'){tone(280,t,.12,.18,effectsBus,'triangle');tone(kind==='win'?520:160,t+.075,.18,.13,effectsBus)}
+      else if(kind==='dice'){for(let i=0;i<8;i++)tone(300+Math.random()*300,t+i*.1,.055,.12,effectsBus,'square')}
       else {for(let i=0;i<3;i++)tone([330,440,660][i],t+i*.13,.45,.12,effectsBus)}
     },
     destroy(){disposed=true;clearInterval(timer);for(const voice of voices){try{voice.stop()}catch(e){}}voices.clear();if(ctx)ctx.close().catch(()=>{});ctx=null}
