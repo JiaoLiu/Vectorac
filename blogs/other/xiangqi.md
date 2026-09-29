@@ -215,7 +215,7 @@ meta:
 .xq-expanded{box-sizing:border-box}
 @media(max-height:560px) and (orientation:landscape){
   .xq-board-frame{aspect-ratio:620/540;transform:perspective(1500px) rotateX(1.8deg)}
-  .xq-root:not(.xq-expanded){max-width:none;width:100%;margin:0 auto;padding:3px clamp(5px,1vw,12px)}
+  .xq-root:not(.xq-expanded){max-width:none;width:100%;margin:0 auto;padding:max(3px,env(safe-area-inset-top)) max(5px,env(safe-area-inset-right)) max(3px,env(safe-area-inset-bottom)) max(5px,env(safe-area-inset-left))}
   .xq-root:not(.xq-expanded) .xq-topbar{padding:4px 9px;margin:0 0 4px;border-radius:10px}
   .xq-root:not(.xq-expanded) .xq-brand-mark{width:29px;height:29px;font-size:15px}
   .xq-root:not(.xq-expanded) .xq-brand-mark i{width:17px;height:17px;font-size:9px}
@@ -252,7 +252,7 @@ meta:
   .xq-expanded .xq-kicker,.xq-expanded .xq-move-count{display:none}
   .xq-expanded .xq-top-actions{gap:5px}
   .xq-expanded .xq-top-actions .xq-btn{min-height:29px;padding:4px 8px;font-size:9px}
-  .xq-expanded .xq-layout{width:100%;max-width:none;height:auto;min-height:0;grid-template-columns:minmax(0,1fr) minmax(218px,26%);align-items:center;gap:6px}
+  .xq-expanded .xq-layout{display:grid;width:100%;max-width:none;height:auto;min-height:0;grid-template-columns:minmax(0,1fr) minmax(218px,26%);align-items:center;gap:6px}
   .xq-expanded .xq-board-card{display:grid;place-items:center;min-height:0;padding:0}
   .xq-expanded .xq-board-frame{width:min(100%,calc((100svh - 58px)*1.148));max-width:none;max-height:100%;aspect-ratio:620/540}
   .xq-expanded .xq-side{max-width:none;max-height:100%;overflow:auto;align-content:center;gap:5px}
