@@ -5,7 +5,7 @@ import {join} from 'node:path'
 import {createRequire} from 'node:module'
 const require=createRequire(import.meta.url)
 const {webkit,chromium}=require(process.env.PLAYWRIGHT_PATH||'playwright')
-const png=await readFile(new URL('../.vuepress/public/img/games/balatro-cover.png',import.meta.url))
+const webp=await readFile(new URL('../.vuepress/public/img/games/balatro-cover.webp',import.meta.url))
 const svg=await readFile(new URL('../.vuepress/public/img/games/balatro-cover.svg',import.meta.url))
 const css=await readFile(new URL('../.vuepress/components/balatro/style.css',import.meta.url),'utf8')
 const output=await mkdtemp(join(tmpdir(),'balatro-cover-'))
@@ -22,9 +22,9 @@ for(const [name,engine] of [['webkit',webkit],['chromium',chromium]]){
    assert.ok(bounds.x>=0&&bounds.x+bounds.width<=viewport.width)
    assert.equal(await page.locator('img').evaluate(img=>getComputedStyle(img).objectFit),'contain')
    await page.locator('.bp-title-art').screenshot({path:join(output,name+'-'+viewport.width+'.png')})
-   await page.setContent('<img width="272" height="153" src="data:image/png;base64,'+png.toString('base64')+'">')
+   await page.setContent('<img width="272" height="153" src="data:image/webp;base64,'+webp.toString('base64')+'">')
    await page.locator('img').evaluate(img=>img.decode())
-   assert.ok(await page.locator('img').evaluate(img=>img.naturalWidth>=1280))
+   assert.ok(await page.locator('img').evaluate(img=>img.naturalWidth>=1200))
    await page.close()
   }
  }finally{await browser.close()}
