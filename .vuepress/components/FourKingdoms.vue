@@ -227,7 +227,7 @@ export default {
    棋盘是正方形、只能被高度撑满，所以宽度要留给右列用：右列给足 ~300px，
    按钮才不会被挤成一团、指挥台也不必在小窗口里反复滚动。 */
 @media(max-height:550px) and (orientation:landscape){
- .jq-fullscreen{display:grid;grid-template-columns:minmax(0,1fr) clamp(268px,36%,312px);grid-template-rows:auto auto minmax(0,1fr) auto;column-gap:10px;background:radial-gradient(ellipse at center,#294a3e,#112925)}
+ .jq-fullscreen{display:grid;grid-template-columns:minmax(0,1fr) clamp(268px,36%,312px);grid-template-rows:auto auto minmax(0,1fr) auto;column-gap:10px;padding-bottom:0;background:radial-gradient(ellipse at center,#294a3e,#112925)}
  .jq-fullscreen .jq-layout,.jq-fullscreen .jq-arena{display:contents}
  .jq-fullscreen .jq-top{grid-column:2;grid-row:1;flex-direction:row;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px 8px;height:auto;padding:0 0 6px;background:none;border:0}
  .jq-fullscreen .jq-emblem,.jq-fullscreen .jq-brand small{display:none}
