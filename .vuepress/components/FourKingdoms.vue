@@ -222,26 +222,29 @@ export default {
  .jq-board-footer{padding-left:3px;padding-right:3px}.jq-brand small{display:none}
  .jq-panel{padding:10px}.jq-team-card{padding:8px}.jq-journal{display:none}
 }
-/* 横屏全屏照五子棋的做法：导航、状态、面板、页脚全部移进右侧窄列，
-   棋盘独占左列并吃满整个高度，不再有横向导航条压掉棋盘的高度。 */
+/* 横屏全屏照五子棋的做法：导航、状态、指挥台、页脚全部移进右侧一列，
+   棋盘独占左列并吃满整个高度，不再有横向导航条压掉棋盘的高度。
+   棋盘是正方形、只能被高度撑满，所以宽度要留给右列用：右列给足 ~300px，
+   按钮才不会被挤成一团、指挥台也不必在小窗口里反复滚动。 */
 @media(max-height:550px) and (orientation:landscape){
- .jq-fullscreen{display:grid;grid-template-columns:minmax(0,1fr) 186px;grid-template-rows:auto auto minmax(0,1fr) auto;column-gap:8px;background:radial-gradient(ellipse at center,#294a3e,#112925)}
+ .jq-fullscreen{display:grid;grid-template-columns:minmax(0,1fr) clamp(268px,36%,312px);grid-template-rows:auto auto minmax(0,1fr) auto;column-gap:10px;background:radial-gradient(ellipse at center,#294a3e,#112925)}
  .jq-fullscreen .jq-layout,.jq-fullscreen .jq-arena{display:contents}
- .jq-fullscreen .jq-top{grid-column:2;grid-row:1;flex-direction:column;align-items:stretch;gap:5px;height:auto;padding:0 0 8px;background:none;border:0}
- .jq-fullscreen .jq-emblem{display:none}
+ .jq-fullscreen .jq-top{grid-column:2;grid-row:1;flex-direction:row;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px 8px;height:auto;padding:0 0 6px;background:none;border:0}
+ .jq-fullscreen .jq-emblem,.jq-fullscreen .jq-brand small{display:none}
  .jq-fullscreen .jq-brand strong{font-size:16px;letter-spacing:2px}
- .jq-fullscreen .jq-top-actions{justify-content:space-between;gap:4px}
+ .jq-fullscreen .jq-top-actions{gap:4px}
  .jq-fullscreen .jq-top-actions button,.jq-fullscreen .jq-top-actions a{padding:6px 8px;min-height:32px;font-size:12px}
- .jq-fullscreen .jq-command{grid-column:2;grid-row:2;padding:0 0 6px;font-size:11px}
- .jq-fullscreen .jq-panel{grid-column:2;grid-row:3;min-height:0;max-height:none;padding:0 0 0 9px;overflow:auto}
- .jq-fullscreen .jq-board-footer{grid-column:2;grid-row:4;padding:6px 0 0;flex-wrap:wrap;row-gap:4px}
+ .jq-fullscreen .jq-command{grid-column:2;grid-row:2;padding:0 0 5px;font-size:11px}
+ .jq-fullscreen .jq-panel{grid-column:2;grid-row:3;min-height:0;max-height:none;padding:0 0 0 9px;overflow:auto;border-left:1px solid #496151}
+ .jq-fullscreen .jq-board-footer{grid-column:2;grid-row:4;padding:5px 0 0;flex-wrap:wrap;row-gap:4px}
  .jq-fullscreen .jq-board-window{grid-column:1;grid-row:1/-1;justify-self:center;align-self:center;height:100%;width:auto;max-width:100%;margin:0}
- .jq-fullscreen .jq-board{min-width:0;height:100%;width:auto;max-width:100%}
+ .jq-fullscreen .jq-board{min-width:0;width:auto!important;height:100%!important;max-width:100%}
  .jq-fullscreen .jq-board-window.is-zoomed{width:100%;height:100%;max-width:none;max-height:none}
- .jq-fullscreen .jq-board-window.is-zoomed .jq-board{height:auto;max-width:none}
- .jq-fullscreen .jq-team-card{margin:6px 0}
- .jq-fullscreen .jq-intel{margin:8px 0;padding:3px 7px;min-height:0}
- .jq-fullscreen .jq-intel p,.jq-fullscreen .jq-mini-rule,.jq-fullscreen .jq-panel-title small{display:none}
+ .jq-fullscreen .jq-board-window.is-zoomed .jq-board{width:auto!important;height:180%!important;max-width:none}
+ .jq-fullscreen .jq-team-card{margin:6px 0;padding:8px 11px}
+ .jq-fullscreen .jq-team-card small{display:none}
+ .jq-fullscreen .jq-button-pair button{min-height:34px}
+ .jq-fullscreen .jq-journal,.jq-fullscreen .jq-mini-rule,.jq-fullscreen .jq-intel,.jq-fullscreen .jq-panel-title small{display:none}
  .jq-fullscreen .jq-select-label{margin-top:8px}.jq-fullscreen .jq-panel-title{margin-bottom:8px}
 }
 .jq-game .jq-mode-trigger{display:flex;width:100%;justify-content:space-between;align-items:center;margin-top:7px;text-align:left;font-size:16px;min-height:48px}
