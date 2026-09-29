@@ -142,6 +142,15 @@
 
 <div class="game-grid">
 
+  <a href="/blogs/other/flower_wardrobe.html" class="game-card">
+    <div class="game-card-cover"><img src="/img/games/dressup/cover.webp" alt="花间衣橱：精美蕾丝裙装与温柔的换装时光" loading="lazy"></div>
+    <div class="game-card-body">
+      <div class="game-card-title">花间衣橱</div>
+      <div class="game-card-desc">收集精美裙装，完成主题邀请，留住每一次心动穿搭</div>
+      <span class="game-card-btn">开始搭配</span>
+    </div>
+  </a>
+
   <a href="/blogs/other/slime_game.html" class="game-card">
     <div class="game-card-cover"><img src="/img/games/slime.png" alt="史莱姆" loading="lazy"></div>
     <div class="game-card-body">
