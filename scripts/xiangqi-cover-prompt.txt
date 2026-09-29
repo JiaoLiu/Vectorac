@@ -1,0 +1,16 @@
+Generated with the built-in image_gen tool; the board overlay is project-authored SVG so all pieces and lines are deterministic.
+
+Project assets:
+- .vuepress/public/img/games/xiangqi-cover-scene.webp: original cartoon character/table scene (1600x901 WebP, q84)
+- .vuepress/public/img/games/xiangqi-cover.svg: self-contained scene plus accurate vector board and pieces
+- scripts/compose-xiangqi-cover.mjs: source for the standard-board overlay
+
+Background-art prompt:
+Use case: stylized-concept
+Asset type: wide landscape cover illustration for a Chinese chess browser game
+Primary request: create original polished 3D cartoon key art of two charming Chinese chess rivals, one dressed in tasteful vermilion/red and warm gold, one in deep ink-black and jade, facing each other across a table. They should read as friendly, clever young generals/strategists, with expressive faces and appealing toy-like proportions; no recognizable existing characters.
+Scene/backdrop: elegant Chinese pavilion at golden hour, soft lantern glow, distant mountains and a hint of bamboo, restrained and uncluttered.
+Composition/framing: 16:9 landscape. Keep the two characters toward the upper-left and upper-right edges, looking toward the center. Reserve the entire lower-center foreground as a broad, flat, clean warm-wood tabletop plane for a precisely drawn Xiangqi board to be composited later. The clear tabletop should span most of the image width and about the lower half of the image, seen from a slightly elevated near-front view; hands and props stay outside its center.
+Materials/textures: beautifully rendered lacquered wood, cloth and subtle gold trim, friendly premium mobile-game illustration, rich but not gaudy.
+Constraints: original art, clean silhouette, balanced cover composition, no branding, no UI, no watermark.
+Avoid: any chessboard grid, any board lines, any Xiangqi pieces, any playing pieces, any Chinese text, any characters or props on the reserved bare tabletop area; no board in the river, no vertical river, no disorganized game positions.

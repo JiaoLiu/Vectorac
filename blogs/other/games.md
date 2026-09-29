@@ -40,6 +40,15 @@
     </div>
   </a>
 
+  <a href="/blogs/other/xiangqi.html" class="game-card">
+    <div class="game-card-cover"><img src="/img/games/xiangqi-cover.svg" alt="中国象棋：卡通棋手与标准初始摆法的红黑棋子" loading="lazy"></div>
+    <div class="game-card-body">
+      <div class="game-card-title">中国象棋</div>
+      <div class="game-card-desc">楚河汉界 · 本地 AI 对弈 · 三档难度 · 悔棋与着法提示</div>
+      <span class="game-card-btn">开始游戏</span>
+    </div>
+  </a>
+
   <a href="/blogs/other/junqi.html" class="game-card">
     <div class="game-card-cover"><img src="/img/games/junqi.webp" alt="四国军棋：四方布阵，对家同盟" loading="lazy"></div>
     <div class="game-card-body">
