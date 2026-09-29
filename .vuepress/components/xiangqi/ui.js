@@ -322,7 +322,7 @@ export default class XiangqiUI {
           && option.move.toX === move.toX && option.move.toY === move.toY)
         if (choice) this.answerPuzzleChoice(choice.label)
         else {
-          this.puzzleMessage = '这是自由着法题：请从棋盘上尝试候选着，或在右侧选择 A–E。'
+          this.puzzleMessage = '这步不在本题候选着中。可从右侧选择 A–E；棋盘点击可尝试对应候选着。'
           this.selected = null
           this.legalFrom = []
           this.render()

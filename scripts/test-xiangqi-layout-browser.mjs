@@ -92,7 +92,8 @@ for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
 
       await page.locator('[data-xq-mode="puzzle"]').click()
       assert.equal(await page.locator('[data-xq-puzzle-panel]').isVisible(), true)
-      assert.equal(await page.locator('[data-xq-puzzle-level]').count(), 8)
+      assert.equal(await page.locator('[data-xq-puzzle-level]').count(), 10)
+      assert.equal(await page.locator('[data-xq-puzzle-page-label]').textContent(), '1–10 / 116')
       assert.equal(await page.locator('[data-xq-puzzle-level]:not(:disabled)').count(), 1, 'later levels remain locked until solved')
       const solution = await page.evaluate(() => ({ ...window.__xiangqiUI.currentPuzzle.solution }))
       await page.locator(`.xq-piece[data-x="${solution.fromX}"][data-y="${solution.fromY}"]`).click()
@@ -102,6 +103,23 @@ for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
       assert.ok(await page.evaluate(() => JSON.parse(localStorage.getItem('vectorac.xiangqi.puzzles.v1')).completed.length >= 1), 'completed levels persist locally')
       await page.locator('[data-xq-next]').click()
       assert.match(await page.locator('[data-xq-puzzle-title]').textContent(), /第 2 关/)
+
+      await page.evaluate(() => {
+        window.__xiangqiUI.unlockedPuzzleCount = 116
+        window.__xiangqiUI.render()
+      })
+      await page.locator('[data-xq-puzzle-page="1"]').click()
+      assert.equal(await page.locator('[data-xq-puzzle-page-label]').textContent(), '11–20 / 116')
+      await page.locator('[data-xq-puzzle-level="10"]').click()
+      assert.equal(await page.locator('[data-xq-puzzle-choice]').count(), 5, 'sourced endgame levels present all five answers')
+      const answers = await page.evaluate(() => ({
+        correct: window.__xiangqiUI.currentPuzzle.answer,
+        wrong: window.__xiangqiUI.currentPuzzle.options.find((option) => option.label !== window.__xiangqiUI.currentPuzzle.answer).label
+      }))
+      await page.locator(`[data-xq-puzzle-choice="${answers.wrong}"]`).click()
+      assert.equal(await page.evaluate(() => window.__xiangqiUI.phase), 'playing', 'a wrong answer keeps the level active')
+      await page.locator(`[data-xq-puzzle-choice="${answers.correct}"]`).click()
+      assert.equal(await page.evaluate(() => window.__xiangqiUI.phase), 'over', 'the sourced winning/draw answer completes the level')
 
       await page.setViewportSize({ width: 390, height: 844 })
       await page.waitForTimeout(150)
