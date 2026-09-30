@@ -18,6 +18,7 @@ import {
   errorText,
   loadCredential,
   loadDisplayName,
+  randomName,
   saveCredential,
   saveDisplayName
 } from './net-client.js'
@@ -749,6 +750,42 @@ export class Lobby {
     } catch (e) {
       this.notice = errorText(e.errorCode, e.message)
       this._renderList()
+    } finally {
+      this.busy = false
+    }
+  }
+
+  /**
+   * 一步到位「快速开局」：建房 + autoStart（服务端把空位补满 AI 立即开局），
+   * WS 连上后房间已是 PLAYING，服务端推 GAME_STATE_CHANGED 自动进牌桌。
+   * 全程不打开大厅界面（入口页直接调）；失败 toast 并留在入口页。
+   * 好友房不走这里——自动补 AI 开局后好友无法再入座，好友房仍走大厅手动流程。
+   */
+  async quickStart({ rules } = {}) {
+    if (this.busy) return
+    this.busy = true
+    this.notice = ''
+    try {
+      this._ensureNet()
+      if (!this.displayName) {
+        this.displayName = randomName()
+        saveDisplayName(this.displayName)
+      }
+      await this._leaveStaleRoom()
+      const data = await this.net.createRoom({
+        displayName: this.displayName,
+        rules: { ...this.createRules, ...(rules || {}) },
+        autoStart: true
+      })
+      await this._enterWith(data)
+      // _enterWith 内部吞掉连接失败（清凭据 + 清 player）：快速开局没有大厅界面
+      // 可看 notice，必须 toast 告知，否则玩家只会看到按钮转圈后毫无反应。
+      if (!this.player && this.ui && this.ui.toast) {
+        this.ui.toast(this.notice || '连接失败，请重试')
+      }
+    } catch (e) {
+      this.notice = errorText(e.errorCode, e.message)
+      if (this.ui && this.ui.toast) this.ui.toast(this.notice)
     } finally {
       this.busy = false
     }

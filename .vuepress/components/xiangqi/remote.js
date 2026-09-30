@@ -112,7 +112,7 @@ export default class XiangqiRemote {
           action: { type: 'move', fromX: mv.fromX, fromY: mv.fromY, toX: mv.toX, toY: mv.toY }
         })
       },
-      statusText: v => this._statusText(v)
+      statusText: () => this._statusText(this.view)
     }
   }
 
@@ -700,8 +700,8 @@ export default class XiangqiRemote {
     setTimeout(() => {
       el.classList.add('is-old')
     }, 30000)
-    // 对方（含 AI 位真人）的快捷语用普通话 TTS 播报；自己的不播
-    if (!mine) speakPhrase(text)
+    // 对方（含 AI 位真人）的快捷语播报（预生成普通话音频，缺文件回退 TTS）；自己的不播
+    if (!mine) speakPhrase(p.phrase, text)
   }
 
   _playVoice(idx) {

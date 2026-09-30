@@ -10,9 +10,9 @@
 //
 // 2) 聊天面板（chatDockHtml / bindChatDock / speakPhrase）
 //    复刻麻将联机的语音体验：🎤 按钮点开面板 → 4 条快捷语
-//    + 「按住说话」长按录音。与麻将的差异只在播报音色：
-//    麻将快捷语播四川话预录音频，棋类用普通话 TTS
-//    （speechSynthesis），文案也是棋类语境的普通话。
+//    + 「按住说话」长按录音。播报对齐麻将：优先播 /audio/gamehall/
+//    下的预生成普通话音频（phrase-N.mp3，gen-mahjong-tts.mjs 生成），
+//    文件缺失或加载失败时回退浏览器 speechSynthesis（zh-CN）。
 //    通道复用服务端 gameType 无关的 CHAT_MSG / VOICE_MSG relay：
 //    快捷语只发序号（0-7，服务端白名单上限 8 条），文案由
 //    收发两端本地查表。
@@ -47,8 +47,56 @@ export function exitFullscreen() {
   document.body.classList.remove('gkr-full')
 }
 
-/** 普通话 TTS 播报快捷语（连发时截断上一条） */
-export function speakPhrase(text) {
+/**
+ * 播报第 idx 条快捷语：优先播预生成普通话音频（/audio/gamehall/phrase-N.mp3），
+ * 文件缺失 / 加载失败回退 speechSynthesis。连发时截断上一条（音频与 TTS 都掐）。
+ */
+const PHRASE_AUDIO_BASE = '/audio/gamehall'
+const _phraseClips = {}
+let _phrasePlaying = null
+
+export function speakPhrase(idx, text) {
+  if (_phrasePlaying) {
+    try { _phrasePlaying.pause() } catch (e) { /* 忽略 */ }
+    _phrasePlaying = null
+  }
+  const key = 'phrase-' + idx
+  let clip = _phraseClips[key]
+  if (!clip) {
+    try {
+      clip = new Audio(`${PHRASE_AUDIO_BASE}/${key}.mp3`)
+      clip.preload = 'auto'
+      clip.addEventListener('error', () => { clip._broken = true })
+      _phraseClips[key] = clip
+    } catch (e) {
+      _speakPhraseSynth(text)
+      return
+    }
+  }
+  if (clip._broken) {
+    _speakPhraseSynth(text)
+    return
+  }
+  try {
+    clip.currentTime = 0
+    clip.addEventListener('ended', () => { if (_phrasePlaying === clip) _phrasePlaying = null }, { once: true })
+    const p = clip.play()
+    _phrasePlaying = clip
+    if (p && p.catch) {
+      p.catch(() => {
+        clip._broken = true
+        if (_phrasePlaying === clip) _phrasePlaying = null
+        _speakPhraseSynth(text)
+      })
+    }
+  } catch (e) {
+    clip._broken = true
+    _speakPhraseSynth(text)
+  }
+}
+
+/** TTS 兜底（预生成音频不可用时） */
+function _speakPhraseSynth(text) {
   try {
     if (!window.speechSynthesis || !text) return
     window.speechSynthesis.cancel()

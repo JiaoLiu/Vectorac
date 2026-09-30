@@ -54,10 +54,9 @@ export default class GomokuUI {
     this.canvas = root.querySelector('[data-gk-canvas]')
     this.ctx = this.canvas.getContext('2d')
 
-    // 设置（持久化）。联机模式不自动播 BGM（避免盖过语音聊天），
-    // 只改内存副本不写回 localStorage，用户仍可手动开。
+    // 设置（持久化）。单机 / 联机一致默认开 BGM；浏览器自动播放策略下
+    // 首次交互（_onFirstGesture → _music(true)）后才出声，用户可手动关。
     this.settings = Object.assign({ level: LEVEL.MEDIUM, first: 'player', sound: true, music: true }, loadJSON(SETTINGS_KEY, {}))
-    if (this.online) this.settings.music = false
     this.stats = loadJSON(STATS_KEY, {})
 
     // 对局状态

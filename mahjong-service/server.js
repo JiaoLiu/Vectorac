@@ -75,11 +75,14 @@ export function createServer({ logger } = {}) {
 
   // 创建房间（创建者 = Seat0 + 第一任管理员）
   // gameType 选择游戏适配器（缺省麻将）；hostSide 供 2 人先后手游戏房主选边
+  // autoStart：建房后立即以房主身份开局（_launchRound 会把空位自动补 AI），
+  // 供入口页「快速开局」一步到位直进牌桌；好友房不传，走等待室手动开始。
   app.post('/api/rooms', async (req, res) => {
     try {
-      const { displayName, gameType, hostSide, rules, turnTimeoutSeconds } = req.body || {}
-      const { summary, player } = manager.createRoom({ displayName, gameType, hostSide, rules, turnTimeoutSeconds })
-      res.json({ ok: true, data: { room: summary, player } })
+      const { displayName, gameType, hostSide, rules, turnTimeoutSeconds, autoStart } = req.body || {}
+      const { room, summary, player } = manager.createRoom({ displayName, gameType, hostSide, rules, turnTimeoutSeconds })
+      if (autoStart) await room.startGame(player.playerId)
+      res.json({ ok: true, data: { room: autoStart ? room.summary() : summary, player } })
     } catch (err) {
       sendHttpError(res, err, log, 'create-room')
     }

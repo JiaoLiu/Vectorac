@@ -53,8 +53,8 @@ export default class XiangqiUI {
     this._placeholder = null
     this._expanded = false
     this._destroyed = false
-    // 联机默认关 BGM（避免盖过语音聊天），用户可手动开；单机保持默认开
-    this.musicEnabled = !this.online
+    // 默认开启 BGM（单机 / 联机一致）；浏览器自动播放策略下首次交互后才出声
+    this.musicEnabled = true
     this.musicStarted = false
     this.soundEnabled = true
     this.audioContext = null

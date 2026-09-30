@@ -306,6 +306,7 @@ export default class ScmjUI {
       countdown: q('[data-scmj-countdown]'),
       lobby: q('[data-scmj-lobby]'),
       entryOnline: q('[data-scmj-online]'),
+      entryOnlineLobby: q('[data-scmj-online-lobby]'),
       dice: q('[data-scmj-dice]'),
       dicePair: q('[data-scmj-dice-pair]'),
       diceMsg: q('[data-scmj-dice-msg]'),
@@ -1548,14 +1549,66 @@ export default class ScmjUI {
 
   // ==================== 联机（大厅 / 牌桌） ====================
 
-  /** 入口页「联机对战」：懒加载大厅模块，避免单机玩家多付一份解析成本 */
+  /**
+   * 入口页联机按钮：
+   *   · 主按钮「快速开局」→ quickStartOnline()：带入口页已选规则建房，
+   *     服务端 autoStart 补满 AI 立即开局，一步到位直进牌桌；
+   *   · 次级入口「好友房」→ openOnlineLobby()：建房/加入都要等人，
+   *     必须保留手动等待室流程（autoStart 补 AI 开局后好友无法再入座）。
+   */
   bindOnline() {
     const btn = this._els.entryOnline
-    if (!btn) return
-    btn.addEventListener('click', () => {
-      this.sound('click')
-      this.openOnlineLobby()
-    })
+    if (btn) {
+      btn.addEventListener('click', () => {
+        this.sound('click')
+        this.quickStartOnline()
+      })
+    }
+    const lobbyBtn = this._els.entryOnlineLobby
+    if (lobbyBtn) {
+      lobbyBtn.addEventListener('click', () => {
+        this.sound('click')
+        this.openOnlineLobby()
+      })
+    }
+  }
+
+  /** 快速开局：入口页规则 → 建房 + autoStart → 直进牌桌（懒加载大厅模块） */
+  async quickStartOnline() {
+    if (!this.createOnlineGame) return this.toast('联机模块未加载，请刷新页面重试')
+    const btn = this._els.entryOnline
+    if (btn && btn.disabled) return
+    if (!this.lobby) {
+      try {
+        const { Lobby } = await import('./multiplayer/lobby.js')
+        this.lobby = new Lobby({ root: this.root, ui: this, config: this.onlineConfig })
+      } catch (e) {
+        console.error('[四川麻将] 联机大厅加载失败：', e)
+        return this.toast('联机大厅加载失败，请刷新重试')
+      }
+    }
+    // 房规与单机入口共用一组设置（换三张 / 幺鸡赖子 / AI 辅助 / 封顶番数）
+    const rules = {
+      swapThree: !!this.settings.swapThree,
+      yaojiEnabled: !!this.settings.yaojiEnabled,
+      assist: this.settings.assist !== false,
+      capFan: Number(this.settings.capFan) || 3
+    }
+    // 等待建房 + WS 首帧期间留在入口页（开局成功 showTable 会自动收起入口），
+    // 按钮转「开局中…」防重复点击；失败时 lobby 内已 toast，这里只复位按钮。
+    if (btn) {
+      btn.disabled = true
+      btn.dataset.label = btn.textContent
+      btn.textContent = '🌐 开局中…'
+    }
+    try {
+      await this.lobby.quickStart({ rules })
+    } finally {
+      if (btn) {
+        btn.disabled = false
+        if (btn.dataset.label) btn.textContent = btn.dataset.label
+      }
+    }
   }
 
   async openOnlineLobby({ inviteCode } = {}) {

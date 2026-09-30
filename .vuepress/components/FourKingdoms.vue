@@ -133,7 +133,7 @@ export default {
     online: { type: Object, default: null }
   },
   data() {
-    return { game: null, mapped: null, countdown: '', board: BOARD, armies: ARMIES, colors: ['#176b5a','#9d4139','#355f92','#936028'], selected: null, rules: false, modePicker:false, confirmBox:null, pageHidden:false, modeOptions:[{id:'dark',title:'四暗',help:'只看见自己的棋子；司令阵亡后亮出该方军旗。'},{id:'dual',title:'双明',help:'看见自己与对家棋子的身份，方便配合。'},{id:'open',title:'全明',help:'看见所有棋子的身份，适合练习走法。'}], notice: '', fullscreen: false, zoom: 1, soundOn:true, musicOn: !this.online, dice: null, savedGame: null, savedFormation: null }
+    return { game: null, mapped: null, countdown: '', board: BOARD, armies: ARMIES, colors: ['#176b5a','#9d4139','#355f92','#936028'], selected: null, rules: false, modePicker:false, confirmBox:null, pageHidden:false, modeOptions:[{id:'dark',title:'四暗',help:'只看见自己的棋子；司令阵亡后亮出该方军旗。'},{id:'dual',title:'双明',help:'看见自己与对家棋子的身份，方便配合。'},{id:'open',title:'全明',help:'看见所有棋子的身份，适合练习走法。'}], notice: '', fullscreen: false, zoom: 1, soundOn:true, musicOn: true, dice: null, savedGame: null, savedFormation: null }
   },
   computed: {
     // 统一视图出口：联机读服务端映射（mapped），单机读本地引擎状态（game）
@@ -161,8 +161,8 @@ export default {
     if (this._pageContent) this._pageContent.classList.add('jq-page-content')
     this._audio=createJunqiAudio()
     if (this.online) {
-      // 联机：默认关 BGM（避免盖过语音聊天）；即进即全屏；视图由 remote 推送
-      this._audio.music(false)
+      // 联机：默认开 BGM（与单机一致，首次点击后才出声）；即进即全屏；视图由 remote 推送
+      this._audio.music(true)
       this._oldOverflow = document.body.style.overflow
       document.body.style.overflow = 'hidden'
       this.fullscreen = true

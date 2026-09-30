@@ -33,6 +33,22 @@ export function saveDisplayName(name) {
   }
 }
 
+// 随机昵称：霸气池（单名 + 前缀×主体组合，共 160+ 种），告别「棋友9049」的路人感。
+// 撞名无碍——服务端按 playerId 区分座位，昵称只是展示。
+// 供 gamehall 大厅与麻将「快速开局」共用（未起名时自动生成一个）。
+const EPIC_SOLO = [
+  '独孤求败', '东方不败', '常胜将军', '国士无双', '神机妙算', '运筹帷幄',
+  '决胜千里', '横扫千军', '一夫当关', '万夫莫开', '棋圣再世', '落子无悔',
+  '鬼手佛心', '屠龙圣手', '残局宗师', '布阵鬼才', '军神降临', '弈林盟主',
+  '天元一击', '逆转之王', '翻盘魔王', '百胜刀客', '智珠在握', '算无遗策'
+]
+const EPIC_PREFIX = ['狂', '傲', '冷面', '无敌', '绝世', '铁血', '雷霆', '疾风', '神算', '暗夜', '锦衣', '逍遥']
+const EPIC_BODY = ['棋圣', '将军', '国手', '棋魔', '杀神', '谋士', '统帅', '棋宗', '弈仙', '军神', '棋狂', '圣手']
+export function randomName() {
+  const pick = arr => arr[(Math.random() * arr.length) | 0]
+  return Math.random() < 0.5 ? pick(EPIC_SOLO) : pick(EPIC_PREFIX) + pick(EPIC_BODY)
+}
+
 /** 房间级凭据：刷新后可凭 resumeToken 重连回原座位 */
 export function loadCredential() {
   try {
@@ -185,10 +201,12 @@ export class NetClient {
     return this.http('/api/rooms/' + encodeURIComponent(roomCode))
   }
 
-  createRoom({ displayName, gameType, hostSide, rules, turnTimeoutSeconds } = {}) {
+  // autoStart：建房后服务端立即开局（空位自动补 AI），供入口页「快速开局」
+  // 一步到位直进牌桌；好友房不传，仍走等待室手动开始。
+  createRoom({ displayName, gameType, hostSide, rules, turnTimeoutSeconds, autoStart } = {}) {
     return this.http('/api/rooms', {
       method: 'POST',
-      body: { displayName, gameType, hostSide, rules, turnTimeoutSeconds }
+      body: { displayName, gameType, hostSide, rules, turnTimeoutSeconds, autoStart }
     })
   }
 

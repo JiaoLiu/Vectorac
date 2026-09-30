@@ -630,8 +630,8 @@ export default class JunqiRemote {
     setTimeout(() => {
       el.classList.add('is-old')
     }, 30000)
-    // 对方的快捷语用普通话 TTS 播报；自己的不播
-    if (!mine) speakPhrase(text)
+    // 对方的快捷语播报（预生成普通话音频，缺文件回退 TTS）；自己的不播
+    if (!mine) speakPhrase(p.phrase, text)
   }
 
   _playVoice(idx) {
