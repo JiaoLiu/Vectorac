@@ -20,7 +20,7 @@ export function createWardrobeAudio(env=window){
     play(kind='dress'){
       if(!effects||hidden||disposed||!ctx||ctx.state!=='running')return
       const t=ctx.currentTime;if(t-lastCue<.07)return;lastCue=t
-      const notes={dress:[660,880],buy:[523,659,784],reward:[659,784,1047],color:[784],photo:[1200,900],pose:[587]}[kind]||[660]
+      const notes={dress:[660,880],buy:[523,659,784],reward:[659,784,1047],color:[784],photo:[1200,900],pose:[587],perfect:[784,988,1319],hit:[659,880],miss:[330,247]}[kind]||[660]
       notes.forEach((f,i)=>tone(f,t+i*.07,kind==='reward'?.45:.2,.045))
     },
     destroy(){disposed=true;if(bgm){bgm.pause();bgm.removeAttribute('src');bgm.load();bgm=null}for(const v of voices){try{v.stop()}catch(e){}}voices.clear();if(ctx){const p=ctx.close();if(p&&p.catch)p.catch(()=>{})}ctx=null}

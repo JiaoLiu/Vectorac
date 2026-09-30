@@ -19,10 +19,10 @@ export const BRIEFS=[
 ]
 export function stylingGame(random=Math.random){return {kind:'styling',brief:Math.min(BRIEFS.length-1,Math.floor(random()*BRIEFS.length)),complete:false,paid:false}}
 export function submitStyling(g,tags,scene){const b=BRIEFS[g.brief];if(!b||g.paid)return g;const score=b.tags.filter(t=>tags.includes(t)).length*35+(scene===b.scene?30:0);return {...g,score,complete:score===100}}
-export function sewingGame(){return {kind:'sewing',stitches:0,score:0,misses:0,complete:false,paid:false}}
+export function sewingGame(){return {kind:'sewing',stitches:0,score:0,misses:0,marks:[],complete:false,paid:false}}
 export function stitch(g,position){
   if(g.complete||!Number.isFinite(position)||position<0||position>1)return g
-  const distance=Math.abs(position-.5),perfect=distance<=.11,hit=distance<=.24
-  const n={...g,stitches:g.stitches+(hit?1:0),score:g.score+(perfect?2:hit?1:0),misses:g.misses+(hit?0:1)};n.complete=n.stitches>=6;return n
+  const distance=Math.abs(position-.5),grade=distance<=.11?'perfect':distance<=.24?'hit':'miss',perfect=grade==='perfect',hit=grade!=='miss'
+  const n={...g,stitches:g.stitches+(hit?1:0),score:g.score+(perfect?2:hit?1:0),misses:g.misses+(hit?0:1),marks:[...(g.marks||[]),{position,grade}]};n.complete=n.stitches>=6;return n
 }
 export function gameReward(g){if(!g||!g.complete||g.paid)return 0;if(g.kind==='memory'&&g.matched.length===12)return g.moves<=10?60:45;if(g.kind==='styling'&&g.score===100)return 65;if(g.kind==='sewing'&&g.stitches>=6)return g.score>=10?60:45;return 0}
