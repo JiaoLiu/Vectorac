@@ -299,6 +299,54 @@ meta:
 }
 .gkr-bubble.is-mine { border-color: rgba(255, 178, 107, 0.5); }
 .gkr-bubble.is-old { opacity: 0.55; }
+.gkr-bubble.is-chat { cursor: default; }
+
+/* ============ 聊天面板（快捷语 + 按住说话，复刻麻将语音交互） ============ */
+.gkr-chat-panel {
+  position: absolute; right: 0; bottom: 62px; width: min(240px, 72vw);
+  background: rgba(24, 28, 42, 0.97);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px; padding: 10px;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.5);
+  display: flex; flex-direction: column; gap: 8px;
+}
+.gkr-chat-phrases { display: flex; flex-direction: column; gap: 6px; }
+.gkr-phrase {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06); color: #e8eaf2;
+  border-radius: 10px; padding: 9px 12px; font-size: 13px; text-align: left;
+  cursor: pointer; min-height: 38px;
+}
+.gkr-phrase:active { background: rgba(255, 178, 107, 0.2); }
+.gkr-chat-mic {
+  border: none; border-radius: 12px; padding: 12px; font-size: 14px; font-weight: 700;
+  background: linear-gradient(135deg, #ffb26b, #ff7e3d); color: #2a1500;
+  cursor: pointer; min-height: 46px;
+  touch-action: none; -webkit-user-select: none; user-select: none;
+}
+.gkr-chat-mic.is-rec { background: #d24a35; color: #fff; }
+.gkr-chat-tip { font-size: 11px; color: #8b93a8; text-align: center; }
+
+/* ============ 房间全屏接管（盖过主题导航与左下聊天浮标 cw-fab:9999） ============ */
+/* class 挂在 body 上（Vue patch 会重置 #gameHall 自身的 class），选择器从 body 出发 */
+body.gkr-full .gh-root {
+  position: fixed; inset: 0; z-index: 10000;
+  max-width: none; margin: 0; border-radius: 0;
+  overflow-y: auto; -webkit-overflow-scrolling: touch;
+  background: linear-gradient(160deg, #242a3c 0%, #171b27 55%, #10131c 100%);
+  padding: calc(10px + env(safe-area-inset-top)) 12px calc(76px + env(safe-area-inset-bottom));
+}
+body.gkr-lock { overflow: hidden !important; }
+body.gkr-lock #cw-fab, body.gkr-lock #cw-panel, body.gkr-lock .back-to-ceiling { display: none !important; }
+/* reco 主题页面容器带 transform，会把 fixed 后代的 z-index 困在局部 stacking
+   context（导航栏 z-20 反而压在房间 z-10000 上）；全屏时拆掉，并直接隐藏导航栏 */
+body.gkr-full .theme-reco-content, body.gkr-full .page { transform: none !important; }
+body.gkr-full #navbar, body.gkr-full .navbar { display: none !important; }
+/* 全屏后垂直空间全部释放：棋盘按视口放大（受底部语音 dock 与状态条约束） */
+body.gkr-full .gkr-stage { max-width: 760px; margin: 0 auto; width: 100%; }
+body.gkr-full .gkr-board-wrap,
+body.gkr-full .gk-board-wrap { max-width: min(96vw, calc(100dvh - 240px)) !important; margin-left: auto; margin-right: auto; }
+body.gkr-full .jqr-board-wrap { max-width: min(96vw, calc(100dvh - 230px)); margin-left: auto; margin-right: auto; }
 
 /* 提示 */
 .gh-toast, .gkr-toast {

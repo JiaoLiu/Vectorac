@@ -23,6 +23,14 @@ import {
   ctlValue,
   handleCtlClick
 } from '../gamehall/controls.js'
+import {
+  CHAT_PHRASES,
+  enterFullscreen,
+  exitFullscreen,
+  speakPhrase,
+  chatDockHtml,
+  bindChatDock
+} from '../gamehall/chatkit.js'
 import { RED, BLACK, FILES, RANKS, PIECE_LABELS } from './engine.mjs'
 
 // 炮位 / 兵位的小角标（传统棋盘花符）
@@ -86,6 +94,7 @@ export default class XiangqiRemote {
   }
 
   mount() {
+    enterFullscreen(this.root)
     this._renderShell()
     this._renderWaiting()
     this._tickTimer = setInterval(() => this._tick(), 500)
@@ -100,6 +109,8 @@ export default class XiangqiRemote {
     if (this._tickTimer) clearInterval(this._tickTimer)
     if (this._onResize) window.removeEventListener('resize', this._onResize)
     this._stopRecording(true)
+    if (this._chat) this._chat.destroy()
+    exitFullscreen(this.root)
     this.root.innerHTML = ''
   }
 
@@ -185,6 +196,9 @@ export default class XiangqiRemote {
       case 'VOICE_MSG':
         this._addVoiceBubble(p, false)
         break
+      case 'CHAT_MSG':
+        this._addChatBubble(p, false)
+        break
       case 'ROOM_DESTROYED':
         this._toast('房间已解散')
         this._exit()
@@ -234,10 +248,7 @@ export default class XiangqiRemote {
       '</div>' +
       '<div class="gkr-status-pill" data-gkr-status hidden></div>' +
       '<div class="gkr-stage" data-gkr-stage></div>' +
-      '<div class="gkr-voice-dock" data-gkr-voice-dock>' +
-      '  <button type="button" class="gkr-mic" data-gkr="mic" aria-label="按住说话">🎤</button>' +
-      '  <div class="gkr-voice-tip" data-gkr-voice-tip>按住说话</div>' +
-      '</div>' +
+      chatDockHtml() +
       '<div class="gkr-bubbles" data-gkr-bubbles></div>' +
       '<div class="gkr-toast" data-gkr-toast hidden></div>'
 
@@ -245,19 +256,14 @@ export default class XiangqiRemote {
     this.$status = this.root.querySelector('[data-gkr-status]')
     this.$bubbles = this.root.querySelector('[data-gkr-bubbles]')
     this.$toast = this.root.querySelector('[data-gkr-toast]')
-    this.$mic = this.root.querySelector('[data-gkr="mic"]')
-    this.$micTip = this.root.querySelector('[data-gkr-voice-tip]')
 
     this.root.addEventListener('click', ev => this._onClick(ev))
-    // 按住说话（触屏 + 鼠标通用）
-    const mic = this.$mic
-    mic.addEventListener('pointerdown', ev => {
-      ev.preventDefault()
-      this._startRecording()
+    // 聊天面板：🎤 点开 → 快捷语（普通话 TTS 播报）+ 按住说话
+    this._chat = bindChatDock(this.root.querySelector('[data-gkr-voice-dock]'), {
+      onStartRec: () => this._startRecording(),
+      onStopRec: cancel => this._stopRecording(cancel),
+      onPhrase: idx => this._sendPhrase(idx)
     })
-    mic.addEventListener('pointerup', () => this._stopRecording(false))
-    mic.addEventListener('pointercancel', () => this._stopRecording(true))
-    mic.addEventListener('pointerleave', () => this._stopRecording(false))
   }
 
   _roomCode() {
@@ -927,8 +933,7 @@ export default class XiangqiRemote {
       this._recordCancel = false
       this._recordAt = Date.now()
       rec.start()
-      this.$mic.classList.add('is-rec')
-      this.$micTip.textContent = '松开发送 · 最长 20s'
+      if (this._chat) this._chat.setRecUI(true)
       // 硬上限：20s 自动停
       this._recTimer = setTimeout(() => this._stopRecording(false), 20000)
     } catch (e) {
@@ -943,8 +948,7 @@ export default class XiangqiRemote {
     }
     const rec = this._recorder
     this._recorder = null
-    this.$mic.classList.remove('is-rec')
-    this.$micTip.textContent = '按住说话'
+    if (this._chat) this._chat.setRecUI(false)
     if (!rec) return
     this._recordCancel = !!cancel
     try {
@@ -975,6 +979,30 @@ export default class XiangqiRemote {
     const seats = (this.view && this.view.meta && this.view.meta.seats) || (this.room && this.room.seats) || []
     const s = seats.find(x => (x.absSeat != null ? x.absSeat : x.seatIndex) === seatIndex)
     return s ? s.displayName || (s.isAi ? 'AI' : '棋友') : '棋友'
+  }
+
+  // ---------- 快捷语（普通话 TTS；发序号，两端本地查表） ----------
+
+  _sendPhrase(idx) {
+    const text = CHAT_PHRASES[idx]
+    if (!text) return
+    this.net.sendChat({ phrase: idx })
+    this._addChatBubble({ phrase: idx, seatIndex: this._mySeat() }, true)
+  }
+
+  _addChatBubble(p, mine) {
+    const text = CHAT_PHRASES[p.phrase]
+    if (!text) return
+    const who = mine ? '你' : this._seatName(p.seatIndex)
+    const el = document.createElement('div')
+    el.className = 'gkr-bubble is-chat' + (mine ? ' is-mine' : '')
+    el.textContent = '💬 ' + who + '：' + text
+    this.$bubbles.appendChild(el)
+    setTimeout(() => {
+      el.classList.add('is-old')
+    }, 30000)
+    // 对方的快捷语用普通话 TTS 播报；自己的不播
+    if (!mine) speakPhrase(text)
   }
 
   _playVoice(idx) {
