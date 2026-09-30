@@ -223,7 +223,8 @@ export default {
  .jq-board-window.is-zoomed .jq-board{width:max(100%,720px)!important}
  .jq-fullscreen .jq-board-window.is-zoomed{height:calc(100dvh - 158px)}
  .jq-board-footer{padding-left:3px;padding-right:3px}.jq-brand small{display:none}
- .jq-panel{padding:10px}.jq-team-card{padding:8px}.jq-journal{display:none}
+ /* 战场记录隐藏后，小规则说明的上边框会直接贴在按钮下，一并隐藏。 */
+ .jq-panel{padding:10px}.jq-team-card{padding:8px}.jq-journal,.jq-mini-rule{display:none}
 }
 /* 横屏全屏照五子棋的做法：导航、状态、指挥台、页脚全部移进右侧一列，
    棋盘独占左列并吃满整个高度，不再有横向导航条压掉棋盘的高度。
@@ -250,6 +251,8 @@ export default {
  .jq-fullscreen .jq-button-pair{gap:10px}
  .jq-fullscreen .jq-button-pair button{min-height:40px}
  .jq-fullscreen .jq-journal,.jq-fullscreen .jq-mini-rule,.jq-fullscreen .jq-intel,.jq-fullscreen .jq-panel-title small{display:none}
+ /* intel 隐藏后，模式下拉框与出征按钮之间需要补回间距，否则两个大色块贴在一起。 */
+ .jq-fullscreen .jq-primary{margin-top:10px}
  .jq-fullscreen .jq-select-label{margin-top:8px}.jq-fullscreen .jq-panel-title{margin-bottom:8px}
 }
 .jq-game .jq-mode-trigger{display:flex;width:100%;justify-content:space-between;align-items:center;margin-top:7px;text-align:left;font-size:16px;min-height:48px}
