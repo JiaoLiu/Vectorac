@@ -13,6 +13,7 @@ for(const p of PARTS.filter(p=>p.index>=0)){
  const m=await sharp('.vuepress/public'+partThumbnail(p)).metadata();assert.ok(m.width>150&&m.height>150)
  const card=await sharp('.vuepress/public'+partThumbnail(p)).removeAlpha().raw().toBuffer()
  assert.deepEqual([...card.subarray(0,3)],[244,237,229],'catalogue margin must match the one CSS background')
+ if(p.id==='hat-1')for(let y=220;y<300;y+=10)for(let x=15;x<45;x+=10)assert.deepEqual([...card.subarray((y*360+x)*3,(y*360+x)*3+3)],[244,237,229],'neighbouring straw-hat ribbon leaked into beret card')
 }
 const art=JSON.parse(await readFile('scripts/wardrobe-v7-art.json','utf8'))
 for(const id of ['catalog-hats','catalog-eyes','catalog-brows','catalog-faces','catalog-lips','catalog-hair','catalog-socks'])assert.ok(art.assets.some(a=>a.id===id&&!a.reference),'catalogue design must be independently illustrated, not a worn-model crop')

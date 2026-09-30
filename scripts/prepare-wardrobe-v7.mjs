@@ -54,7 +54,7 @@ for(const [src,c,cols,rows,count] of atlases){const m=await sharp(sources[src]).
  let cell=await sharp(sources[src]).extract({left:i%cols*w,top:Math.floor(i/cols)*h,width:w,height:h}).png().toBuffer()
  // The straw-hat ribbon crosses the atlas gutter into the beret's lower-left
  // whitespace. Do not ship that neighbour fragment as part of the beret card.
- if(c==='hat'&&i===1){const raw=await sharp(cell).removeAlpha().raw().toBuffer();for(let y=Math.floor(h*.64);y<h;y++)for(let x=0;x<w*.16;x++)raw.set([244,237,229],(y*w+x)*3);cell=await sharp(raw,{raw:{width:w,height:h,channels:3}}).png().toBuffer()}
+ if(c==='hat'&&i===1){const raw=await sharp(cell).removeAlpha().raw().toBuffer();for(let y=Math.floor(h*.55);y<h;y++)for(let x=0;x<w*.18;x++)raw.set([244,237,229],(y*w+x)*3);cell=await sharp(raw,{raw:{width:w,height:h,channels:3}}).png().toBuffer()}
  await card(cell,c+'-'+i)
 }}
 console.log('v7: skin-free hair, premultiplied jaw edges, 51 independent/uniform catalogue cards')
