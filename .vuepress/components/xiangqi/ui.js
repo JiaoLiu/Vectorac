@@ -466,7 +466,7 @@ export default class XiangqiUI {
     if (this.phase !== 'playing' || this.thinking || this.currentSide !== this.playerSide) return
     const move = this.mode === 'puzzle' ? this.currentPuzzle.solution : chooseMove(this.board, this.playerSide, this.difficulty)
     if (this.mode === 'puzzle' && this.currentPuzzle.kind === 'choice' && !move) {
-      this.puzzleMessage = '提示：A–D 都不是正解；試試 E「以上選項都不對」。'
+      this.puzzleMessage = '提示：A–D 四个候选首着都不成立，本题正解就是 E「以上选项都不对」。想看逐着分析，可点下方“查看本题讲解 ↗”。'
       this.render()
       return
     }
