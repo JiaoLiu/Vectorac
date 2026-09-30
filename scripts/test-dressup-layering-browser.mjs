@@ -11,7 +11,8 @@ const key='vectorac.flower-wardrobe.v1'
 for(const [name,engine] of [['chromium',chromium],['webkit',webkit]]){
  const browser=await engine.launch({headless:true,...(name==='chromium'?{executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'}:{})})
  try{
-  const page=await browser.newPage({viewport:{width:390,height:844},hasTouch:true,isMobile:true}),errors=[]
+  const page=await browser.newPage({viewport:{width:390,height:844},hasTouch:true,isMobile:true}),errors=[],requested=new Set()
+  page.on('request',r=>requested.add(new URL(r.url()).pathname))
   await page.addInitScript(({key,parts,defaults})=>{if(!localStorage.getItem(key))localStorage.setItem(key,JSON.stringify({version:1,coins:1000,owned:['blush'],scenes:['atelier'],ownedParts:parts,look:{mode:'fine',parts:defaults}}))},{key,parts:PARTS.map(p=>p.id),defaults:DEFAULT_PARTS})
   await page.route('**/*',r=>/^https?:/.test(r.request().url())&&!r.request().url().startsWith(base)?r.abort():r.continue())
   page.on('pageerror',e=>errors.push(e.message));await page.goto(base+'/blogs/other/flower_wardrobe.html')
@@ -76,6 +77,7 @@ for(const [name,engine] of [['chromium',chromium],['webkit',webkit]]){
   await page.setViewportSize({width:844,height:390});await page.setViewportSize({width:390,height:844})
   await page.waitForFunction(()=>{const vm=document.querySelector('.fw-game').__vue__,src=document.querySelector('.fw-model').dataset.src||'';return !vm.loading&&src.includes('top-17')&&src.includes('bottom-17')&&src.includes('brows-3')&&src.includes('shoes-11')&&src.includes('necklace-1')&&src.includes('wrist-1')})
   const last=await game.evaluate(e=>JSON.stringify(e.__vue__.state.look));await page.reload();await page.waitForFunction(()=>(document.querySelector('.fw-model').dataset.src||'').includes('bottom-17'));assert.equal(await page.locator('.fw-game').evaluate(e=>JSON.stringify(e.__vue__.state.look)),last)
+  for(const path of ['shoes-6','shoes-7','shoes-8','shoes-9','shoes-10','shoes-11','wrist-2','wrist-2-back','bottom-2','bottom-12','bottom-17'])assert.ok(requested.has('/img/games/dressup/layers/v13/'+path+'.webp'),`${name}: stale runtime did not load repaired wearing art ${path}`)
   assert.deepEqual(errors,[]);await page.close()
  }finally{await browser.close()}
 }

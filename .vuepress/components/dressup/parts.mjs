@@ -32,6 +32,9 @@ PARTS.push(...EDITIONS)
 PARTS.push(...STYLES)
 PARTS.push(...ACCESSORIES)
 PARTS.push(...JEWELLERY_FOOTWEAR)
+// Reuse corrected wearing art across colour editions; catalogue designs stay
+// independent and old purchase/save IDs do not change.
+for(const p of PARTS)if(p.category==='bottom'&&((p.sourceIndex===undefined?p.index:p.sourceIndex)===2||p.index>=12))p.wearVersion='v13'
 for(const category of ['headpiece','hat','earrings','necklace','wrist','socks'])PARTS.push({id:`${category}-none`,category,index:-1,name:'不佩戴',price:0,tag:''})
 export const FREE_PARTS=PARTS.filter(p=>p.price===0).map(p=>p.id)
 export const DEFAULT_PARTS={top:'top-0',bottom:'bottom-0',hair:'hair-0',headpiece:'headpiece-none',hat:'hat-none',earrings:'earrings-none',necklace:'necklace-none',wrist:'wrist-none',socks:'socks-0',shoes:'shoes-0',face:'face-0',eyes:'eyes-0',brows:'brows-0',lip:'lip-0'}
@@ -45,7 +48,7 @@ export function partAsset(p){
  const version=p.wearVersion||(p.category==='hat'&&[0,3].includes(fitIndex(p))||p.category==='bottom'&&p.index>=12?'v11':p.assetVersion||(p.category==='brows'&&p.index>=2?'v10':p.category==='face'?'v8':HEAD_CATEGORIES.includes(p.category)?'v7':REGISTERED_CATEGORIES.includes(p.category)?'v5':''))
  return `/img/games/dressup/layers/${version?version+'/':''}${p.category}-${fitIndex(p)}${p.id==='hair-2'?'-restored':''}.webp`
 }
-export const partBackAsset=p=>p&&p.back&&p.index>=0?`/img/games/dressup/layers/${p.assetVersion}/${p.id}-back.webp`:''
+export const partBackAsset=p=>p&&p.back&&p.index>=0?`/img/games/dressup/layers/${p.wearVersion||p.assetVersion}/${p.id}-back.webp`:''
 // Product/design cards and the registered wearable layers have separate contracts.
 export const partThumbnail=p=>p.index<0?'':`/img/games/dressup/layers/${p.assetVersion|| (p.category==='brows'&&p.index>=2?'v10':'v7')}/catalog/${p.category}-${fitIndex(p)}.webp`
 export function validParts(raw,owned=FREE_PARTS){const result={};for(const c of CATEGORIES){const p=PARTS.find(p=>p.id===(raw||{})[c.id]&&p.category===c.id);result[c.id]=p&&owned.includes(p.id)?p.id:DEFAULT_PARTS[c.id]}return result}

@@ -1,0 +1,101 @@
+{
+  "mode": "built-in imagegen",
+  "references": [
+    "scripts/fixtures/wardrobe-v13-sources/reference-legs.webp",
+    "scripts/fixtures/wardrobe-v13-sources/reference-wrist.webp",
+    "scripts/fixtures/wardrobe-v12-sources/wrist-2.webp"
+  ],
+  "protectedAssets": {
+    "/img/games/dressup/layers/v7/catalog/bottom-2.webp": "9c6b10fafb19d11590ca0f0f4f8028a8e597d8eefd8226aab6ca10eda70b4437",
+    "/img/games/dressup/layers/v10/catalog/bottom-12.webp": "9ba2a7bb769cd14e08de06ec6dd4c30b976a0436da813c88484842a27a5285da",
+    "/img/games/dressup/layers/v10/catalog/bottom-13.webp": "fbe9f6abba2a9f81da1b820b2898c03030200f44133d260c0b83373c0de2b7ec",
+    "/img/games/dressup/layers/v10/catalog/bottom-14.webp": "3f2824f32a901ca0cf1b93f3bf29c3cdef84055a0723eb0f85793c16f53bf884",
+    "/img/games/dressup/layers/v10/catalog/bottom-15.webp": "23676d3990c120a2074adab727d27efbda7630fb9ecc4595aecff31ed24537ba",
+    "/img/games/dressup/layers/v10/catalog/bottom-16.webp": "13189fd4b8d401bb9c8108323cae96e0eb3c68e9962b5a80d8390aa990374ed1",
+    "/img/games/dressup/layers/v10/catalog/bottom-17.webp": "d8bb15468c2f7facf6c24f18c90d15d3f42067c5fadb88011af92ab550124a6e",
+    "/img/games/dressup/layers/v12/catalog/shoes-6.webp": "4a3ca7115dcf677b7351615337568e634499ad19f2cb5dcc087bf6685d02dc80",
+    "/img/games/dressup/layers/v12/catalog/shoes-7.webp": "390b9ed6b2c4b76bd4975441ea23709cacbcd93d16991a33799af830663a2293",
+    "/img/games/dressup/layers/v12/catalog/shoes-8.webp": "17ffe40d4c1b2b25f1162850609cf6f542161ad52fffa0a064e6e765b0806de0",
+    "/img/games/dressup/layers/v12/catalog/shoes-9.webp": "b26ca22b422709375fb5e04ed1ac14e96d65b9c7e2d9cb303b591d483e4cccab",
+    "/img/games/dressup/layers/v12/catalog/shoes-10.webp": "d4ef385db27200967cab5fc35c8c5172eb1b1664dfa0c60ded2594c8f8e97d1c",
+    "/img/games/dressup/layers/v12/catalog/shoes-11.webp": "5c95a1032efe16b68645d027f6507c95fccde326dbe181e801b47a61b63b43f7",
+    "/img/games/dressup/layers/v12/catalog/wrist-2.webp": "4fb760b9bf8ef970ce19f26ac4497c682b5a16d1e195d1dc52c955f5c7e96c28",
+    "/img/games/dressup/layers/v7/hair-2-restored.webp": "779118293287eb733d2c0e318fa1c9e6d440467e53cabedcdcc702d4030a0331"
+  },
+  "note": "Worn footwear/watch references; independent product cards and all existing hair/face art stay unchanged. Front waistband recalibration from original on-body art.",
+  "assets": [
+    {
+      "id": "shoes-6",
+      "style": "white low-top leather running sneakers, cream cupsole, light grey neat laces, beige heel accent",
+      "start": 927,
+      "sockEnd": 943,
+      "kind": "shoe",
+      "file": "scripts/fixtures/wardrobe-v13-sources/shoes-6.webp",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-c3a782bb-71f9-4ffb-a301-7a5a9c83c522.png",
+      "prompt": "Use case: identity-preserve. Image 1 is the exact pair of bare legs/feet edit target. Dress THESE feet in white low-top leather running sneakers, cream cupsole, light grey neat laces, beige heel accent. This must depict shoes actually WORN, ankles going DOWN INSIDE the shoes, not empty shoes standing in front of the legs. Straight-on standing view at ankle height, same separated foot positions and same pose. NO visible empty shoe interior, NO large open oval liner, NO empty shoe-mouth facing camera. The rear collar is BEHIND the ankle, front tongue lies against instep, sides wrap around foot; realistic contact shading. Preserve anatomical scale/pose. Keep entire leg-and-feet 1:2 canvas composition with knees cropped at top and soles near bottom. Semi-realistic elegant fashion-game painted art, opaque fabric/leather, no logos/text. IMPORTANT segmentation render: colour ALL exposed skin solid saturated #ff00ff (magenta), including skin within the shoe collar; shoes keep their natural colours. No socks, no skin-colour patches copied into the shoe. Genuine transparent outside legs/shoes. No backdrop/shadow/glow. Skin is a temporary segmentation marker, do not tint shoes magenta."
+    },
+    {
+      "id": "shoes-7",
+      "style": "taupe and sage mesh trail running sneakers, structured chunky outsole and neat laces",
+      "start": 925,
+      "sockEnd": 943,
+      "kind": "shoe",
+      "file": "scripts/fixtures/wardrobe-v13-sources/shoes-7.webp",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-81c9d9f4-f520-479b-8b6c-a7338d61c83a.png",
+      "prompt": "Use case: identity-preserve. Image 1 is the exact pair of bare legs/feet edit target. Dress THESE feet in taupe and sage mesh trail running sneakers, structured chunky outsole and neat laces. This must depict shoes actually WORN, ankles going DOWN INSIDE the shoes, not empty shoes standing in front of the legs. Straight-on standing view at ankle height, same separated foot positions and same pose. NO visible empty shoe interior, NO large open oval liner, NO empty shoe-mouth facing camera. The rear collar is BEHIND the ankle, front tongue lies against instep, sides wrap around foot; realistic contact shading. Preserve anatomical scale/pose. Keep entire leg-and-feet 1:2 canvas composition with knees cropped at top and soles near bottom. Semi-realistic elegant fashion-game painted art, opaque fabric/leather, no logos/text. IMPORTANT segmentation render: colour ALL exposed skin solid saturated #ff00ff (magenta), including skin within the shoe collar; shoes keep their natural colours. No socks, no skin-colour patches copied into the shoe. Genuine transparent outside legs/shoes. No backdrop/shadow/glow. Skin is a temporary segmentation marker, do not tint shoes magenta."
+    },
+    {
+      "id": "shoes-8",
+      "style": "cream high-top canvas sneakers, brass eyelets, white laces and tan rubber toe caps",
+      "start": 852,
+      "sockEnd": 897,
+      "kind": "shoe",
+      "file": "scripts/fixtures/wardrobe-v13-sources/shoes-8.webp",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-936d3f8e-2587-4ee2-9109-79c7c9bea6e8.png",
+      "prompt": "Use case: identity-preserve. Image 1 is the exact pair of bare legs/feet edit target. Dress THESE feet in cream high-top canvas sneakers, brass eyelets, white laces and tan rubber toe caps. This must depict shoes actually WORN, ankles going DOWN INSIDE the shoes, not empty shoes standing in front of the legs. Straight-on standing view at ankle height, same separated foot positions and same pose. NO visible empty shoe interior, NO large open oval liner, NO empty shoe-mouth facing camera. The rear collar is BEHIND the ankle, front tongue lies against instep, sides wrap around foot; realistic contact shading. Preserve anatomical scale/pose. Keep entire leg-and-feet 1:2 canvas composition with knees cropped at top and soles near bottom. Semi-realistic elegant fashion-game painted art, opaque fabric/leather, no logos/text. IMPORTANT segmentation render: colour ALL exposed skin solid saturated #ff00ff (magenta), including skin within the shoe collar; shoes keep their natural colours. No socks, no skin-colour patches copied into the shoe. Genuine transparent outside legs/shoes. No backdrop/shadow/glow. Skin is a temporary segmentation marker, do not tint shoes magenta."
+    },
+    {
+      "id": "shoes-9",
+      "style": "black eight-eyelet leather lace-up combat ankle boots, chunky tread sole and discreet silver side zip",
+      "start": 850,
+      "sockEnd": 864,
+      "kind": "shoe",
+      "file": "scripts/fixtures/wardrobe-v13-sources/shoes-9.webp",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-25a458e9-7897-4bf9-81ae-3089227cca74.png",
+      "prompt": "Use case: identity-preserve. Image 1 is the exact pair of bare legs/feet edit target. Dress THESE feet in black eight-eyelet leather lace-up combat ankle boots, chunky tread sole and discreet silver side zip. This must depict shoes actually WORN, ankles going DOWN INSIDE the shoes, not empty shoes standing in front of the legs. Straight-on standing view at ankle height, same separated foot positions and same pose. NO visible empty shoe interior, NO large open oval liner, NO empty shoe-mouth facing camera. The rear collar is BEHIND the ankle, front tongue lies against instep, sides wrap around foot; realistic contact shading. Preserve anatomical scale/pose. Keep entire leg-and-feet 1:2 canvas composition with knees cropped at top and soles near bottom. Semi-realistic elegant fashion-game painted art, opaque fabric/leather, no logos/text. IMPORTANT segmentation render: colour ALL exposed skin solid saturated #ff00ff (magenta), including skin within the shoe collar; shoes keep their natural colours. No socks, no skin-colour patches copied into the shoe. Genuine transparent outside legs/shoes. No backdrop/shadow/glow. Skin is a temporary segmentation marker, do not tint shoes magenta."
+    },
+    {
+      "id": "shoes-10",
+      "style": "camel suede mid-calf western boots, V-shaped scalloped cuff and restrained leaf seams, low block heel",
+      "start": 800,
+      "sockEnd": 837,
+      "kind": "shoe",
+      "file": "scripts/fixtures/wardrobe-v13-sources/shoes-10.webp",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-0e8691fa-5390-4001-8aad-e28e9214150d.png",
+      "prompt": "Use case: identity-preserve. Image 1 is the exact pair of bare legs/feet edit target. Dress THESE feet in camel suede mid-calf western boots, V-shaped scalloped cuff and restrained leaf seams, low block heel. This must depict shoes actually WORN, ankles going DOWN INSIDE the shoes, not empty shoes standing in front of the legs. Straight-on standing view at ankle height, same separated foot positions and same pose. NO visible empty shoe interior, NO large open oval liner, NO empty shoe-mouth facing camera. The rear collar is BEHIND the ankle, front tongue lies against instep, sides wrap around foot; realistic contact shading. Preserve anatomical scale/pose. Keep entire leg-and-feet 1:2 canvas composition with knees cropped at top and soles near bottom. Semi-realistic elegant fashion-game painted art, opaque fabric/leather, no logos/text. IMPORTANT segmentation render: colour ALL exposed skin solid saturated #ff00ff (magenta), including skin within the shoe collar; shoes keep their natural colours. No socks, no skin-colour patches copied into the shoe. Genuine transparent outside legs/shoes. No backdrop/shadow/glow. Skin is a temporary segmentation marker, do not tint shoes magenta."
+    },
+    {
+      "id": "shoes-11",
+      "style": "dark chocolate knee-high leather riding boots, brass buckle below knee, low heel and rounded toe",
+      "start": 695,
+      "sockEnd": 722,
+      "kind": "shoe",
+      "file": "scripts/fixtures/wardrobe-v13-sources/shoes-11.webp",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-5c25e256-7ead-46a6-9c97-41e3556bdb25.png",
+      "prompt": "Use case: identity-preserve. Image 1 is the exact pair of bare legs/feet edit target. Dress THESE feet in dark chocolate knee-high leather riding boots, brass buckle below knee, low heel and rounded toe. This must depict shoes actually WORN, ankles going DOWN INSIDE the shoes, not empty shoes standing in front of the legs. Straight-on standing view at ankle height, same separated foot positions and same pose. NO visible empty shoe interior, NO large open oval liner, NO empty shoe-mouth facing camera. The rear collar is BEHIND the ankle, front tongue lies against instep, sides wrap around foot; realistic contact shading. Preserve anatomical scale/pose. Keep entire leg-and-feet 1:2 canvas composition with knees cropped at top and soles near bottom. Semi-realistic elegant fashion-game painted art, opaque fabric/leather, no logos/text. IMPORTANT segmentation render: colour ALL exposed skin solid saturated #ff00ff (magenta), including skin within the shoe collar; shoes keep their natural colours. No socks, no skin-colour patches copied into the shoe. Genuine transparent outside legs/shoes. No backdrop/shadow/glow. Skin is a temporary segmentation marker, do not tint shoes magenta."
+    },
+    {
+      "id": "wrist-2",
+      "kind": "wrist",
+      "dest": [
+        98,
+        461,
+        28,
+        21
+      ],
+      "file": "scripts/fixtures/wardrobe-v13-sources/wrist-2.webp",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-07c3338c-91da-4754-af7f-f6fce30a8848.png",
+      "prompt": "Use case: identity-preserve. Image 1 is exact arm/wrist edit target. Image 2 shows watch design only. Put that small ivory round gold watch with tan leather strap ON this wrist, below forearm and just above hand. Wrist points diagonally down-left. Watch dial lies on the visible front of the wrist, strap wraps ACROSS wrist behind its sides and fastens behind. Close fitting band, NO visible empty oval loop, NO loose watch held in front. Preserve exact arm/hand pose and canvas framing. Dial at 50% horizontal, 49% vertical, about 16% of canvas width. Strap crosses wrist perpendicular to its length, around +18 degrees from horizontal. Elegant semi-realistic fashion illustration. ALL exposed skin solid saturated #ff00ff segmentation colour, wrist and hand included. Natural watch/leather colours. Transparent outside arm/watch. No backgrounds, shadows outside object, text, props."
+    }
+  ]
+}

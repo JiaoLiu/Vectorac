@@ -6,7 +6,7 @@ import {NEW_CAP_CUTS} from './accessory-coverage.mjs'
 export const BASE='/img/games/dressup/layers/v5/master.webp'
 export function baseSource(){return BASE}
 export const FEET='/img/games/dressup/layers/v5/feet.webp'
-export function underbodySource(parts){const p=PARTS.find(p=>p.id===parts.bottom&&p.category==='bottom');return p&&p.index>=12?'/img/games/dressup/layers/v11/underbody.webp':`/img/games/dressup/layers/v5/underbody-${p?fitIndex(p):0}.webp`}
+export function underbodySource(parts){const p=PARTS.find(p=>p.id===parts.bottom&&p.category==='bottom');return p&&p.wearVersion==='v13'?'/img/games/dressup/layers/v13/underbody.webp':p&&p.index>=12?'/img/games/dressup/layers/v11/underbody.webp':`/img/games/dressup/layers/v5/underbody-${p?fitIndex(p):0}.webp`}
 export function layerSources(parts){return [...new Set([BASE,FEET,underbodySource(parts),...Object.values(parts).map(id=>PARTS.find(p=>p.id===id)).filter(Boolean).flatMap(p=>[partAsset(p),partBackAsset(p)]).filter(Boolean)])]}
 // Anatomical layers keep the master 512 x 1024 canvas, never independent alpha fits.
 export const REGISTERED_ORDER=['socks','shoes','bottom','top','face','eyes','brows','lip']

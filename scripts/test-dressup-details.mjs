@@ -12,9 +12,9 @@ import {memoryGame,flipMemory,closeMemory,stylingGame,submitStyling,sewingGame,s
 import {faceSampleX} from '../.vuepress/components/dressup/face-fit.mjs'
 test('six genuinely new garment cuts have separate wearable/design assets, not more colour editions',()=>{
  assert.equal(STYLES.length,12)
- for(const p of STYLES){assert.equal(p.material,undefined);assert.equal(p.sourceIndex,undefined);assert.ok(partAsset(p).includes(p.category==='bottom'?'/v11/':'/v10/'));assert.ok(partThumbnail(p).includes('/v10/catalog/'));assert.notEqual(partAsset(p),partThumbnail(p));assert.ok(!EDITIONS.some(q=>q.id===p.id))}
+ for(const p of STYLES){assert.equal(p.material,undefined);assert.equal(p.sourceIndex,undefined);assert.ok(partAsset(p).includes(p.category==='bottom'?'/v13/':'/v10/'));assert.ok(partThumbnail(p).includes('/v10/catalog/'));assert.notEqual(partAsset(p),partThumbnail(p));assert.ok(!EDITIONS.some(q=>q.id===p.id))}
  assert.equal(new Set(STYLES.map(partAsset)).size,12)
- assert.ok(underbodySource({...DEFAULT_PARTS,bottom:'bottom-17'}).endsWith('/v11/underbody.webp'))
+ assert.ok(underbodySource({...DEFAULT_PARTS,bottom:'bottom-17'}).endsWith('/v13/underbody.webp'))
  let s={...freshState(),coins:1000};s=act(s,{type:'buy',kind:'part',id:'top-12'}).state;s=act(s,{type:'buy',kind:'part',id:'bottom-17'}).state
  const look=JSON.stringify(s.look);s=act(s,{type:'part',id:'brows-3'}).state;assert.equal(s.look.parts.top,'top-12');assert.equal(s.look.parts.bottom,'bottom-17');s=normalize(JSON.parse(JSON.stringify(s)));assert.equal(s.look.parts.top,'top-12');assert.notEqual(JSON.stringify(s.look),look)
 })
@@ -29,7 +29,7 @@ test('six shoe silhouettes and eight jewellery pieces have independent product a
  assert.equal(JEWELLERY_FOOTWEAR.length,14)
  for(const [category,count] of [['shoes',6],['necklace',4],['wrist',4]])assert.equal(JEWELLERY_FOOTWEAR.filter(p=>p.category===category).length,count)
  let s={...freshState(),coins:3000}
- for(const p of JEWELLERY_FOOTWEAR){assert.ok(partAsset(p).includes('/v12/'));assert.ok(partThumbnail(p).includes('/v12/catalog/'));assert.notEqual(partAsset(p),partThumbnail(p));assert.equal(p.material,undefined);assert.equal(p.sourceIndex,undefined);s=act(s,{type:'buy',kind:'part',id:p.id}).state;assert.equal(s.look.parts[p.category],p.id);assert.equal(s.look.parts.top,'top-0')}
+ for(const p of JEWELLERY_FOOTWEAR){assert.ok(partAsset(p).includes(p.wearVersion?'/v13/':'/v12/'));assert.ok(partThumbnail(p).includes('/v12/catalog/'));assert.notEqual(partAsset(p),partThumbnail(p));assert.equal(p.material,undefined);assert.equal(p.sourceIndex,undefined);s=act(s,{type:'buy',kind:'part',id:p.id}).state;assert.equal(s.look.parts[p.category],p.id);assert.equal(s.look.parts.top,'top-0')}
  s=act(s,{type:'album',id:'new-jewels'}).state;s=act(s,{type:'part',id:'necklace-none'}).state;s=act(s,{type:'part',id:'wrist-none'}).state
  s=act(normalize(JSON.parse(JSON.stringify(s))),{type:'restoreAlbum',id:'new-jewels'}).state
  assert.equal(s.look.parts.necklace,'necklace-3');assert.equal(s.look.parts.wrist,'wrist-3');assert.equal(s.look.parts.shoes,'shoes-11')
@@ -47,7 +47,7 @@ test('grouping covers every category exactly once; bracelet rear sits behind bod
  const wrist=PARTS.find(p=>p.id==='wrist-0'),images=new Map(sources.map(src=>[src,{src}]))
  const ctx=new Proxy({drawImage:img=>draws.push(img.src)},{get:(o,k)=>o[k]||(()=>{})});paintComposite(ctx,images,parts)
  assert.ok(sources.includes(partBackAsset(wrist)));assert.ok(draws.indexOf(partBackAsset(wrist))<draws.indexOf(BASE));assert.ok(draws.indexOf(partAsset(wrist))>draws.indexOf(partAsset(PARTS.find(p=>p.id===parts.top))))
- assert.equal(partBackAsset(PARTS.find(p=>p.id==='wrist-none')),'');assert.equal(partBackAsset(PARTS.find(p=>p.id==='wrist-2')),'')
+ assert.equal(partBackAsset(PARTS.find(p=>p.id==='wrist-none')),'');assert.ok(partBackAsset(PARTS.find(p=>p.id==='wrist-2')).includes('/v13/wrist-2-back.webp'))
  const hat=PARTS.find(p=>p.id==='hat-11');assert.ok(partAsset(hat).includes('/v12/hat-11'));assert.ok(partThumbnail(hat).includes('/v11/catalog/hat-11'))
 })
 test('32 editions reuse registered assets, independent product designs and existing fit indices',()=>{
