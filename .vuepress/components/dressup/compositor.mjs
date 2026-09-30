@@ -11,23 +11,29 @@ export const SOCK_VISIBLE_END=[955,925,954,880]
 export function paintComposite(ctx,images,parts){
  const chosen=category=>PARTS.find(p=>p.id===parts[category]&&p.category===category)
  function registered(category){const p=chosen(category);if(!p||p.index<0)return
+  const hat=chosen('hat'),capHair=category==='hair'&&hat&&hat.index>=0&&hat.index<2
+  // A solid hat encloses the crown/ponytail root. The tail below the cap remains.
+  if(capHair){ctx.save();ctx.beginPath();ctx.rect(0,59,512,965);ctx.clip()}
   if(category==='shoes'){const end=SOCK_VISIBLE_END[p.index];ctx.clearRect(185,end,142,1024-end)}
   if(category==='socks'){const shoe=chosen('shoes');ctx.save();ctx.beginPath();ctx.rect(0,0,512,SOCK_VISIBLE_END[shoe?shoe.index:0]);ctx.clip()}
   ctx.drawImage(images.get(partAsset(p)),0,0,512,1024)
   if(category==='socks')ctx.restore()
+  if(capHair)ctx.restore()
  }
  ctx.clearRect(0,0,512,1024)
  registered('hair');ctx.drawImage(images.get(BASE),0,0,512,1024)
  ctx.drawImage(images.get(underbodySource(parts)),0,0,512,1024)
  ctx.drawImage(images.get(FEET),0,0,512,1024)
- for(const category of REGISTERED_ORDER){if(category==='face')ctx.clearRect(200,30,112,133);registered(category)}
- ctx.save();ctx.beginPath();ctx.rect(0,0,512,180);ctx.clip();registered('hair');ctx.restore()
+ for(const category of REGISTERED_ORDER){if(category==='face')ctx.clearRect(190,25,132,138);registered(category)}
  // Small accessories retain their established attachment anchors.
- const anchors={hat:[[167,8,179,173],[183,17,147,148],[181,7,150,149],[184,12,144,78]],headpiece:[[285,46,43,60],[289,66,38,42],[282,58,45,87],[286,54,40,62]]}
- for(const category of ['earrings','headpiece','hat']){
+ const anchors={headpiece:[[285,46,43,60],[289,66,38,42],[282,58,45,87],[286,54,40,62]]}
+ for(const category of ['earrings']){
   const p=chosen(category);if(!p||p.index<0)continue
   const src=partAsset(p),b=bounds[src],img=images.get(src);if(!b||!img)continue
   if(category==='earrings'){const h=p.index===2?23:p.index===1?21:16;ctx.drawImage(img,b.x,b.y,b.w/2,b.h,206,119,8,h);ctx.drawImage(img,b.x+b.w/2,b.y,b.w/2,b.h,299,119,8,h)}
-  else ctx.drawImage(img,b.x,b.y,b.w,b.h,...anchors[category][p.index])
  }
+ // Side strands cover ear jewellery naturally; there is no earring-shaped hole.
+ ctx.save();ctx.beginPath();ctx.rect(0,0,512,180);ctx.clip();registered('hair');ctx.restore()
+ const piece=chosen('headpiece');if(piece&&piece.index>=0){const src=partAsset(piece),b=bounds[src];ctx.drawImage(images.get(src),b.x,b.y,b.w,b.h,...anchors.headpiece[piece.index])}
+ registered('hat')
 }

@@ -16,11 +16,16 @@ for(const [name,engine] of [['chromium',chromium],['webkit',webkit]]){
   page.on('pageerror',e=>errors.push(e.message));await page.goto(base+'/blogs/other/flower_wardrobe.html')
   await page.waitForFunction(()=>(document.querySelector('.fw-model').dataset.src||'').startsWith('fine:'))
   const game=page.locator('.fw-game');await game.getByRole('button',{name:'全屏',exact:true}).click();await game.getByRole('button',{name:'装扮',exact:true}).click()
+  for(const category of ['上衣','下装','发型','头饰','帽子','耳环','袜子','鞋子','脸型','眼睛','眉毛','口红']){
+   await page.locator('.fw-part-categories').getByRole('button',{name:category,exact:true}).click()
+   await page.waitForFunction(()=>Array.from(document.querySelectorAll('.fw-part-preview img')).every(i=>i.complete&&i.naturalWidth>0))
+   assert.ok(await page.locator('.fw-part-preview img').evaluateAll(es=>es.every(i=>i.src.includes('/v6/catalog/'))),'all item cards use independent catalogue art')
+  }
   const looks=[
-   {top:'top-3',bottom:'bottom-0',face:'face-1',hair:'hair-0',socks:'socks-none',shoes:'shoes-0'},
-   {top:'top-0',bottom:'bottom-0',face:'face-2',hair:'hair-1',eyes:'eyes-2',socks:'socks-4',shoes:'shoes-1'},
-   {top:'top-2',bottom:'bottom-2',face:'face-3',hair:'hair-2',socks:'socks-none',shoes:'shoes-2'},
-   {top:'top-1',bottom:'bottom-3',face:'face-0',hair:'hair-3',eyes:'eyes-3',socks:'socks-5',shoes:'shoes-3'}
+   {top:'top-3',bottom:'bottom-0',face:'face-1',hair:'hair-0',hat:'hat-0',eyes:'eyes-3',lip:'lip-4',socks:'socks-none',shoes:'shoes-0'},
+   {top:'top-0',bottom:'bottom-0',face:'face-2',hair:'hair-1',hat:'hat-1',eyes:'eyes-2',brows:'brows-3',lip:'lip-1',socks:'socks-4',shoes:'shoes-1'},
+   {top:'top-2',bottom:'bottom-2',face:'face-3',hair:'hair-2',hat:'hat-2',eyes:'eyes-1',lip:'lip-4',socks:'socks-none',shoes:'shoes-2'},
+   {top:'top-1',bottom:'bottom-3',face:'face-0',hair:'hair-3',hat:'hat-3',eyes:'eyes-3',brows:'brows-2',lip:'lip-3',socks:'socks-5',shoes:'shoes-3'}
   ]
   for(let i=0;i<looks.length;i++){
    const look=looks[i];await game.evaluate((e,p)=>Object.values(p).forEach(id=>e.__vue__.choosePart(id)),look)

@@ -1,0 +1,27 @@
+{
+  "method": "Built-in image_gen worn-on-head edits; shared neutral head, isolated pigment, separate product catalogue.",
+  "hatReference": "scripts/fixtures/wardrobe-v6-sources/hat-reference.webp",
+  "assets": [
+    {"id":"socks-catalog","source":"/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-17db029b-3504-4a9b-96a1-2e82459479a6.png","prompt":"Use case: product-mockup. Asset type: one 2-column by 3-row inventory catalogue sprite atlas of six PAIRS of elegant socks, each product centered in its own evenly sized cell. Row 1: cream lace ANKLE socks with petite pink bows; navy KNEE-high socks with fine white stripes. Row 2: ivory sheer floral MID-CALF socks; plain black KNEE-high socks. Row 3: cream lace OVER-KNEE stockings; black lace OVER-KNEE stockings. Beautiful painted fashion game product designs, premium textile detail, consistent soft lighting, isolated on genuine transparency, clear separations and generous margins. NO legs, NO skin, NO mannequin, NO shoes, no text or frames. Socks have coherent complete fabric silhouette, elegant curved feet, paired left/right. Exactly six pairs in ordered 2x3 grid."},
+    {
+      "id": "hat-0",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-2cd58dff-9db0-4ce8-b775-82341da4029e.png",
+      "prompt": "Use case: identity-preserve. Asset type: registered dress-up game worn-hat bust. Image 1 is exact edit target. Change ONLY adding a finely woven ivory straw sunhat with modest brim, a SMALL rose on the left and short ribbon tails falling outside the left ear, never across the eyes or face. Keep the SAME blank featureless face with nose only, brown bob hair, ears, chin, neck, shoulder position and exact head scale. Preserve canvas portrait proportions, framing, lighting, skin tone. The hat must actually be comfortably WORN on this head, not independent floating product, with no hair piercing solid hat fabric. Keep brows/eyes/mouth blank. Genuine transparent background, no text or watermark. Output identical framing to reference, do not zoom or change identity."
+    },
+    {
+      "id": "hat-1",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-6adf635b-3b37-46eb-aed7-1114b48b3988.png",
+      "prompt": "Use case: identity-preserve. Asset type: registered dress-up game worn-hat bust. Image 1 is exact edit target. Change ONLY adding a fitted navy velvet beret with a small antique moon pin near the right temple, snug crown sits above eyebrow line, hair remains visible naturally underneath. Keep the SAME blank featureless face with nose only, brown bob hair, ears, chin, neck, shoulder position and exact head scale. Preserve canvas portrait proportions, framing, lighting, skin tone. The hat must actually be comfortably WORN on this head, not independent floating product, with no hair piercing solid hat fabric. Keep brows/eyes/mouth blank. Genuine transparent background, no text or watermark. Output identical framing to reference, do not zoom or change identity."
+    },
+    {
+      "id": "hat-2",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-151c0d36-5baa-4fd3-a5ab-ac598ad7b3d8.png",
+      "prompt": "Use case: identity-preserve. Asset type: registered dress-up game worn-hat bust. Image 1 is exact edit target. Change ONLY adding a delicate slim jade floral circlet worn on the upper crown, elegant small magnolia flowers and gold leaves, no oversized solid crown. Keep the SAME blank featureless face with nose only, brown bob hair, ears, chin, neck, shoulder position and exact head scale. Preserve canvas portrait proportions, framing, lighting, skin tone. The hat must actually be comfortably WORN on this head, not independent floating product, with no hair piercing solid hat fabric. Keep brows/eyes/mouth blank. Genuine transparent background, no text or watermark. Output identical framing to reference, do not zoom or change identity."
+    },
+    {
+      "id": "hat-3",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-1b3c6d64-a8b5-4c0b-b08b-8afbcffac60f.png",
+      "prompt": "Use case: identity-preserve. Asset type: registered dress-up game worn-hat bust. Image 1 is exact edit target. Change ONLY adding a delicate petite silver crescent-moon tiara with tiny pearl stars, low slender band resting on the top of the hair, NOT oversized, no pendant hanging over forehead. Keep the SAME blank featureless face with nose only, brown bob hair, ears, chin, neck, shoulder position and exact head scale. Preserve canvas portrait proportions, framing, lighting, skin tone. The hat must actually be comfortably WORN on this head, not independent floating product, with no hair piercing solid hat fabric. Keep brows/eyes/mouth blank. Genuine transparent background, no text or watermark. Output identical framing to reference, do not zoom or change identity."
+    }
+  ]
+}

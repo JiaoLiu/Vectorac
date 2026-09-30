@@ -11,11 +11,21 @@ No runtime alpha-bound fitting, product-shoe scaling or flat-color eyebrow cover
 Natural-waist anchors are registered in the build pipeline; head/feet anchors remain fixed.
 The master suppresses its covered torso/hips, while retaining original arms and exposed legs.
 Shoes preserve their actual worn position; transparent instep windows reveal chosen socks.
-Hair has back/front passes. Face variants and raster eyes/brows/lips use the same head frame.
+V6 head: one genuinely feature-free head with a single shared nose; jaw/cheek silhouettes
+are morphed independently without moving central feature landmarks. Eyes, brows and lips
+are isolated registered pigment, not skin rectangles from different complete heads.
+Hair preserves side strands via neutral-reference skin subtraction, not geometric ear holes.
+Ear jewellery draws before front hair, so naturally covered ears do not force gaps into hairstyles.
+Solid hats cover ponytail roots; hats originate worn on a cropped registered head reference,
+then the fixed inverse crop transform puts them onto the shared full-body canvas.
+Product/design cards use a separate v6/catalog path: standalone clothing/footwear product art,
+styled face/hair portraits and eye/brow/lip close-ups, never clipped body-mask thumbnails.
 Four eye choices and six sock options include ankle, mid-calf, knee and thigh-high lengths.
 Fine mode uses standing pose and optional face zoom; all clothing choices persist across zoom.
 Original whole-body sources and prompts: scripts/fixtures/wardrobe-v5-sources and wardrobe-v5-art.json.
 Rebuild extraction: SHARP_PATH=<sharp> node scripts/prepare-wardrobe-v5.mjs.
+Head/catalogue rebuild: SHARP_PATH=<sharp> node scripts/prepare-wardrobe-v6.mjs.
+V6 built-in imagegen sources/prompts: scripts/fixtures/wardrobe-v6-sources and wardrobe-v6-art.json.
 Seven scenic raster backgrounds are shared by stage, scene cards and photo export.
 
 Economy: starting 100, daily40, 12 once-only invitations, repeatable five-color workshop25.
@@ -55,3 +65,4 @@ https://www.taptap.cn/app/206731/review?os=android
 Tests: npm run test:dressup
 Browser: PLAYWRIGHT_PATH=<module path> node scripts/test-dressup-browser.mjs
 Art close-up matrix: PLAYWRIGHT_PATH=<module path> SHARP_PATH=<sharp> node scripts/test-dressup-registered-art.mjs
+Mixed head regression: PLAYWRIGHT_PATH=<module path> SHARP_PATH=<sharp> node scripts/test-dressup-head-art.mjs
