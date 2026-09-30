@@ -2,21 +2,27 @@
 
 VuePress page: blogs/other/flower_wardrobe.md; Vue 2 component: FlowerWardrobe.vue.
 Pure state/economy: dressup/engine.mjs. All item IDs, prices, tags and quest rewards are data.
-Art: five original complete outfits x three separately illustrated poses. Changing garments uses
+Art: ten original complete outfits x three separately illustrated poses. Changing garments uses
 full outfit sprites, so sleeves, hair, skirt and hands maintain correct occlusion in every pose.
 This version intentionally uses complete outfit sets, NOT arbitrary top/bottom/accessory mixing.
 Future independent garments need per-pose coordinated layers, not independently generated overlays.
 
-Economy: starting 100, daily40, 8 once-only invitations, repeatable five-color workshop25.
+Economy: starting 100, daily40, 12 once-only invitations, repeatable five-color workshop25.
 Purchases validate balance, known ID, ownership. All mutations synchronous. Read latest save
 before mutations; storage event syncs other tabs. No network economy, paid currency or leaderboard.
 LocalStorage version1 normalizer filters unknown IDs, invalid balances and locked look references.
 This is deliberately client-local casual progression, NOT a tamperproof server economy.
 
-Loading: render previous model until requested image loads, sequence token ignores late responses.
+Loading: stable canvas retains previous model until the latest requested image is decoded.
+Sequence tokens ignore late responses; decoded-image cache is bounded to eight entries.
+Resize and context restoration repaint the last ready image without resetting canvas dimensions.
 Errors expose retry. Only the selected pose is loaded at full size; wardrobe thumbnails lazy load.
 Photo export: same-origin WebP decoded into canvas, Blob preview + download + iOS long press.
 Maximum 12 saved look descriptors, no image blobs in localStorage.
+
+Audio: dressup/audio.mjs starts licensed Dream Culture music after user interaction.
+Music and synthesized action cues have independent persisted switches; backgrounding pauses audio.
+Attribution: public/audio/dressup/CREDITS.md and the game introduction.
 
 SSR: no DOM/storage/image APIs at module load. Vue mounted initializes browser state and events.
 Destroy removes listeners/timers, invalidates loaders, restores body scroll and revokes Blob URLs.
@@ -27,5 +33,5 @@ References for product research (not assets):
 https://www.ultralisk.cn/pages/newsDetail.html?id=99
 https://www.taptap.cn/app/206731/review?os=android
 
-Tests: node --test scripts/test-dressup.mjs
+Tests: npm run test:dressup
 Browser: PLAYWRIGHT_PATH=<module path> node scripts/test-dressup-browser.mjs

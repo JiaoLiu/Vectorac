@@ -1,5 +1,5 @@
 <template>
-  <section class="fw-game" :class="{'fw-full':full}" ref="root" aria-label="花间衣橱换装游戏">
+  <section class="fw-game" :class="{'fw-full':full}" ref="root" aria-label="花间衣橱换装游戏" @pointerdown="unlockAudio" @keydown="unlockAudio">
     <header class="fw-header">
       <div><small>FLOWER ATELIER</small><h1>花间衣橱<span>把喜欢，穿在身上。</span></h1></div>
       <div class="fw-header-actions"><span class="fw-coins" aria-live="polite">✦ {{ state.coins }} <small>金币</small></span><button @click="toggleFull">{{full?'退出全屏':'全屏'}}</button><button @click="showHelp">玩法</button><a href="/blogs/other/games.html">大厅</a></div>
@@ -10,7 +10,7 @@
         <div class="fw-scene-decor" aria-hidden="true"><i></i><i></i><i></i><span>✧</span></div>
         <div class="fw-stage-label"><small>{{preview?'FITTING ROOM · 试穿中':'TODAY’S LOOK'}}</small><strong>{{currentDress.name}}</strong><span>{{currentScene.name}}</span></div>
         <div class="fw-model-space">
-          <img v-if="modelSrc" class="fw-model" :src="modelSrc" :alt="currentDress.name+' · '+poses[state.look.pose].name" draggable="false">
+          <canvas ref="model" class="fw-model" width="512" height="1024" role="img" :aria-label="currentDress.name+' · '+poses[state.look.pose].name"></canvas>
           <div v-if="loading" class="fw-loading" role="status">正在换装…</div>
           <button v-if="imageError" class="fw-retry" @click="loadModel">服装加载失败，点此重试</button>
         </div>
@@ -21,11 +21,14 @@
         </div>
       </section>
       <aside class="fw-panel">
-        <nav class="fw-tabs" aria-label="衣橱功能"><button v-for="t in tabs" :key="t.id" :class="{active:tab===t.id}" :aria-pressed="tab===t.id" @click="tab=t.id">{{t.name}}<span v-if="t.id==='quests'">{{state.claimed.length}}/8</span></button></nav>
+        <div class="fw-audio-controls"><span>衣橱电台</span><button :aria-pressed="musicOn" @click="toggleMusic">音乐 {{musicOn?'开':'关'}}</button><button :aria-pressed="soundOn" @click="toggleSound">音效 {{soundOn?'开':'关'}}</button></div>
+        <nav class="fw-tabs" aria-label="衣橱功能"><button v-for="t in tabs" :key="t.id" :class="{active:tab===t.id}" :aria-pressed="tab===t.id" @click="tab=t.id">{{t.name}}<span v-if="t.id==='quests'">{{state.claimed.length}}/{{quests.length}}</span></button></nav>
         <div class="fw-panel-content" ref="panel">
           <template v-if="tab==='wardrobe'">
-            <div class="fw-section-title"><div><h2>一件心动，一种心情</h2><p>套装含裙装、鞋袜与配套发饰 · {{state.owned.length}} / 5 已收藏</p></div></div>
-            <div class="fw-filters"><button v-for="f in ['全部','已拥有','待解锁']" :key="f" :class="{active:filter===f}" @click="filter=f">{{f}}</button></div>
+            <div class="fw-section-title"><div><h2>一件心动，一种心情</h2><p>完整服装、鞋袜与配饰 · {{state.owned.length}} / {{outfits.length}} 已收藏</p></div></div>
+            <div class="fw-collection-note"><span>NEW COLLECTION</span><strong>从花间，走向更大的世界</strong><small>国风 · 学院 · 海风 · 长裙礼服</small></div><div class="fw-filters"><button v-for="f in ['全部','已拥有','待解锁']" :key="f" :class="{active:filter===f}" @click="filter=f">{{f}}</button></div>
+            <div class="fw-style-filters" aria-label="服装风格"><button v-for="s in styleTags" :key="s" :class="{active:styleFilter===s}" @click="styleFilter=s">{{s}}</button></div>
+            <p v-if="!filteredDresses.length">这个分类还没有收藏，试试「全部」或「待解锁」。</p>
             <div class="fw-dresses"><article v-for="d in filteredDresses" :key="d.id" class="fw-dress" :class="{selected:displayOutfit===d.id}" :style="{'--dress-color':d.color}">
               <button class="fw-dress-image" :aria-label="'试穿'+d.name" @click="tryDress(d.id)"><img :src="asset(d.id)" :alt="d.name" loading="lazy"><span>{{state.owned.includes(d.id)?(state.look.outfit===d.id?'已穿上':'已拥有'):'可试穿'}}</span></button>
               <div class="fw-dress-copy"><strong>{{d.name}}</strong><small>{{d.tags.join(' · ')}}</small><p>{{d.detail}}</p><button v-if="!state.owned.includes(d.id)" @click="askBuy('outfit',d.id)">✦ {{d.price}} 解锁</button><button v-else @click="tryDress(d.id)">{{state.look.outfit===d.id?'正在穿着':'换上这套'}}</button></div>
@@ -60,36 +63,50 @@
 
 <script>
 import {SAVE_KEY,OUTFITS,SCENES,POSES,QUESTS,asset,item,freshState,normalize,act,localDay,scoreLook,createWorkshop,matchColor,finishWorkshop} from './dressup/engine.mjs'
+import {createModelRenderer} from './dressup/renderer.mjs'
+import {createWardrobeAudio} from './dressup/audio.mjs'
 export default {
-  data:()=>({state:freshState(),outfits:OUTFITS,scenes:SCENES,poses:POSES,quests:QUESTS,tab:'wardrobe',filter:'全部',preview:null,full:false,toast:'',modal:null,photoUrl:'',exporting:false,storageWarning:'',today:'',modelSrc:'',loading:true,imageError:false,workshop:createWorkshop(),workshopMessage:'',palette:[{name:'蔷薇粉',color:'#d99eae'},{name:'薄荷绿',color:'#91bcad'},{name:'星夜蓝',color:'#686990'},{name:'奶油金',color:'#d8ba80'}],tabs:[{id:'wardrobe',name:'衣橱'},{id:'scenes',name:'场景'},{id:'quests',name:'邀请'},{id:'workshop',name:'工坊'},{id:'album',name:'相册'}]}),
+  data:()=>({musicOn:true,soundOn:true,styleFilter:'所有风格',state:freshState(),outfits:OUTFITS,scenes:SCENES,poses:POSES,quests:QUESTS,tab:'wardrobe',filter:'全部',preview:null,full:false,toast:'',modal:null,photoUrl:'',exporting:false,storageWarning:'',today:'',modelSrc:'',loading:true,imageError:false,workshop:createWorkshop(),workshopMessage:'',palette:[{name:'蔷薇粉',color:'#d99eae'},{name:'薄荷绿',color:'#91bcad'},{name:'星夜蓝',color:'#686990'},{name:'奶油金',color:'#d8ba80'}],tabs:[{id:'wardrobe',name:'衣橱'},{id:'scenes',name:'场景'},{id:'quests',name:'邀请'},{id:'workshop',name:'工坊'},{id:'album',name:'相册'}]}),
   computed:{
+    styleTags(){return ['所有风格',...Array.from(new Set(OUTFITS.reduce((tags,d)=>tags.concat(d.tags),[])))]},
     displayOutfit(){return this.preview||this.state.look.outfit},
     currentDress(){return item(OUTFITS,this.displayOutfit)},currentScene(){return item(SCENES,this.state.look.scene)},
     sceneStyle(){return {'--scene-top':this.currentScene.colors[0],'--scene-bottom':this.currentScene.colors[1]}},
     requestedSrc(){return asset(this.displayOutfit,this.state.look.pose)},
-    filteredDresses(){return this.outfits.filter(d=>this.filter==='全部'||(this.filter==='已拥有')===this.state.owned.includes(d.id))}
+    filteredDresses(){return this.outfits.filter(d=>(this.styleFilter==='所有风格'||d.tags.includes(this.styleFilter))&&(this.filter==='全部'||(this.filter==='已拥有')===this.state.owned.includes(d.id)))}
   },
   watch:{requestedSrc(){this.loadModel()}},
   mounted(){
-    this._alive=true;this._loadId=0;this.today=localDay();this.readState();this.loadModel()
+    this._alive=true;this._loadId=0;this._renderer=createModelRenderer(this.$refs.model);this._audio=createWardrobeAudio();this.today=localDay();this.readState();this.loadModel()
+    try{const prefs=JSON.parse(localStorage.getItem('vectorac.wardrobe.audio')||'{}');this.musicOn=prefs.music!==false;this.soundOn=prefs.sound!==false}catch(e){}
+    this._audio.music(this.musicOn);this._audio.effects(this.soundOn)
+    this._repaint=()=>{cancelAnimationFrame(this._paintFrame);this._paintFrame=requestAnimationFrame(()=>{if(this._alive)this._renderer.repaint()})}
+    if(window.ResizeObserver){this._resize=new ResizeObserver(this._repaint);this._resize.observe(this.$refs.model)}
+    window.addEventListener('resize',this._repaint);window.addEventListener('pageshow',this._repaint)
     this._key=e=>{if(e.key==='Escape'){if(this.modal)this.closeModal();else if(this.full)this.toggleFull()}}
     this._storage=e=>{if(e.key===SAVE_KEY){this.readState();this.preview=null}}
-    this._visibility=()=>{if(!document.hidden){this.today=localDay();this.readState()}}
+    this._visibility=()=>{this._audio.pause(document.hidden);if(!document.hidden){this.today=localDay();this.readState();this._repaint()}}
     document.addEventListener('keydown',this._key);document.addEventListener('visibilitychange',this._visibility);window.addEventListener('storage',this._storage)
     this._page=this.$el.closest('.theme-reco-content');if(this._page)this._page.classList.add('fw-page-content')
   },
-  beforeDestroy(){this.closeModal();if(this.full)this.toggleFull();this._alive=false;this._loadId++;clearTimeout(this._toastTimer);document.removeEventListener('keydown',this._key);document.removeEventListener('visibilitychange',this._visibility);window.removeEventListener('storage',this._storage);if(this._page)this._page.classList.remove('fw-page-content');if(this.photoUrl)URL.revokeObjectURL(this.photoUrl)},
+  beforeDestroy(){this.closeModal();if(this.full)this.toggleFull();this._alive=false;this._loadId++;this._renderer.destroy();this._audio.destroy();if(this._resize)this._resize.disconnect();cancelAnimationFrame(this._paintFrame);window.removeEventListener('resize',this._repaint);window.removeEventListener('pageshow',this._repaint);clearTimeout(this._toastTimer);document.removeEventListener('keydown',this._key);document.removeEventListener('visibilitychange',this._visibility);window.removeEventListener('storage',this._storage);if(this._page)this._page.classList.remove('fw-page-content');if(this.photoUrl)URL.revokeObjectURL(this.photoUrl)},
   methods:{asset,item,scoreLook,createWorkshop,
+    unlockAudio(){if(this._audio)this._audio.unlock()},
+    saveAudio(){try{localStorage.setItem('vectorac.wardrobe.audio',JSON.stringify({music:this.musicOn,sound:this.soundOn}))}catch(e){}},
+    toggleMusic(){this.musicOn=!this.musicOn;this._audio.music(this.musicOn);this.saveAudio()},
+    toggleSound(){this.soundOn=!this.soundOn;this._audio.effects(this.soundOn);this.saveAudio()},
     readState(){try{const raw=localStorage.getItem(SAVE_KEY);if(raw)this.state=normalize(JSON.parse(raw))}catch(e){this.storageWarning='暂时无法读取本地存档，本次仍可游玩；请勿清除浏览器数据。'}},
     persist(){try{localStorage.setItem(SAVE_KEY,JSON.stringify(this.state));this.storageWarning=''}catch(e){this.storageWarning='浏览器未能保存进度，刷新可能丢失本次变化。请允许网站存储。'}},
-    perform(action){this.readState();const r=act(this.state,action);this.state=r.state;if(r.ok)this.persist();if(r.message)this.notify(r.message);return r.ok},
+    perform(action){this.readState();const r=act(this.state,action);this.state=r.state;if(r.ok){this.persist();this._audio.play(action.type==='buy'?'buy':action.type==='quest'||action.type==='daily'?'reward':action.type==='pose'?'pose':'dress')}if(r.message)this.notify(r.message);return r.ok},
     notify(text){this.toast=text;clearTimeout(this._toastTimer);this._toastTimer=setTimeout(()=>{this.toast=''},2600)},
-    loadModel(){
+    async loadModel(){
       if(!this._alive)return
       const id=++this._loadId,src=this.requestedSrc;this.loading=true;this.imageError=false
-      const img=new Image();img.onload=()=>{if(!this._alive||id!==this._loadId)return;this.modelSrc=src;this.loading=false};img.onerror=()=>{if(!this._alive||id!==this._loadId)return;this.loading=false;this.imageError=true};img.src=src
+      const result=await this._renderer.show(src)
+      if(!this._alive||id!==this._loadId||result==='stale')return
+      this.loading=false;this.imageError=result==='error';if(result==='ready')this.modelSrc=src
     },
-    tryDress(id){if(this.state.owned.includes(id)){this.preview=null;this.perform({type:'wear',outfit:id})}else this.preview=id},
+    tryDress(id){if(this.state.owned.includes(id)){this.preview=null;this.perform({type:'wear',outfit:id})}else{this.preview=id;this._audio.play('dress')}},
     chooseScene(id){if(this.state.scenes.includes(id))this.perform({type:'scene',id});else this.askBuy('scene',id)},
     openModal(value){this._focus=document.activeElement;this.modal=value;this.$nextTick(()=>{if(this.$refs.overlay){this._modalOverflow=document.body.style.overflow;document.body.style.overflow='hidden';document.body.appendChild(this.$refs.overlay)}if(this.$refs.dialog)this.$refs.dialog.focus()})},
     closeModal(){if(this.modal){if(this.$refs.overlay)this.$refs.root.appendChild(this.$refs.overlay);document.body.style.overflow=this._modalOverflow||''}this.modal=null;if(this.photoUrl){URL.revokeObjectURL(this.photoUrl);this.photoUrl=''}if(this._focus&&this._focus.isConnected)this._focus.focus()},
@@ -98,7 +115,7 @@ export default {
     confirmBuy(){const m=this.modal;if(this.perform({type:'buy',kind:m.itemKind,id:m.id})){this.preview=null;this.closeModal()}},
     saveLook(){if(this.preview)return;this.perform({type:'album',id:Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8)})},
     restoreLook(id){this.preview=null;this.perform({type:'restoreAlbum',id})},
-    pickColor(color){const r=matchColor(this.workshop,color);this.workshop=r.session;this.workshopMessage=r.correct?'这根丝线刚刚好。':'慢慢来，再看看布料的颜色。';if(r.complete){this.readState();const reward=finishWorkshop(this.state,this.workshop);this.state=reward.state;this.workshop=reward.session;this.persist();this.notify('配色完成 · +25 金币')}},
+    pickColor(color){const r=matchColor(this.workshop,color);if(r.correct)this._audio.play(r.complete?'reward':'color');this.workshop=r.session;this.workshopMessage=r.correct?'这根丝线刚刚好。':'慢慢来，再看看布料的颜色。';if(r.complete){this.readState();const reward=finishWorkshop(this.state,this.workshop);this.state=reward.state;this.workshop=reward.session;this.persist();this.notify('配色完成 · +25 金币')}},
     toggleFull(){if(!this.full){this._overflow=document.body.style.overflow;document.body.style.overflow='hidden';this._anchor=document.createComment('flower-wardrobe');this.$el.parentNode.insertBefore(this._anchor,this.$el);document.body.appendChild(this.$el);document.body.classList.add('fw-full-active')}else{document.body.style.overflow=this._overflow||'';if(this._anchor&&this._anchor.parentNode){this._anchor.parentNode.insertBefore(this.$el,this._anchor);this._anchor.remove()}document.body.classList.remove('fw-full-active')}this.full=!this.full},
     showHelp(){this.openModal({kind:'help',title:'欢迎来到花间衣橱',text:'初次来到衣橱可获得 100 金币和「蔷薇初绽」套装。点击衣服试穿，解锁后永久拥有；服装以整套搭配呈现，包含鞋袜与发饰。切换场景与三个姿势，完成邀请中的三个条件即可赚金币。配色工坊可重复游玩，每次奖励 25 金币。喜欢的穿搭可以收藏或保存成图片。无需充值、不限时间。进度只保存在当前浏览器，清除网站数据会丢失存档。'})},
     async takePhoto(){
@@ -106,7 +123,7 @@ export default {
       this.exporting=true
       try{const scene=this.currentScene,dress=this.currentDress,src=this.requestedSrc;const img=await new Promise((resolve,reject)=>{const i=new Image();i.onload=()=>resolve(i);i.onerror=reject;i.src=src});if(!this._alive)return
         const c=document.createElement('canvas');c.width=900;c.height=1200;const x=c.getContext('2d'),g=x.createLinearGradient(0,0,0,1200);g.addColorStop(0,scene.colors[0]);g.addColorStop(1,scene.colors[1]);x.fillStyle=g;x.fillRect(0,0,900,1200);x.strokeStyle='#ffffff99';x.lineWidth=3;x.strokeRect(28,28,844,1144);x.beginPath();x.roundRect(140,90,620,930,300);x.stroke();const h=990,w=img.width/img.height*h;x.drawImage(img,(900-w)/2,85,w,h);x.fillStyle=scene.id==='moon'?'#fff8ed':'#5b4547';x.textAlign='center';x.font='24px serif';x.fillText('花 间 衣 橱',450,65);x.font='32px serif';x.fillText(dress.name,450,1110);x.font='18px sans-serif';x.fillText(scene.name+' · '+POSES[this.state.look.pose].name,450,1145)
-        const blob=await new Promise(resolve=>c.toBlob(resolve,'image/png'));if(!blob)throw new Error('export');if(!this._alive)return;this.photoUrl=URL.createObjectURL(blob);this.openModal({kind:'photo',title:'留住这一刻'})
+        const blob=await new Promise(resolve=>c.toBlob(resolve,'image/png'));if(!blob)throw new Error('export');if(!this._alive)return;this._audio.play('photo');this.photoUrl=URL.createObjectURL(blob);this.openModal({kind:'photo',title:'留住这一刻'})
       }catch(e){if(this._alive)this.notify('照片暂时没能生成，请再试一次')}finally{if(this._alive)this.exporting=false}
     }
   }
@@ -122,4 +139,23 @@ export default {
 @media(max-width:700px){.fw-game{margin:8px 0;border-radius:17px}.fw-header{padding:13px 14px;gap:8px}.fw-header h1{font-size:21px;letter-spacing:2px}.fw-header h1 span{display:none}.fw-header small{font-size:7px;letter-spacing:2px}.fw-header-actions{gap:3px}.fw-header-actions button,.fw-header-actions a{font-size:10px;padding:8px 7px;min-height:36px}.fw-coins{padding:8px 10px;font-size:13px}.fw-coins small{display:none}.fw-layout{display:flex;flex-direction:column;height:auto}.fw-studio{height:540px;min-height:350px;padding:14px 12px 12px}.fw-stage-label{left:16px;top:16px}.fw-stage-label strong{font-size:16px}.fw-stage-label small{font-size:8px}.fw-stage-label>span{font-size:10px}.fw-model-space{padding-top:30px}.fw-panel{border-left:0;border-top:1px solid var(--fw-line);min-height:380px}.fw-panel-content{overflow:visible;padding:18px 15px}.fw-tabs{position:sticky;top:0;z-index:3;background:#fcfaf7;padding:8px 10px 0}.fw-panel-foot{font-size:9px}.fw-dress-image{height:205px!important}.fw-full{margin:0;border-radius:0}.fw-full .fw-header{padding:8px 10px}.fw-full .fw-layout{overflow:hidden}.fw-full .fw-studio{flex:0 0 55%;min-height:230px;height:auto}.fw-full .fw-model-space{padding-top:25px}.fw-full .fw-stage-label{top:10px;left:12px}.fw-full .fw-stage-label strong{font-size:14px}.fw-full .fw-stage-label>span{display:none}.fw-full .fw-panel{flex:1;min-height:0}.fw-full .fw-panel-content{overflow:auto}.fw-full .fw-panel-foot{display:none}.fw-full .fw-stage-bottom{margin-top:3px}.fw-full .fw-poses button{min-height:32px;padding:5px;font-size:10px}.fw-full .fw-photo-actions{margin-top:4px}.fw-full .fw-photo-actions button{min-height:34px;padding:6px}.fw-full .fw-tabs{padding-top:3px}.fw-full .fw-tabs button{padding:9px 3px;min-height:39px}.fw-dialog{padding:26px 22px}}
 @media(max-height:550px) and (orientation:landscape){.fw-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,48%);height:calc(100svh - 90px)}.fw-header{padding:6px 12px}.fw-header h1{font-size:20px}.fw-header h1 span,.fw-header>div>small{display:none}.fw-studio{height:auto;min-height:0;padding:6px 10px}.fw-model-space,.fw-full .fw-model-space{padding-top:0}.fw-stage-label{top:12px;left:12px}.fw-stage-label strong{font-size:13px}.fw-stage-label small,.fw-stage-label>span{display:none}.fw-stage-bottom{max-width:330px;margin-top:0}.fw-poses button{min-height:30px;font-size:10px;padding:4px}.fw-photo-actions,.fw-preview-action{margin-top:3px}.fw-photo-actions button,.fw-preview-action button{min-height:30px;padding:5px;font-size:10px}.fw-panel{min-height:0;border-top:0;border-left:1px solid var(--fw-line)}.fw-panel-content{overflow:auto;padding:12px}.fw-tabs{padding-top:3px}.fw-tabs button{min-height:36px;padding:9px 2px}.fw-panel-foot{display:none}.fw-full .fw-header{padding:4px 12px}.fw-full .fw-layout{display:grid;overflow:hidden}.fw-full .fw-studio{min-height:0}.fw-full .fw-panel{min-height:0}.fw-dress-image{height:165px!important}.fw-header-actions button,.fw-header-actions a{min-height:32px;font-size:10px}.fw-coins{padding:5px 12px}}
 @media(prefers-reduced-motion:reduce){.fw-game *{transition:none!important}}
+
+/* Absolute canvas inside a definite flex slot avoids intrinsic-image sizing cycles on rotation. */
+.fw-model-space{flex:1 1 0;min-height:0}
+.fw-model{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;filter:none;pointer-events:none}
+.fw-dress-image img{pointer-events:none}
+.fw-game h2:before,.fw-game h2:after{display:none!important}
+.fw-audio-controls{display:flex;align-items:center;justify-content:flex-end;gap:6px;padding:8px 14px;background:#f4ede5;border-bottom:1px solid var(--fw-line);flex:none}
+.fw-audio-controls>span{margin-right:auto;color:#98767d;font-size:11px}
+.fw-audio-controls button{min-height:30px;font-size:11px;padding:5px 10px;border-radius:20px}
+.fw-audio-controls button[aria-pressed=true]{background:#e7eee4;color:#53705c}
+.fw-collection-note{padding:14px 16px;margin-bottom:15px;border:1px solid #e7d6ca;border-radius:14px;background:linear-gradient(120deg,#f4e4df,#eee9db);display:grid;gap:5px}
+.fw-collection-note span{font-size:8px;letter-spacing:2px;color:#b28783}.fw-collection-note strong{font-family:serif;font-size:16px;font-weight:500}.fw-collection-note small{font-size:10px;color:#9a8582}
+.fw-style-filters{display:flex;gap:5px;overflow:auto;margin:0 0 15px;padding-bottom:4px}
+.fw-style-filters button{white-space:nowrap;min-height:30px;padding:5px 9px;font-size:10px;flex:none;background:transparent;border:0}
+.fw-style-filters button.active{background:#e8ebe0;color:#526f59}
+.fw-scene-sea .fw-scene-decor{border-radius:48% 48% 8px 8px;background:linear-gradient(0deg,#90c2cc55 0 22%,transparent 23%);}
+.fw-scene-gallery .fw-scene-decor{border-radius:0;border:5px double #c5a16388;box-shadow:inset 0 0 0 12px #fff3dd55}
+@media(max-width:700px){.fw-full .fw-studio{flex-basis:53%}.fw-audio-controls{padding:5px 10px}.fw-audio-controls button{min-height:28px}.fw-collection-note{padding:10px 12px}}
+@media(max-height:550px) and (orientation:landscape){.fw-model-space{padding:0}.fw-full .fw-studio{height:100%;min-height:0}.fw-audio-controls{padding:3px 10px}.fw-audio-controls button{min-height:26px;padding:4px 8px}.fw-collection-note{display:none}}
 </style>

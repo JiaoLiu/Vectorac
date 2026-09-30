@@ -4,13 +4,20 @@ export const OUTFITS = [
   {id:'mint', name:'薄荷花信', price:140, color:'#86b6a6', tags:['自然','清新'], detail:'雏菊刺绣 · 薄荷缎带 · 奶油蕾丝', story:'穿过花园，裙摆也沾上清晨的露水。'},
   {id:'rose', name:'红丝绒茶会', price:200, color:'#93445c', tags:['古典','茶会'], detail:'酒红织锦 · 珍珠垂链 · 宫廷花边', story:'下午四点，赴一场只属于自己的茶会。'},
   {id:'night', name:'星河来信', price:260, color:'#535477', tags:['梦幻','星光'], detail:'金线星图 · 星月薄纱 · 宝石蝴蝶结', story:'把夜空的星星，悄悄收进衣橱。'},
-  {id:'ice', name:'雪境圆舞曲', price:300, color:'#9bbfce', tags:['梦幻','清新'], detail:'银丝雪花 · 冰蓝欧根纱 · 珍珠点缀', story:'不必等到冬天，也能跳一支雪中的舞。'}
+  {id:'ice', name:'雪境圆舞曲', price:300, color:'#9bbfce', tags:['梦幻','清新'], detail:'银丝雪花 · 冰蓝欧根纱 · 珍珠点缀', story:'不必等到冬天，也能跳一支雪中的舞。'},
+  {id:'hanfu', name:'桃枝春信', price:220, color:'#c9938d', tags:['国风','自然'], detail:'交领绣花 · 宽袖轻纱 · 桃色长裙', story:'桃花开时，赴一场春日之约。'},
+  {id:'academy', name:'书页与风', price:160, color:'#626d84', tags:['学院','古典'], detail:'奶油西装 · 金色纽扣 · 藏蓝阔腿裤', story:'把诗集夹在臂弯，让风翻开新的一页。'},
+  {id:'sailor', name:'海盐晴空', price:160, color:'#709bae', tags:['海风','清新'], detail:'水手方领 · 缎带领结 · 清爽百褶', story:'晴空、海风和不急着归来的午后。'},
+  {id:'wisteria', name:'紫藤轻梦', price:240, color:'#a189b3', tags:['梦幻','自然'], detail:'紫藤刺绣 · 轻盈雪纺 · 飘逸长裙', story:'花影落在裙摆上，连脚步也轻了。'},
+  {id:'champagne', name:'金色序曲', price:280, color:'#b79a63', tags:['礼服','古典'], detail:'香槟缎面 · 金线枝叶 · 长裙礼服', story:'不必等待盛大的舞会，今天就值得闪耀。'}
 ]
 export const SCENES = [
   {id:'atelier',name:'晨光衣帽间',price:0,colors:['#f7e9dc','#e6cbbb'],tag:'茶会'},
   {id:'garden',name:'花园来风',price:60,colors:['#e5eee1','#b3cebe'],tag:'自然'},
   {id:'moon',name:'月下露台',price:100,colors:['#424862','#a8a2c4'],tag:'星光'},
-  {id:'snow',name:'冬日玻璃屋',price:100,colors:['#e6f3f5','#b7d2e2'],tag:'清新'}
+  {id:'snow',name:'冬日玻璃屋',price:100,colors:['#e6f3f5','#b7d2e2'],tag:'清新'},
+  {id:'sea',name:'海边假日',price:70,colors:['#d8edf0','#b9d5d6'],tag:'海风'},
+  {id:'gallery',name:'金色画廊',price:80,colors:['#f3e6cf','#d4b992'],tag:'古典'}
 ]
 export const POSES = [{id:0,name:'静静站立'},{id:1,name:'优雅侧身'},{id:2,name:'轻轻问好'}]
 export const QUESTS = [
@@ -21,7 +28,11 @@ export const QUESTS = [
   {id:'star',name:'寄给星星',text:'星光风裙装，在月下露台轻轻问好。',tag:'星光',scene:'moon',pose:2,reward:200},
   {id:'winter',name:'雪落无声',text:'清新风裙装，在冬日玻璃屋静静站立。',tag:'清新',scene:'snow',pose:0,reward:150},
   {id:'dream',name:'冬日圆舞曲',text:'梦幻风裙装，在冬日玻璃屋优雅侧身。',tag:'梦幻',scene:'snow',pose:1,reward:160},
-  {id:'bloom',name:'花间的你',text:'甜美风裙装，在花园里轻轻问好。',tag:'甜美',scene:'garden',pose:2,reward:120}
+  {id:'bloom',name:'花间的你',text:'甜美风裙装，在花园里轻轻问好。',tag:'甜美',scene:'garden',pose:2,reward:120},
+  {id:'peach',name:'桃花笺',text:'国风服装，在花园里优雅侧身。',tag:'国风',scene:'garden',pose:1,reward:200},
+  {id:'study',name:'书店漫游',text:'学院服装，在晨光里静静站立。',tag:'学院',scene:'atelier',pose:0,reward:160},
+  {id:'sailing',name:'海边明信片',text:'海风服装，在海边假日轻轻问好。',tag:'海风',scene:'sea',pose:2,reward:200},
+  {id:'gala',name:'画廊晚宴',text:'礼服风装扮，在金色画廊优雅侧身。',tag:'礼服',scene:'gallery',pose:1,reward:220}
 ]
 const ids = xs => xs.map(x=>x.id)
 const int = (v,max=1000000) => Number.isSafeInteger(v)&&v>=0 ? Math.min(v,max) : 0
