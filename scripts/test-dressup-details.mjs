@@ -6,15 +6,23 @@ import {freshState,normalize,act} from '../.vuepress/components/dressup/engine.m
 import {DEFAULT_PARTS,FREE_PARTS,fineTags,PARTS,partAsset,partThumbnail,fitIndex} from '../.vuepress/components/dressup/parts.mjs'
 import {EDITIONS} from '../.vuepress/components/dressup/collections.mjs'
 import {STYLES} from '../.vuepress/components/dressup/styles.mjs'
+import {ACCESSORIES} from '../.vuepress/components/dressup/accessories.mjs'
 import {memoryGame,flipMemory,closeMemory,stylingGame,submitStyling,sewingGame,stitch,gameReward} from '../.vuepress/components/dressup/minigames.mjs'
 import {faceSampleX} from '../.vuepress/components/dressup/face-fit.mjs'
 test('six genuinely new garment cuts have separate wearable/design assets, not more colour editions',()=>{
  assert.equal(STYLES.length,12)
- for(const p of STYLES){assert.equal(p.material,undefined);assert.equal(p.sourceIndex,undefined);assert.ok(partAsset(p).includes('/v10/'));assert.ok(partThumbnail(p).includes('/v10/catalog/'));assert.notEqual(partAsset(p),partThumbnail(p));assert.ok(!EDITIONS.some(q=>q.id===p.id))}
+ for(const p of STYLES){assert.equal(p.material,undefined);assert.equal(p.sourceIndex,undefined);assert.ok(partAsset(p).includes(p.category==='bottom'?'/v11/':'/v10/'));assert.ok(partThumbnail(p).includes('/v10/catalog/'));assert.notEqual(partAsset(p),partThumbnail(p));assert.ok(!EDITIONS.some(q=>q.id===p.id))}
  assert.equal(new Set(STYLES.map(partAsset)).size,12)
- assert.ok(underbodySource({...DEFAULT_PARTS,bottom:'bottom-17'}).endsWith('/v10/underbody.webp'))
+ assert.ok(underbodySource({...DEFAULT_PARTS,bottom:'bottom-17'}).endsWith('/v11/underbody.webp'))
  let s={...freshState(),coins:1000};s=act(s,{type:'buy',kind:'part',id:'top-12'}).state;s=act(s,{type:'buy',kind:'part',id:'bottom-17'}).state
  const look=JSON.stringify(s.look);s=act(s,{type:'part',id:'brows-3'}).state;assert.equal(s.look.parts.top,'top-12');assert.equal(s.look.parts.bottom,'bottom-17');s=normalize(JSON.parse(JSON.stringify(s)));assert.equal(s.look.parts.top,'top-12');assert.notEqual(JSON.stringify(s.look),look)
+})
+test('twelve new accessory cuts purchase and persist without resetting clothing or older ownership',()=>{
+ assert.equal(ACCESSORIES.length,12)
+ for(const category of ['hair','headpiece','hat','earrings','socks','shoes'])assert.equal(ACCESSORIES.filter(p=>p.category===category).length,2)
+ let s={...freshState(),coins:2000}
+ for(const p of ACCESSORIES){assert.ok(partAsset(p).includes('/v11/'));assert.ok(partThumbnail(p).includes('/v11/catalog/'));assert.notEqual(partAsset(p),partThumbnail(p));s=act(s,{type:'buy',kind:'part',id:p.id}).state;assert.ok(s.ownedParts.includes(p.id));assert.equal(s.look.parts[p.category],p.id);assert.equal(s.look.parts.top,DEFAULT_PARTS.top)}
+ const saved=normalize(JSON.parse(JSON.stringify(s)));assert.deepEqual(saved.look,s.look);assert.deepEqual(saved.ownedParts,s.ownedParts)
 })
 test('32 editions reuse registered assets, independent product designs and existing fit indices',()=>{
  assert.equal(EDITIONS.length,32);assert.equal(new Set(PARTS.map(p=>p.id)).size,PARTS.length)
@@ -102,5 +110,5 @@ test('old fine saves and albums gain independent eyes without losing purchased s
  let s=normalize({...freshState(),coins:678,ownedParts:[...FREE_PARTS,'top-3','socks-1'],look:{mode:'fine',parts},albums:[{id:'existing',look:{mode:'fine',parts}}]})
  assert.equal(s.coins,678);assert.equal(s.look.parts.eyes,'eyes-0');assert.equal(s.albums[0].look.parts.eyes,'eyes-0')
  s=act(s,{type:'part',id:'eyes-2'}).state;assert.equal(s.look.parts.top,'top-3');assert.equal(s.look.parts.face,'face-2');assert.equal(s.look.parts.socks,'socks-1');assert.equal(s.albums[0].look.parts.eyes,'eyes-0')
- const socks=PARTS.filter(p=>p.category==='socks'&&p.index>=0);assert.equal(socks.length,6);assert.ok(socks.some(p=>p.name.includes('短袜')));assert.ok(socks.some(p=>p.name.includes('中筒')));assert.ok(socks.some(p=>p.name.includes('过膝')))
+ const socks=PARTS.filter(p=>p.category==='socks'&&p.index>=0);assert.equal(socks.length,8);assert.ok(socks.some(p=>p.name.includes('短袜')));assert.ok(socks.some(p=>p.name.includes('中筒')));assert.ok(socks.some(p=>p.name.includes('过膝')))
 })

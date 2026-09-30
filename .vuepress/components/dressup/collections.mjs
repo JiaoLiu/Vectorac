@@ -38,3 +38,6 @@ export const EDITIONS=[
  edition('earrings',6,2,'海蓝宝耳坠',30,'清新','#73a4b0'),
  edition('earrings',7,3,'紫莓爱心耳钉',20,'梦幻','#a278ac')
 ]
+// The crown is silver/pearl rather than saturated textile. Tint its metal
+// midtones too, while retaining white pearl highlights and its exact alpha.
+EDITIONS.find(p=>p.id==='hat-9').material.metal=true

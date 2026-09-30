@@ -22,7 +22,7 @@ for(const [name,engine] of [['chromium',chromium],['webkit',webkit]]){
    // browsing the list; waiting for off-screen lazy images would never finish.
    for(const image of await page.locator('.fw-part-preview img').all())await image.scrollIntoViewIfNeeded()
    await page.waitForFunction(()=>Array.from(document.querySelectorAll('.fw-part-preview img')).every(i=>i.complete&&i.naturalWidth>0)&&Array.from(document.querySelectorAll('.fw-design-canvas')).every(c=>c.dataset.ready==='true'))
-   assert.ok(await page.locator('.fw-part-preview img').evaluateAll(es=>es.every(i=>/\/v(?:7|9|10)\/catalog\//.test(i.src))),'all item cards use independent catalogue art')
+   assert.ok(await page.locator('.fw-part-preview img').evaluateAll(es=>es.every(i=>/\/v(?:7|9|10|11)\/catalog\//.test(i.src))),'all item cards use independent catalogue art')
    if(['上衣','下装','帽子','耳环','脸型','眼睛','眉毛'].includes(category))await page.screenshot({path:join(out,`${name}-catalog-${category}.png`)})
   }
   const looks=[
@@ -50,6 +50,8 @@ for(const [name,engine] of [['chromium',chromium],['webkit',webkit]]){
    {top:'top-7',bottom:'bottom-7',hair:'hair-1',hat:'hat-5',headpiece:'headpiece-none',earrings:'earrings-4'}
   )
   for(let i=12;i<18;i++)looks.push({top:'top-'+i,bottom:'bottom-'+i,hair:'hair-'+(i%4),brows:'brows-'+(2+i%2),hat:'hat-none',headpiece:'headpiece-none',socks:'socks-none'})
+  for(const hair of ['hair-4','hair-5'])for(const hat of ['hat-none','hat-10','hat-11','hat-9'])looks.push({hair,hat,headpiece:hat==='hat-none'?'headpiece-11':'headpiece-10',earrings:'earrings-8',socks:'socks-6',shoes:'shoes-4'})
+  looks.push({hair:'hair-5',hat:'hat-10',headpiece:'headpiece-none',earrings:'earrings-9',socks:'socks-7',shoes:'shoes-5'})
   for(let i=0;i<looks.length;i++){
    const look=looks[i];await game.evaluate((e,p)=>Object.values(p).forEach(id=>e.__vue__.choosePart(id)),look)
    await page.waitForFunction(p=>{const vm=document.querySelector('.fw-game').__vue__,src=document.querySelector('.fw-model').dataset.src||'';return !vm.loading&&Object.values(p).every(id=>src.includes('"'+id+'"'))},look)

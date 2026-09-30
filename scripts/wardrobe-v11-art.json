@@ -1,0 +1,219 @@
+{
+  "generator": "Built-in imagegen; source poses registered to the original master",
+  "assets": [
+    {
+      "id": "hair-4",
+      "kind": "hair",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-80f3be7c-1c8b-4728-8fc7-722c3721bb8b.png",
+      "prompt": "Edit Image 1 only as a registered HAIR layer: replace the short bob with warm chestnut twin braids, a softly side-parted crown and small natural face-framing wisps. Braids fall on either side to upper chest. Keep the identical crown/hairline positions, head scale and full 1:2 canvas registration. Do not leave ear cutouts: strands naturally continue behind ears. Return ONLY the entire hairstyle on genuine transparent background; the existing transparent face window remains, no skin, face, ears, clothing or white fill. Do not shift or resize the top of the hairstyle or change pose. Premium semi-realistic painted fashion-game hair."
+    },
+    {
+      "id": "hair-5",
+      "kind": "hair",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-f4ec1c3a-ec8e-4fe6-abe0-da1d90afe76d.png",
+      "prompt": "Edit Image 1 only as a registered HAIR layer: replace long waves with smooth warm dark-brown long straight hair with natural wispy curtain bangs and subtly inward-curled ends. The curtain fringe sits at the existing hairline, does not obscure eyes. Hair falls continuously at either side over the shoulders to waist. Keep the identical crown/hairline positions, head scale and full 1:2 canvas registration. Do not leave ear cutouts: strands naturally continue behind ears. Return ONLY the entire hairstyle on genuine transparent background; the existing transparent face window remains, no skin, face, ears, clothing or white fill. Do not shift or resize the top of the hairstyle or change pose. Premium semi-realistic painted fashion-game hair."
+    },
+    {
+      "id": "hat-3-fixed",
+      "kind": "hat",
+      "item": "hat-3",
+      "dest": [
+        207,
+        35,
+        98,
+        38
+      ],
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-3ee06540-ef15-4a7c-9680-01cfb6c2aad9.png",
+      "prompt": "Precise object edit of Image 1 registered 512x1024 crown-only sprite. REMOVE the solid peach/pink semicircular forehead skin patch BELOW the moon-and-pearl crown and turn that patch fully transparent. Preserve ONLY the metal moon and delicate pearled crown arch above it, with their original detailed silhouette, placement, size and colours unchanged. Full identical tall 1:2 transparent canvas, absolutely no face, forehead, hair, matte, skin patch, white backing or text. This is an alpha-cleanup edit, not a redesign."
+    },
+    {
+      "id": "hat-10",
+      "kind": "hat",
+      "dest": [
+        180,
+        14,
+        153,
+        84
+      ],
+      "cap": true,
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-2f84447e-a4b1-4005-9264-cd1e7d6827ef.png",
+      "prompt": "Use case: identity-preserve. Image 1 gives the exact adult mannequin and full-body canvas registration. Draw ONLY a sage-green soft felt cloche hat with a narrow brim and ivory silk ribbon fitted naturally on this exact head. Crown of hat hugs the top of this scalp, brim above eyes, not oversized. Keep the original full-body 1:2 transparent canvas and exact anatomical positions. Return HAT ONLY at the original on-head location. No mannequin, head, forehead, skin, hair, ears, clothing, shadows outside the object, white fill or text. Premium semi-realistic painted fashion-game accessory."
+    },
+    {
+      "id": "hat-11",
+      "kind": "hat",
+      "dest": [
+        279,
+        24,
+        75,
+        55
+      ],
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-6c62669c-59b2-451d-b5a6-84ebb9f1d494.png",
+      "prompt": "Use case: identity-preserve. Image 1 gives the exact adult mannequin and full-body canvas registration. Draw ONLY a small plum velvet fascinator pillbox hat with ivory fine tulle veil and one delicate silver butterfly, worn tilted on the model's right crown above her temple. Veil stays ABOVE eyebrows and does NOT hang over her face. Compact charming tea-party design, not a big tall hat. Keep original full-body 1:2 transparent canvas and exact anatomical positions. Return HAT ONLY at the original on-head location. No mannequin, head, forehead, skin, hair, ears, clothing, white fill or text. Premium semi-realistic painted fashion-game accessory."
+    },
+    {
+      "id": "shoes-4",
+      "kind": "shoe",
+      "pair": true,
+      "dest": [
+        [
+          208,
+          882,
+          44,
+          106
+        ],
+        [
+          260,
+          882,
+          44,
+          106
+        ]
+      ],
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-f39299f0-d0f6-46a0-8c74-ae7e971ad692.png",
+      "prompt": "Edit Image 1 only as a registered SHOES layer: replace these pink Mary Janes with ivory satin ballet flats, small pearl bows at the toes, delicate crossed satin ribbons around ankles. Keep the identical two feet positions, front-view sole perspective, adult foot width and foot-to-foot gap, and full 1:2 canvas registration. The flats cover all toes and ends of feet, no actual bare toes. Ribbons climb only to just above the ankles. Return ONLY the shoes and ribbons on genuine transparency, NO skin, feet, legs, socks, white instep patches, text or background. The shoe openings must be genuine transparent holes. Premium fashion-game painting."
+    },
+    {
+      "id": "shoes-5",
+      "kind": "boot",
+      "start": 810,
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-3c60801c-4771-406e-96e5-d00c3439ba21.png",
+      "prompt": "Edit Image 1 only as a registered SHOES layer: replace short black boots with cream leather lace-up MID-CALF boots with neat gold eyelets and slim modest low heels, scalloped cuffs. Shafts reach mid-calf, not knees, toes completely enclosed. Keep identical two feet positions, front-view sole perspective, adult foot width and foot-to-foot gap, and full 1:2 canvas registration. Return ONLY the complete boots on genuine transparency, NO skin, feet, legs, socks, white fill, text or background. Premium fashion-game painting."
+    },
+    {
+      "id": "socks-6",
+      "kind": "sock",
+      "start": 715,
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-bfb7ba9e-f929-4a28-95a5-73f4baf073bd.png",
+      "prompt": "Edit Image 1 only as a registered SOCKS layer: replace these thin lace socks with smoky sky-blue MID-CALF opaque knitted socks, tiny silver stars, ribbed turned-over cuffs. Both socks start just below the knee at the same height, fully cover the calves and feet. Preserve identical lower-leg and foot positions, shape, perspective, body scale and full 1:2 canvas registration. Return ONLY two complete socks BELOW their cuffs on transparency. Nothing above cuffs. NO naked skin, thighs, kneecaps, white fill, text or background. Premium fashion-game painting, realistic cloth not transparent body skin."
+    },
+    {
+      "id": "socks-7",
+      "kind": "sock",
+      "start": 550,
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-8f5df7a0-5c25-43d4-a631-40fd2be18632.png",
+      "prompt": "Edit Image 1 only as a registered SOCKS layer: replace thin lace hosiery with ivory opaque OVER-KNEE cable-knit stockings with slender vertical ribbing and small chocolate-brown side bows at the cuffs. Both start at the existing thigh-high lace cuffs. Fully cover thighs BELOW cuffs, knees, calves, feet and toes. Preserve identical legs and feet positions, shape, perspective, body scale and full 1:2 canvas registration. Return ONLY complete two stockings on transparency. NO naked skin, white skin fill, text or background. Premium fashion-game painting, visible knitted fibre texture."
+    },
+    {
+      "id": "headpiece-10",
+      "kind": "jewellery",
+      "dest": [
+        289,
+        50,
+        40,
+        52
+      ],
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-abf90b46-7971-4902-bfb4-57a2728b652d.png",
+      "prompt": "ONE premium standalone fashion-game product design of an ivory-and-lavender silk ribbon hair comb with tiny wildflowers and a small pearl centre. Compact elegant side hair ornament with short flowing ribbon tails, not a hat. Complete front three-quarter product art, polished fine painted silk and metal. Genuine transparent background, ample margins, NO head, hair, mannequin, body, skin, rectangular fill, text, watermark or cast shadows."
+    },
+    {
+      "id": "headpiece-11",
+      "kind": "jewellery",
+      "dest": [
+        209,
+        37,
+        94,
+        29
+      ],
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-5b1e8aef-dcca-4b02-9f14-22bc7e358b47.png",
+      "prompt": "ONE premium standalone fashion-game product design of a delicate curved pearl headband with three small five-point silver stars and tiny blue gemstones, arranged like a low arc wrapping over the top of a head. Very thin tasteful band with NO solid dome or cap. Full front view, polished fine painted jewellery. Genuine transparent background, ample margins, NO head, hair, forehead, body, skin, white fill, text, watermark or cast shadows."
+    },
+    {
+      "id": "earrings-8",
+      "kind": "jewellery",
+      "pair": true,
+      "dest": [
+        [
+          214,
+          132,
+          12,
+          26
+        ],
+        [
+          286,
+          132,
+          12,
+          26
+        ]
+      ],
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-18cfd034-00d2-4c39-9a3e-77619b890edc.png",
+      "prompt": "ONE matching symmetrical PAIR of premium silver butterfly drop earrings: small pale lavender gem studs at top, fine silver butterflies and one short pearl drop below. Delicate finished boutique jewellery design, front view, left and right earrings clearly separated with ample gap, same size, vertically aligned. Genuine transparent background, no ears, head, skin, hair, mannequin, white fill, text, watermark or cast shadows. Semi-realistic painted fashion-game design."
+    },
+    {
+      "id": "earrings-9",
+      "kind": "jewellery",
+      "pair": true,
+      "dest": [
+        [
+          216,
+          132,
+          8,
+          13
+        ],
+        [
+          288,
+          132,
+          8,
+          13
+        ]
+      ],
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-9b738bc5-845e-42cd-9e17-20820cd69270.png",
+      "prompt": "ONE matching symmetrical PAIR of premium tiny amber teardrop stud earrings in fine gold settings with delicate leaf prongs. Compact rounded studs, not long chandelier earrings. Delicate finished boutique jewellery design, front view, left and right clearly separated with ample gap, same size, vertically aligned. Genuine transparent background, no ears, head, skin, hair, mannequin, white fill, text, watermark or cast shadows. Semi-realistic painted fashion-game design."
+    },
+    {
+      "id": "catalog-hair-4",
+      "kind": "catalog",
+      "item": "hair-4",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-d078f25b-9dc7-4812-94db-2e9665b3759e.png",
+      "prompt": "A premium original boutique hairstyle DESIGN portrait: warm chestnut twin braids with softly side-parted crown and natural wisps, both braids on chest, presented on a tasteful neutral display bust. Complete hairstyle with ample margins, no actual game-model crop. Semi-realistic softly painted fashion-game illustration, elegant balanced catalogue product design, no text or logos, genuine transparent background."
+    },
+    {
+      "id": "catalog-hair-5",
+      "kind": "catalog",
+      "item": "hair-5",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-421f3cdd-000c-4d9c-8e60-01f8cc2375c7.png",
+      "prompt": "A premium original boutique hairstyle DESIGN portrait: smooth warm dark brown long straight hair, wispy curtain bangs and softly inward-curled ends, presented on a tasteful neutral display bust. Complete hairstyle with ample margins, no actual game-model crop. Semi-realistic softly painted fashion-game illustration, elegant balanced catalogue product design, no text or logos, genuine transparent background."
+    },
+    {
+      "id": "catalog-hat-10",
+      "kind": "catalog",
+      "item": "hat-10",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-5372e054-182a-470f-bbd1-5cd87f8e6f4b.png",
+      "prompt": "Premium original boutique product DESIGN artwork of one sage green felt cloche hat with narrow downturned brim and ivory silk ribbon bow. Complete standalone hat viewed elegantly three-quarter front, fine fabric and natural craftsmanship, centred with generous margins, semi-realistic painted fashion-game illustration. NO mannequin, head, skin, game screenshot, text or white inset background, genuine transparent background."
+    },
+    {
+      "id": "catalog-hat-11",
+      "kind": "catalog",
+      "item": "hat-11",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-0955e789-940f-436f-a6c6-d7f70c26cfda.png",
+      "prompt": "Premium original boutique product DESIGN artwork of one small plum velvet pillbox fascinator hat with airy ivory tulle veil, silk loops and one delicate silver butterfly. Complete standalone hat viewed elegantly three-quarter front, fine fabric and natural craftsmanship, centred with generous margins, semi-realistic painted fashion-game illustration. NO mannequin, head, skin, game screenshot, text or white inset background, genuine transparent background."
+    },
+    {
+      "id": "catalog-shoes-4",
+      "kind": "catalog",
+      "item": "shoes-4",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-96f8f53c-15db-44d9-9e99-17986c5b2283.png",
+      "prompt": "A matching PAIR of ivory satin ballet flats with small pearl bows on toes and elegant crossed ankle ribbons, as complete boutique product DESIGN art. Shoes gently angled in a natural three-quarter product view, both complete, neatly arranged, no body or feet inside, no long vertical cutout remnants. Rich satin and pearl craftsmanship, semi-realistic painted fashion-game illustration, centred with ample margins on genuine transparency. No text, logos, cast shadow, or white inset."
+    },
+    {
+      "id": "catalog-shoes-5",
+      "kind": "catalog",
+      "item": "shoes-5",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-da5460c3-2a5f-4a6c-8188-564f60ae31dd.png",
+      "prompt": "A matching PAIR of cream leather lace-up mid-calf boots with slim low heels, gold eyelets, small lace bows and scalloped cuffs, as complete boutique product DESIGN art. Gently angled natural three-quarter product view, both complete, neatly arranged, no legs or feet inside, no long cutout remnants. Rich leather craftsmanship, semi-realistic painted fashion-game illustration, centred with ample margins on genuine transparency. No text, logos, cast shadow, or white inset."
+    },
+    {
+      "id": "catalog-socks-6",
+      "kind": "catalog",
+      "item": "socks-6",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-88e7267e-19a2-477f-bee8-b56bda94f936.png",
+      "prompt": "A matching PAIR of smoky sky-blue knitted mid-calf socks with folded ribbed cuffs and tiny silver stars, elegantly laid flat as complete boutique textile product DESIGN artwork, slightly angled for natural presentation. Finished rounded toes, visible fine knitted fibres, complete socks not a crop from legs. Semi-realistic painted fashion-game illustration, balanced ample margins, genuine transparency. No skin, legs, mannequin, text, logos, cast shadow, or white inset."
+    },
+    {
+      "id": "catalog-socks-7",
+      "kind": "catalog",
+      "item": "socks-7",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-b64341a6-e51b-4215-9383-323da5a40c32.png",
+      "prompt": "A matching PAIR of ivory over-knee cable-knit stockings with slender vertical ribs and small chocolate-brown side bows at cuffs, elegantly laid flat as complete boutique textile product DESIGN artwork, slightly angled for natural presentation. Finished rounded toes, visible fine knitted fibres, complete stockings not a crop from legs. Semi-realistic painted fashion-game illustration, balanced ample margins, genuine transparency. No skin, legs, mannequin, text, logos, cast shadow, or white inset."
+    }
+  ]
+}

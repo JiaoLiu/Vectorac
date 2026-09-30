@@ -60,7 +60,7 @@ try{
   async function draw(parts){for(const src of layerSources(parts))if(!cache.has(src))cache.set(src,await new Promise((ok,bad)=>{const i=new Image;i.onload=()=>ok(i);i.onerror=bad;i.src=src}));paintComposite(ctx,cache,parts)}
   // Every face / hair pair: eyebrow selection must leave the whole forehead,
   // hairline and eyes byte-for-byte unchanged, not merely retain some alpha.
-  for(let face=0;face<4;face++)for(let hair=0;hair<4;hair++){
+  for(let face=0;face<4;face++)for(let hair=0;hair<6;hair++){
    const look={...defaults,face:'face-'+face,hair:'hair-'+hair,brows:'brows-0'}
    await draw(look);const before=ctx.getImageData(0,0,512,1024).data
    const pigment=document.createElement('canvas');pigment.width=512;pigment.height=1024;const pc=pigment.getContext('2d'),{PARTS,partAsset}=await import('/parts.mjs');pc.drawImage(cache.get(partAsset(PARTS.find(p=>p.id==='brows-0'))),0,0);const original=pc.getImageData(0,0,512,1024).data
@@ -79,7 +79,8 @@ try{
    const crop=document.createElement('canvas');crop.width=230;crop.height=190;crop.getContext('2d').drawImage(canvas,141,5,230,190,0,0,230,190);hats.push(crop.toDataURL().split(',')[1])
   }
   const caps=[]
-  const capPixels=[];for(let hat=0;hat<2;hat++){const c=document.createElement('canvas');c.width=512;c.height=1024;c.getContext('2d').drawImage(cache.get('/img/games/dressup/layers/v7/hat-'+hat+'.webp'),0,0);capPixels.push(c.getContext('2d').getImageData(0,0,512,1024).data)}
+  const {PARTS:hatParts,partAsset:hatAsset}=await import('/parts.mjs')
+  const capPixels=[];for(let hat=0;hat<2;hat++){const c=document.createElement('canvas');c.width=512;c.height=1024;c.getContext('2d').drawImage(cache.get(hatAsset(hatParts.find(p=>p.id==='hat-'+hat))),0,0);capPixels.push(c.getContext('2d').getImageData(0,0,512,1024).data)}
   for(let hair=0;hair<4;hair++)for(let face=0;face<4;face++){
    const look={...defaults,hair:'hair-'+hair,face:'face-'+face}
    await draw(look);const before=ctx.getImageData(0,0,512,1024).data

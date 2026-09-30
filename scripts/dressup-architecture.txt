@@ -4,7 +4,7 @@ VuePress page: blogs/other/flower_wardrobe.md; Vue 2 component: FlowerWardrobe.v
 Pure state/economy: dressup/engine.mjs. All item IDs, prices, tags and quest rewards are data.
 Art: fourteen original complete outfits x three separately illustrated poses. Changing garments uses
 full outfit sprites, so sleeves, hair, skirt and hands maintain correct occlusion in every pose.
-Fine wardrobe: separate neutral-standing model, 12 component categories and 99 selectable options.
+Fine wardrobe: separate neutral-standing model, 12 component categories and 111 selectable options.
 V5 art starts from one blank-feature full-body master. Clothes, footwear, hair and socks are
 generated already worn on that exact model, then extracted on a shared 512x1024 canvas.
 No runtime alpha-bound fitting, product-shoe scaling or flat-color eyebrow cover patches.
@@ -28,11 +28,23 @@ Six new patterns (v10) add 6 tops and 6 skirts, each in one colour: crystal
 princess, butterfly petals, strawberry tea party, cable-knit academy, forest
 wrap and jade lotus. Existing originals and material editions are unchanged.
 Product boards are independently generated illustrations, not worn-model crops.
-New skirt skin uses a neutral registered underbody; near-white chiffon must
+New skirts use only exposed legs below y=490 in their neutral underbody; near-white chiffon must
 never be treated as exposed legs. New cuts are tested against all original cuts.
 Two replacement brows use natural hair pigment only, fitted to the actual brow
 landmarks; non-pigment forehead/hair/eye pixels are compared byte-for-byte for
 every face/hair pair. Sources, prompts and landmarks: wardrobe-v10-art.json.
+V11 adds two new designs each for hair, headpieces, hats, earrings, socks and shoes.
+Independent product illustrations remain separate from registered wearing sprites.
+The new skirts cover the complete master waist/hip silhouette on both sides;
+v11 replaces only their wearables, leaving their v10 product designs unchanged.
+Crown and straw-hat forehead matte islands are removed without touching hair/face.
+Rose-gold crown dye includes silver-metal midtones, retaining pearl highlights.
+Stockings and boots follow master calf/ankle/foot landmarks; shoe opening heights
+clip stockings without obscuring them inside ballerina instep windows.
+Sources, prompts and attachment landmarks: scripts/wardrobe-v11-art.json.
+Actual model matrices: 72 hat/hair, 48 crown/face/hair, 24 jewellery/hair,
+54 shoe/sock and 108 top/new-skirt combinations in test-dressup-accessories.mjs;
+168 cap/face/hair checks also compare unoccluded side hair pixel-for-pixel.
 
 32 material editions (8 tops, 8 bottoms, 6 headpieces, 6 hats, 4 earrings)
 reuse existing registered sprites and independent catalogue art. collections.mjs
@@ -45,7 +57,7 @@ Build native brow art: SHARP_PATH=<sharp> node scripts/prepare-wardrobe-brows.mj
 Edition fit/catalogue and browser composition checks: scripts/test-dressup-editions.mjs.
 Clothing/accessories use standalone product art; beauty/hair/hat/sock cards use independent
 imagegen design atlases (scripts/wardrobe-v7-art.json), never worn-layer crops.
-Four eye choices and six sock options include ankle, mid-calf, knee and thigh-high lengths.
+Four eye choices and eight sock options include ankle, mid-calf, knee and thigh-high lengths.
 Fine mode uses standing pose and optional face zoom; all clothing choices persist across zoom.
 Original whole-body sources and prompts: scripts/fixtures/wardrobe-v5-sources and wardrobe-v5-art.json.
 Rebuild extraction: SHARP_PATH=<sharp> node scripts/prepare-wardrobe-v5.mjs.

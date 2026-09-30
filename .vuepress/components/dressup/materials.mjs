@@ -30,9 +30,9 @@ export function materialPixel(r,g,b,material){
  const [h,s]=palettes.get(material.color),[,oldS,l]=hsl(r/255,g/255,b/255)
  // White lace/pearls and deep seams keep their highlights; dark velvet can
  // accept a gentle colour lift without becoming a flat painted silhouette.
- const weight=clamp(oldS*5)*clamp((.99-l)*12)
+ const weight=Math.max(clamp(oldS*5),material.metal?.85:0)*clamp((.99-l)*12)
  const lift=l<.28?.08*(1-l/.28):0
- const tinted=fromHsl(h,Math.max(s*.8,oldS*.6),clamp(l+lift))
+ const tinted=fromHsl(h,Math.max(s*.8,oldS*.6,material.metal?.4:0),clamp(l+lift-(material.metal?.035:0)))
  return [r,g,b].map((v,c)=>Math.round(v*(1-weight)+tinted[c]*255*weight))
 }
 function ornament(ctx,kind,x,y,size,ink){
