@@ -30,6 +30,14 @@ for(const [name,engine] of [['chromium',chromium],['webkit',webkit]]){
    {top:'top-2',bottom:'bottom-2',face:'face-3',hair:'hair-2',hat:'hat-2',eyes:'eyes-1',lip:'lip-4',socks:'socks-none',shoes:'shoes-2'},
    {face:'face-0',hair:'hair-2',hat:'hat-none',headpiece:'headpiece-none'},
    {face:'face-1',hair:'hair-2',hat:'hat-3'},
+   {face:'face-1',hair:'hair-0',hat:'hat-1',headpiece:'headpiece-none'},
+   {face:'face-3',hair:'hair-0',hat:'hat-1'},
+   {face:'face-1',hair:'hair-1',hat:'hat-1'},
+   {face:'face-3',hair:'hair-1',hat:'hat-1'},
+   {face:'face-1',hair:'hair-2',hat:'hat-1'},
+   {face:'face-3',hair:'hair-2',hat:'hat-1'},
+   {face:'face-1',hair:'hair-3',hat:'hat-1'},
+   {face:'face-3',hair:'hair-3',hat:'hat-1'},
    {top:'top-1',bottom:'bottom-3',face:'face-0',hair:'hair-3',hat:'hat-3',eyes:'eyes-3',brows:'brows-2',lip:'lip-3',socks:'socks-5',shoes:'shoes-3'}
   ]
   for(let i=0;i<looks.length;i++){
@@ -38,7 +46,7 @@ for(const [name,engine] of [['chromium',chromium],['webkit',webkit]]){
    assert.equal(await game.evaluate(e=>e.__vue__.imageError),false)
    const data=await page.locator('.fw-model').evaluate(c=>c.toDataURL('image/png').split(',')[1]);await writeFile(join(out,`${name}-${i}-model.png`),Buffer.from(data,'base64'))
    if(!await game.evaluate(e=>e.__vue__.faceZoom))await game.getByRole('button',{name:'查看妆容',exact:true}).click();await page.screenshot({path:join(out,`${name}-${i}-makeup.png`)})
-   if(i===0||look.hair==='hair-2'){await page.setViewportSize({width:844,height:390});await page.screenshot({path:join(out,`${name}-look-${i}-landscape.png`)});await page.setViewportSize({width:390,height:844})}
+   if(i===0||look.hair==='hair-2'||look.hat==='hat-1'){await page.setViewportSize({width:844,height:390});await page.screenshot({path:join(out,`${name}-look-${i}-landscape.png`)});await page.setViewportSize({width:390,height:844})}
    const snapshot=await game.evaluate(e=>JSON.stringify(e.__vue__.state.look));await game.getByRole('button',{name:'查看全身',exact:true}).click();assert.equal(await game.evaluate(e=>JSON.stringify(e.__vue__.state.look)),snapshot)
   }
   const last=await game.evaluate(e=>JSON.stringify(e.__vue__.state.look));await page.reload();await page.waitForFunction(()=>(document.querySelector('.fw-model').dataset.src||'').includes('hair-3'));assert.equal(await page.locator('.fw-game').evaluate(e=>JSON.stringify(e.__vue__.state.look)),last)

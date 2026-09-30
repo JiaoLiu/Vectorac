@@ -5,6 +5,15 @@ import {BASE,baseSource,layerSources,paintComposite,REGISTERED_ORDER} from '../.
 import {freshState,normalize,act} from '../.vuepress/components/dressup/engine.mjs'
 import {DEFAULT_PARTS,FREE_PARTS,fineTags,PARTS,partAsset} from '../.vuepress/components/dressup/parts.mjs'
 import {memoryGame,flipMemory,closeMemory,stylingGame,submitStyling,sewingGame,stitch,gameReward} from '../.vuepress/components/dressup/minigames.mjs'
+import {faceSampleX} from '../.vuepress/components/dressup/face-fit.mjs'
+test('face shaping stays small and smooth, preserves the nose and never widens the neck',()=>{
+ for(let face=0;face<4;face++)for(let y=25;y<164;y++)for(let x=190;x<322;x++){
+  const mapped=faceSampleX(face,x,y)
+  if(y>=148||y<=120||Math.abs(x-256)<=16)assert.equal(mapped,x,'fixed anatomy must not move')
+  assert.ok(Math.abs(mapped-x)<4.7,'jaw/cheek deformation is excessive')
+  assert.ok(Math.abs(mapped-faceSampleX(face,x,y+1))<1,'face contour must change by less than one source pixel per row')
+ }
+})
 test('old saves preserve coins, outfit, scene and album while receiving free detail options',()=>{
  const s=normalize({version:1,coins:352,owned:['mint'],scenes:['garden'],look:{outfit:'mint',scene:'garden',pose:2},albums:[{id:'old',look:{outfit:'mint',scene:'garden',pose:2}}]})
  assert.equal(s.coins,352);assert.equal(s.look.outfit,'mint');assert.equal(s.look.pose,2);assert.equal(s.look.mode,'outfit');assert.deepEqual(s.look.parts,DEFAULT_PARTS);assert.deepEqual(s.ownedParts,FREE_PARTS);assert.equal(s.albums[0].look.scene,'garden')

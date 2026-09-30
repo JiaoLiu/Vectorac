@@ -25,7 +25,7 @@ export const REGISTERED_CATEGORIES=['top','bottom','hair','hat','socks','shoes',
 export const HEAD_CATEGORIES=['hair','hat','face','eyes','brows','lip']
 // The ponytail keeps its original registered wearable; catalogue redesigns
 // must not substitute a newly illustrated hairstyle on the model.
-export const partAsset=p=>p.index<0?'':`/img/games/dressup/layers/${HEAD_CATEGORIES.includes(p.category)?'v7/':REGISTERED_CATEGORIES.includes(p.category)?'v5/':''}${p.category}-${p.index}${p.id==='hair-2'?'-restored':''}.webp`
+export const partAsset=p=>p.index<0?'':`/img/games/dressup/layers/${p.category==='face'?'v8/':HEAD_CATEGORIES.includes(p.category)?'v7/':REGISTERED_CATEGORIES.includes(p.category)?'v5/':''}${p.category}-${p.index}${p.id==='hair-2'?'-restored':''}.webp`
 // Product/design cards and the registered wearable layers have separate contracts.
 export const partThumbnail=p=>p.index<0?'':`/img/games/dressup/layers/v7/catalog/${p.id}.webp`
 export function validParts(raw,owned=FREE_PARTS){const result={};for(const c of CATEGORIES){const p=PARTS.find(p=>p.id===(raw||{})[c.id]&&p.category===c.id);result[c.id]=p&&owned.includes(p.id)?p.id:DEFAULT_PARTS[c.id]}return result}

@@ -17,9 +17,11 @@ are isolated registered pigment, not skin rectangles from different complete hea
 Hair uses imagegen hair-only extractions with no geometric ear holes, except hair-2:
 the ponytail wearable is restored byte-identically from v6/hair-2.webp and pinned by regression.
 Its independent v7/catalog/hair-2.webp design card cannot change that registered wearable.
-Jaw interpolation is premultiplied-alpha and converges to the original neck at the boundary.
+V8 jaw interpolation uses small smooth cheek profiles (face-fit.mjs), fixes the nose,
+and leaves every neck pixel below y=148 unchanged. No abrupt local jaw/neck widening.
 Ear jewellery draws after front hair at fixed anatomical lobe anchors, verified for each hairstyle.
-Solid hats cover ponytail roots; hats originate worn on a cropped registered head reference,
+Solid hats cover ponytail roots via their measured top silhouettes (hat-coverage.mjs),
+not a horizontal y=59 crop that erases the side hair. Hats originate worn on a cropped head reference,
 then the fixed inverse crop transform puts them onto the shared full-body canvas.
 Product/design cards use a separate v7/catalog path with a single warm-ivory background.
 Clothing/accessories use standalone product art; beauty/hair/hat/sock cards use independent

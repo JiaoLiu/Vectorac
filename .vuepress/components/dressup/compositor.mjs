@@ -1,5 +1,6 @@
 import {PARTS,partAsset} from './parts.mjs'
 import bounds from './layer-bounds.mjs'
+import {HAT_HAIR_CUTS} from './hat-coverage.mjs'
 export const BASE='/img/games/dressup/layers/v5/master.webp'
 export function baseSource(){return BASE}
 export const FEET='/img/games/dressup/layers/v5/feet.webp'
@@ -12,8 +13,9 @@ export function paintComposite(ctx,images,parts){
  const chosen=category=>PARTS.find(p=>p.id===parts[category]&&p.category===category)
  function registered(category){const p=chosen(category);if(!p||p.index<0)return
   const hat=chosen('hat'),capHair=category==='hair'&&hat&&hat.index>=0&&hat.index<2
-  // A solid hat encloses the crown/ponytail root. The tail below the cap remains.
-  if(capHair){ctx.save();ctx.beginPath();ctx.rect(0,59,512,965);ctx.clip()}
+  // Follow the cap's actual silhouette, not a horizontal cut through all hair.
+  // No hat pixel in a column means no clipping of the side strands there.
+  if(capHair){const cuts=HAT_HAIR_CUTS[hat.index];ctx.save();ctx.beginPath();ctx.moveTo(0,1024);ctx.lineTo(0,cuts[0]);for(let x=1;x<512;x++){ctx.lineTo(x,cuts[x-1]);ctx.lineTo(x,cuts[x])}ctx.lineTo(512,cuts[511]);ctx.lineTo(512,1024);ctx.closePath();ctx.clip()}
   if(category==='shoes'){const end=SOCK_VISIBLE_END[p.index];ctx.clearRect(185,end,142,1024-end)}
   if(category==='socks'){const shoe=chosen('shoes');ctx.save();ctx.beginPath();ctx.rect(0,0,512,SOCK_VISIBLE_END[shoe?shoe.index:0]);ctx.clip()}
   ctx.drawImage(images.get(partAsset(p)),0,0,512,1024)

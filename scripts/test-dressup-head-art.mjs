@@ -5,6 +5,7 @@ import {readFile,writeFile,mkdtemp} from 'node:fs/promises'
 import {join} from 'node:path'
 import {tmpdir} from 'node:os'
 import {createHash} from 'node:crypto'
+import {HAT_HAIR_CUTS} from '../.vuepress/components/dressup/hat-coverage.mjs'
 import {PARTS,DEFAULT_PARTS,partAsset,partThumbnail} from '../.vuepress/components/dressup/parts.mjs'
 const require=createRequire(import.meta.url),sharp=require(process.env.SHARP_PATH||'sharp'),{chromium}=require(process.env.PLAYWRIGHT_PATH||'playwright')
 const dir=await mkdtemp(join(tmpdir(),'wardrobe-v7-head-'))
@@ -31,7 +32,9 @@ for(let i=1;i<4;i++){
  assert.ok(different>25,'face shape has no silhouette change')
  for(let y=120;y<137;y++)for(let x=248;x<265;x++)for(let c=0;c<4;c++)assert.equal(faces[i][(y*512+x)*4+c],faces[0][(y*512+x)*4+c],'face selection changes the nose landmark')
  for(let y=156;y<163;y++)for(let x=241;x<272;x++)for(let c=0;c<4;c++)assert.equal(faces[i][(y*512+x)*4+c],faces[0][(y*512+x)*4+c],'face choice shifts the neck shading and produces a seam')
+ for(let y=148;y<163;y++)for(let x=190;x<322;x++){const p=(y*512+x)*4;assert.equal(faces[i][p+3],faces[0][p+3],'jaw shaping changes the neck outline');if(faces[0][p+3])for(let c=0;c<3;c++)assert.equal(faces[i][p+c],faces[0][p+c],'jaw shaping stretches the neck skin')}
 }
+for(let hat=0;hat<2;hat++){const data=await raw('hat-'+hat);for(let x=0;x<512;x++){let top=0;for(let y=0;y<120;y++)if(data[(y*512+x)*4+3]>96){top=Math.max(0,y-1);break}assert.equal(HAT_HAIR_CUTS[hat][x],top,'cap clip must follow the current hat silhouette, not a fixed horizontal line')}}
 for(const id of ['hair-0','hair-1']){const data=await raw(id);assert.ok(data[(150*512+224)*4+3]>100,'rectangular ear/jaw hole returned')}
 for(let hair=0;hair<4;hair++){
  // Restored ponytail is pinned to the original wearable, not the new generated
@@ -49,7 +52,7 @@ try{
   return r.fulfill({body:await readFile(path.endsWith('.mjs')?'.vuepress/components/dressup'+path:'.vuepress/public'+path),contentType:path.endsWith('.mjs')?'application/javascript':'image/webp'})
  });await page.goto('http://head.test/')
  const results=await page.evaluate(async defaults=>{
-  const {layerSources,paintComposite}=await import('/compositor.mjs'),cache=new Map(),canvas=document.querySelector('canvas'),ctx=canvas.getContext('2d'),tiles=[]
+  const {layerSources,paintComposite}=await import('/compositor.mjs'),{HAT_HAIR_CUTS}=await import('/hat-coverage.mjs'),cache=new Map(),canvas=document.querySelector('canvas'),ctx=canvas.getContext('2d'),tiles=[]
   async function draw(parts){for(const src of layerSources(parts))if(!cache.has(src))cache.set(src,await new Promise((ok,bad)=>{const i=new Image;i.onload=()=>ok(i);i.onerror=bad;i.src=src}));paintComposite(ctx,cache,parts)}
   for(let f=0;f<4;f++)for(let e=0;e<4;e++)for(let b=0;b<4;b++)for(let l=0;l<5;l++){
    await draw({...defaults,face:'face-'+f,eyes:'eyes-'+e,brows:'brows-'+b,lip:'lip-'+l})
@@ -58,6 +61,18 @@ try{
   const hats=[];for(let hair=0;hair<4;hair++)for(let hat=0;hat<4;hat++){
    await draw({...defaults,hair:'hair-'+hair,hat:'hat-'+hat,face:'face-3',eyes:'eyes-3',lip:'lip-4',earrings:'earrings-0'})
    const crop=document.createElement('canvas');crop.width=230;crop.height=190;crop.getContext('2d').drawImage(canvas,141,5,230,190,0,0,230,190);hats.push(crop.toDataURL().split(',')[1])
+  }
+  const caps=[]
+  const capPixels=[];for(let hat=0;hat<2;hat++){const c=document.createElement('canvas');c.width=512;c.height=1024;c.getContext('2d').drawImage(cache.get('/img/games/dressup/layers/v7/hat-'+hat+'.webp'),0,0);capPixels.push(c.getContext('2d').getImageData(0,0,512,1024).data)}
+  for(let hair=0;hair<4;hair++)for(let face=0;face<4;face++){
+   const look={...defaults,hair:'hair-'+hair,face:'face-'+face}
+   await draw(look);const before=ctx.getImageData(0,0,512,1024).data
+   for(let hat=0;hat<2;hat++){
+    await draw({...look,hat:'hat-'+hat});const after=ctx.getImageData(0,0,512,1024).data
+    let holes=0;for(let y=0;y<100;y++)for(let x=170;x<340;x++){const p=(y*512+x)*4;if(y>=HAT_HAIR_CUTS[hat][x]+2&&before[p+3]>240){if(after[p+3]<200)holes++;else if(!capPixels[hat][p+3]&&before.subarray(p,p+4).some((v,c)=>v!==after[p+c]))holes++}}
+    if(holes)throw Error(`cap erases visible side hair: hair ${hair}, face ${face}, hat ${hat}, ${holes} missing pixels`)
+    const crop=document.createElement('canvas');crop.width=230;crop.height=190;crop.getContext('2d').drawImage(canvas,141,5,230,190,0,0,230,190);caps.push(crop.toDataURL().split(',')[1])
+   }
   }
   const earrings=[]
   for(let hair=0;hair<4;hair++)for(let e=0;e<4;e++){
@@ -77,7 +92,7 @@ try{
    if(canvas.toDataURL()!==actual)throw Error('ponytail wearable changed with catalogue art: '+face+' '+hat)
    const crop=document.createElement('canvas');crop.width=250;crop.height=200;crop.getContext('2d').drawImage(canvas,140,0,250,200,0,0,250,200);ponytails.push(crop.toDataURL().split(',')[1])
   }
-  return {tiles,hats,earrings,ponytails}
+  return {tiles,hats,earrings,ponytails,caps}
  },DEFAULT_PARTS)
  for(let f=0;f<4;f++){
   const cells=results.tiles.slice(f*80,f*80+80);await sharp({create:{width:137*10,height:157*8,channels:4,background:'#f1e6db'}}).composite(cells.map((v,i)=>({input:Buffer.from(v,'base64'),left:i%10*137,top:Math.floor(i/10)*157}))).png().toFile(join(dir,'face-'+f+'-all-makeup.png'))
@@ -86,5 +101,6 @@ try{
  for(const e of results.earrings)assert.ok(e.visible.every(n=>n>20),`both earrings must remain visible with hair ${e.hair}, jewellery ${e.e}: ${e.visible}`)
  await sharp({create:{width:180*4,height:180*4,channels:4,background:'#f1e6db'}}).composite(results.earrings.map((v,i)=>({input:Buffer.from(v.png,'base64'),left:i%4*180,top:Math.floor(i/4)*180}))).png().toFile(join(dir,'all-earrings-and-hair.png'))
  await sharp({create:{width:1250,height:800,channels:4,background:'#f1e6db'}}).composite(results.ponytails.map((v,i)=>({input:Buffer.from(v,'base64'),left:i%5*250,top:Math.floor(i/5)*200}))).png().toFile(join(dir,'restored-ponytail-all-faces-and-hats.png'))
+ await sharp({create:{width:230*8,height:190*4,channels:4,background:'#f1e6db'}}).composite(results.caps.map((v,i)=>({input:Buffer.from(v,'base64'),left:i%8*230,top:Math.floor(i/8)*190}))).png().toFile(join(dir,'caps-all-faces-and-hair.png'))
  console.log(JSON.stringify({passed:true,makeupCombinations:320,hatHairCombinations:16,screenshots:dir}))
 }finally{await browser.close()}
