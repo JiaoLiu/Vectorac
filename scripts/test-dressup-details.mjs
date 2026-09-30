@@ -1,9 +1,9 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {selectPreview,displayParts,purchasedPreview,previewItems} from '../.vuepress/components/dressup/preview.mjs'
-import {baseSource,layerSources,coveredBody} from '../.vuepress/components/dressup/compositor.mjs'
+import {BASE,baseSource,layerSources,paintComposite,REGISTERED_ORDER} from '../.vuepress/components/dressup/compositor.mjs'
 import {freshState,normalize,act} from '../.vuepress/components/dressup/engine.mjs'
-import {DEFAULT_PARTS,FREE_PARTS,fineTags} from '../.vuepress/components/dressup/parts.mjs'
+import {DEFAULT_PARTS,FREE_PARTS,fineTags,PARTS,partAsset} from '../.vuepress/components/dressup/parts.mjs'
 import {memoryGame,flipMemory,closeMemory,stylingGame,submitStyling,sewingGame,stitch,gameReward} from '../.vuepress/components/dressup/minigames.mjs'
 test('old saves preserve coins, outfit, scene and album while receiving free detail options',()=>{
  const s=normalize({version:1,coins:352,owned:['mint'],scenes:['garden'],look:{outfit:'mint',scene:'garden',pose:2},albums:[{id:'old',look:{outfit:'mint',scene:'garden',pose:2}}]})
@@ -47,17 +47,25 @@ test('old fine saves gain default hair; hair purchase and album restore preserve
  s=act(s,{type:'album',id:'long-hair'}).state;s=act(s,{type:'part',id:'hair-0'}).state;s=act(s,{type:'restoreAlbum',id:'long-hair'}).state
  assert.equal(s.look.parts.hair,'hair-1');assert.equal(s.look.parts.top,'top-3')
 })
-test('face selects an entire registered base, never a cropped rectangular face overlay',()=>{
+test('blank master and anatomical layers all use the same registered canvas',()=>{
  for(let i=0;i<4;i++){const parts={...DEFAULT_PARTS,face:'face-'+i};const src=baseSource(parts),sources=layerSources(parts)
-  assert.equal(src,`/img/games/dressup/layers/v4/base-${i}.webp`);assert.equal(sources.filter(x=>x.includes('/base-')).length,1);assert.equal(sources.some(x=>x.includes('/face-')),false)
-  assert.ok(sources.includes('/img/games/dressup/layers/v4/hair-0.webp'));assert.ok(sources.includes('/img/games/dressup/layers/v4/shoes-0.webp'))
+  assert.equal(src,BASE);assert.equal(sources.filter(x=>x===BASE).length,1)
+  assert.ok(sources.includes(`/img/games/dressup/layers/v5/face-${i}.webp`))
+  for(const category of ['hair','shoes','eyes','brows','lip'])assert.ok(sources.includes(`/img/games/dressup/layers/v5/${category}-0.webp`))
  }
 })
-test('body cover masks never overlap (even-odd clipping), and exclude face and hands',()=>{
- for(let i=0;i<4;i++)for(const socks of ['socks-none','socks-0']){
-  const cuts=coveredBody({...DEFAULT_PARTS,bottom:'bottom-'+i,socks}),bodyEnd=Math.max(...cuts[0].map(p=>p[1]))
-  assert.equal(Math.min(...cuts[0].map(p=>p[1])),270);assert.ok(cuts[0].every(p=>p[0]>=155&&p[0]<=357))
-  if(socks==='socks-none')assert.equal(cuts.length,1)
-  else assert.ok(Math.min(...cuts[1].map(p=>p[1]))>=bodyEnd,'overlapping exclusions would reveal the body again')
- }
+test('anatomical layers are drawn in place without per-item bounding-box resizing or painted makeup',()=>{
+ const draws=[],images=new Map(layerSources(DEFAULT_PARTS).map(src=>[src,{src}]))
+ const ctx=new Proxy({drawImage:(img,...rect)=>draws.push({src:img.src,rect})},{get:(o,k)=>o[k]||(()=>{})})
+ paintComposite(ctx,images,DEFAULT_PARTS)
+ for(const call of draws)assert.deepEqual(call.rect,[0,0,512,1024])
+ const order=REGISTERED_ORDER.map(c=>partAsset(PARTS.find(p=>p.id===DEFAULT_PARTS[c])))
+ assert.deepEqual(draws.slice(4,4+order.length).map(d=>d.src),order)
+})
+test('old fine saves and albums gain independent eyes without losing purchased socks, face or clothing',()=>{
+ const parts={...DEFAULT_PARTS,top:'top-3',socks:'socks-1',face:'face-2'};delete parts.eyes
+ let s=normalize({...freshState(),coins:678,ownedParts:[...FREE_PARTS,'top-3','socks-1'],look:{mode:'fine',parts},albums:[{id:'existing',look:{mode:'fine',parts}}]})
+ assert.equal(s.coins,678);assert.equal(s.look.parts.eyes,'eyes-0');assert.equal(s.albums[0].look.parts.eyes,'eyes-0')
+ s=act(s,{type:'part',id:'eyes-2'}).state;assert.equal(s.look.parts.top,'top-3');assert.equal(s.look.parts.face,'face-2');assert.equal(s.look.parts.socks,'socks-1');assert.equal(s.albums[0].look.parts.eyes,'eyes-0')
+ const socks=PARTS.filter(p=>p.category==='socks'&&p.index>=0);assert.equal(socks.length,6);assert.ok(socks.some(p=>p.name.includes('短袜')));assert.ok(socks.some(p=>p.name.includes('中筒')));assert.ok(socks.some(p=>p.name.includes('过膝')))
 })

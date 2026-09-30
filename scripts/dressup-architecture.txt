@@ -4,12 +4,18 @@ VuePress page: blogs/other/flower_wardrobe.md; Vue 2 component: FlowerWardrobe.v
 Pure state/economy: dressup/engine.mjs. All item IDs, prices, tags and quest rewards are data.
 Art: fourteen original complete outfits x three separately illustrated poses. Changing garments uses
 full outfit sprites, so sleeves, hair, skirt and hands maintain correct occlusion in every pose.
-Fine wardrobe: separate neutral-standing model, 11 component categories and 49 selectable options.
-Each face selects an entire registered body sprite, not a rectangular face cutout.
-Hair has back and front passes; covered-body masks exclude garment/sock silhouettes without hiding hands.
-Front-view footwear aligns to feet; waist-anchored garment strips fit the model without exposed base clothing.
-Aligned raster layers compose top, bottom, hair, headwear, earrings, socks and shoes.
-Brows/lip color draw at face landmarks; fine mode uses standing pose and optional face zoom.
+Fine wardrobe: separate neutral-standing model, 12 component categories and 55 selectable options.
+V5 art starts from one blank-feature full-body master. Clothes, footwear, hair and socks are
+generated already worn on that exact model, then extracted on a shared 512x1024 canvas.
+No runtime alpha-bound fitting, product-shoe scaling or flat-color eyebrow cover patches.
+Natural-waist anchors are registered in the build pipeline; head/feet anchors remain fixed.
+The master suppresses its covered torso/hips, while retaining original arms and exposed legs.
+Shoes preserve their actual worn position; transparent instep windows reveal chosen socks.
+Hair has back/front passes. Face variants and raster eyes/brows/lips use the same head frame.
+Four eye choices and six sock options include ankle, mid-calf, knee and thigh-high lengths.
+Fine mode uses standing pose and optional face zoom; all clothing choices persist across zoom.
+Original whole-body sources and prompts: scripts/fixtures/wardrobe-v5-sources and wardrobe-v5-art.json.
+Rebuild extraction: SHARP_PATH=<sharp> node scripts/prepare-wardrobe-v5.mjs.
 Seven scenic raster backgrounds are shared by stage, scene cards and photo export.
 
 Economy: starting 100, daily40, 12 once-only invitations, repeatable five-color workshop25.
@@ -48,3 +54,4 @@ https://www.taptap.cn/app/206731/review?os=android
 
 Tests: npm run test:dressup
 Browser: PLAYWRIGHT_PATH=<module path> node scripts/test-dressup-browser.mjs
+Art close-up matrix: PLAYWRIGHT_PATH=<module path> SHARP_PATH=<sharp> node scripts/test-dressup-registered-art.mjs

@@ -30,6 +30,8 @@ for(const [name,engine] of [['chromium',chromium],['webkit',webkit]]){
   await page.locator('.fw-part-categories').getByRole('button',{name:'下装',exact:true}).click();await game.getByRole('button',{name:'试戴桃花长裙',exact:true}).click()
   await page.locator('.fw-part-categories').getByRole('button',{name:'头饰',exact:true}).click();await game.getByRole('button',{name:'试戴珍珠蝴蝶结',exact:true}).click()
   await page.locator('.fw-part-categories').getByRole('button',{name:'脸型',exact:true}).click();await game.getByRole('button',{name:'试戴柔和圆脸',exact:true}).click()
+  await page.locator('.fw-part-categories').getByRole('button',{name:'眼睛',exact:true}).click();await game.getByRole('button',{name:'试戴碧绿眼眸',exact:true}).click()
+  assert.equal((await save()).look.parts.eyes,'eyes-2','eye customization has its own saved slot')
   await page.waitForFunction(()=>{const p=document.querySelector('.fw-game').__vue__.displayParts;return p.top==='top-3'&&p.bottom==='bottom-2'&&(document.querySelector('.fw-model').dataset.src||'').includes('top-3')})
   const draftBefore=await game.evaluate(e=>JSON.stringify(e.__vue__.displayParts))
   await game.getByRole('button',{name:'查看全身',exact:true}).click();await game.getByRole('button',{name:'查看妆容',exact:true}).click();await game.getByRole('button',{name:'查看全身',exact:true}).click()
@@ -62,7 +64,7 @@ for(const [name,engine] of [['chromium',chromium],['webkit',webkit]]){
   assert.ok((await save()).coins>=1075);assert.equal((await save()).gameClaims.length,2)
   await page.screenshot({path:join(out,`${name}-${viewport.width}-games.png`)})
   for(let i=0;i<4;i++){await page.setViewportSize(i%2?{width:390,height:844}:{width:844,height:390});await page.waitForTimeout(80);assert.ok(await page.locator('.fw-model').evaluate(c=>{const d=c.getContext('2d').getImageData(0,0,c.width,c.height).data;let n=0;for(let j=3;j<d.length;j+=4)if(d[j]>100)n++;return n>10000}))}
-  await page.reload();await page.waitForFunction(()=>(document.querySelector('.fw-model').dataset.src||'').includes('lip-3'));assert.equal((await save()).look.parts.face,'face-1');assert.equal((await save()).look.parts.earrings,'earrings-0');assert.deepEqual(errors,[])
+  await page.reload();await page.waitForFunction(()=>(document.querySelector('.fw-model').dataset.src||'').includes('lip-3'));assert.equal((await save()).look.parts.face,'face-1');assert.equal((await save()).look.parts.eyes,'eyes-2');assert.equal((await save()).look.parts.earrings,'earrings-0');assert.deepEqual(errors,[])
   await page.close()
  }}finally{await browser.close()}
 }

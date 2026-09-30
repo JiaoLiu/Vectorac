@@ -110,7 +110,7 @@ export default {
   methods:{asset,sceneAsset,item,scoreLook,createWorkshop,
     partItem(id){return item(PARTS,id)},
     chooseTab(id){this.tab=id;if(id==='fine'){this.preview=null;if(this.state.look.mode!=='fine')this.perform({type:'mode',mode:'fine'})}if(this.$refs.panel)this.$refs.panel.scrollTop=0},
-    choosePart(id){this.preview=null;this.faceZoom=['face','brows','lip','hair','hat','headpiece','earrings'].includes(this.partItem(id).category);this.finePreviews=selectPreview(this.finePreviews,id,this.state.ownedParts);if(this.state.ownedParts.includes(id))this.perform({type:'part',id});else this._audio.play('dress')},
+    choosePart(id){this.preview=null;this.faceZoom=['face','eyes','brows','lip','hair','hat','headpiece','earrings'].includes(this.partItem(id).category);this.finePreviews=selectPreview(this.finePreviews,id,this.state.ownedParts);if(this.state.ownedParts.includes(id))this.perform({type:'part',id});else this._audio.play('dress')},
     receiveGameReward(result){this.perform({type:'gameReward',id:result.id,reward:result.reward})},
     unlockAudio(){if(this._audio)this._audio.unlock()},
     saveAudio(){try{localStorage.setItem('vectorac.wardrobe.audio',JSON.stringify({music:this.musicOn,sound:this.soundOn}))}catch(e){}},
@@ -138,7 +138,7 @@ export default {
     restoreLook(id){this.preview=null;this.finePreviews={};this.faceZoom=false;this.perform({type:'restoreAlbum',id})},
     pickColor(color){const r=matchColor(this.workshop,color);if(r.correct)this._audio.play(r.complete?'reward':'color');this.workshop=r.session;this.workshopMessage=r.correct?'这根丝线刚刚好。':'慢慢来，再看看布料的颜色。';if(r.complete){this.readState();const reward=finishWorkshop(this.state,this.workshop);this.state=reward.state;this.workshop=reward.session;this.persist();this.notify('配色完成 · +25 金币')}},
     toggleFull(){if(!this.full){this._overflow=document.body.style.overflow;document.body.style.overflow='hidden';this._anchor=document.createComment('flower-wardrobe');this.$el.parentNode.insertBefore(this._anchor,this.$el);document.body.appendChild(this.$el);document.body.classList.add('fw-full-active')}else{document.body.style.overflow=this._overflow||'';if(this._anchor&&this._anchor.parentNode){this._anchor.parentNode.insertBefore(this.$el,this._anchor);this._anchor.remove()}document.body.classList.remove('fw-full-active')}this.full=!this.full},
-    showHelp(){this.openModal({kind:'help',title:'欢迎来到花间衣橱',text:'初次来到衣橱可获得 100 金币与免费套装。在衣橱试穿整套服装，或进入装扮区自由组合上衣、下装、发型、帽子、头饰、耳环、鞋袜、脸型、眉毛与口红；短发、长卷发、高马尾、盘发可以分别选择。精细装扮采用站姿，放大查看妆容不会改变穿搭；多件未解锁装扮可以一起试穿，按部位分别解锁。去城堡、海滩、花海或室内拍照。邀请任务、花饰记忆、主题搭配、节奏缝纫和配色练习都能赚金币。服装与场景永久拥有，收藏也会记录细分装扮。无需充值，进度保存在当前浏览器。'})},
+    showHelp(){this.openModal({kind:'help',title:'欢迎来到花间衣橱',text:'初次来到衣橱可获得 100 金币与免费套装。在衣橱试穿整套服装，或进入装扮区自由组合上衣、下装、发型、帽子、头饰、耳环、鞋袜、脸型、眼睛、眉毛与口红；短发、长卷发、高马尾、盘发可以分别选择。精细装扮采用站姿，放大查看妆容不会改变穿搭；多件未解锁装扮可以一起试穿，按部位分别解锁。去城堡、海滩、花海或室内拍照。邀请任务、花饰记忆、主题搭配、节奏缝纫和配色练习都能赚金币。服装与场景永久拥有，收藏也会记录细分装扮。无需充值，进度保存在当前浏览器。'})},
     async takePhoto(){
       if(this.isPreview||this.exporting||this.loading)return
       this.exporting=true

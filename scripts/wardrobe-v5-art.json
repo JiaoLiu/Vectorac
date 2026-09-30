@@ -1,0 +1,100 @@
+{
+  "method": "built-in image_gen. Worn-on-master full-body edits, then registered region extraction.",
+  "master": {
+    "id": "master",
+    "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-c31700b1-fca5-48bc-ba17-b0bf0d607172.png",
+    "prompt": "Use case: precise-object-edit. Image 1 is the edit target, a game dress-up mannequin master. Create a clean full body game master on genuinely transparent background, same exact front view symmetric standing pose, proportions, figure position and full canvas framing as Image 1. Adult woman, arms angled gently outward, both feet flat pointing forward. Keep cream opaque strapless leotard for modest coverage, no shoes, no socks, no jewelry. Change only the head: make it a smooth elegant natural skin-tone oval mannequin face with softly modeled nose, ears, jaw; NO painted eyes, NO eyebrows, NO mouth, NO hair, NO eyelashes or makeup. These features will be separate registered game layers. Clean transparent edges without colored fringe. Output high quality fashion-game painted illustration, tall portrait 1:2 canvas, entire head to feet visible. Keep camera, lighting and anatomical landmarks identical; do not change pose. Not a product shoe illustration."
+  },
+  "assets": [
+    {
+      "id": "wear-0",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-5acefea8-9bf7-4f79-a3a7-e5078cd0f0d9.png",
+      "prompt": "Use case: identity-preserve. Image 1 is the exact edit target registered full-body mannequin. Dress this SAME mannequin in ivory blush-pink rose lace puff-sleeve blouse fitted correctly around shoulders; rose pink tiered lace skirt ending just above knees with a narrow fitted waistband at the natural waist; blush rose Mary Jane shoes securely WORN ON both feet, toes inside toe boxes, straps over insteps, bare lower legs. CRITICAL: render garments already worn naturally on the body, not separate product cutouts! Preserve every anatomical anchor and pixel position: head, neck, shoulder, elbow, wrist, waist, knees and feet; both hands and full feet visible in their identical places; same straight frontal pose, same entire canvas dimensions and framing. Preserve blank featureless bald face (no eyes, eyebrows, mouth or hair). No socks, no hats, no accessories. Waistline precisely at the reference mannequin natural waist. Preserve lighting, skin tone, figure proportions and identity. Genuine transparent background, crisp clean edge, no text/watermark. This output will be cut into registered clothing and worn-shoe layers. Do not narrow the shoulder or move the feet."
+    },
+    {
+      "id": "wear-1",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-353a6840-f1c4-49f8-a00d-267204a8c797.png",
+      "prompt": "Use case: identity-preserve. Image 1 is the exact edit target registered full-body mannequin. Dress this SAME mannequin in navy-and-white sailor blouse correctly fitting shoulders with a flat sailor collar and small ribbon; navy pleated skirt ending just above knees, narrow fitted waistband at natural waist; navy leather loafers securely WORN ON both feet, toes enclosed inside toe boxes, bare lower legs. CRITICAL: render garments already worn naturally on the body, not separate product cutouts! Preserve every anatomical anchor and pixel position: head, neck, shoulder, elbow, wrist, waist, knees and feet; both hands and full feet visible in their identical places; same straight frontal pose, same entire canvas dimensions and framing. Preserve blank featureless bald face (no eyes, eyebrows, mouth or hair). No socks, no hats, no accessories. Waistline precisely at the reference mannequin natural waist. Preserve lighting, skin tone, figure proportions and identity. Genuine transparent background, crisp clean edge, no text/watermark. This output will be cut into registered clothing and worn-shoe layers. Do not narrow the shoulder or move the feet."
+    },
+    {
+      "id": "wear-2",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-fafd0533-9092-4e59-867f-5138a8368e40.png",
+      "prompt": "Use case: identity-preserve. Image 1 is the exact edit target registered full-body mannequin. Dress this SAME mannequin in ivory magnolia embroidered Chinese-style blouse correctly fitting shoulders and torso; blush-pink long embroidered skirt ending just above ankles, narrow waistband at the natural waist; ivory floral embroidered flat shoes WORN ON both feet, toes enclosed in toe boxes, bare lower legs. CRITICAL: render garments already worn naturally on the body, not separate product cutouts! Preserve every anatomical anchor and pixel position: head, neck, shoulder, elbow, wrist, waist, knees and feet; both hands and full feet visible in their identical places; same straight frontal pose, same entire canvas dimensions and framing. Preserve blank featureless bald face (no eyes, eyebrows, mouth or hair). No socks, no hats, no accessories. Waistline precisely at the reference mannequin natural waist. Preserve lighting, skin tone, figure proportions and identity. Genuine transparent background, crisp clean edge, no text/watermark. This output will be cut into registered clothing and worn-shoe layers. Do not narrow the shoulder or move the feet."
+    },
+    {
+      "id": "wear-3",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-1b87ec18-bfc4-4d44-81fd-ebb95d817f0f.png",
+      "prompt": "Use case: identity-preserve. Image 1 is the exact edit target registered full-body mannequin. Dress this SAME mannequin in black velvet elegant blouse with subtly puffed short sleeves correctly fitting shoulders and torso; cream flowing straight-leg trousers ending at ankles with a fitted waist; black gold-buckle short ankle boots securely WORN ON both feet, ankles enter boots and feet sit inside shoes. CRITICAL: render garments already worn naturally on the body, not separate product cutouts! Preserve every anatomical anchor and pixel position: head, neck, shoulder, elbow, wrist, waist, knees and feet; both hands and full feet visible in their identical places; same straight frontal pose, same entire canvas dimensions and framing. Preserve blank featureless bald face (no eyes, eyebrows, mouth or hair). No socks, no hats, no accessories. Waistline precisely at the reference mannequin natural waist. Preserve lighting, skin tone, figure proportions and identity. Genuine transparent background, crisp clean edge, no text/watermark. This output will be cut into registered clothing and worn-shoe layers. Do not narrow the shoulder or move the feet."
+    },
+    {
+      "id": "hair-0",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-f5013935-1a05-4b0b-ab33-20f4158f990f.png",
+      "prompt": "Use case: identity-preserve. Image 1 is exact edit target fullbody bald mannequin. Change ONLY hair: add chin-length softly waved brown bob with gentle side part, no fringe obscuring eye area, actually naturally worn on the reference skull, proper natural fit, NOT oversized wig. Keep completely BLANK face no eyes/brows/mouth. Preserve all anatomical anchors EXACTLY, same head/nose/chin/neck/shoulder/pelvis/feet pixel positions. Same entire canvas framing, same cream leotard, bare legs/feet, same lighting/skin. Hair medium dark brown, clean transparent edge, no jewelry. Genuine transparent background. Full body must remain visible and exactly registered, head and feet must not move."
+    },
+    {
+      "id": "hair-1",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-760ac79b-ae72-45a3-b2eb-f7674ffd0d2e.png",
+      "prompt": "Use case: identity-preserve. Image 1 is exact edit target fullbody bald mannequin. Change ONLY hair: add romantic long brown waves flowing BEHIND both shoulders down to waist, forehead open, actually naturally worn on the reference skull, proper natural fit, NOT oversized wig. Keep completely BLANK face no eyes/brows/mouth. Preserve all anatomical anchors EXACTLY, same head/nose/chin/neck/shoulder/pelvis/feet pixel positions. Same entire canvas framing, same cream leotard, bare legs/feet, same lighting/skin. Hair medium dark brown, clean transparent edge, no jewelry. Genuine transparent background. Full body must remain visible and exactly registered, head and feet must not move."
+    },
+    {
+      "id": "hair-2",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-39779fa1-27d7-4fa3-bf14-f4b8af7e76ec.png",
+      "prompt": "Use case: identity-preserve. Image 1 is exact edit target fullbody bald mannequin. Change ONLY hair: add light high brown ponytail flowing behind right shoulder, forehead unobscured, actually naturally worn on the reference skull, proper natural fit, NOT oversized wig. Keep completely BLANK face no eyes/brows/mouth. Preserve all anatomical anchors EXACTLY, same head/nose/chin/neck/shoulder/pelvis/feet pixel positions. Same entire canvas framing, same cream leotard, bare legs/feet, same lighting/skin. Hair medium dark brown, clean transparent edge, no jewelry. Genuine transparent background. Full body must remain visible and exactly registered, head and feet must not move."
+    },
+    {
+      "id": "hair-3",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-699a6a45-e82d-4756-b597-0b7c9a8b09a8.png",
+      "prompt": "Use case: identity-preserve. Image 1 is exact edit target fullbody bald mannequin. Change ONLY hair: add elegant braided brown updo with softly swept side wisps, forehead unobscured, actually naturally worn on the reference skull, proper natural fit, NOT oversized wig. Keep completely BLANK face no eyes/brows/mouth. Preserve all anatomical anchors EXACTLY, same head/nose/chin/neck/shoulder/pelvis/feet pixel positions. Same entire canvas framing, same cream leotard, bare legs/feet, same lighting/skin. Hair medium dark brown, clean transparent edge, no jewelry. Genuine transparent background. Full body must remain visible and exactly registered, head and feet must not move."
+    },
+    {
+      "id": "socks-0",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-7906fa95-8948-4dea-81ec-209db32a2bdf.png",
+      "prompt": "Use case: identity-preserve. Image 1 exact edit target fullbody mannequin. Change ONLY socks: cream lace ankle socks, SHORT ending just above ankle, actually snugly WORN on both legs, fabric covers feet and toes. No shoes. Preserve all anatomy EXACTLY: head/neck/shoulders/waist/knee/ankle and both feet remain at IDENTICAL pixel positions, same canvas dimensions/framing, full body visible. Keep bald blank featureless face, same cream leotard, same pose/skin/lighting. Genuine transparent background, no additional items/text, high quality fine painted fashion-game art. No detached product socks; these socks are ON this same mannequin."
+    },
+    {
+      "id": "socks-1",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-c0e30bc6-3b78-4841-a0e4-9182193ff150.png",
+      "prompt": "Use case: identity-preserve. Image 1 exact edit target fullbody mannequin. Change ONLY socks: navy knee-high socks ending just BELOW knee, actually snugly WORN on both legs, fabric covers feet and toes. No shoes. Preserve all anatomy EXACTLY: head/neck/shoulders/waist/knee/ankle and both feet remain at IDENTICAL pixel positions, same canvas dimensions/framing, full body visible. Keep bald blank featureless face, same cream leotard, same pose/skin/lighting. Genuine transparent background, no additional items/text, high quality fine painted fashion-game art. No detached product socks; these socks are ON this same mannequin."
+    },
+    {
+      "id": "socks-2",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-14f93957-74bb-4809-bd9a-c65425cbe988.png",
+      "prompt": "Use case: identity-preserve. Image 1 exact edit target fullbody mannequin. Change ONLY socks: sheer white floral mid-calf stockings, actually snugly WORN on both legs, fabric covers feet and toes. No shoes. Preserve all anatomy EXACTLY: head/neck/shoulders/waist/knee/ankle and both feet remain at IDENTICAL pixel positions, same canvas dimensions/framing, full body visible. Keep bald blank featureless face, same cream leotard, same pose/skin/lighting. Genuine transparent background, no additional items/text, high quality fine painted fashion-game art. No detached product socks; these socks are ON this same mannequin."
+    },
+    {
+      "id": "socks-3",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-31911cbc-772f-4fbe-964f-4fa79ffd2174.png",
+      "prompt": "Use case: identity-preserve. Image 1 exact edit target fullbody mannequin. Change ONLY socks: black knee-high socks ending just BELOW knee, actually snugly WORN on both legs, fabric covers feet and toes. No shoes. Preserve all anatomy EXACTLY: head/neck/shoulders/waist/knee/ankle and both feet remain at IDENTICAL pixel positions, same canvas dimensions/framing, full body visible. Keep bald blank featureless face, same cream leotard, same pose/skin/lighting. Genuine transparent background, no additional items/text, high quality fine painted fashion-game art. No detached product socks; these socks are ON this same mannequin."
+    },
+    {
+      "id": "socks-4",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-d0fd2265-8993-4a4b-92c6-a216cfce0268.png",
+      "prompt": "Use case: identity-preserve. Image 1 exact edit target fullbody mannequin. Change ONLY socks: cream lace thigh-high stockings ending visibly ABOVE knees, actually snugly WORN on both legs, fabric covers feet and toes. No shoes. Preserve all anatomy EXACTLY: head/neck/shoulders/waist/knee/ankle and both feet remain at IDENTICAL pixel positions, same canvas dimensions/framing, full body visible. Keep bald blank featureless face, same cream leotard, same pose/skin/lighting. Genuine transparent background, no additional items/text, high quality fine painted fashion-game art. No detached product socks; these socks are ON this same mannequin."
+    },
+    {
+      "id": "socks-5",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-373ee2e1-f69b-4372-bb6e-9cfec49a16d9.png",
+      "prompt": "Use case: identity-preserve. Image 1 exact edit target fullbody mannequin. Change ONLY socks: black lace thigh-high stockings ending visibly ABOVE knees, actually snugly WORN on both legs, fabric covers feet and toes. No shoes. Preserve all anatomy EXACTLY: head/neck/shoulders/waist/knee/ankle and both feet remain at IDENTICAL pixel positions, same canvas dimensions/framing, full body visible. Keep bald blank featureless face, same cream leotard, same pose/skin/lighting. Genuine transparent background, no additional items/text, high quality fine painted fashion-game art. No detached product socks; these socks are ON this same mannequin."
+    },
+    {
+      "id": "face-0",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-225c0ed5-b469-4091-9a91-c489f7442421.png",
+      "prompt": "Use case: identity-preserve. Image 1 is exact edit target full body blank-faced mannequin. Change ONLY facial features: give this adult woman natural oval face, warm brown rounded eyes, soft natural arched eyebrows, natural pink lips. Beautiful natural feminine face, delicate painted fashion-game style, not exaggerated doll eyes, no huge shiny lips. Preserve head/nose/ear/neck positions, eye line, mouth line exactly across variants. Same wholebody pose and framing, preserve every body landmark and cream leotard, bald NO HAIR, no makeup outside face, no accessories. Genuine transparent background. Full body feet must remain visible at same pixel positions as original. Do NOT zoom/crop to head. It is important to add features on the existing face at natural anatomical positions."
+    },
+    {
+      "id": "face-1",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-0cb1355c-9856-4a64-a390-165007d8b20e.png",
+      "prompt": "Use case: identity-preserve. Image 1 is exact edit target full body blank-faced mannequin. Change ONLY facial features: give this adult woman soft round face, dark brown almond eyes, gentle straight eyebrows, dusty rose pink lips. Beautiful natural feminine face, delicate painted fashion-game style, not exaggerated doll eyes, no huge shiny lips. Preserve head/nose/ear/neck positions, eye line, mouth line exactly across variants. Same wholebody pose and framing, preserve every body landmark and cream leotard, bald NO HAIR, no makeup outside face, no accessories. Genuine transparent background. Full body feet must remain visible at same pixel positions as original. Do NOT zoom/crop to head. It is important to add features on the existing face at natural anatomical positions."
+    },
+    {
+      "id": "face-2",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-4f187bda-3465-4149-9958-c01bdb415e8c.png",
+      "prompt": "Use case: identity-preserve. Image 1 is exact edit target full body blank-faced mannequin. Change ONLY facial features: give this adult woman subtle heart-shaped face, jade green eyes, delicate crescent eyebrows, coral pink lips. Beautiful natural feminine face, delicate painted fashion-game style, not exaggerated doll eyes, no huge shiny lips. Preserve head/nose/ear/neck positions, eye line, mouth line exactly across variants. Same wholebody pose and framing, preserve every body landmark and cream leotard, bald NO HAIR, no makeup outside face, no accessories. Genuine transparent background. Full body feet must remain visible at same pixel positions as original. Do NOT zoom/crop to head. It is important to add features on the existing face at natural anatomical positions."
+    },
+    {
+      "id": "face-3",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-6bcc9dc6-5764-4442-9b18-64482eb7c2c4.png",
+      "prompt": "Use case: identity-preserve. Image 1 is exact edit target full body blank-faced mannequin. Change ONLY facial features: give this adult woman subtly defined oval jaw face, blue-grey eyes, confident soft angled eyebrows, berry red lips. Beautiful natural feminine face, delicate painted fashion-game style, not exaggerated doll eyes, no huge shiny lips. Preserve head/nose/ear/neck positions, eye line, mouth line exactly across variants. Same wholebody pose and framing, preserve every body landmark and cream leotard, bald NO HAIR, no makeup outside face, no accessories. Genuine transparent background. Full body feet must remain visible at same pixel positions as original. Do NOT zoom/crop to head. It is important to add features on the existing face at natural anatomical positions."
+    }
+  ]
+}

@@ -18,9 +18,9 @@ for(const [name,engine] of [['chromium',chromium],['webkit',webkit]]){
   const game=page.locator('.fw-game');await game.getByRole('button',{name:'全屏',exact:true}).click();await game.getByRole('button',{name:'装扮',exact:true}).click()
   const looks=[
    {top:'top-3',bottom:'bottom-0',face:'face-1',hair:'hair-0',socks:'socks-none',shoes:'shoes-0'},
-   {top:'top-0',bottom:'bottom-0',face:'face-2',hair:'hair-1',socks:'socks-0',shoes:'shoes-1'},
+   {top:'top-0',bottom:'bottom-0',face:'face-2',hair:'hair-1',eyes:'eyes-2',socks:'socks-4',shoes:'shoes-1'},
    {top:'top-2',bottom:'bottom-2',face:'face-3',hair:'hair-2',socks:'socks-none',shoes:'shoes-2'},
-   {top:'top-1',bottom:'bottom-3',face:'face-0',hair:'hair-3',socks:'socks-1',shoes:'shoes-3'}
+   {top:'top-1',bottom:'bottom-3',face:'face-0',hair:'hair-3',eyes:'eyes-3',socks:'socks-5',shoes:'shoes-3'}
   ]
   for(let i=0;i<looks.length;i++){
    const look=looks[i];await game.evaluate((e,p)=>Object.values(p).forEach(id=>e.__vue__.choosePart(id)),look)

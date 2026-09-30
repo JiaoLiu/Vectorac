@@ -4,7 +4,7 @@
     <div class="fw-part-categories" aria-label="精细装扮分类"><button v-for="c in categories" :key="c.id" :aria-pressed="category===c.id" @click="category=c.id">{{c.name}}</button></div>
     <div class="fw-part-grid"><article v-for="p in choices" :key="p.id" :class="{selected:selected[category]===p.id}">
       <button class="fw-part-preview" :aria-label="'试戴'+p.name" @click="$emit('choose',p.id)">
-        <img v-if="partAsset(p)" :class="{'fw-face-thumb':p.category==='face'}" :src="partAsset(p)" :alt="p.name" draggable="false">
+        <img v-if="partThumbnail(p)" :src="partThumbnail(p)" :alt="p.name" draggable="false">
         <span v-else-if="p.category==='lip'" class="fw-lip-swatch" :style="{background:lipColors[p.index]}"></span>
         <span v-else-if="p.category==='brows'" class="fw-brow-preview" :class="'brow-'+p.index"></span>
         <span v-else class="fw-part-none">留白</span>
@@ -16,8 +16,8 @@
   </div>
 </template>
 <script>
-import {CATEGORIES,PARTS,partAsset} from './parts.mjs'
-export default {props:['owned','selected'],data:()=>({category:'top',categories:CATEGORIES,lipColors:['#e8b5a3','#ad6375','#e5876d','#8d3e59','#d89aaf']}),computed:{choices(){return PARTS.filter(p=>p.category===this.category)}},methods:{partAsset}}
+import {CATEGORIES,PARTS,partThumbnail} from './parts.mjs'
+export default {props:['owned','selected'],data:()=>({category:'top',categories:CATEGORIES,lipColors:['#e8b5a3','#ad6375','#e5876d','#8d3e59','#d89aaf']}),computed:{choices(){return PARTS.filter(p=>p.category===this.category)}},methods:{partThumbnail}}
 </script>
 <style>
 .fw-part-categories{display:flex;overflow:auto;gap:5px;margin-bottom:16px;padding:3px 0 8px;scrollbar-width:thin}
