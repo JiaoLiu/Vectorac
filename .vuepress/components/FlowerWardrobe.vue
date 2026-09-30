@@ -16,8 +16,8 @@
         </div>
         <div class="fw-stage-bottom">
           <div v-if="!fineMode" class="fw-poses" aria-label="模特姿势"><button v-for="p in poses" :key="p.id" :aria-pressed="state.look.pose===p.id" :class="{active:state.look.pose===p.id}" @click="perform({type:'pose',id:p.id})">{{p.name}}</button></div>
-          <div v-else class="fw-poses"><button @click="faceZoom=!faceZoom">{{faceZoom?'查看全身':'查看妆容'}}</button><button @click="preview=null;finePreview=null;faceZoom=false;perform({type:'mode',mode:'outfit'})">切回套装</button></div>
-          <div v-if="finePreview" class="fw-preview-action"><button @click="finePreview=null">结束试戴</button><button class="fw-primary" @click="askBuy('part',finePreview)">解锁 · {{partItem(finePreview).price}} 金币</button></div>
+          <div v-else class="fw-poses"><button @click="faceZoom=!faceZoom">{{faceZoom?'查看全身':'查看妆容'}}</button><button @click="preview=null;finePreviews={};faceZoom=false;perform({type:'mode',mode:'outfit'})">切回套装</button></div>
+          <div v-if="previewParts.length" class="fw-preview-action fw-preview-parts"><button @click="finePreviews={}">结束全部试戴</button><button v-for="p in previewParts" :key="p.id" class="fw-primary" @click="askBuy('part',p.id)">{{p.name}} · {{p.price}} 解锁</button></div>
           <div v-if="preview" class="fw-preview-action"><button @click="preview=null">结束试穿</button><button class="fw-primary" @click="askBuy('outfit',preview)">解锁 · {{currentDress.price}} 金币</button></div>
           <div v-if="!isPreview" class="fw-photo-actions"><button @click="saveLook">♡ 收藏穿搭</button><button @click="takePhoto" :disabled="loading||imageError||exporting"><template v-if="exporting">照片制作中…</template><template v-else><svg class="fw-btn-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3.2l1.8-2.6h6l1.8 2.6H20v11.5H4z"/><circle cx="12" cy="13" r="3.4"/></svg>拍张照片</template></button></div>
         </div>
@@ -73,16 +73,18 @@ import {SAVE_KEY,OUTFITS,SCENES,POSES,QUESTS,asset,sceneAsset,item,freshState,no
 import {createModelRenderer} from './dressup/renderer.mjs'
 import {createWardrobeAudio} from './dressup/audio.mjs'
 import {PARTS} from './dressup/parts.mjs'
+import {selectPreview,displayParts,previewItems,purchasedPreview} from './dressup/preview.mjs'
 import FineWardrobe from './dressup/FineWardrobe.vue'
 import GameWorkshop from './dressup/GameWorkshop.vue'
 import AlbumLook from './dressup/AlbumLook.vue'
 export default {
   components:{FineWardrobe,GameWorkshop,AlbumLook},
-  data:()=>({finePreview:null,faceZoom:false,workshopMode:'games',musicOn:true,soundOn:true,styleFilter:'所有风格',state:freshState(),outfits:OUTFITS,scenes:SCENES,poses:POSES,quests:QUESTS,tab:'wardrobe',filter:'全部',preview:null,full:false,toast:'',modal:null,photoUrl:'',exporting:false,storageWarning:'',today:'',modelSrc:'',loading:true,imageError:false,workshop:createWorkshop(),workshopMessage:'',palette:[{name:'蔷薇粉',color:'#d99eae'},{name:'薄荷绿',color:'#91bcad'},{name:'星夜蓝',color:'#686990'},{name:'奶油金',color:'#d8ba80'}],tabs:[{id:'wardrobe',name:'衣橱'},{id:'fine',name:'装扮'},{id:'scenes',name:'场景'},{id:'quests',name:'邀请'},{id:'workshop',name:'工坊'},{id:'album',name:'相册'}]}),
+  data:()=>({finePreviews:{},faceZoom:false,workshopMode:'games',musicOn:true,soundOn:true,styleFilter:'所有风格',state:freshState(),outfits:OUTFITS,scenes:SCENES,poses:POSES,quests:QUESTS,tab:'wardrobe',filter:'全部',preview:null,full:false,toast:'',modal:null,photoUrl:'',exporting:false,storageWarning:'',today:'',modelSrc:'',loading:true,imageError:false,workshop:createWorkshop(),workshopMessage:'',palette:[{name:'蔷薇粉',color:'#d99eae'},{name:'薄荷绿',color:'#91bcad'},{name:'星夜蓝',color:'#686990'},{name:'奶油金',color:'#d8ba80'}],tabs:[{id:'wardrobe',name:'衣橱'},{id:'fine',name:'装扮'},{id:'scenes',name:'场景'},{id:'quests',name:'邀请'},{id:'workshop',name:'工坊'},{id:'album',name:'相册'}]}),
   computed:{
-    fineMode(){return !this.preview&&(this.state.look.mode==='fine'||!!this.finePreview)},
-    isPreview(){return !!this.preview||!!this.finePreview},
-    displayParts(){const p={...this.state.look.parts};if(this.finePreview){const selected=this.partItem(this.finePreview);p[selected.category]=selected.id}return p},
+    previewParts(){return previewItems(this.finePreviews)},
+    fineMode(){return !this.preview&&(this.state.look.mode==='fine'||this.previewParts.length>0)},
+    isPreview(){return !!this.preview||this.previewParts.length>0},
+    displayParts(){return displayParts(this.state.look.parts,this.finePreviews)},
     styleTags(){return ['所有风格',...Array.from(new Set(OUTFITS.reduce((tags,d)=>tags.concat(d.tags),[])))]},
     displayOutfit(){return this.preview||this.state.look.outfit},
     currentDress(){return item(OUTFITS,this.displayOutfit)},currentScene(){return item(SCENES,this.state.look.scene)},
@@ -99,7 +101,7 @@ export default {
     if(window.ResizeObserver){this._resize=new ResizeObserver(this._repaint);this._resize.observe(this.$refs.model)}
     window.addEventListener('resize',this._repaint);window.addEventListener('pageshow',this._repaint)
     this._key=e=>{if(e.key==='Escape'){if(this.modal)this.closeModal();else if(this.full)this.toggleFull()}}
-    this._storage=e=>{if(e.key===SAVE_KEY){this.readState();this.preview=null;this.finePreview=null}}
+    this._storage=e=>{if(e.key===SAVE_KEY){this.readState();this.preview=null;this.finePreviews={}}}
     this._visibility=()=>{this._audio.pause(document.hidden);if(!document.hidden){this.today=localDay();this.readState();this._repaint()}}
     document.addEventListener('keydown',this._key);document.addEventListener('visibilitychange',this._visibility);window.addEventListener('storage',this._storage)
     this._page=this.$el.closest('.theme-reco-content');if(this._page)this._page.classList.add('fw-page-content')
@@ -108,7 +110,7 @@ export default {
   methods:{asset,sceneAsset,item,scoreLook,createWorkshop,
     partItem(id){return item(PARTS,id)},
     chooseTab(id){this.tab=id;if(id==='fine'){this.preview=null;if(this.state.look.mode!=='fine')this.perform({type:'mode',mode:'fine'})}if(this.$refs.panel)this.$refs.panel.scrollTop=0},
-    choosePart(id){this.preview=null;this.faceZoom=['face','brows','lip','earrings'].includes(this.partItem(id).category);if(this.state.ownedParts.includes(id)){this.finePreview=null;this.perform({type:'part',id})}else{this.finePreview=id;this._audio.play('dress')}},
+    choosePart(id){this.preview=null;this.faceZoom=['face','brows','lip','hair','hat','headpiece','earrings'].includes(this.partItem(id).category);this.finePreviews=selectPreview(this.finePreviews,id,this.state.ownedParts);if(this.state.ownedParts.includes(id))this.perform({type:'part',id});else this._audio.play('dress')},
     receiveGameReward(result){this.perform({type:'gameReward',id:result.id,reward:result.reward})},
     unlockAudio(){if(this._audio)this._audio.unlock()},
     saveAudio(){try{localStorage.setItem('vectorac.wardrobe.audio',JSON.stringify({music:this.musicOn,sound:this.soundOn}))}catch(e){}},
@@ -125,18 +127,18 @@ export default {
       if(!this._alive||id!==this._loadId||result==='stale')return
       this.loading=false;this.imageError=result==='error';if(result==='ready')this.modelSrc=src
     },
-    tryDress(id){this.finePreview=null;this.faceZoom=false;if(this.state.owned.includes(id)){this.preview=null;this.perform({type:'wear',outfit:id})}else{this.preview=id;this._audio.play('dress')}},
+    tryDress(id){this.finePreviews={};this.faceZoom=false;if(this.state.owned.includes(id)){this.preview=null;this.perform({type:'wear',outfit:id})}else{this.preview=id;this._audio.play('dress')}},
     chooseScene(id){if(this.state.scenes.includes(id))this.perform({type:'scene',id});else this.askBuy('scene',id)},
     openModal(value){this._focus=document.activeElement;this.modal=value;this.$nextTick(()=>{if(this.$refs.overlay){this._modalOverflow=document.body.style.overflow;document.body.style.overflow='hidden';document.body.appendChild(this.$refs.overlay)}if(this.$refs.dialog)this.$refs.dialog.focus()})},
     closeModal(){if(this.modal){if(this.$refs.overlay)this.$refs.root.appendChild(this.$refs.overlay);document.body.style.overflow=this._modalOverflow||''}this.modal=null;if(this.photoUrl){URL.revokeObjectURL(this.photoUrl);this.photoUrl=''}if(this._focus&&this._focus.isConnected)this._focus.focus()},
     modalKeys(e){if(e.key!=='Tab')return;const nodes=this.$refs.dialog.querySelectorAll('button:not(:disabled),a[href]');if(!nodes.length)return;const first=nodes[0],last=nodes[nodes.length-1];if(e.shiftKey&&(document.activeElement===first||document.activeElement===this.$refs.dialog)){e.preventDefault();last.focus()}else if(!e.shiftKey&&(document.activeElement===last||document.activeElement===this.$refs.dialog)){e.preventDefault();first.focus()}},
     askBuy(kind,id){const p=item(kind==='scene'?SCENES:kind==='part'?PARTS:OUTFITS,id);this.openModal({kind:'buy',itemKind:kind,id,title:p.name,text:p.story||(kind==='part'?'自由组合，搭配属于你的细节。':'为喜欢的搭配，布置一个新的场景。'),price:p.price})},
-    confirmBuy(){const m=this.modal;if(this.perform({type:'buy',kind:m.itemKind,id:m.id})){this.preview=null;this.finePreview=null;this.closeModal()}},
+    confirmBuy(){const m=this.modal;if(this.perform({type:'buy',kind:m.itemKind,id:m.id})){if(m.itemKind==='part')this.finePreviews=purchasedPreview(this.finePreviews,m.id);else if(m.itemKind==='outfit'){this.preview=null;this.finePreviews={};this.faceZoom=false}this.closeModal()}},
     saveLook(){if(this.isPreview)return;this.perform({type:'album',id:Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8)})},
-    restoreLook(id){this.preview=null;this.finePreview=null;this.faceZoom=false;this.perform({type:'restoreAlbum',id})},
+    restoreLook(id){this.preview=null;this.finePreviews={};this.faceZoom=false;this.perform({type:'restoreAlbum',id})},
     pickColor(color){const r=matchColor(this.workshop,color);if(r.correct)this._audio.play(r.complete?'reward':'color');this.workshop=r.session;this.workshopMessage=r.correct?'这根丝线刚刚好。':'慢慢来，再看看布料的颜色。';if(r.complete){this.readState();const reward=finishWorkshop(this.state,this.workshop);this.state=reward.state;this.workshop=reward.session;this.persist();this.notify('配色完成 · +25 金币')}},
     toggleFull(){if(!this.full){this._overflow=document.body.style.overflow;document.body.style.overflow='hidden';this._anchor=document.createComment('flower-wardrobe');this.$el.parentNode.insertBefore(this._anchor,this.$el);document.body.appendChild(this.$el);document.body.classList.add('fw-full-active')}else{document.body.style.overflow=this._overflow||'';if(this._anchor&&this._anchor.parentNode){this._anchor.parentNode.insertBefore(this.$el,this._anchor);this._anchor.remove()}document.body.classList.remove('fw-full-active')}this.full=!this.full},
-    showHelp(){this.openModal({kind:'help',title:'欢迎来到花间衣橱',text:'初次来到衣橱可获得 100 金币与免费套装。在衣橱试穿整套服装，或进入装扮区自由组合上衣、下装、帽子、头饰、耳环、鞋袜、脸型、眉毛与口红；精细装扮采用站姿，可以放大查看妆容。去城堡、海滩、花海或室内拍照。邀请任务、花饰记忆、主题搭配、节奏缝纫和配色练习都能赚金币。服装与场景永久拥有，收藏也会记录细分装扮。无需充值，进度保存在当前浏览器。'})},
+    showHelp(){this.openModal({kind:'help',title:'欢迎来到花间衣橱',text:'初次来到衣橱可获得 100 金币与免费套装。在衣橱试穿整套服装，或进入装扮区自由组合上衣、下装、发型、帽子、头饰、耳环、鞋袜、脸型、眉毛与口红；短发、长卷发、高马尾、盘发可以分别选择。精细装扮采用站姿，放大查看妆容不会改变穿搭；多件未解锁装扮可以一起试穿，按部位分别解锁。去城堡、海滩、花海或室内拍照。邀请任务、花饰记忆、主题搭配、节奏缝纫和配色练习都能赚金币。服装与场景永久拥有，收藏也会记录细分装扮。无需充值，进度保存在当前浏览器。'})},
     async takePhoto(){
       if(this.isPreview||this.exporting||this.loading)return
       this.exporting=true
@@ -160,6 +162,7 @@ export default {
 @media(prefers-reduced-motion:reduce){.fw-game *{transition:none!important}}
 /* 按钮内联图标：随字号缩放、继承文字色，与 ♡ ✦ 字符图标风格一致。 */
 .fw-btn-icon{width:1.15em;height:1.15em;vertical-align:-.2em;margin-right:.35em}
+.fw-preview-parts{flex-wrap:wrap;max-height:86px;overflow:auto}.fw-preview-parts button{flex:1 1 120px;font-size:10px}
 /* 触屏点击后 hover 会残留（sticky hover），落针等按钮像一直被按住；
    触摸设备取消 hover 换色，按下瞬间改用 :active 短暂变暗。 */
 @media (hover:none),(pointer:coarse){

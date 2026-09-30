@@ -59,7 +59,7 @@ for(const [name,engine] of [['chromium',chromium],['webkit',webkit]]){
   for(let i=0;i<5;i++){const color=await page.locator('.fw-fabric b').textContent();await game.getByRole('button',{name:'选择'+color,exact:true}).click()}
   assert.equal((await save()).coins,205)
   await page.waitForFunction(()=>(document.querySelector('.fw-model').dataset.src||'').includes('mint-1.webp'))
-  await game.getByRole('button',{name:'↓ 拍张照片',exact:true}).click();await page.waitForSelector('.fw-export')
+  await game.getByRole('button',{name:'拍张照片',exact:true}).click();await page.waitForSelector('.fw-export')
   assert.ok(await page.locator('.fw-export').evaluate(i=>i.complete&&i.naturalWidth===900))
   await page.getByRole('button',{name:'关闭弹窗',exact:true}).click()
   await page.screenshot({path:join(out,`${name}-${viewport.width}-garden.png`)})

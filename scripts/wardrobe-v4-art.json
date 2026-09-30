@@ -1,0 +1,41 @@
+{
+  "method": "built-in image_gen",
+  "assets": [
+    {
+      "id": "base-0",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-b4242a6f-667e-4d46-916b-4fd3c73bf46f.png"
+    },
+    {
+      "id": "base-1",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-447fff66-2c45-466b-9cd9-47824b54327b.png"
+    },
+    {
+      "id": "base-2",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-83a68529-5d2d-4508-a5a9-aea912d69096.png"
+    },
+    {
+      "id": "base-3",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-24ec6ae8-5e0a-4005-88be-d91e765ce56b.png"
+    },
+    {
+      "id": "hair",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-d70e5a85-a639-4dfa-b908-48cc27410503.png"
+    },
+    {
+      "id": "shoes",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-1f562639-fcc7-448f-83fa-a8d964b04218.png"
+    }
+  ],
+  "prompts": [
+    {
+      "id": "base-v4",
+      "prompt": "Use case: identity-preserve. Edit target: Image 1 is the existing female paper-doll game base model. Create a corrected version for layered clothing. Preserve EXACT original full-body standing pose, silhouette, limb positions, feet positions, facial features, eyes and skin tone, body size and framing. Remove ONLY all brown hair and replace it with a smooth natural bald scalp; hair is a separate game layer. Replace the cream tank top and shorts with an opaque modest fitted neutral cream strapless dance leotard (NOT nude, fully covered bust and pelvis), no shoulder straps and no sleeves. Its neckline sits below the collarbones, below an off-shoulder corset, so it will be completely covered by clothing layers. Original hand/body/foot silhouette and original scale cannot move. Entire character head to toes visible, same tall 1:2 canvas, centered, generous transparent margins. Soft realistic fantasy dress-up illustration, consistent identity. No text, no props, no shadow on background. Genuinely transparent background, preserve clean alpha edges. Do not add clothes besides the covered base leotard. This is a technical reference sprite, not a scene.",
+      "reference": ".vuepress/public/img/games/dressup/layers/base.webp"
+    },
+    {
+      "id": "shoes-atlas",
+      "prompt": "Use case: stylized-concept. Asset type: corrected FOOTWEAR layers for front-facing dress-up model. Input Image 1 is model perspective reference, NOT to reproduce the whole body. Create square 2x2 equal-cell transparent sprite atlas. Each cell contains ONE pair of shoes viewed from FRONT at eye-level, as if already worn on invisible feet standing flat, toes face camera. This is NOT overhead/top-down product photography. Shoe opening not visible from above, no wide visible insoles. Feet/ankles invisible, transparent ankle opening. Two shoes close together with a small 8% gap, left toe slightly out left, right toe slightly out right; pair frontal height appropriate. Top left: blush pink ribbon Mary Jane low shoes with rounded toes, pearl buckle. Top right: dark navy leather penny loafers. Bottom left: ivory and blush Chinese floral embroidered low slip-on shoes. Bottom right: black short ankle boots with modest gold buckles. Delicate dimensional painted fashion-game realism, matches refined paper doll style, no human/skin, no mannequins or legs, no other objects, no text. Clear alpha, generous cell margins. Distinct stitched details, thin soles with realistic volume, viewed horizontally not rotated. Genuinely transparent background.",
+      "reference": "base-v4"
+    }
+  ]
+}

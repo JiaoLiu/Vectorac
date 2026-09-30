@@ -4,8 +4,11 @@ VuePress page: blogs/other/flower_wardrobe.md; Vue 2 component: FlowerWardrobe.v
 Pure state/economy: dressup/engine.mjs. All item IDs, prices, tags and quest rewards are data.
 Art: fourteen original complete outfits x three separately illustrated poses. Changing garments uses
 full outfit sprites, so sleeves, hair, skirt and hands maintain correct occlusion in every pose.
-Fine wardrobe: separate neutral-standing model, 10 component categories and 45 selectable options.
-Aligned raster layers compose top, bottom, headwear, earrings, socks, shoes and face shape.
+Fine wardrobe: separate neutral-standing model, 11 component categories and 49 selectable options.
+Each face selects an entire registered body sprite, not a rectangular face cutout.
+Hair has back and front passes; covered-body masks exclude garment/sock silhouettes without hiding hands.
+Front-view footwear aligns to feet; waist-anchored garment strips fit the model without exposed base clothing.
+Aligned raster layers compose top, bottom, hair, headwear, earrings, socks and shoes.
 Brows/lip color draw at face landmarks; fine mode uses standing pose and optional face zoom.
 Seven scenic raster backgrounds are shared by stage, scene cards and photo export.
 
@@ -26,6 +29,9 @@ v1 saves gain ownedParts/look.mode/look.parts defaults without losing old balanc
 Album snapshots clone nested component selections; photo export snapshots the actual visible bitmap.
 Memory, themed styling and sewing games use pure state transitions; completion emits one reward.
 Recent game session IDs persist to prevent duplicate reward processing.
+Fitting-room drafts are independent per category, not a single preview ID. Owned choices only replace
+their own slot; buying one preview retains the other slots. Drafts never grant ownership or enter saves.
+Face zoom only changes CSS framing, never the look state or draft.
 
 Audio: dressup/audio.mjs starts licensed Dream Culture music after user interaction.
 Music and synthesized action cues have independent persisted switches; backgrounding pauses audio.

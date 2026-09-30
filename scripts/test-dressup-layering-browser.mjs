@@ -1,0 +1,37 @@
+import assert from 'node:assert/strict'
+import {createRequire} from 'node:module'
+import {mkdtemp,writeFile} from 'node:fs/promises'
+import {tmpdir} from 'node:os'
+import {join} from 'node:path'
+import {PARTS,DEFAULT_PARTS} from '../.vuepress/components/dressup/parts.mjs'
+const require=createRequire(import.meta.url),{chromium,webkit}=require(process.env.PLAYWRIGHT_PATH||'playwright')
+const base=process.env.DRESSUP_BASE||'http://127.0.0.1:8080',out=await mkdtemp(join(tmpdir(),'wardrobe-layering-'))
+const key='vectorac.flower-wardrobe.v1'
+for(const [name,engine] of [['chromium',chromium],['webkit',webkit]]){
+ const browser=await engine.launch({headless:true,...(name==='chromium'?{executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'}:{})})
+ try{
+  const page=await browser.newPage({viewport:{width:390,height:844},hasTouch:true,isMobile:true}),errors=[]
+  await page.addInitScript(({key,parts,defaults})=>{if(!localStorage.getItem(key))localStorage.setItem(key,JSON.stringify({version:1,coins:1000,owned:['blush'],scenes:['atelier'],ownedParts:parts,look:{mode:'fine',parts:defaults}}))},{key,parts:PARTS.map(p=>p.id),defaults:DEFAULT_PARTS})
+  await page.route('**/*',r=>/^https?:/.test(r.request().url())&&!r.request().url().startsWith(base)?r.abort():r.continue())
+  page.on('pageerror',e=>errors.push(e.message));await page.goto(base+'/blogs/other/flower_wardrobe.html')
+  await page.waitForFunction(()=>(document.querySelector('.fw-model').dataset.src||'').startsWith('fine:'))
+  const game=page.locator('.fw-game');await game.getByRole('button',{name:'全屏',exact:true}).click();await game.getByRole('button',{name:'装扮',exact:true}).click()
+  const looks=[
+   {top:'top-3',bottom:'bottom-0',face:'face-1',hair:'hair-0',socks:'socks-none',shoes:'shoes-0'},
+   {top:'top-0',bottom:'bottom-0',face:'face-2',hair:'hair-1',socks:'socks-0',shoes:'shoes-1'},
+   {top:'top-2',bottom:'bottom-2',face:'face-3',hair:'hair-2',socks:'socks-none',shoes:'shoes-2'},
+   {top:'top-1',bottom:'bottom-3',face:'face-0',hair:'hair-3',socks:'socks-1',shoes:'shoes-3'}
+  ]
+  for(let i=0;i<looks.length;i++){
+   const look=looks[i];await game.evaluate((e,p)=>Object.values(p).forEach(id=>e.__vue__.choosePart(id)),look)
+   await page.waitForFunction(p=>{const vm=document.querySelector('.fw-game').__vue__,src=document.querySelector('.fw-model').dataset.src||'';return !vm.loading&&Object.values(p).every(id=>src.includes('"'+id+'"'))},look)
+   assert.equal(await game.evaluate(e=>e.__vue__.imageError),false)
+   const data=await page.locator('.fw-model').evaluate(c=>c.toDataURL('image/png').split(',')[1]);await writeFile(join(out,`${name}-${i}-model.png`),Buffer.from(data,'base64'))
+   await game.getByRole('button',{name:'查看妆容',exact:true}).click();await page.screenshot({path:join(out,`${name}-${i}-makeup.png`)})
+   const snapshot=await game.evaluate(e=>JSON.stringify(e.__vue__.state.look));await game.getByRole('button',{name:'查看全身',exact:true}).click();assert.equal(await game.evaluate(e=>JSON.stringify(e.__vue__.state.look)),snapshot)
+  }
+  const last=await game.evaluate(e=>JSON.stringify(e.__vue__.state.look));await page.reload();await page.waitForFunction(()=>(document.querySelector('.fw-model').dataset.src||'').includes('hair-3'));assert.equal(await page.locator('.fw-game').evaluate(e=>JSON.stringify(e.__vue__.state.look)),last)
+  assert.deepEqual(errors,[]);await page.close()
+ }finally{await browser.close()}
+}
+console.log(JSON.stringify({passed:true,screenshots:out}))
