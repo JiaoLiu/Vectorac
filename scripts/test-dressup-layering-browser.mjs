@@ -19,9 +19,12 @@ for(const [name,engine] of [['chromium',chromium],['webkit',webkit]]){
   for(const category of ['上衣','下装','发型','头饰','帽子','耳环','袜子','鞋子','脸型','眼睛','眉毛','口红']){
    await page.locator('.fw-part-categories').getByRole('button',{name:category,exact:true}).click()
    await page.waitForFunction(()=>Array.from(document.querySelectorAll('.fw-part-preview img')).every(i=>i.complete&&i.naturalWidth>0))
-   assert.ok(await page.locator('.fw-part-preview img').evaluateAll(es=>es.every(i=>i.src.includes('/v6/catalog/'))),'all item cards use independent catalogue art')
+   assert.ok(await page.locator('.fw-part-preview img').evaluateAll(es=>es.every(i=>i.src.includes('/v7/catalog/'))),'all item cards use independent catalogue art')
+   if(['帽子','耳环','脸型','眼睛','眉毛'].includes(category))await page.screenshot({path:join(out,`${name}-catalog-${category}.png`)})
   }
   const looks=[
+   {top:'top-0',bottom:'bottom-0',face:'face-1',hair:'hair-0',hat:'hat-none',headpiece:'headpiece-0',earrings:'earrings-0',eyes:'eyes-0',brows:'brows-0',lip:'lip-3'},
+   {face:'face-2',hair:'hair-0',earrings:'earrings-2'},
    {top:'top-3',bottom:'bottom-0',face:'face-1',hair:'hair-0',hat:'hat-0',eyes:'eyes-3',lip:'lip-4',socks:'socks-none',shoes:'shoes-0'},
    {top:'top-0',bottom:'bottom-0',face:'face-2',hair:'hair-1',hat:'hat-1',eyes:'eyes-2',brows:'brows-3',lip:'lip-1',socks:'socks-4',shoes:'shoes-1'},
    {top:'top-2',bottom:'bottom-2',face:'face-3',hair:'hair-2',hat:'hat-2',eyes:'eyes-1',lip:'lip-4',socks:'socks-none',shoes:'shoes-2'},
@@ -32,7 +35,8 @@ for(const [name,engine] of [['chromium',chromium],['webkit',webkit]]){
    await page.waitForFunction(p=>{const vm=document.querySelector('.fw-game').__vue__,src=document.querySelector('.fw-model').dataset.src||'';return !vm.loading&&Object.values(p).every(id=>src.includes('"'+id+'"'))},look)
    assert.equal(await game.evaluate(e=>e.__vue__.imageError),false)
    const data=await page.locator('.fw-model').evaluate(c=>c.toDataURL('image/png').split(',')[1]);await writeFile(join(out,`${name}-${i}-model.png`),Buffer.from(data,'base64'))
-   await game.getByRole('button',{name:'查看妆容',exact:true}).click();await page.screenshot({path:join(out,`${name}-${i}-makeup.png`)})
+   if(!await game.evaluate(e=>e.__vue__.faceZoom))await game.getByRole('button',{name:'查看妆容',exact:true}).click();await page.screenshot({path:join(out,`${name}-${i}-makeup.png`)})
+   if(i===0){await page.setViewportSize({width:844,height:390});await page.screenshot({path:join(out,`${name}-user-look-landscape.png`)});await page.setViewportSize({width:390,height:844})}
    const snapshot=await game.evaluate(e=>JSON.stringify(e.__vue__.state.look));await game.getByRole('button',{name:'查看全身',exact:true}).click();assert.equal(await game.evaluate(e=>JSON.stringify(e.__vue__.state.look)),snapshot)
   }
   const last=await game.evaluate(e=>JSON.stringify(e.__vue__.state.look));await page.reload();await page.waitForFunction(()=>(document.querySelector('.fw-model').dataset.src||'').includes('hair-3'));assert.equal(await page.locator('.fw-game').evaluate(e=>JSON.stringify(e.__vue__.state.look)),last)

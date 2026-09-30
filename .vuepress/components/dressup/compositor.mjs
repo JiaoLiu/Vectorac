@@ -27,13 +27,14 @@ export function paintComposite(ctx,images,parts){
  for(const category of REGISTERED_ORDER){if(category==='face')ctx.clearRect(190,25,132,138);registered(category)}
  // Small accessories retain their established attachment anchors.
  const anchors={headpiece:[[285,46,43,60],[289,66,38,42],[282,58,45,87],[286,54,40,62]]}
+ // Front strands do not contain skin patches. Jewellery is attached after hair
+ // so a purchased/trial earring cannot disappear under the entire hair sprite.
+ ctx.save();ctx.beginPath();ctx.rect(0,0,512,180);ctx.clip();registered('hair');ctx.restore()
  for(const category of ['earrings']){
   const p=chosen(category);if(!p||p.index<0)continue
   const src=partAsset(p),b=bounds[src],img=images.get(src);if(!b||!img)continue
-  if(category==='earrings'){const h=p.index===2?23:p.index===1?21:16;ctx.drawImage(img,b.x,b.y,b.w/2,b.h,206,119,8,h);ctx.drawImage(img,b.x+b.w/2,b.y,b.w/2,b.h,299,119,8,h)}
+  if(category==='earrings'){const h=[21,25,27,12][p.index],w=p.index===3?9:11;ctx.drawImage(img,b.x,b.y,b.w/2,b.h,220-w/2,131,w,h);ctx.drawImage(img,b.x+b.w/2,b.y,b.w/2,b.h,292-w/2,131,w,h)}
  }
- // Side strands cover ear jewellery naturally; there is no earring-shaped hole.
- ctx.save();ctx.beginPath();ctx.rect(0,0,512,180);ctx.clip();registered('hair');ctx.restore()
  const piece=chosen('headpiece');if(piece&&piece.index>=0){const src=partAsset(piece),b=bounds[src];ctx.drawImage(images.get(src),b.x,b.y,b.w,b.h,...anchors.headpiece[piece.index])}
  registered('hat')
 }

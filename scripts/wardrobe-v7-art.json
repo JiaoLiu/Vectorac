@@ -1,0 +1,72 @@
+{
+  "tool": "Built-in imagegen",
+  "background": "#f4ede5",
+  "assets": [
+    {
+      "id": "hair-0",
+      "prompt": "Use case: background-extraction. Image 1 edit target. Extract ONLY the complete brown bob hairstyle from Image 1 onto genuine transparency. Remove the ENTIRE mannequin: all skin, forehead, cheeks, ears, nose, neck, shoulders, body, legs, leotard, feet must become transparent. Preserve every hair strand and exact original hair shape, color, texture and pixel positioning. Keep EXACTLY the original tall full-body 1:2 canvas framing: hair sits at the upper center at its original scale, the large lower portion stays completely transparent. Do NOT zoom, crop, enlarge, recenter or redesign the hair. No skin-colored cheeks inside the hair opening, no peach strips, no white or colored matte. A clean natural hair-only registered game overlay, no empty earring holes in the hair.",
+      "reference": "/Users/Jiao/Documents/Vectorac/scripts/fixtures/wardrobe-v5-sources/hair-0.webp",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-5d032eee-be05-4d00-823f-b42e08e3f8f5.png"
+    },
+    {
+      "id": "catalog-hats",
+      "prompt": "Use case: product-mockup. Asset type: one square 2x2 catalogue atlas of FOUR complete independently illustrated hat designs, each isolated product comfortably inside its own equal cell, uniform flat warm ivory background #f4ede5 across the entire atlas. Premium fashion-game illustration, crisp beautiful woven fibers, velvet and jewellery. Top-left: ivory straw hat with a small blush rose and ribbon. Top-right: navy velvet beret with gold moon pin. Bottom-left: complete jade leaf and ivory magnolia circlet. Bottom-right: delicate silver crescent and pearl-star tiara. Show WHOLE objects, coherent elegant continuous designs, angled product display, no people, NO mannequin head, NO skin, no hair, no screenshot cutouts. No labels, borders, text or watermark. Absolutely no separate white panels or gradients.",
+      "reference": null,
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-c07549e6-3c91-4803-9cef-e79b8899f138.png"
+    },
+    {
+      "id": "catalog-eyes",
+      "prompt": "Use case: stylized-concept. Asset type: one square 2x2 original fashion-game eye-makeup design atlas. Uniform flat warm ivory #f4ede5 background; four beautifully rendered balanced close-ups of a PAIR of expressive feminine eyes, elegant natural lashes and thin eyelids, tasteful soft painted illustration. Top-left warm brown softly rounded eyes, top-right deep brown almond eyes, bottom-left muted jade green eyes, bottom-right natural muted blue-gray eyes (not bright neon). Each design draws ONLY the complete pair of eyes with small soft skin eyelid shading that blends smoothly into the SAME background; no eyebrows, nose, mouth, head, hair or face rectangle. Exact equal cells and generous spacing, horizontally aligned pairs. Not a game screenshot or cropped model. No text, borders, watermark, white panels or gradients.",
+      "reference": null,
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-0168506b-c69e-4ba8-8506-16e23e42ab87.png"
+    },
+    {
+      "id": "catalog-brows",
+      "prompt": "Use case: stylized-concept. Asset type: one square 2x2 original fashion-game eyebrow design catalogue atlas. Flat warm ivory #f4ede5 background everywhere, FOUR pairs of beautiful soft dark-brown eyebrows, delicate individual hair strokes, crisp high-quality beauty illustration. Top-left natural soft arched brow pair, top-right gentle straight brow pair, bottom-left elegant crescent arched brow pair, bottom-right softly confident angled brow pair. Both eyebrows of each pair evenly aligned; same scale and equal grid cells, generous blank margins. No eyes, nose, lips, face, skin patch, hair, heads or people. No screenshot cutouts, white squares, borders, gradients, text or watermark.",
+      "reference": null,
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-74d0866c-b2f6-473d-9c47-0d2b919a3826.png"
+    },
+    {
+      "id": "catalog-lips",
+      "prompt": "Use case: stylized-concept. Asset type: one square 3-column 2-row lipstick beauty-design catalogue atlas, flat warm ivory #f4ede5 background everywhere. Exactly six delicate naturally shaped illustrated feminine lips with fine glossy texture, not cartoon icons. Top row left natural peach-pink; middle dusty rose; right coral. Bottom row left berry red; middle cherry blossom pink; right natural peach-pink duplicate. Each centered in its own equal cell with generous margins. Only the lips, no nose, face rectangle, skin cutout or screenshot. Beautiful refined fashion-game product presentation, no white panels, gradients, labels, borders or text.",
+      "reference": null,
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-ec8bf5db-55cf-4d7a-8c81-58843c4be8a4.png"
+    },
+    {
+      "id": "catalog-faces",
+      "prompt": "Use case: stylized-concept. Asset type: one square 2x2 beauty portrait catalogue atlas for facial-shape selection. Four pretty adult feminine fashion-game head-and-neck portraits with identical dark-brown gently pulled-back hair, identical warm brown eyes, natural soft brows, soft pink lips, same skin and lighting. Uniform flat warm ivory #f4ede5 background over entire canvas, four equal cells, no framed panels. Face shape differences are the ONLY differences: top-left natural oval jaw; top-right distinctly softer ROUND cheek and shorter rounded chin; bottom-left HEART shape, broader cheeks and tapered delicate chin; bottom-right defined softly SQUARE jawline. Smooth coherent facial anatomy and cheeks, not patched images, not screenshots, NO bald heads. High-quality semi-realistic painted beauty design. No clothing, accessories, text, borders or watermark.",
+      "reference": null,
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-731bc56d-0ddf-4b7d-b74a-010319668737.png"
+    },
+    {
+      "id": "hair-1",
+      "prompt": "Use case: background-extraction. Image 1 edit target. Extract ONLY the complete brown long wavy hairstyle onto genuine transparency. Remove ENTIRE mannequin and ALL skin, forehead, cheeks, ears, nose, neck, shoulders, body, legs, leotard and feet. Preserve every hair strand including full hair behind shoulders, exact original hair shape, color, texture and pixel positioning. Keep EXACTLY original tall fullbody 1:2 canvas framing: hair upper center at original scale, large lower portion fully transparent. Do NOT zoom, crop, enlarge, recenter or redesign. No skin-coloured cheeks inside hair opening, peach strips, white or coloured matte. Clean natural HAIR-ONLY registered game overlay, no earring holes cut into hair.",
+      "reference": "/Users/Jiao/Documents/Vectorac/scripts/fixtures/wardrobe-v5-sources/hair-1.webp",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-8a12043d-c99a-4470-8fac-ab528a69e5ef.png"
+    },
+    {
+      "id": "hair-2",
+      "prompt": "Use case: background-extraction. Image 1 edit target. Extract ONLY the complete brown high ponytail hairstyle onto genuine transparency. Remove ENTIRE mannequin and ALL skin, forehead, cheeks, ears, nose, neck, shoulders, body, legs, leotard and feet. Preserve every hair strand including full hair behind shoulders, exact original hair shape, color, texture and pixel positioning. Keep EXACTLY original tall fullbody 1:2 canvas framing: hair upper center at original scale, large lower portion fully transparent. Do NOT zoom, crop, enlarge, recenter or redesign. No skin-coloured cheeks inside hair opening, peach strips, white or coloured matte. Clean natural HAIR-ONLY registered game overlay, no earring holes cut into hair.",
+      "reference": "/Users/Jiao/Documents/Vectorac/scripts/fixtures/wardrobe-v5-sources/hair-2.webp",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-66faab0c-69a5-4e73-bbc7-fc59fd5f0301.png"
+    },
+    {
+      "id": "hair-3",
+      "prompt": "Use case: background-extraction. Image 1 edit target. Extract ONLY the complete brown braided updo hairstyle onto genuine transparency. Remove ENTIRE mannequin and ALL skin, forehead, cheeks, ears, nose, neck, shoulders, body, legs, leotard and feet. Preserve every hair strand including full hair behind shoulders, exact original hair shape, color, texture and pixel positioning. Keep EXACTLY original tall fullbody 1:2 canvas framing: hair upper center at original scale, large lower portion fully transparent. Do NOT zoom, crop, enlarge, recenter or redesign. No skin-coloured cheeks inside hair opening, peach strips, white or coloured matte. Clean natural HAIR-ONLY registered game overlay, no earring holes cut into hair.",
+      "reference": "/Users/Jiao/Documents/Vectorac/scripts/fixtures/wardrobe-v5-sources/hair-3.webp",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-33495842-7e85-4c47-9347-894e14f8f4e9.png"
+    },
+    {
+      "id": "catalog-hair",
+      "prompt": "Use case: stylized-concept. One square 2x2 catalogue atlas, FOUR independent elegant beauty hairstyle design portraits, full head and neck only. Flat warm ivory #f4ede5 background across all equal cells. Identical beautiful adult feminine model and natural makeup. Top left brown softly waved chin-length bob, top right brown long flowing waves, bottom left brown high ponytail with loose soft strands, bottom right brown braided updo. Each hairstyle complete and recognizable, neutral front three-quarter view. Refined semi-realistic painted fashion game artwork. No accessories, frames, separate white squares, text or watermark. Not screenshots or cutouts.",
+      "reference": null,
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-fd8c4b13-a05a-4706-b953-a0a8ca6c68bf.png"
+    },
+    {
+      "id": "catalog-socks",
+      "prompt": "Use case: product-mockup. One square 2-column 3-row independent sock design catalogue atlas. SIX beautiful complete PAIRS of socks on uniform flat warm ivory #f4ede5 background across entire canvas, equal cells, generous blank margins and clear separation. Top left cream lace ankle socks, top right navy knee socks, middle left cream sheer embroidered mid-calf socks, middle right black knee socks, bottom left cream lace thigh-high stockings, bottom right black lace thigh-high stockings. Full sock designs with closed toes, lovely textile details, folded or suspended product display, NO feet or legs or mannequin or human skin, no cutout screenshot holes. Each whole pair fits its cell. No labels, text, frames, white panels or gradients.",
+      "reference": null,
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-4d4dae54-58b5-40e5-86c3-bf625deb5e51.png"
+    }
+  ]
+}

@@ -50,7 +50,7 @@ test('old fine saves gain default hair; hair purchase and album restore preserve
 test('blank master and anatomical layers all use the same registered canvas',()=>{
  for(let i=0;i<4;i++){const parts={...DEFAULT_PARTS,face:'face-'+i};const src=baseSource(parts),sources=layerSources(parts)
   assert.equal(src,BASE);assert.equal(sources.filter(x=>x===BASE).length,1)
-  assert.ok(sources.includes(`/img/games/dressup/layers/v6/face-${i}.webp`))
+  assert.ok(sources.includes(partAsset(PARTS.find(p=>p.id===`face-${i}`))))
   for(const category of ['hair','shoes','eyes','brows','lip'])assert.ok(sources.includes(partAsset(PARTS.find(p=>p.id===category+'-0'))))
  }
 })

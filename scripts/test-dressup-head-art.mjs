@@ -6,12 +6,16 @@ import {join} from 'node:path'
 import {tmpdir} from 'node:os'
 import {PARTS,DEFAULT_PARTS,partAsset,partThumbnail} from '../.vuepress/components/dressup/parts.mjs'
 const require=createRequire(import.meta.url),sharp=require(process.env.SHARP_PATH||'sharp'),{chromium}=require(process.env.PLAYWRIGHT_PATH||'playwright')
-const dir=await mkdtemp(join(tmpdir(),'wardrobe-v6-head-'))
+const dir=await mkdtemp(join(tmpdir(),'wardrobe-v7-head-'))
 const raw=async id=>sharp('.vuepress/public'+partAsset(PARTS.find(p=>p.id===id))).ensureAlpha().raw().toBuffer()
 for(const p of PARTS.filter(p=>p.index>=0)){
  assert.notEqual(partThumbnail(p),partAsset(p),'product art must not point to the wearable sprite')
  const m=await sharp('.vuepress/public'+partThumbnail(p)).metadata();assert.ok(m.width>150&&m.height>150)
+ const card=await sharp('.vuepress/public'+partThumbnail(p)).removeAlpha().raw().toBuffer()
+ assert.deepEqual([...card.subarray(0,3)],[244,237,229],'catalogue margin must match the one CSS background')
 }
+const art=JSON.parse(await readFile('scripts/wardrobe-v7-art.json','utf8'))
+for(const id of ['catalog-hats','catalog-eyes','catalog-brows','catalog-faces','catalog-lips','catalog-hair','catalog-socks'])assert.ok(art.assets.some(a=>a.id===id&&!a.reference),'catalogue design must be independently illustrated, not a worn-model crop')
 const features={};for(const category of ['eyes','brows','lip'])for(const p of PARTS.filter(p=>p.category===category)){
  const data=await raw(p.id);features[p.id]=data
  // No second nose can be hidden inside any eye/brow/lip layer.
@@ -24,8 +28,14 @@ for(let i=1;i<4;i++){
  let different=0;for(let y=135;y<161;y++)for(let x=207;x<307;x++)if(faces[i][(y*512+x)*4+3]!==faces[0][(y*512+x)*4+3])different++
  assert.ok(different>25,'face shape has no silhouette change')
  for(let y=120;y<137;y++)for(let x=248;x<265;x++)for(let c=0;c<4;c++)assert.equal(faces[i][(y*512+x)*4+c],faces[0][(y*512+x)*4+c],'face selection changes the nose landmark')
+ for(let y=156;y<163;y++)for(let x=241;x<272;x++)for(let c=0;c<4;c++)assert.equal(faces[i][(y*512+x)*4+c],faces[0][(y*512+x)*4+c],'face choice shifts the neck shading and produces a seam')
 }
 for(const id of ['hair-0','hair-1']){const data=await raw(id);assert.ok(data[(150*512+224)*4+3]>100,'rectangular ear/jaw hole returned')}
+for(let hair=0;hair<4;hair++){
+ const data=await raw('hair-'+hair);let skin=0
+ for(let y=105;y<164;y++)for(let x=208;x<307;x++){const p=(y*512+x)*4,[r,g,b,a]=data.subarray(p,p+4);if(a>150&&r>165&&g>110&&r>g&&g>b&&r-g<65)skin++}
+ assert.ok(skin<10,'hair sprite contains cheek/ear skin that produces stitched face edges: '+hair)
+}
 const browser=await chromium.launch({headless:true,executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'})
 try{
  const page=await browser.newPage()
@@ -44,11 +54,22 @@ try{
    await draw({...defaults,hair:'hair-'+hair,hat:'hat-'+hat,face:'face-3',eyes:'eyes-3',lip:'lip-4',earrings:'earrings-0'})
    const crop=document.createElement('canvas');crop.width=230;crop.height=190;crop.getContext('2d').drawImage(canvas,141,5,230,190,0,0,230,190);hats.push(crop.toDataURL().split(',')[1])
   }
-  return {tiles,hats}
+  const earrings=[]
+  for(let hair=0;hair<4;hair++)for(let e=0;e<4;e++){
+   const look={...defaults,hair:'hair-'+hair,face:'face-1',lip:'lip-3',headpiece:'headpiece-0'}
+   await draw({...look,earrings:'earrings-none'});const before=ctx.getImageData(0,0,512,1024).data
+   await draw({...look,earrings:'earrings-'+e});const after=ctx.getImageData(0,0,512,1024).data
+   const visible=[0,0];for(let y=130;y<161;y++)for(let x=212;x<302;x++){const p=(y*512+x)*4;if(Math.abs(before[p]-after[p])+Math.abs(before[p+1]-after[p+1])+Math.abs(before[p+2]-after[p+2])>20)visible[x<256?0:1]++}
+   const crop=document.createElement('canvas');crop.width=180;crop.height=180;crop.getContext('2d').drawImage(canvas,166,5,180,180,0,0,180,180)
+   earrings.push({hair,e,visible,png:crop.toDataURL().split(',')[1]})
+  }
+  return {tiles,hats,earrings}
  },DEFAULT_PARTS)
  for(let f=0;f<4;f++){
   const cells=results.tiles.slice(f*80,f*80+80);await sharp({create:{width:137*10,height:157*8,channels:4,background:'#f1e6db'}}).composite(cells.map((v,i)=>({input:Buffer.from(v,'base64'),left:i%10*137,top:Math.floor(i/10)*157}))).png().toFile(join(dir,'face-'+f+'-all-makeup.png'))
  }
  await sharp({create:{width:230*4,height:190*4,channels:4,background:'#f1e6db'}}).composite(results.hats.map((v,i)=>({input:Buffer.from(v,'base64'),left:i%4*230,top:Math.floor(i/4)*190}))).png().toFile(join(dir,'all-hats-and-hair.png'))
+ for(const e of results.earrings)assert.ok(e.visible.every(n=>n>20),`both earrings must remain visible with hair ${e.hair}, jewellery ${e.e}: ${e.visible}`)
+ await sharp({create:{width:180*4,height:180*4,channels:4,background:'#f1e6db'}}).composite(results.earrings.map((v,i)=>({input:Buffer.from(v.png,'base64'),left:i%4*180,top:Math.floor(i/4)*180}))).png().toFile(join(dir,'all-earrings-and-hair.png'))
  console.log(JSON.stringify({passed:true,makeupCombinations:320,hatHairCombinations:16,screenshots:dir}))
 }finally{await browser.close()}
