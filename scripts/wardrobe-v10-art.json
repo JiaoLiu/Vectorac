@@ -1,0 +1,274 @@
+{
+  "generator": "Built-in imagegen; original garment designs inspired by broad fantasy / tea-party / academy styling, no franchise art copied",
+  "reference": "scripts/fixtures/wardrobe-v5-sources/master.webp",
+  "research": [
+    "https://play.google.com/store/apps/details?hl=zh_CN&id=com.ultralisk.gameapp.game56gpcn",
+    "https://play.google.com/store/apps/details?hl=zh&id=com.netmarbleasia.nikkitw"
+  ],
+  "assets": [
+    {
+      "id": "ice",
+      "index": 12,
+      "kind": "wear",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-fcfb1964-f7e5-4aa5-869e-0599854f9919.png",
+      "prompt": "Use case: identity-preserve. Image 1 is the exact registered dress-up mannequin edit target. Change ONLY CLOTHING. Dress this SAME adult mannequin naturally in the described TWO-PIECE outfit. Preserve the head, blank featureless bald face with nose only, ears, neck, shoulders, elbows, wrists, both hands, knees, ankles, feet, skin, lighting, exact body scale, pose and ALL anatomical pixel positions. Tall portrait 1:2 full-body canvas with the exact same framing as Image 1. Keep hands and feet fully visible in their SAME places. Both feet bare, no shoes/socks. Outfit separates at the natural waist, with a narrow fitted waistband exactly at that reference waist. Garments must be already WORN ON this figure, NOT product cutouts. No hair, eyes, eyebrows, mouth, hats, jewellery, wings, props, text or watermark. Genuine transparent background. Premium richly detailed semi-realistic painted fashion-game illustration; original designs, no copied franchise characters. Outfit: a modest icy blue and ivory princess bodice with a scalloped sweetheart neckline softened by a translucent fitted yoke, tiny crystal snowflake embroidery, neat pearl edging, delicate small gathered sheer short sleeves ABOVE the elbows. Separate ankle-length bell-shaped layered chiffon skirt, narrow waist, shimmering silver embroidery at the hem, shaped sheer overskirt petals. Not a giant skirt: maximum width stays well inside the outstretched hands. Skirt ends ABOVE the ankles, both bare feet completely visible. Elegant fairy palace silhouette, not the current rose lace outfit, no visible leotard.",
+      "topWaist": 342,
+      "bottomWaist": 361,
+      "skirt": [
+        [
+          207,
+          365
+        ],
+        [
+          170,
+          420
+        ],
+        [
+          125,
+          550
+        ],
+        [
+          70,
+          660
+        ],
+        [
+          22,
+          840
+        ],
+        [
+          28,
+          892
+        ]
+      ],
+      "end": 892
+    },
+    {
+      "id": "catalog-ice",
+      "index": 12,
+      "kind": "catalog",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-76ce440d-ab1a-4f65-a485-18cf78150bb8.png",
+      "prompt": "Original fashion catalogue TWO-PIECE PRODUCT DESIGN BOARD. Reference image shows the clothing style only; do NOT crop the mannequin. Independently illustrate the complete upper garment on the LEFT half and complete skirt on the RIGHT half, equal-sized square spaces on a wide 2:1 canvas, each garment centred comfortably with ample clear margin all round.  a modest icy blue and ivory princess bodice with a scalloped sweetheart neckline softened by a translucent fitted yoke, tiny crystal snowflake embroidery, neat pearl edging, delicate small gathered sheer short sleeves ABOVE the elbows. Separate ankle-length bell-shaped layered chiffon skirt, narrow waist, shimmering silver embroidery at the hem, shaped sheer overskirt petals. Not a giant skirt: maximum width stays well inside the outstretched hands. Skirt ends ABOVE the ankles, both bare feet completely visible. Elegant fairy palace silhouette, not the current rose lace outfit, no visible leotard. Display the garments as complete standalone premium boutique product drawings, natural front-view construction and readable embroidery. NO mannequin, NO body, NO skin, NO hands, NO legs or feet, no hair or shoes. Garment sleeves and neckline and skirt waistband completely finished, not cut off or white holes left by a body. Genuine transparent background, no drop shadow, no text, no labels, no watermark."
+    },
+    {
+      "id": "butterfly",
+      "index": 13,
+      "kind": "wear",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-42df59cd-db35-41cf-9a0d-49140051fe72.png",
+      "prompt": "Use case: identity-preserve. Image 1 is the exact registered dress-up mannequin edit target. Change ONLY CLOTHING. Dress this SAME adult mannequin naturally in the described TWO-PIECE outfit. Preserve the head, blank featureless bald face with nose only, ears, neck, shoulders, elbows, wrists, both hands, knees, ankles, feet, skin, lighting, exact body scale, pose and ALL anatomical pixel positions. Tall portrait 1:2 full-body canvas with the exact same framing as Image 1. Keep hands and feet fully visible in their SAME places. Both feet bare, no shoes/socks. Outfit separates at the natural waist, with a narrow fitted waistband exactly at that reference waist. Garments must be already WORN ON this figure, NOT product cutouts. No hair, eyes, eyebrows, mouth, hats, jewellery, wings, props, text or watermark. Genuine transparent background. Premium richly detailed semi-realistic painted fashion-game illustration; original designs, no copied franchise characters. Outfit: a lilac modest fitted blouse with petal-shaped collar, finely pleated flutter short sleeves ABOVE the elbows, embroidered little butterflies and an ivory lace inset, waist hem sits exactly at natural waist. Separate above-knee scalloped petal skirt with asymmetrical overlapping lilac chiffon tiers, tiny silver butterfly embroidery, narrow fitted waistband. Different petal silhouette, not a recolour of a tiered rose skirt. No wings attached to model. Both legs below knee and bare feet visible, no visible leotard.",
+      "topWaist": 348,
+      "bottomWaist": 357,
+      "skirt": [
+        [
+          207,
+          365
+        ],
+        [
+          180,
+          405
+        ],
+        [
+          137,
+          468
+        ],
+        [
+          128,
+          501
+        ],
+        [
+          149,
+          558
+        ]
+      ],
+      "end": 558
+    },
+    {
+      "id": "catalog-butterfly",
+      "index": 13,
+      "kind": "catalog",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-9162e478-e16c-49de-9243-b06eac40656a.png",
+      "prompt": "Original fashion catalogue TWO-PIECE PRODUCT DESIGN BOARD. Reference image shows the clothing style only; do NOT crop the mannequin. Independently illustrate the complete upper garment on the LEFT half and complete skirt on the RIGHT half, equal-sized square spaces on a wide 2:1 canvas, each garment centred comfortably with ample clear margin all round.  a lilac modest fitted blouse with petal-shaped collar, finely pleated flutter short sleeves ABOVE the elbows, embroidered little butterflies and an ivory lace inset, waist hem sits exactly at natural waist. Separate above-knee scalloped petal skirt with asymmetrical overlapping lilac chiffon tiers, tiny silver butterfly embroidery, narrow fitted waistband. Different petal silhouette, not a recolour of a tiered rose skirt. No wings attached to model. Both legs below knee and bare feet visible, no visible leotard. Display the garments as complete standalone premium boutique product drawings, natural front-view construction and readable embroidery. NO mannequin, NO body, NO skin, NO hands, NO legs or feet, no hair or shoes. Garment sleeves and neckline and skirt waistband completely finished, not cut off or white holes left by a body. Genuine transparent background, no drop shadow, no text, no labels, no watermark."
+    },
+    {
+      "id": "strawberry",
+      "index": 14,
+      "kind": "wear",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-a88d9439-af19-4766-b564-1539b00a9607.png",
+      "prompt": "Use case: identity-preserve. Image 1 is the exact registered dress-up mannequin edit target. Change ONLY CLOTHING. Dress this SAME adult mannequin naturally in the described TWO-PIECE outfit. Preserve the head, blank featureless bald face with nose only, ears, neck, shoulders, elbows, wrists, both hands, knees, ankles, feet, skin, lighting, exact body scale, pose and ALL anatomical pixel positions. Tall portrait 1:2 full-body canvas with the exact same framing as Image 1. Keep hands and feet fully visible in their SAME places. Both feet bare, no shoes/socks. Outfit separates at the natural waist, with a narrow fitted waistband exactly at that reference waist. Garments must be already WORN ON this figure, NOT product cutouts. No hair, eyes, eyebrows, mouth, hats, jewellery, wings, props, text or watermark. Genuine transparent background. Premium richly detailed semi-realistic painted fashion-game illustration; original designs, no copied franchise characters. Outfit: an ivory Peter Pan collar blouse with short gathered sleeves ABOVE elbows, a SMALL crimson velvet neck bow, front bib ruffles and two decorative tiny strawberry buttons, tailored waist-length. Separate charming red-and-ivory gingham A-line knee-length tea skirt, crisp pleats, small strawberry-and-leaf embroidery along hem and thin lace scallop border, narrow fitted waistband. Cute original tea-party dress-up design with controlled skirt width well inside the outstretched hands, not huge hoop skirt. Both bare lower legs and feet visible, no visible leotard.",
+      "topWaist": 349,
+      "bottomWaist": 349,
+      "skirt": [
+        [
+          207,
+          365
+        ],
+        [
+          170,
+          427
+        ],
+        [
+          115,
+          535
+        ],
+        [
+          73,
+          601
+        ],
+        [
+          77,
+          650
+        ]
+      ],
+      "end": 650
+    },
+    {
+      "id": "catalog-strawberry",
+      "index": 14,
+      "kind": "catalog",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-bea8ae8d-69c1-4cbe-9e87-bdc4d2f43e1f.png",
+      "prompt": "Original fashion catalogue TWO-PIECE PRODUCT DESIGN BOARD. Reference image shows the clothing style only; do NOT crop the mannequin. Independently illustrate the complete upper garment on the LEFT half and complete skirt on the RIGHT half, equal-sized square spaces on a wide 2:1 canvas, each garment centred comfortably with ample clear margin all round.  an ivory Peter Pan collar blouse with short gathered sleeves ABOVE elbows, a SMALL crimson velvet neck bow, front bib ruffles and two decorative tiny strawberry buttons, tailored waist-length. Separate charming red-and-ivory gingham A-line knee-length tea skirt, crisp pleats, small strawberry-and-leaf embroidery along hem and thin lace scallop border, narrow fitted waistband. Cute original tea-party dress-up design with controlled skirt width well inside the outstretched hands, not huge hoop skirt. Both bare lower legs and feet visible, no visible leotard. Display the garments as complete standalone premium boutique product drawings, natural front-view construction and readable embroidery. NO mannequin, NO body, NO skin, NO hands, NO legs or feet, no hair or shoes. Garment sleeves and neckline and skirt waistband completely finished, not cut off or white holes left by a body. Genuine transparent background, no drop shadow, no text, no labels, no watermark."
+    },
+    {
+      "id": "academy",
+      "index": 15,
+      "kind": "wear",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-46b21f92-5a29-4c55-9dd2-ac94f657feb3.png",
+      "prompt": "Use case: identity-preserve. Image 1 is the exact registered dress-up mannequin edit target. Change ONLY CLOTHING. Dress this SAME adult mannequin naturally in the described TWO-PIECE outfit. Preserve the head, blank featureless bald face with nose only, ears, neck, shoulders, elbows, wrists, both hands, knees, ankles, feet, skin, lighting, exact body scale, pose and ALL anatomical pixel positions. Tall portrait 1:2 full-body canvas with the exact same framing as Image 1. Keep hands and feet fully visible in their SAME places. Both feet bare, no shoes/socks. Outfit separates at the natural waist, with a narrow fitted waistband exactly at that reference waist. Garments must be already WORN ON this figure, NOT product cutouts. No hair, eyes, eyebrows, mouth, hats, jewellery, wings, props, text or watermark. Genuine transparent background. Premium richly detailed semi-realistic painted fashion-game illustration; original designs, no copied franchise characters. Outfit: a warm oatmeal fitted cable-knit V neck short-sleeved cardigan layered over a crisp ivory pointed collar blouse, small bronze buttons, natural waist hem. Separate brown tartan midi pleated skirt, sharp vertical pleats, fitted waistband, skirt below knees but above calves. Premium original preppy autumn silhouette, no jewellery. Hands and feet and lower calves fully visible.",
+      "topWaist": 369,
+      "bottomWaist": 369,
+      "skirt": [
+        [
+          202,
+          365
+        ],
+        [
+          170,
+          450
+        ],
+        [
+          146,
+          550
+        ],
+        [
+          115,
+          695
+        ],
+        [
+          113,
+          730
+        ]
+      ],
+      "end": 730
+    },
+    {
+      "id": "catalog-academy",
+      "index": 15,
+      "kind": "catalog",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-59df1b63-9347-4989-9c65-9417e68c0324.png",
+      "prompt": "Original fashion catalogue TWO-PIECE PRODUCT DESIGN BOARD. Reference image shows the clothing style only; do NOT crop the mannequin. Independently illustrate the complete upper garment on the LEFT half and complete skirt on the RIGHT half, equal-sized square spaces on a wide 2:1 canvas, each garment centred comfortably with ample clear margin all round.  a warm oatmeal fitted cable-knit V neck short-sleeved cardigan layered over a crisp ivory pointed collar blouse, small bronze buttons, natural waist hem. Separate brown tartan midi pleated skirt, sharp vertical pleats, fitted waistband, skirt below knees but above calves. Premium original preppy autumn silhouette, no jewellery. Hands and feet and lower calves fully visible. Display the garments as complete standalone premium boutique product drawings, natural front-view construction and readable embroidery. NO mannequin, NO body, NO skin, NO hands, NO legs or feet, no hair or shoes. Garment sleeves and neckline and skirt waistband completely finished, not cut off or white holes left by a body. Genuine transparent background, no drop shadow, no text, no labels, no watermark."
+    },
+    {
+      "id": "forest",
+      "index": 16,
+      "kind": "wear",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-9a2285b8-f225-4a11-a900-432751136a69.png",
+      "prompt": "Use case: identity-preserve. Image 1 is the exact registered dress-up mannequin edit target. Change ONLY CLOTHING. Dress this SAME adult mannequin naturally in the described TWO-PIECE outfit. Preserve the head, blank featureless bald face with nose only, ears, neck, shoulders, elbows, wrists, both hands, knees, ankles, feet, skin, lighting, exact body scale, pose and ALL anatomical pixel positions. Tall portrait 1:2 full-body canvas with the exact same framing as Image 1. Keep hands and feet fully visible in their SAME places. Both feet bare, no shoes/socks. Outfit separates at the natural waist, with a narrow fitted waistband exactly at that reference waist. Garments must be already WORN ON this figure, NOT product cutouts. No hair, eyes, eyebrows, mouth, hats, jewellery, wings, props, text or watermark. Genuine transparent background. Premium richly detailed semi-realistic painted fashion-game illustration; original designs, no copied franchise characters. Outfit: a sage green tailored woodland blouse with short petal capelet sleeves ABOVE elbows, a high soft collar, tiny embroidered leaves, natural waist hem. Separate ivory asymmetric wrap midi skirt with green fern embroidery along diagonal edges and a narrow tied waistband. Both legs below calves visible, skirt not wide. Original elegant cottage forest design, no props.",
+      "topWaist": 349,
+      "bottomWaist": 357,
+      "skirt": [
+        [
+          202,
+          365
+        ],
+        [
+          168,
+          440
+        ],
+        [
+          162,
+          580
+        ],
+        [
+          143,
+          699
+        ],
+        [
+          135,
+          734
+        ],
+        [
+          180,
+          801
+        ]
+      ],
+      "end": 801
+    },
+    {
+      "id": "catalog-forest",
+      "index": 16,
+      "kind": "catalog",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-77d7fdb8-08a0-4154-a8e5-d8a11a2cf374.png",
+      "prompt": "Original fashion catalogue TWO-PIECE PRODUCT DESIGN BOARD. Reference image shows the clothing style only; do NOT crop the mannequin. Independently illustrate the complete upper garment on the LEFT half and complete skirt on the RIGHT half, equal-sized square spaces on a wide 2:1 canvas, each garment centred comfortably with ample clear margin all round.  a sage green tailored woodland blouse with short petal capelet sleeves ABOVE elbows, a high soft collar, tiny embroidered leaves, natural waist hem. Separate ivory asymmetric wrap midi skirt with green fern embroidery along diagonal edges and a narrow tied waistband. Both legs below calves visible, skirt not wide. Original elegant cottage forest design, no props. Display the garments as complete standalone premium boutique product drawings, natural front-view construction and readable embroidery. NO mannequin, NO body, NO skin, NO hands, NO legs or feet, no hair or shoes. Garment sleeves and neckline and skirt waistband completely finished, not cut off or white holes left by a body. Genuine transparent background, no drop shadow, no text, no labels, no watermark."
+    },
+    {
+      "id": "lotus",
+      "index": 17,
+      "kind": "wear",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-6bfbe42b-bb93-4689-92af-601e7bb436f5.png",
+      "prompt": "Use case: identity-preserve. Image 1 is the exact registered dress-up mannequin edit target. Change ONLY CLOTHING. Dress this SAME adult mannequin naturally in the described TWO-PIECE outfit. Preserve the head, blank featureless bald face with nose only, ears, neck, shoulders, elbows, wrists, both hands, knees, ankles, feet, skin, lighting, exact body scale, pose and ALL anatomical pixel positions. Tall portrait 1:2 full-body canvas with the exact same framing as Image 1. Keep hands and feet fully visible in their SAME places. Both feet bare, no shoes/socks. Outfit separates at the natural waist, with a narrow fitted waistband exactly at that reference waist. Garments must be already WORN ON this figure, NOT product cutouts. No hair, eyes, eyebrows, mouth, hats, jewellery, wings, props, text or watermark. Genuine transparent background. Premium richly detailed semi-realistic painted fashion-game illustration; original designs, no copied franchise characters. Outfit: an ivory silk Chinese-inspired cross-collar short sleeve blouse with pale jade edging and delicate lotus embroidery, flattering tailored waist-length hem. Separate jade green ankle-length narrow flowing silk skirt with vertical layered overlapping panels and fine lotus leaf embroidery, fitted waistband. Refined everyday modern hanfu-inspired separates, NOT wide hoop skirt, silhouette stays inside arms. Both bare ankles and feet visible.",
+      "topWaist": 373,
+      "bottomWaist": 373,
+      "skirt": [
+        [
+          198,
+          365
+        ],
+        [
+          170,
+          450
+        ],
+        [
+          166,
+          600
+        ],
+        [
+          151,
+          744
+        ],
+        [
+          151,
+          890
+        ]
+      ],
+      "end": 890
+    },
+    {
+      "id": "catalog-lotus",
+      "index": 17,
+      "kind": "catalog",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-7c76670d-6fe9-4941-8aa8-a85f5c66a754.png",
+      "prompt": "Original fashion catalogue TWO-PIECE PRODUCT DESIGN BOARD. Reference image shows the clothing style only; do NOT crop the mannequin. Independently illustrate the complete upper garment on the LEFT half and complete skirt on the RIGHT half, equal-sized square spaces on a wide 2:1 canvas, each garment centred comfortably with ample clear margin all round.  an ivory silk Chinese-inspired cross-collar short sleeve blouse with pale jade edging and delicate lotus embroidery, flattering tailored waist-length hem. Separate jade green ankle-length narrow flowing silk skirt with vertical layered overlapping panels and fine lotus leaf embroidery, fitted waistband. Refined everyday modern hanfu-inspired separates, NOT wide hoop skirt, silhouette stays inside arms. Both bare ankles and feet visible. Display the garments as complete standalone premium boutique product drawings, natural front-view construction and readable embroidery. NO mannequin, NO body, NO skin, NO hands, NO legs or feet, no hair or shoes. Garment sleeves and neckline and skirt waistband completely finished, not cut off or white holes left by a body. Genuine transparent background, no drop shadow, no text, no labels, no watermark."
+    },
+    {
+      "id": "brow-crescent",
+      "index": 2,
+      "kind": "brow",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-4e720b27-e2a0-40b4-bf38-255183b753b5.png",
+      "prompt": "Standalone original beauty product design art: ONE symmetrical matching PAIR of women's natural realistic eyebrows, pigment hair strands ONLY, isolated on genuine transparent background. Wide horizontal composition with left and right eyebrow clearly separated by a generous central gap. a gentle crescent-shaped brow, a soft low arch, tapered outer tail, warm medium brown, fine individual strands, graceful rather than dramatic. Both brows viewed straight on, inner brow ends face the centre. Quality like finely painted fashion-game eyebrow hair, soft feathered edges, no large solid filled shapes. No skin, face, eyes, nose, labels, white matte, shadows or rectangular backing. Fit the two brows comfortably on one canvas with ample transparent margins. These are natural beauty brows, not icons.",
+      "width": 26,
+      "height": 6,
+      "x": 223,
+      "y": 94
+    },
+    {
+      "id": "brow-defined",
+      "index": 3,
+      "kind": "brow",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-3af22e5b-0b19-4041-8c95-ec60e6b72f32.png",
+      "prompt": "Standalone original beauty product design art: ONE symmetrical matching PAIR of women's natural realistic eyebrows, pigment hair strands ONLY, isolated on genuine transparent background. Wide horizontal composition with left and right eyebrow clearly separated by a generous central gap. a softly defined naturally angled brow, subtle lifted arch near the outer third, slightly fuller inner end, warm deep chestnut brown, fine individual strands, friendly and elegant, NOT angry or sharply peaked. Both brows viewed straight on, inner brow ends face the centre. Quality like finely painted fashion-game eyebrow hair, soft feathered edges, no large solid filled shapes. No skin, face, eyes, nose, labels, white matte, shadows or rectangular backing. Fit the two brows comfortably on one canvas with ample transparent margins. These are natural beauty brows, not icons.",
+      "width": 26,
+      "height": 4,
+      "x": 223,
+      "y": 96
+    }
+  ]
+}

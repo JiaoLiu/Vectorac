@@ -28,9 +28,13 @@ try{
  for(const p of PARTS.filter(p=>p.index>=0&&REGISTERED_CATEGORIES.includes(p.category))){
   const m=await sharp('.vuepress/public'+partAsset(p)).metadata();assert.equal(m.width,512);assert.equal(m.height,1024);assert.equal(m.hasAlpha,true)
  }
+ // Pale opaque chiffon is fabric, not bare skin to flood away. This caught a
+ // real extraction failure that waist-only registration checks cannot catch.
+ const chiffon=await sharp('.vuepress/public'+partAsset(PARTS.find(p=>p.id==='bottom-12'))).ensureAlpha().raw().toBuffer()
+ for(let y=650;y<815;y++)for(let x=220;x<290;x++)assert.ok(chiffon[(y*512+x)*4+3]>180,'ice skirt exposes legs through an extraction hole')
  // Every top/bottom seam, not just four matching outfits. Capture close-ups of
  // the user's actual failure areas, rather than treating visible pixels as fit proof.
- for(let top=0;top<4;top++)for(let bottom=0;bottom<4;bottom++){
+ for(const top of [0,1,2,3,12,13,14,15,16,17])for(const bottom of [0,1,2,3,12,13,14,15,16,17]){
   const f=await render({...DEFAULT_PARTS,top:'top-'+top,bottom:'bottom-'+bottom,socks:'socks-none'},`clothing-${top}-${bottom}`)
   const {data}=await sharp(f).ensureAlpha().raw().toBuffer({resolveWithObject:true})
   for(let y=360;y<373;y++)for(let x=225;x<285;x++)assert.ok(data[(y*512+x)*4+3]>200,`waist gap ${top}/${bottom} at ${x},${y}`)

@@ -25,8 +25,8 @@ const features={};for(const category of ['eyes','brows','lip'])for(const p of PA
  for(let y=120;y<138;y++)for(let x=247;x<265;x++)assert.equal(data[(y*512+x)*4+3],0,p.id+' contains nose/skin')
  for(let y=0;y<1024;y++)for(let x=0;x<512;x++)if(data[(y*512+x)*4+3])assert.ok(category==='eyes'?y>=99&&y<119:category==='brows'?y>=86&&y<101:y>=138&&y<151,'feature extends outside its anatomical region')
 }
-// At phone scale a different filename/hash is not enough: one style must arch,
-// the other must have a clear angular peak, with visibly different pigment.
+// At phone scale a different filename/hash is not enough: the low crescent
+// and slimmer defined brow must have visibly different pigment coverage.
 let browDifference=0;for(let p=3;p<features['brows-2'].length;p+=4)if(Math.abs(features['brows-2'][p]-features['brows-3'][p])>50)browDifference++
 assert.ok(browDifference>90,'crescent and angled brows are not visibly different')
 const faces=await Promise.all([0,1,2,3].map(i=>raw('face-'+i)))
@@ -58,6 +58,18 @@ try{
  const results=await page.evaluate(async defaults=>{
   const {layerSources,paintComposite}=await import('/compositor.mjs'),{HAT_HAIR_CUTS}=await import('/hat-coverage.mjs'),cache=new Map(),canvas=document.querySelector('canvas'),ctx=canvas.getContext('2d'),tiles=[]
   async function draw(parts){for(const src of layerSources(parts))if(!cache.has(src))cache.set(src,await new Promise((ok,bad)=>{const i=new Image;i.onload=()=>ok(i);i.onerror=bad;i.src=src}));paintComposite(ctx,cache,parts)}
+  // Every face / hair pair: eyebrow selection must leave the whole forehead,
+  // hairline and eyes byte-for-byte unchanged, not merely retain some alpha.
+  for(let face=0;face<4;face++)for(let hair=0;hair<4;hair++){
+   const look={...defaults,face:'face-'+face,hair:'hair-'+hair,brows:'brows-0'}
+   await draw(look);const before=ctx.getImageData(0,0,512,1024).data
+   const pigment=document.createElement('canvas');pigment.width=512;pigment.height=1024;const pc=pigment.getContext('2d'),{PARTS,partAsset}=await import('/parts.mjs');pc.drawImage(cache.get(partAsset(PARTS.find(p=>p.id==='brows-0'))),0,0);const original=pc.getImageData(0,0,512,1024).data
+   for(const brow of ['brows-2','brows-3']){
+    await draw({...look,brows:brow});const after=ctx.getImageData(0,0,512,1024).data
+    pc.clearRect(0,0,512,1024);pc.drawImage(cache.get(partAsset(PARTS.find(p=>p.id===brow))),0,0);const changed=pc.getImageData(0,0,512,1024).data
+    for(let y=25;y<120;y++)for(let x=190;x<322;x++){const p=(y*512+x)*4;if(!original[p+3]&&!changed[p+3])for(let c=0;c<4;c++)if(before[p+c]!==after[p+c])throw Error('eyebrow erased forehead/hair/eyes '+face+' '+hair+' '+brow+' at '+x+','+y)}
+   }
+  }
   for(let f=0;f<4;f++)for(let e=0;e<4;e++)for(let b=0;b<4;b++)for(let l=0;l<5;l++){
    await draw({...defaults,face:'face-'+f,eyes:'eyes-'+e,brows:'brows-'+b,lip:'lip-'+l})
    const crop=document.createElement('canvas');crop.width=137;crop.height=157;crop.getContext('2d').drawImage(canvas,188,24,137,157,0,0,137,157);tiles.push(crop.toDataURL().split(',')[1])

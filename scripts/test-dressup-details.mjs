@@ -1,12 +1,21 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {selectPreview,displayParts,purchasedPreview,previewItems} from '../.vuepress/components/dressup/preview.mjs'
-import {BASE,baseSource,layerSources,paintComposite,REGISTERED_ORDER} from '../.vuepress/components/dressup/compositor.mjs'
+import {BASE,baseSource,layerSources,paintComposite,REGISTERED_ORDER,underbodySource} from '../.vuepress/components/dressup/compositor.mjs'
 import {freshState,normalize,act} from '../.vuepress/components/dressup/engine.mjs'
 import {DEFAULT_PARTS,FREE_PARTS,fineTags,PARTS,partAsset,partThumbnail,fitIndex} from '../.vuepress/components/dressup/parts.mjs'
 import {EDITIONS} from '../.vuepress/components/dressup/collections.mjs'
+import {STYLES} from '../.vuepress/components/dressup/styles.mjs'
 import {memoryGame,flipMemory,closeMemory,stylingGame,submitStyling,sewingGame,stitch,gameReward} from '../.vuepress/components/dressup/minigames.mjs'
 import {faceSampleX} from '../.vuepress/components/dressup/face-fit.mjs'
+test('six genuinely new garment cuts have separate wearable/design assets, not more colour editions',()=>{
+ assert.equal(STYLES.length,12)
+ for(const p of STYLES){assert.equal(p.material,undefined);assert.equal(p.sourceIndex,undefined);assert.ok(partAsset(p).includes('/v10/'));assert.ok(partThumbnail(p).includes('/v10/catalog/'));assert.notEqual(partAsset(p),partThumbnail(p));assert.ok(!EDITIONS.some(q=>q.id===p.id))}
+ assert.equal(new Set(STYLES.map(partAsset)).size,12)
+ assert.ok(underbodySource({...DEFAULT_PARTS,bottom:'bottom-17'}).endsWith('/v10/underbody.webp'))
+ let s={...freshState(),coins:1000};s=act(s,{type:'buy',kind:'part',id:'top-12'}).state;s=act(s,{type:'buy',kind:'part',id:'bottom-17'}).state
+ const look=JSON.stringify(s.look);s=act(s,{type:'part',id:'brows-3'}).state;assert.equal(s.look.parts.top,'top-12');assert.equal(s.look.parts.bottom,'bottom-17');s=normalize(JSON.parse(JSON.stringify(s)));assert.equal(s.look.parts.top,'top-12');assert.notEqual(JSON.stringify(s.look),look)
+})
 test('32 editions reuse registered assets, independent product designs and existing fit indices',()=>{
  assert.equal(EDITIONS.length,32);assert.equal(new Set(PARTS.map(p=>p.id)).size,PARTS.length)
  for(const p of EDITIONS){const original=PARTS.find(q=>q.id===`${p.category}-${p.sourceIndex}`)

@@ -4,7 +4,7 @@ VuePress page: blogs/other/flower_wardrobe.md; Vue 2 component: FlowerWardrobe.v
 Pure state/economy: dressup/engine.mjs. All item IDs, prices, tags and quest rewards are data.
 Art: fourteen original complete outfits x three separately illustrated poses. Changing garments uses
 full outfit sprites, so sleeves, hair, skirt and hands maintain correct occlusion in every pose.
-Fine wardrobe: separate neutral-standing model, 12 component categories and 87 selectable options.
+Fine wardrobe: separate neutral-standing model, 12 component categories and 99 selectable options.
 V5 art starts from one blank-feature full-body master. Clothes, footwear, hair and socks are
 generated already worn on that exact model, then extracted on a shared 512x1024 canvas.
 No runtime alpha-bound fitting, product-shoe scaling or flat-color eyebrow cover patches.
@@ -24,6 +24,16 @@ Solid hats cover ponytail roots via their measured top silhouettes (hat-coverage
 not a horizontal y=59 crop that erases the side hair. Hats originate worn on a cropped head reference,
 then the fixed inverse crop transform puts them onto the shared full-body canvas.
 Product/design cards use a separate v7/catalog path with a single warm-ivory background.
+Six new patterns (v10) add 6 tops and 6 skirts, each in one colour: crystal
+princess, butterfly petals, strawberry tea party, cable-knit academy, forest
+wrap and jade lotus. Existing originals and material editions are unchanged.
+Product boards are independently generated illustrations, not worn-model crops.
+New skirt skin uses a neutral registered underbody; near-white chiffon must
+never be treated as exposed legs. New cuts are tested against all original cuts.
+Two replacement brows use natural hair pigment only, fitted to the actual brow
+landmarks; non-pigment forehead/hair/eye pixels are compared byte-for-byte for
+every face/hair pair. Sources, prompts and landmarks: wardrobe-v10-art.json.
+
 32 material editions (8 tops, 8 bottoms, 6 headpieces, 6 hats, 4 earrings)
 reuse existing registered sprites and independent catalogue art. collections.mjs
 declares colour/print and sourceIndex; materials.mjs preserves alpha and anatomy,
