@@ -7,22 +7,24 @@
     <div v-if="storageWarning" class="fw-warning" role="status">{{storageWarning}}</div>
     <div class="fw-layout">
       <section class="fw-studio" :class="'fw-scene-'+state.look.scene" :style="sceneStyle" aria-label="试衣台">
-        <div class="fw-scene-decor" aria-hidden="true"><i></i><i></i><i></i><span>✧</span></div>
-        <div class="fw-stage-label"><small>{{preview?'FITTING ROOM · 试穿中':'TODAY’S LOOK'}}</small><strong>{{currentDress.name}}</strong><span>{{currentScene.name}}</span></div>
+        <img class="fw-landscape" :src="sceneAsset(state.look.scene)" alt="" aria-hidden="true" draggable="false">
+        <div class="fw-stage-label"><small>{{isPreview?'FITTING ROOM · 试穿中':'TODAY’S LOOK'}}</small><strong>{{fineMode?'我的自由搭配':currentDress.name}}</strong><span>{{currentScene.name}}</span></div>
         <div class="fw-model-space">
-          <canvas ref="model" class="fw-model" width="512" height="1024" role="img" :aria-label="currentDress.name+' · '+poses[state.look.pose].name"></canvas>
+          <canvas ref="model" class="fw-model" :class="{'fw-model-close':faceZoom}" width="512" height="1024" role="img" :aria-label="fineMode?'我的自由搭配':currentDress.name+' · '+poses[state.look.pose].name"></canvas>
           <div v-if="loading" class="fw-loading" role="status">正在换装…</div>
           <button v-if="imageError" class="fw-retry" @click="loadModel">服装加载失败，点此重试</button>
         </div>
         <div class="fw-stage-bottom">
-          <div class="fw-poses" aria-label="模特姿势"><button v-for="p in poses" :key="p.id" :aria-pressed="state.look.pose===p.id" :class="{active:state.look.pose===p.id}" @click="perform({type:'pose',id:p.id})">{{p.name}}</button></div>
+          <div v-if="!fineMode" class="fw-poses" aria-label="模特姿势"><button v-for="p in poses" :key="p.id" :aria-pressed="state.look.pose===p.id" :class="{active:state.look.pose===p.id}" @click="perform({type:'pose',id:p.id})">{{p.name}}</button></div>
+          <div v-else class="fw-poses"><button @click="faceZoom=!faceZoom">{{faceZoom?'查看全身':'查看妆容'}}</button><button @click="preview=null;finePreview=null;faceZoom=false;perform({type:'mode',mode:'outfit'})">切回套装</button></div>
+          <div v-if="finePreview" class="fw-preview-action"><button @click="finePreview=null">结束试戴</button><button class="fw-primary" @click="askBuy('part',finePreview)">解锁 · {{partItem(finePreview).price}} 金币</button></div>
           <div v-if="preview" class="fw-preview-action"><button @click="preview=null">结束试穿</button><button class="fw-primary" @click="askBuy('outfit',preview)">解锁 · {{currentDress.price}} 金币</button></div>
-          <div v-else class="fw-photo-actions"><button @click="saveLook">♡ 收藏穿搭</button><button @click="takePhoto" :disabled="loading||imageError||exporting">{{exporting?'照片制作中…':'↓ 拍张照片'}}</button></div>
+          <div v-if="!isPreview" class="fw-photo-actions"><button @click="saveLook">♡ 收藏穿搭</button><button @click="takePhoto" :disabled="loading||imageError||exporting">{{exporting?'照片制作中…':'↓ 拍张照片'}}</button></div>
         </div>
       </section>
       <aside class="fw-panel">
         <div class="fw-audio-controls"><span>衣橱电台</span><button :aria-pressed="musicOn" @click="toggleMusic">音乐 {{musicOn?'开':'关'}}</button><button :aria-pressed="soundOn" @click="toggleSound">音效 {{soundOn?'开':'关'}}</button></div>
-        <nav class="fw-tabs" aria-label="衣橱功能"><button v-for="t in tabs" :key="t.id" :class="{active:tab===t.id}" :aria-pressed="tab===t.id" @click="tab=t.id">{{t.name}}<span v-if="t.id==='quests'">{{state.claimed.length}}/{{quests.length}}</span></button></nav>
+        <nav class="fw-tabs" aria-label="衣橱功能"><button v-for="t in tabs" :key="t.id" :class="{active:tab===t.id}" :aria-pressed="tab===t.id" @click="chooseTab(t.id)">{{t.name}}<span v-if="t.id==='quests'">{{state.claimed.length}}/{{quests.length}}</span></button></nav>
         <div class="fw-panel-content" ref="panel">
           <template v-if="tab==='wardrobe'">
             <div class="fw-section-title"><div><h2>一件心动，一种心情</h2><p>完整服装、鞋袜与配饰 · {{state.owned.length}} / {{outfits.length}} 已收藏</p></div></div>
@@ -36,21 +38,26 @@
           </template>
           <template v-if="tab==='scenes'">
             <div class="fw-section-title"><h2>让心情换个背景</h2><p>场景永久解锁，任意切换。</p></div>
-            <div class="fw-scenes"><button v-for="s in scenes" :key="s.id" class="fw-scene-choice" :class="{active:state.look.scene===s.id}" :style="{background:'linear-gradient(145deg,'+s.colors.join(',')+')'}" @click="chooseScene(s.id)"><span class="fw-window-icon" aria-hidden="true">✧</span><strong>{{s.name}}</strong><small>{{state.scenes.includes(s.id)?(state.look.scene===s.id?'使用中':'已拥有'):'✦ '+s.price+' 金币'}}</small></button></div>
+            <div class="fw-scenes"><button v-for="s in scenes" :key="s.id" class="fw-scene-choice" :class="{active:state.look.scene===s.id}" :style="{backgroundImage:'url('+sceneAsset(s.id)+')'}" @click="chooseScene(s.id)"><strong>{{s.name}}</strong><small>{{state.scenes.includes(s.id)?(state.look.scene===s.id?'使用中':'已拥有'):'✦ '+s.price+' 金币'}}</small></button></div>
           </template>
           <template v-if="tab==='quests'">
             <div class="fw-daily"><div><strong>今日花信</strong><p>每天来衣橱，收下 40 金币。</p></div><button :disabled="state.daily===today" @click="perform({type:'daily',day:today})">{{state.daily===today?'已领取':'领取 +40'}}</button></div>
             <div class="fw-section-title"><h2>来自远方的邀请</h2><p>三个条件全部满足即可领奖，不限时、不扣分。</p></div>
-            <article v-for="q in quests" :key="q.id" class="fw-quest" :class="{done:state.claimed.includes(q.id)}"><div class="fw-quest-heading"><strong>{{q.name}}</strong><span>✦ {{q.reward}}</span></div><p>{{q.text}}</p><div class="fw-checks"><span v-for="c in scoreLook(state.look,q).checks" :key="c.label" :class="{met:c.ok}">{{c.ok?'✓':'○'}} {{c.label}}</span></div><button :disabled="!!preview||state.claimed.includes(q.id)||scoreLook(state.look,q).score!==100" @click="perform({type:'quest',id:q.id})">{{state.claimed.includes(q.id)?'已完成':preview?'结束试穿后再赴约':scoreLook(state.look,q).score===100?'完成邀请 · 领取金币':'搭配进度 '+scoreLook(state.look,q).score+'/100'}}</button></article>
+            <article v-for="q in quests" :key="q.id" class="fw-quest" :class="{done:state.claimed.includes(q.id)}"><div class="fw-quest-heading"><strong>{{q.name}}</strong><span>✦ {{q.reward}}</span></div><p>{{q.text}}</p><div class="fw-checks"><span v-for="c in scoreLook(state.look,q).checks" :key="c.label" :class="{met:c.ok}">{{c.ok?'✓':'○'}} {{c.label}}</span></div><button :disabled="isPreview||state.claimed.includes(q.id)||scoreLook(state.look,q).score!==100" @click="perform({type:'quest',id:q.id})">{{state.claimed.includes(q.id)?'已完成':isPreview?'结束试穿后再赴约':scoreLook(state.look,q).score===100?'完成邀请 · 领取金币':'搭配进度 '+scoreLook(state.look,q).score+'/100'}}</button></article>
           </template>
           <template v-if="tab==='workshop'">
+            <div class="fw-workshop-switch"><button :aria-pressed="workshopMode==='games'" @click="workshopMode='games'">挑战小游戏</button><button :aria-pressed="workshopMode==='colors'" @click="workshopMode='colors'">配色练习</button></div>
+            <template v-if="workshopMode==='colors'">
             <div class="fw-section-title"><small>COLOR THERAPY</small><h2>慢慢配色，慢慢放松</h2><p>找到与布料相同的颜色，完成五次配色即可获得 25 金币。可以一直玩，不限时。</p></div>
             <div class="fw-workshop"><div class="fw-fabric" :style="{backgroundColor:palette[workshop.targets[Math.min(workshop.step,4)]].color}"><span>{{workshop.paid?'今日灵感 +1':'帮这块布料找到丝线'}}</span><b>{{palette[workshop.targets[Math.min(workshop.step,4)]].name}}</b></div><div class="fw-progress"><i v-for="n in 5" :key="n" :class="{done:workshop.step>=n}"></i></div><div v-if="!workshop.paid" class="fw-swatches"><button v-for="(c,i) in palette" :key="c.name" :style="{'--swatch':c.color}" :aria-label="'选择'+c.name" @click="pickColor(i)"><i></i>{{c.name}}</button></div><template v-else><h3>配色完成 · +25 金币</h3><button class="fw-primary" @click="workshop=createWorkshop()">再来一份灵感</button></template><p class="fw-workshop-message" aria-live="polite">{{workshopMessage}}</p></div>
+            </template>
           </template>
+          <GameWorkshop v-show="tab==='workshop'&&workshopMode==='games'" :active="tab==='workshop'&&workshopMode==='games'" :look="state.look" :preview="isPreview" @dress="chooseTab('fine')" @reward="receiveGameReward" />
+          <FineWardrobe v-if="tab==='fine'" :owned="state.ownedParts" :selected="displayParts" @choose="choosePart" @buy="askBuy('part',$event)" />
           <template v-if="tab==='album'">
             <div class="fw-section-title"><h2>穿搭手记</h2><p>{{state.albums.length}} / 12 套收藏 · 点击即可重新穿上</p></div>
             <div v-if="!state.albums.length" class="fw-empty">♡<h3>留住今天的喜欢</h3><p>穿好衣服后，点击试衣台下方「收藏穿搭」。</p></div>
-            <div class="fw-albums"><article v-for="a in state.albums" :key="a.id"><button @click="restoreLook(a.id)" :style="{background:item(scenes,a.look.scene).colors[0]}"><img :src="asset(a.look.outfit,a.look.pose)" :alt="item(outfits,a.look.outfit).name" loading="lazy"><strong>{{item(outfits,a.look.outfit).name}}</strong></button><button class="fw-album-remove" @click="perform({type:'removeAlbum',id:a.id})" :aria-label="'移除'+item(outfits,a.look.outfit).name+'收藏'">移除收藏</button></article></div>
+            <div class="fw-albums"><article v-for="a in state.albums" :key="a.id"><button @click="restoreLook(a.id)" :style="{backgroundImage:'url('+sceneAsset(a.look.scene)+')',backgroundSize:'cover'}"><AlbumLook :look="a.look" /><strong>{{a.look.mode==='fine'?'我的自由搭配':item(outfits,a.look.outfit).name}}</strong></button><button class="fw-album-remove" @click="perform({type:'removeAlbum',id:a.id})" aria-label="移除穿搭收藏">移除收藏</button></article></div>
           </template>
         </div>
         <footer class="fw-panel-foot">无广告 · 无充值 · 进度保存在这台设备</footer>
@@ -62,17 +69,25 @@
 </template>
 
 <script>
-import {SAVE_KEY,OUTFITS,SCENES,POSES,QUESTS,asset,item,freshState,normalize,act,localDay,scoreLook,createWorkshop,matchColor,finishWorkshop} from './dressup/engine.mjs'
+import {SAVE_KEY,OUTFITS,SCENES,POSES,QUESTS,asset,sceneAsset,item,freshState,normalize,act,localDay,scoreLook,createWorkshop,matchColor,finishWorkshop} from './dressup/engine.mjs'
 import {createModelRenderer} from './dressup/renderer.mjs'
 import {createWardrobeAudio} from './dressup/audio.mjs'
+import {PARTS} from './dressup/parts.mjs'
+import FineWardrobe from './dressup/FineWardrobe.vue'
+import GameWorkshop from './dressup/GameWorkshop.vue'
+import AlbumLook from './dressup/AlbumLook.vue'
 export default {
-  data:()=>({musicOn:true,soundOn:true,styleFilter:'所有风格',state:freshState(),outfits:OUTFITS,scenes:SCENES,poses:POSES,quests:QUESTS,tab:'wardrobe',filter:'全部',preview:null,full:false,toast:'',modal:null,photoUrl:'',exporting:false,storageWarning:'',today:'',modelSrc:'',loading:true,imageError:false,workshop:createWorkshop(),workshopMessage:'',palette:[{name:'蔷薇粉',color:'#d99eae'},{name:'薄荷绿',color:'#91bcad'},{name:'星夜蓝',color:'#686990'},{name:'奶油金',color:'#d8ba80'}],tabs:[{id:'wardrobe',name:'衣橱'},{id:'scenes',name:'场景'},{id:'quests',name:'邀请'},{id:'workshop',name:'工坊'},{id:'album',name:'相册'}]}),
+  components:{FineWardrobe,GameWorkshop,AlbumLook},
+  data:()=>({finePreview:null,faceZoom:false,workshopMode:'games',musicOn:true,soundOn:true,styleFilter:'所有风格',state:freshState(),outfits:OUTFITS,scenes:SCENES,poses:POSES,quests:QUESTS,tab:'wardrobe',filter:'全部',preview:null,full:false,toast:'',modal:null,photoUrl:'',exporting:false,storageWarning:'',today:'',modelSrc:'',loading:true,imageError:false,workshop:createWorkshop(),workshopMessage:'',palette:[{name:'蔷薇粉',color:'#d99eae'},{name:'薄荷绿',color:'#91bcad'},{name:'星夜蓝',color:'#686990'},{name:'奶油金',color:'#d8ba80'}],tabs:[{id:'wardrobe',name:'衣橱'},{id:'fine',name:'装扮'},{id:'scenes',name:'场景'},{id:'quests',name:'邀请'},{id:'workshop',name:'工坊'},{id:'album',name:'相册'}]}),
   computed:{
+    fineMode(){return !this.preview&&(this.state.look.mode==='fine'||!!this.finePreview)},
+    isPreview(){return !!this.preview||!!this.finePreview},
+    displayParts(){const p={...this.state.look.parts};if(this.finePreview){const selected=this.partItem(this.finePreview);p[selected.category]=selected.id}return p},
     styleTags(){return ['所有风格',...Array.from(new Set(OUTFITS.reduce((tags,d)=>tags.concat(d.tags),[])))]},
     displayOutfit(){return this.preview||this.state.look.outfit},
     currentDress(){return item(OUTFITS,this.displayOutfit)},currentScene(){return item(SCENES,this.state.look.scene)},
     sceneStyle(){return {'--scene-top':this.currentScene.colors[0],'--scene-bottom':this.currentScene.colors[1]}},
-    requestedSrc(){return asset(this.displayOutfit,this.state.look.pose)},
+    requestedSrc(){return this.fineMode?'fine:'+JSON.stringify(this.displayParts):asset(this.displayOutfit,this.state.look.pose)},
     filteredDresses(){return this.outfits.filter(d=>(this.styleFilter==='所有风格'||d.tags.includes(this.styleFilter))&&(this.filter==='全部'||(this.filter==='已拥有')===this.state.owned.includes(d.id)))}
   },
   watch:{requestedSrc(){this.loadModel()}},
@@ -84,45 +99,49 @@ export default {
     if(window.ResizeObserver){this._resize=new ResizeObserver(this._repaint);this._resize.observe(this.$refs.model)}
     window.addEventListener('resize',this._repaint);window.addEventListener('pageshow',this._repaint)
     this._key=e=>{if(e.key==='Escape'){if(this.modal)this.closeModal();else if(this.full)this.toggleFull()}}
-    this._storage=e=>{if(e.key===SAVE_KEY){this.readState();this.preview=null}}
+    this._storage=e=>{if(e.key===SAVE_KEY){this.readState();this.preview=null;this.finePreview=null}}
     this._visibility=()=>{this._audio.pause(document.hidden);if(!document.hidden){this.today=localDay();this.readState();this._repaint()}}
     document.addEventListener('keydown',this._key);document.addEventListener('visibilitychange',this._visibility);window.addEventListener('storage',this._storage)
     this._page=this.$el.closest('.theme-reco-content');if(this._page)this._page.classList.add('fw-page-content')
   },
   beforeDestroy(){this.closeModal();if(this.full)this.toggleFull();this._alive=false;this._loadId++;this._renderer.destroy();this._audio.destroy();if(this._resize)this._resize.disconnect();cancelAnimationFrame(this._paintFrame);window.removeEventListener('resize',this._repaint);window.removeEventListener('pageshow',this._repaint);clearTimeout(this._toastTimer);document.removeEventListener('keydown',this._key);document.removeEventListener('visibilitychange',this._visibility);window.removeEventListener('storage',this._storage);if(this._page)this._page.classList.remove('fw-page-content');if(this.photoUrl)URL.revokeObjectURL(this.photoUrl)},
-  methods:{asset,item,scoreLook,createWorkshop,
+  methods:{asset,sceneAsset,item,scoreLook,createWorkshop,
+    partItem(id){return item(PARTS,id)},
+    chooseTab(id){this.tab=id;if(id==='fine'){this.preview=null;if(this.state.look.mode!=='fine')this.perform({type:'mode',mode:'fine'})}if(this.$refs.panel)this.$refs.panel.scrollTop=0},
+    choosePart(id){this.preview=null;this.faceZoom=['face','brows','lip','earrings'].includes(this.partItem(id).category);if(this.state.ownedParts.includes(id)){this.finePreview=null;this.perform({type:'part',id})}else{this.finePreview=id;this._audio.play('dress')}},
+    receiveGameReward(result){this.perform({type:'gameReward',id:result.id,reward:result.reward})},
     unlockAudio(){if(this._audio)this._audio.unlock()},
     saveAudio(){try{localStorage.setItem('vectorac.wardrobe.audio',JSON.stringify({music:this.musicOn,sound:this.soundOn}))}catch(e){}},
     toggleMusic(){this.musicOn=!this.musicOn;this._audio.music(this.musicOn);this.saveAudio()},
     toggleSound(){this.soundOn=!this.soundOn;this._audio.effects(this.soundOn);this.saveAudio()},
     readState(){try{const raw=localStorage.getItem(SAVE_KEY);if(raw)this.state=normalize(JSON.parse(raw))}catch(e){this.storageWarning='暂时无法读取本地存档，本次仍可游玩；请勿清除浏览器数据。'}},
     persist(){try{localStorage.setItem(SAVE_KEY,JSON.stringify(this.state));this.storageWarning=''}catch(e){this.storageWarning='浏览器未能保存进度，刷新可能丢失本次变化。请允许网站存储。'}},
-    perform(action){this.readState();const r=act(this.state,action);this.state=r.state;if(r.ok){this.persist();this._audio.play(action.type==='buy'?'buy':action.type==='quest'||action.type==='daily'?'reward':action.type==='pose'?'pose':'dress')}if(r.message)this.notify(r.message);return r.ok},
+    perform(action){this.readState();const r=act(this.state,action);this.state=r.state;if(r.ok){this.persist();this._audio.play(action.type==='buy'?'buy':['quest','daily','gameReward'].includes(action.type)?'reward':action.type==='pose'?'pose':'dress')}if(r.message)this.notify(r.message);return r.ok},
     notify(text){this.toast=text;clearTimeout(this._toastTimer);this._toastTimer=setTimeout(()=>{this.toast=''},2600)},
     async loadModel(){
       if(!this._alive)return
       const id=++this._loadId,src=this.requestedSrc;this.loading=true;this.imageError=false
-      const result=await this._renderer.show(src)
+      const result=await (this.fineMode?this._renderer.showLayers(this.displayParts):this._renderer.show(src))
       if(!this._alive||id!==this._loadId||result==='stale')return
       this.loading=false;this.imageError=result==='error';if(result==='ready')this.modelSrc=src
     },
-    tryDress(id){if(this.state.owned.includes(id)){this.preview=null;this.perform({type:'wear',outfit:id})}else{this.preview=id;this._audio.play('dress')}},
+    tryDress(id){this.finePreview=null;this.faceZoom=false;if(this.state.owned.includes(id)){this.preview=null;this.perform({type:'wear',outfit:id})}else{this.preview=id;this._audio.play('dress')}},
     chooseScene(id){if(this.state.scenes.includes(id))this.perform({type:'scene',id});else this.askBuy('scene',id)},
     openModal(value){this._focus=document.activeElement;this.modal=value;this.$nextTick(()=>{if(this.$refs.overlay){this._modalOverflow=document.body.style.overflow;document.body.style.overflow='hidden';document.body.appendChild(this.$refs.overlay)}if(this.$refs.dialog)this.$refs.dialog.focus()})},
     closeModal(){if(this.modal){if(this.$refs.overlay)this.$refs.root.appendChild(this.$refs.overlay);document.body.style.overflow=this._modalOverflow||''}this.modal=null;if(this.photoUrl){URL.revokeObjectURL(this.photoUrl);this.photoUrl=''}if(this._focus&&this._focus.isConnected)this._focus.focus()},
     modalKeys(e){if(e.key!=='Tab')return;const nodes=this.$refs.dialog.querySelectorAll('button:not(:disabled),a[href]');if(!nodes.length)return;const first=nodes[0],last=nodes[nodes.length-1];if(e.shiftKey&&(document.activeElement===first||document.activeElement===this.$refs.dialog)){e.preventDefault();last.focus()}else if(!e.shiftKey&&(document.activeElement===last||document.activeElement===this.$refs.dialog)){e.preventDefault();first.focus()}},
-    askBuy(kind,id){const p=item(kind==='scene'?SCENES:OUTFITS,id);this.openModal({kind:'buy',itemKind:kind,id,title:p.name,text:p.story||'为喜欢的搭配，布置一个新的场景。',price:p.price})},
-    confirmBuy(){const m=this.modal;if(this.perform({type:'buy',kind:m.itemKind,id:m.id})){this.preview=null;this.closeModal()}},
-    saveLook(){if(this.preview)return;this.perform({type:'album',id:Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8)})},
-    restoreLook(id){this.preview=null;this.perform({type:'restoreAlbum',id})},
+    askBuy(kind,id){const p=item(kind==='scene'?SCENES:kind==='part'?PARTS:OUTFITS,id);this.openModal({kind:'buy',itemKind:kind,id,title:p.name,text:p.story||(kind==='part'?'自由组合，搭配属于你的细节。':'为喜欢的搭配，布置一个新的场景。'),price:p.price})},
+    confirmBuy(){const m=this.modal;if(this.perform({type:'buy',kind:m.itemKind,id:m.id})){this.preview=null;this.finePreview=null;this.closeModal()}},
+    saveLook(){if(this.isPreview)return;this.perform({type:'album',id:Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8)})},
+    restoreLook(id){this.preview=null;this.finePreview=null;this.faceZoom=false;this.perform({type:'restoreAlbum',id})},
     pickColor(color){const r=matchColor(this.workshop,color);if(r.correct)this._audio.play(r.complete?'reward':'color');this.workshop=r.session;this.workshopMessage=r.correct?'这根丝线刚刚好。':'慢慢来，再看看布料的颜色。';if(r.complete){this.readState();const reward=finishWorkshop(this.state,this.workshop);this.state=reward.state;this.workshop=reward.session;this.persist();this.notify('配色完成 · +25 金币')}},
     toggleFull(){if(!this.full){this._overflow=document.body.style.overflow;document.body.style.overflow='hidden';this._anchor=document.createComment('flower-wardrobe');this.$el.parentNode.insertBefore(this._anchor,this.$el);document.body.appendChild(this.$el);document.body.classList.add('fw-full-active')}else{document.body.style.overflow=this._overflow||'';if(this._anchor&&this._anchor.parentNode){this._anchor.parentNode.insertBefore(this.$el,this._anchor);this._anchor.remove()}document.body.classList.remove('fw-full-active')}this.full=!this.full},
-    showHelp(){this.openModal({kind:'help',title:'欢迎来到花间衣橱',text:'初次来到衣橱可获得 100 金币和「蔷薇初绽」套装。点击衣服试穿，解锁后永久拥有；服装以整套搭配呈现，包含鞋袜与发饰。切换场景与三个姿势，完成邀请中的三个条件即可赚金币。配色工坊可重复游玩，每次奖励 25 金币。喜欢的穿搭可以收藏或保存成图片。无需充值、不限时间。进度只保存在当前浏览器，清除网站数据会丢失存档。'})},
+    showHelp(){this.openModal({kind:'help',title:'欢迎来到花间衣橱',text:'初次来到衣橱可获得 100 金币与免费套装。在衣橱试穿整套服装，或进入装扮区自由组合上衣、下装、帽子、头饰、耳环、鞋袜、脸型、眉毛与口红；精细装扮采用站姿，可以放大查看妆容。去城堡、海滩、花海或室内拍照。邀请任务、花饰记忆、主题搭配、节奏缝纫和配色练习都能赚金币。服装与场景永久拥有，收藏也会记录细分装扮。无需充值，进度保存在当前浏览器。'})},
     async takePhoto(){
-      if(this.preview||this.exporting||this.loading)return
+      if(this.isPreview||this.exporting||this.loading)return
       this.exporting=true
-      try{const scene=this.currentScene,dress=this.currentDress,src=this.requestedSrc;const img=await new Promise((resolve,reject)=>{const i=new Image();i.onload=()=>resolve(i);i.onerror=reject;i.src=src});if(!this._alive)return
-        const c=document.createElement('canvas');c.width=900;c.height=1200;const x=c.getContext('2d'),g=x.createLinearGradient(0,0,0,1200);g.addColorStop(0,scene.colors[0]);g.addColorStop(1,scene.colors[1]);x.fillStyle=g;x.fillRect(0,0,900,1200);x.strokeStyle='#ffffff99';x.lineWidth=3;x.strokeRect(28,28,844,1144);x.beginPath();x.roundRect(140,90,620,930,300);x.stroke();const h=990,w=img.width/img.height*h;x.drawImage(img,(900-w)/2,85,w,h);x.fillStyle=scene.id==='moon'?'#fff8ed':'#5b4547';x.textAlign='center';x.font='24px serif';x.fillText('花 间 衣 橱',450,65);x.font='32px serif';x.fillText(dress.name,450,1110);x.font='18px sans-serif';x.fillText(scene.name+' · '+POSES[this.state.look.pose].name,450,1145)
+      try{const scene=this.currentScene,dress=this.currentDress,fine=this.fineMode,pose=this.state.look.pose;const img=document.createElement('canvas');img.width=512;img.height=1024;img.getContext('2d').drawImage(this.$refs.model,0,0);const background=await new Promise((resolve,reject)=>{const i=new Image();i.onload=()=>resolve(i);i.onerror=reject;i.src=sceneAsset(scene.id)});if(!this._alive)return
+        const c=document.createElement('canvas');c.width=900;c.height=1200;const x=c.getContext('2d'),scale=Math.max(900/background.width,1200/background.height);x.drawImage(background,(900-background.width*scale)/2,(1200-background.height*scale)/2,background.width*scale,background.height*scale);x.strokeStyle='#ffffff99';x.lineWidth=3;x.strokeRect(28,28,844,1144);const h=990,w=img.width/img.height*h;x.drawImage(img,(900-w)/2,85,w,h);x.fillStyle='#fffaf0';x.fillRect(90,1078,720,95);x.fillStyle='#5b4547';x.textAlign='center';x.font='24px serif';x.fillText('花 间 衣 橱',450,65);x.font='32px serif';x.fillText(fine?'我的自由搭配':dress.name,450,1115);x.font='18px sans-serif';x.fillText(scene.name+' · '+(fine?'自由搭配':POSES[pose].name),450,1149)
         const blob=await new Promise(resolve=>c.toBlob(resolve,'image/png'));if(!blob)throw new Error('export');if(!this._alive)return;this._audio.play('photo');this.photoUrl=URL.createObjectURL(blob);this.openModal({kind:'photo',title:'留住这一刻'})
       }catch(e){if(this._alive)this.notify('照片暂时没能生成，请再试一次')}finally{if(this._alive)this.exporting=false}
     }
@@ -158,4 +177,24 @@ export default {
 .fw-scene-gallery .fw-scene-decor{border-radius:0;border:5px double #c5a16388;box-shadow:inset 0 0 0 12px #fff3dd55}
 @media(max-width:700px){.fw-full .fw-studio{flex-basis:53%}.fw-audio-controls{padding:5px 10px}.fw-audio-controls button{min-height:28px}.fw-collection-note{padding:10px 12px}}
 @media(max-height:550px) and (orientation:landscape){.fw-model-space{padding:0}.fw-full .fw-studio{height:100%;min-height:0}.fw-audio-controls{padding:3px 10px}.fw-audio-controls button{min-height:26px;padding:4px 8px}.fw-collection-note{display:none}}
+
+.fw-game button,.fw-game a,.fw-game-dialog button,.fw-game-dialog a{touch-action:manipulation;user-select:none;-webkit-user-select:none}
+.fw-layout,.fw-panel,.fw-panel-content,.fw-studio{min-width:0}
+.fw-dresses,.fw-scenes,.fw-albums{grid-template-columns:repeat(2,minmax(0,1fr))}
+.fw-dress,.fw-dress-image{min-width:0;max-width:100%;contain:paint}
+.fw-dress-image img{display:block;max-width:100%;max-height:100%;margin:auto;transform:none!important;pointer-events:none}
+.fw-landscape{position:absolute;inset:0;width:100%!important;height:100%!important;max-width:none!important;object-fit:cover;z-index:-1;pointer-events:none;margin:0!important;border-radius:0!important}
+.fw-model-space{overflow:hidden;contain:paint;padding:0!important}
+.fw-model-close{transform:scale(3);transform-origin:50% 0%}
+.fw-stage-label{padding:8px 10px;border-radius:12px;background:#fff9efe0;backdrop-filter:blur(8px)}
+.fw-scene-moon .fw-stage-label,.fw-scene-moon .fw-stage-label small,.fw-scene-moon .fw-stage-label>span{color:#655271}
+.fw-game .fw-scene-choice{background-size:cover;background-position:center;position:relative;isolation:isolate;color:#fff!important;overflow:hidden;text-shadow:0 1px 3px #0008;padding-bottom:15px}
+.fw-scene-choice:before{content:'';position:absolute;inset:45% 0 0;background:linear-gradient(transparent,#352c4388);z-index:-1}
+.fw-workshop-switch{display:flex;gap:7px;margin-bottom:16px}.fw-workshop-switch button{flex:1;min-height:40px;font-size:12px}.fw-workshop-switch [aria-pressed=true]{background:#e9dfd5;color:#875c6d}
+.fw-tabs{gap:2px}.fw-tabs button{min-width:0;font-size:12px}
+.fw-audio-controls button{min-height:38px}
+.fw-albums strong{background:#fff9eff0;border-radius:10px;padding:8px}
+@media(max-width:700px){.fw-tabs{padding-left:5px;padding-right:5px}.fw-tabs button{font-size:11px;padding-left:2px;padding-right:2px}.fw-audio-controls button{min-height:36px}.fw-full .fw-studio{flex-basis:49%}.fw-stage-label{padding:6px 8px}.fw-stage-label small{font-size:7px;letter-spacing:1px}}
+@media(max-height:550px) and (orientation:landscape){.fw-audio-controls button{min-height:30px}.fw-stage-label{top:8px;left:8px;padding:5px 8px}.fw-game .fw-studio{flex-basis:auto}.fw-workshop-switch{margin-bottom:10px}}
+@media(max-width:360px){.fw-header{padding-left:10px;padding-right:10px;gap:5px}.fw-header>div>small{display:none}.fw-header h1{font-size:18px;letter-spacing:1px;white-space:nowrap}.fw-header-actions{gap:2px}.fw-header-actions button,.fw-header-actions a{white-space:nowrap;padding-left:6px;padding-right:6px}.fw-coins{padding:7px 8px;font-size:12px}}
 </style>

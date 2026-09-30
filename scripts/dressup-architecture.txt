@@ -2,10 +2,12 @@
 
 VuePress page: blogs/other/flower_wardrobe.md; Vue 2 component: FlowerWardrobe.vue.
 Pure state/economy: dressup/engine.mjs. All item IDs, prices, tags and quest rewards are data.
-Art: ten original complete outfits x three separately illustrated poses. Changing garments uses
+Art: fourteen original complete outfits x three separately illustrated poses. Changing garments uses
 full outfit sprites, so sleeves, hair, skirt and hands maintain correct occlusion in every pose.
-This version intentionally uses complete outfit sets, NOT arbitrary top/bottom/accessory mixing.
-Future independent garments need per-pose coordinated layers, not independently generated overlays.
+Fine wardrobe: separate neutral-standing model, 10 component categories and 45 selectable options.
+Aligned raster layers compose top, bottom, headwear, earrings, socks, shoes and face shape.
+Brows/lip color draw at face landmarks; fine mode uses standing pose and optional face zoom.
+Seven scenic raster backgrounds are shared by stage, scene cards and photo export.
 
 Economy: starting 100, daily40, 12 once-only invitations, repeatable five-color workshop25.
 Purchases validate balance, known ID, ownership. All mutations synchronous. Read latest save
@@ -14,11 +16,16 @@ LocalStorage version1 normalizer filters unknown IDs, invalid balances and locke
 This is deliberately client-local casual progression, NOT a tamperproof server economy.
 
 Loading: stable canvas retains previous model until the latest requested image is decoded.
-Sequence tokens ignore late responses; decoded-image cache is bounded to eight entries.
+Sequence tokens ignore late responses; decoded-image cache is bounded to 24 entries.
+Fine mode decodes every requested layer before drawing one complete offscreen frame atomically.
 Resize and context restoration repaint the last ready image without resetting canvas dimensions.
 Errors expose retry. Only the selected pose is loaded at full size; wardrobe thumbnails lazy load.
 Photo export: same-origin WebP decoded into canvas, Blob preview + download + iOS long press.
 Maximum 12 saved look descriptors, no image blobs in localStorage.
+v1 saves gain ownedParts/look.mode/look.parts defaults without losing old balances or purchases.
+Album snapshots clone nested component selections; photo export snapshots the actual visible bitmap.
+Memory, themed styling and sewing games use pure state transitions; completion emits one reward.
+Recent game session IDs persist to prevent duplicate reward processing.
 
 Audio: dressup/audio.mjs starts licensed Dream Culture music after user interaction.
 Music and synthesized action cues have independent persisted switches; backgrounding pauses audio.

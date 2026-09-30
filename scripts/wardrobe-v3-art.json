@@ -1,0 +1,171 @@
+{
+  "method": "built-in image_gen",
+  "assets": [
+    {
+      "id": "layer-base",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-ddbe86b7-d59d-4a5c-9e8b-4be703cf139c.png"
+    },
+    {
+      "id": "castle",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-200bcbec-ca5d-4bef-aa2c-a36c4fcb2a2c.png"
+    },
+    {
+      "id": "sea",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-7cd21274-2e6b-42eb-b553-6c7e8f8ca144.png"
+    },
+    {
+      "id": "garden",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-25bd033c-ca4b-43b1-81da-1f2e503353d0.png"
+    },
+    {
+      "id": "atelier",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-afbaca19-2c22-4219-9498-bc88fa2156c7.png"
+    },
+    {
+      "id": "moon",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-2d1924c0-08a0-4c54-880f-cf9c97f4ef7e.png"
+    },
+    {
+      "id": "snow",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-9bba6059-c446-47e7-b6d6-d957480cdcc7.png"
+    },
+    {
+      "id": "gallery",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-d9b8484c-4297-44c6-91ad-e542d713db91.png"
+    },
+    {
+      "id": "tops",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-bd9d01a2-41f2-42be-aa4a-471e4ca81064.png"
+    },
+    {
+      "id": "bottoms",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-1692fc15-4516-4ba9-a2b6-760e9575c44a.png"
+    },
+    {
+      "id": "shoes",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-c547570d-c613-4bfc-bde0-f28aadec3868.png"
+    },
+    {
+      "id": "socks",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-f9f54b87-207a-4676-affa-4a9d7c3ecaad.png"
+    },
+    {
+      "id": "hats",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-e08d2de8-ff43-4fc3-a1a2-2461eab0da09.png"
+    },
+    {
+      "id": "headpieces",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-29dfa568-c87e-406e-ad9e-ccb7f9d48922.png"
+    },
+    {
+      "id": "earrings",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-544285d0-d654-481a-a2d4-bcc3721c41bf.png"
+    },
+    {
+      "id": "faces",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-4a1a21c0-e314-4336-8109-01aeef31dd29.png"
+    },
+    {
+      "id": "qipao",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-5be687e2-74c3-428f-b7fb-39d61010a9d9.png"
+    },
+    {
+      "id": "fairy",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-ade1916c-3b29-4593-95a9-4674beee1394.png"
+    },
+    {
+      "id": "street",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-927685df-7a6e-4c34-a542-188dcdf16008.png"
+    },
+    {
+      "id": "ruby",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-86aa3580-b2fe-4288-8d52-f890679cdc86.png"
+    }
+  ],
+  "prompts": [
+    {
+      "id": "layer-base",
+      "prompt": "Use case: stylized-concept. Asset type: dress-up game aligned paper-doll base model. Input reference shows the illustration quality and adult character identity. Create ONE elegant adult woman front-facing standing neutrally with arms slightly away from hips, open fingers at thighs, legs straight slightly separated, full body visible. Semi-realistic refined hand-painted fashion game illustration matching reference; warm porcelain skin, large natural brown eyes. Short smooth brown bob tucked behind ears, NO earrings, NO head ornaments, NO makeup. OPAQUE modest cream fitted sleeveless top and cream mid-thigh bike shorts, barefoot. Canvas 512x1024 aspect1:2. Exact coordinate composition: head including hair x195..317 y50..210, face centered x256 y139, shoulders x176..336 y245, waist x207..305 y425, hips x195..317 y485, fingertips y570, knees y695, bare feet y915..965. Symmetrical mostly frontal pose, no movement. Leave transparent padding all around. Real transparent background, no scene, no shadow, no props, no text. Character should have delicate consistent dimensional shading. This is the alignment reference for interchangeable upper/lower garments, face, footwear and jewelry."
+    },
+    {
+      "id": "castle",
+      "prompt": "Use case: stylized-concept. Asset type: scenic background for refined fashion doll game, portrait 2:3. Beautiful fairytale white limestone castle palace courtyard with blue-slate turrets in distant background, climbing roses, golden morning sun, ornamental fountain off to side and romantic sweeping stairs. Painterly detailed storybook fashion-game realism. Camera eye level, center lower two-thirds is open light stone terrace where a full-body model can stand, perspective readable, rich landscape depth. No people, no dolls, no text, no logos."
+    },
+    {
+      "id": "sea",
+      "prompt": "Use case: stylized-concept. Asset type: scenic fashion game background portrait2:3. Beautiful luminous tropical beach, turquoise sea, foamy waves, distant islands and palm leaves at edges, white sand, pearly seashells foreground. Open central sand for a full-body fashion model, horizon at upper third. Detailed refined hand-painted dreamy realism, sunlight, light soft depth, no people, no text."
+    },
+    {
+      "id": "garden",
+      "prompt": "Use case: stylized-concept. Asset type: scenic fashion game background portrait2:3. Vast beautiful flower meadow with pink cosmos, lavender and blue delphiniums, winding pale path down center, rolling hills, soft cherry blossom trees on sides, warm spring sky. Keep central lower area path open for fashion model feet. Exquisite painterly storybook depth and rich detailed blossoms. No people, no text."
+    },
+    {
+      "id": "atelier",
+      "prompt": "Use case: stylized-concept. Asset type: scenic fashion game background portrait2:3. Elegant cozy indoor French dressing room, ivory and sage walls, tall arched sunlit window with gauze curtains at left, carved antique vanity and velvet stool at right, wardrobe and delicate rose floral wallpaper, oak herringbone floor. Open center floor for model full body. Detailed hand-painted warm fashion illustration, beautiful furniture, no people, no text."
+    },
+    {
+      "id": "moon",
+      "prompt": "Use case: stylized-concept. Asset type: scenic fashion game background portrait2:3. Beautiful moonlit palace balcony looking over lake and distant mountains, starry indigo sky and large moon, stone balustrade, trailing white roses and wisteria, soft lanterns at sides, open central marble floor for model. Dreamy refined detailed game illustration, silver and violet lighting, no people, no text."
+    },
+    {
+      "id": "snow",
+      "prompt": "Use case: stylized-concept. Asset type: scenic fashion game background portrait2:3. Cozy Victorian glass conservatory in winter, arched iron glass roof, snow-covered trees outside, warm gold hanging lights, indoor camellias, cushioned antique chairs at edges, open central tiled floor for fashion model. Beautiful detailed dreamy painterly illustration, no people, no text."
+    },
+    {
+      "id": "gallery",
+      "prompt": "Use case: stylized-concept. Asset type: scenic fashion game background portrait2:3. Luxurious indoor castle ballroom art gallery, ivory-gold pillars and ornate ceiling, chandelier, enormous framed floral paintings, tall arched windows, polished parquet floor and plush seating to sides. Camera eye-level, center lower area open for model, refined painterly fashion-game realism, dramatic depth. No people, no text."
+    },
+    {
+      "id": "tops",
+      "prompt": "Use case: stylized-concept. Asset type: interchangeable fashion game paper-doll sprites. Reference image is body anatomy and illustration style ONLY. Create a 2x2 sprite sheet on a genuinely TRANSPARENT background, four equal cells, no dividers, one isolated item in each cell in listed reading order. Each item centered inside its own cell with clear transparent margin, items must not overlap adjacent cells. Fine refined hand-painted semi-realistic detailed fashion art, luxurious textile/material shading. No body, no mannequins, no faces unless specifically requested, no scenes, no text, no numbers, no shadows outside items. All garments FRONT VIEW, symmetrical so fit the standing model. Canvas portrait 1024x2048, each cell512x1024. FOUR TOPS ONLY: top-left cream and blush fitted short-sleeve puffed blouse with pink ribbon and floral embroidery; top-right ivory sailor blouse with navy square collar and navy ribbon tie; bottom-left jade and ivory Chinese cross-collar short waist-length hanfu top with embroidered magnolia and small sleeves; bottom-right black velvet fitted off-shoulder bodice with gold buttons and fine lace. All tops designed to cover reference torso from shoulders to natural waist, not long coats. No skirts, no trousers."
+    },
+    {
+      "id": "bottoms",
+      "prompt": "Use case: stylized-concept. Asset type: interchangeable fashion game paper-doll sprites. Reference image is body anatomy and illustration style ONLY. Create a 2x2 sprite sheet on a genuinely TRANSPARENT background, four equal cells, no dividers, one isolated item in each cell in listed reading order. Each item centered inside its own cell with clear transparent margin, items must not overlap adjacent cells. Fine refined hand-painted semi-realistic detailed fashion art, luxurious textile/material shading. No body, no mannequins, no faces unless specifically requested, no scenes, no text, no numbers, no shadows outside items. All garments FRONT VIEW, symmetrical so fit the standing model. Canvas portrait 1024x2048, each cell512x1024. FOUR BOTTOMS ONLY: top-left rose-pink knee-length bell-shaped lace skirt with embroidered flowers and ribbons; top-right navy pleated knee-length school skirt with delicate ivory hem stripe; bottom-left pale peach long flowing hanfu skirt with gold-flower embroidery and ivory sheer layer, widest around knees; bottom-right cream tailored straight wide-leg full-length trousers. Correct fitted waistband above hips, identical waist width. No tops, no legs, no feet."
+    },
+    {
+      "id": "shoes",
+      "prompt": "Use case: stylized-concept. Asset type: interchangeable fashion game paper-doll sprites. Reference image is body anatomy and illustration style ONLY. Create a 2x2 sprite sheet on a genuinely TRANSPARENT background, four equal cells, no dividers, one isolated item in each cell in listed reading order. Each item centered inside its own cell with clear transparent margin, items must not overlap adjacent cells. Fine refined hand-painted semi-realistic detailed fashion art, luxurious textile/material shading. No body, no mannequins, no faces unless specifically requested, no scenes, no text, no numbers, no shadows outside items. All garments FRONT VIEW, symmetrical so fit the standing model. Canvas portrait 1024x2048, each cell512x1024. FOUR PAIRS OF FOOTWEAR ONLY: top-left blush pink Mary Jane shoes with delicate bows and rounded toe; top-right polished dark navy school loafers with tiny gold buckles; bottom-left pale jade Chinese silk embroidered slippers with delicate peach blossoms; bottom-right black elegant low-heel ankle boots with fine gold zip. Each pair side by side frontal/top-down three-quarter view matching the model's straight standing feet, toes down, heels up, no legs."
+    },
+    {
+      "id": "socks",
+      "prompt": "Use case: stylized-concept. Asset type: interchangeable fashion game paper-doll sprites. Reference image is body anatomy and illustration style ONLY. Create a 2x2 sprite sheet on a genuinely TRANSPARENT background, four equal cells, no dividers, one isolated item in each cell in listed reading order. Each item centered inside its own cell with clear transparent margin, items must not overlap adjacent cells. Fine refined hand-painted semi-realistic detailed fashion art, luxurious textile/material shading. No body, no mannequins, no faces unless specifically requested, no scenes, no text, no numbers, no shadows outside items. All garments FRONT VIEW, symmetrical so fit the standing model. Canvas portrait 1024x2048, each cell512x1024. FOUR PAIRS OF STOCKINGS ONLY: top-left opaque ivory knee-high stockings with fine lace cuffs and pink ribbons; top-right navy knee-high sailor socks with white narrow stripes; bottom-left sheer cream stockings with delicate blossom lace at knees; bottom-right black opaque knee-high stockings with scalloped cuffs. Two straight matching stockings for the model's straight symmetrical shins, frontal view, no body no feet, stocking silhouette gently tapered calf to ankles."
+    },
+    {
+      "id": "hats",
+      "prompt": "Use case: stylized-concept. Asset type: interchangeable fashion game paper-doll sprites. Reference image is body anatomy and illustration style ONLY. Create a 2x2 sprite sheet on a genuinely TRANSPARENT background, four equal cells, no dividers, one isolated item in each cell in listed reading order. Each item centered inside its own cell with clear transparent margin, items must not overlap adjacent cells. Fine refined hand-painted semi-realistic detailed fashion art, luxurious textile/material shading. No body, no mannequins, no faces unless specifically requested, no scenes, no text, no numbers, no shadows outside items. All garments FRONT VIEW, symmetrical so fit the standing model. Canvas portrait 1024x2048, each cell512x1024. FOUR HEADWEAR ITEMS ONLY: top-left finely woven ivory wide-brim summer hat decorated pale pink roses and cream ribbon; top-right navy velvet beret with gold pin; bottom-left little emerald traditional Chinese lotus hair crown with pearl fringe; bottom-right small silver moon tiara with pearl stars. View from front slightly above forehead to sit naturally on the reference hairstyle. No hair, no head."
+    },
+    {
+      "id": "headpieces",
+      "prompt": "Use case: stylized-concept. Asset type: interchangeable fashion game paper-doll sprites. Reference image is body anatomy and illustration style ONLY. Create a 2x2 sprite sheet on a genuinely TRANSPARENT background, four equal cells, no dividers, one isolated item in each cell in listed reading order. Each item centered inside its own cell with clear transparent margin, items must not overlap adjacent cells. Fine refined hand-painted semi-realistic detailed fashion art, luxurious textile/material shading. No body, no mannequins, no faces unless specifically requested, no scenes, no text, no numbers, no shadows outside items. All garments FRONT VIEW, symmetrical so fit the standing model. Canvas portrait 1024x2048, each cell512x1024. FOUR HAIR ORNAMENTS ONLY: top-left pink satin double bow with pearl center; top-right little ivory daisy floral hair clip with jade leaves; bottom-left traditional golden butterfly hairpin with red tassel and tiny jade bead; bottom-right silver crescent-moon star clip with tiny amethysts. Delicate realistic jeweled accessory rendering, side hair clip angle, no hair/head."
+    },
+    {
+      "id": "earrings",
+      "prompt": "Use case: stylized-concept. Asset type: interchangeable fashion game paper-doll sprites. Reference image is body anatomy and illustration style ONLY. Create a 2x2 sprite sheet on a genuinely TRANSPARENT background, four equal cells, no dividers, one isolated item in each cell in listed reading order. Each item centered inside its own cell with clear transparent margin, items must not overlap adjacent cells. Fine refined hand-painted semi-realistic detailed fashion art, luxurious textile/material shading. No body, no mannequins, no faces unless specifically requested, no scenes, no text, no numbers, no shadows outside items. All garments FRONT VIEW, symmetrical so fit the standing model. Canvas portrait 1024x2048, each cell512x1024. FOUR PAIRS OF EARRINGS ONLY: top-left ivory pearl drops on tiny gold studs; top-right delicate gold stars with small navy gems; bottom-left jade teardrop earrings with filigree gold; bottom-right miniature rose-gold red-heart earrings. Each cell contains a matching pair with generous gap, front view, clearly detailed, no skin ears or hair."
+    },
+    {
+      "id": "faces",
+      "prompt": "Use case: stylized-concept. Asset type: interchangeable fashion game paper-doll sprites. Reference image is body anatomy and illustration style ONLY. Create a 2x2 sprite sheet on a genuinely TRANSPARENT background, four equal cells, no dividers, one isolated item in each cell in listed reading order. Each item centered inside its own cell with clear transparent margin, items must not overlap adjacent cells. Fine refined hand-painted semi-realistic detailed fashion art, luxurious textile/material shading. No body, no mannequins, no faces unless specifically requested, no scenes, no text, no numbers, no shadows outside items. All garments FRONT VIEW, symmetrical so fit the standing model. Canvas portrait 1024x2048, each cell512x1024. FOUR FACE SHAPES ONLY for the identical adult woman reference: top-left natural oval gentle face, top-right soft round face, bottom-left delicate heart-shaped face, bottom-right mature slightly angular face. Each isolated skin oval face includes eyes identical brown eyes and nose and faint natural nude lips, ears visible, no hair, NO EYEBROWS so they can be independently customized, no neck. Skin matches reference warm porcelain. Looking straight forward, same scale, face crown horizontal. No bust/body."
+    },
+    {
+      "id": "qipao",
+      "prompt": "aqua silk Chinese qipao calf-length slim silhouette, jade floral embroidery, pearl frog buttons, modest mandarin collar and cap sleeves, ivory low heels"
+    },
+    {
+      "id": "fairy",
+      "prompt": "ivory and sky-blue fairy ballet dress, shimmering layered soft tulle knee-length skirt, tiny star lace embroidery, puff sleeves, matching satin ballet shoes and small pearl clip"
+    },
+    {
+      "id": "street",
+      "prompt": "lavender cropped sporty jacket, white tucked tee, charcoal high-waist elegant wide-leg trousers, clean white sneakers, refined casual fashion"
+    },
+    {
+      "id": "ruby",
+      "prompt": "deep ruby red elegant evening gown ankle-length with fitted bodice and soft cape sleeves, fine gold rose embroidery, rose-gold heels"
+    },
+    {
+      "id": "bottoms-repair",
+      "prompt": "Use case: precise-object-edit. Input image is the four garment sprite sheet to rearrange. Preserve the EXACT beautiful designs, colors, textile patterns and complete silhouettes of all four garments. Change ONLY their positions and scale to produce a 1024x1024 SQUARE sprite atlas divided into exactly FOUR equal512x512 cells, no visible dividers. Top left pink knee skirt; top right navy pleated skirt; bottom left peach long skirt; bottom right cream trousers. Each entire garment centered inside its own cell including waistband and hem, with at least40px fully transparent padding on ALL FOUR SIDES. Strict transparent horizontal band across y=512, strict transparent vertical band across x=512. No item or shadow crosses cell border. No bodies or text. Genuinely transparent background."
+    }
+  ]
+}

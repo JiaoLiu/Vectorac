@@ -1,4 +1,5 @@
 // Keep one persistent bitmap: changing URLs or viewport size never clears it.
+import {layerSources,paintComposite} from './compositor.mjs'
 export function createModelRenderer(canvas,ImageClass=Image){
   let generation=0,disposed=false,last=null
   const cache=new Map()
@@ -18,7 +19,7 @@ export function createModelRenderer(canvas,ImageClass=Image){
       img.onerror=()=>reject(new Error('image load failed'));img.src=src
     }).catch(e=>{cache.delete(src);throw e})
     cache.set(src,promise)
-    if(cache.size>8)cache.delete(cache.keys().next().value)
+    if(cache.size>24)cache.delete(cache.keys().next().value)
     return promise
   }
   if(canvas.addEventListener)canvas.addEventListener('contextrestored',repaint)
@@ -28,6 +29,14 @@ export function createModelRenderer(canvas,ImageClass=Image){
       try{const img=await load(src);if(disposed||token!==generation)return 'stale'
         // Decode and latest-request validation complete before touching the visible bitmap.
         last=img;repaint();canvas.dataset.src=src;return 'ready'
+      }catch(e){if(disposed||token!==generation)return 'stale';return 'error'}
+    },
+    async showLayers(parts){
+      const token=++generation,srcs=layerSources(parts),key='fine:'+JSON.stringify(parts)
+      try{const decoded=await Promise.all(srcs.map(load));if(disposed||token!==generation)return 'stale'
+        const frame=document.createElement('canvas');frame.width=512;frame.height=1024
+        paintComposite(frame.getContext('2d'),new Map(srcs.map((src,i)=>[src,decoded[i]])),parts)
+        if(disposed||token!==generation)return 'stale';last=frame;repaint();canvas.dataset.src=key;return 'ready'
       }catch(e){if(disposed||token!==generation)return 'stale';return 'error'}
     },
     repaint,
