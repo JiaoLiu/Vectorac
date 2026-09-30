@@ -76,8 +76,8 @@ export const ERROR_TEXT = {
   ROOM_NOT_FOUND: '房间不存在或已解散',
   ROOM_CAPACITY_REACHED: '当前房间数量已达上限，请稍后再试',
   ROOM_FULL: '房间已满',
-  ROOM_LOCKED: '牌局已经开始，无法再修改',
-  GAME_ALREADY_STARTED: '牌局已经开始，无法加入',
+  ROOM_LOCKED: '对局已经开始，无法再修改',
+  GAME_ALREADY_STARTED: '对局已经开始，无法加入',
   GAME_ALREADY_FINISHED: '本局已经结束',
   NOT_ROOM_ADMIN: '只有房主可以进行该操作',
   INVALID_RESUME_TOKEN: '重连凭据已失效，请重新进入房间',
@@ -185,8 +185,11 @@ export class NetClient {
     return this.http('/api/rooms/' + encodeURIComponent(roomCode))
   }
 
-  createRoom({ displayName, rules, turnTimeoutSeconds } = {}) {
-    return this.http('/api/rooms', { method: 'POST', body: { displayName, rules, turnTimeoutSeconds } })
+  createRoom({ displayName, gameType, hostSide, rules, turnTimeoutSeconds } = {}) {
+    return this.http('/api/rooms', {
+      method: 'POST',
+      body: { displayName, gameType, hostSide, rules, turnTimeoutSeconds }
+    })
   }
 
   joinRoom({ roomCode, displayName } = {}) {

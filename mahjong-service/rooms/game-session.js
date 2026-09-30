@@ -1,39 +1,23 @@
 // ============================================================
-// 牌局会话（mahjong-service/rooms/game-session.js）
+// 对局会话（mahjong-service/rooms/game-session.js）
 // ------------------------------------------------------------
-// 每个 PLAYING 房间一个 GameSession：把**现有引擎**接进房间架构，
-// 不重新实现任何麻将规则（文档 §28 / §六十六）。
+// 每个 PLAYING 房间一个 GameSession：把**游戏适配器**接进房间架构，
+// 本模块游戏无关，不 import 任何游戏引擎模块。
 //
 // 职责：
-//   · 用 createGame / dispatch / legalActions / settlementOf 驱动牌局；
+//   · 用 adapter.createState / dispatch / legalActions / settlementOf 驱动对局；
 //   · 维护 ActionWindow（windowId / eligibleSeats / legalActions / deadline）；
 //   · 计时权威在服务端：真人等 deadline，嫌疑断线走 DISCONNECTED_AI_DELAY，
-//     真 AI 座位按节奏出牌；超时一律走 AI 决策 + 确定性兜底；
+//     真 AI 座位按节奏出招；超时一律走 AI 决策 + 确定性兜底；
 //   · AI 决策在房间队列之外执行（并发受限），产出动作后再入队，
 //     入队时二次校验 windowId，过期直接丢弃（文档 §41）；
-//   · 每次状态变化把「按座位旋转后的视图」推给每个真人（隐私由引擎视图保证）。
+//   · 每次状态变化把「按座位视角的视图」推给每个真人（隐私由适配器视图保证）。
 // ============================================================
 
-import {
-  PHASE_DISCARD,
-  PHASE_RESPOND,
-  PHASE_SWAP,
-  PHASE_VOID,
-  PHASE_FINISHED
-} from '../engine/contract.js'
-import {
-  createGame,
-  dispatch as engineDispatch,
-  legalActions,
-  playerView,
-  settlementOf
-} from '../engine/engine.js'
 import { config } from '../config.js'
 import { ERR, fail } from '../errors.js'
 import { OCCUPANT, seatSnapshot } from './seat.js'
-import { createWindow, isEligible, matchesLegalOption, WINDOW_TYPE } from './action-window.js'
-import { fallbackAction } from './ai-jobs.js'
-import { buildPlayerViewForSeat } from './serializer.js'
+import { createWindow, isEligible } from './action-window.js'
 
 /** 动作来源（文档 §52：日志里必须能区分真人 / AI / 超时托管 / 断线托管） */
 export const SOURCE = {
@@ -46,7 +30,7 @@ export const SOURCE = {
 
 let gameCounter = 0
 
-/** 引擎错误码 → 服务端错误码（前端只认后者） */
+/** 引擎错误码 → 服务端错误码（前端只认后者）。适配器 dispatch 复用同一组错误词 */
 const ENGINE_ERROR_MAP = {
   stale: ERR.ACTION_WINDOW_EXPIRED,
   duplicate: ERR.ACTION_ALREADY_PROCESSED,
@@ -55,124 +39,26 @@ const ENGINE_ERROR_MAP = {
   'wrong-phase': ERR.INVALID_ACTION
 }
 
-/**
- * 逻辑窗口的稳定标识：同一逻辑窗口内其他座位表态（version 变化）不会改变它，
- * 所以 windowId 不会被误判为过期；换人 / 换阶段 / 换出牌批次才换新窗口。
- */
-function windowIdentity(state) {
-  switch (state.phase) {
-    case PHASE_SWAP:
-      return 'swap'
-    case PHASE_VOID:
-      return 'void'
-    case PHASE_DISCARD:
-      return 'discard:' + state.turn
-    case PHASE_RESPOND:
-      // 阶段（hu / gang / peng）也进 identity：同一阶段内所有座位共享同一个
-      // 窗口与截止时间（HU 并行窗口下多家同时思考，谁先表态都不影响别人），
-      // 换阶段才 ++windowId，旧阶段未表态的请求一律过期。
-      if (state.pendingKong) {
-        return (
-          'respond-kong:' +
-          state.pendingKong.seat +
-          ':' +
-          state.pendingKong.tag +
-          ':' +
-          state.respondStage
-        )
-      }
-      if (state.pendingDiscard) {
-        return (
-          'respond:' +
-          state.pendingDiscard.seat +
-          ':' +
-          state.pendingDiscard.tag +
-          ':' +
-          state.respondStage
-        )
-      }
-      return 'respond:' + state.turn + ':' + state.respondStage
-    default:
-      return null
-  }
-}
-
-function windowTypeOf(state) {
-  switch (state.phase) {
-    case PHASE_SWAP:
-      return WINDOW_TYPE.EXCHANGE_SELECTION
-    case PHASE_VOID:
-      return WINDOW_TYPE.DINGQUE_SELECTION
-    case PHASE_DISCARD:
-      return WINDOW_TYPE.SELF_TURN
-    case PHASE_RESPOND:
-      return WINDOW_TYPE.DISCARD_RESPONSE
-    default:
-      return WINDOW_TYPE.OTHER
-  }
-}
-
-/** 当前还需要表态的座位（引擎口径） */
-function eligibleSeatsOf(state) {
-  switch (state.phase) {
-    case PHASE_SWAP:
-      return state.players.filter(p => p.swapPicked == null).map(p => p.seat)
-    case PHASE_VOID:
-      return state.players.filter(p => p.void == null).map(p => p.seat)
-    case PHASE_DISCARD:
-      return [state.turn]
-    case PHASE_RESPOND:
-      // HU 阶段（并行收集）：所有未表态的胡候选人同时拥有决定权，共享同一
-      // 截止时间——任何一家先叫胡都不会关掉别人的窗口；GANG / PENG 阶段
-      // （串行仲裁）只有唯一 currentResponder 有决定权。
-      if (state.respondStage === 'hu') return state.huWait.slice()
-      return state.currentResponder != null ? [state.currentResponder] : []
-    default:
-      return []
-  }
-}
-
-/** 最后一个合法选项（兜底专用，保证绝不卡死牌局） */
-function firstLegalAction(legal) {
-  if (!legal || !legal.length) return null
-  const o = legal[0]
-  if (o.type === 'discard') {
-    return o.tiles && o.tiles.length ? { type: 'discard', tile: o.tiles[0] } : null
-  }
-  if (o.type === 'gang') {
-    return o.options && o.options.length
-      ? { type: 'gang', tile: o.options[0].tile, gangType: o.options[0].gangType }
-      : null
-  }
-  if (o.type === 'peng') return { type: 'peng', tile: o.tile }
-  if (o.type === 'hu') return { type: 'hu', how: o.how }
-  if (o.type === 'pass') return { type: 'pass' }
-  if (o.type === 'void') {
-    return o.suits && o.suits.length ? { type: 'void', suit: o.suits[0] } : null
-  }
-  if (o.type === 'swap') return fallbackAction({ legal })
-  return null
-}
-
 export class GameSession {
-  constructor({ room, aiService, hub, logger, seed, dealer, wallOffset, dice, headSeat, round }) {
+  /**
+   * @param {object} opening  adapter.openingFor 的返回：{ engineInit, ceremony, firstMoverSeat }
+   */
+  constructor({ room, aiService, hub, logger, adapter, opening, seed, round }) {
     this.room = room
     this.ai = aiService
     this.hub = hub
     this.logger = logger || (() => {})
+    this.adapter = adapter
 
     this.gameId = 'g' + (++gameCounter) + '-' + room.roomCode
     this.seed = seed >>> 0
-    // 本局骰子与墙头方位（纯展示 + 牌墙缺口表现，不参与任何牌权判定）
     this.round = round == null ? 1 : Number(round) || 1
-    this.dice = Array.isArray(dice) && dice.length === 2 ? [Number(dice[0]) | 0, Number(dice[1]) | 0] : [1, 1]
-    this.dealer = dealer
-    this.headSeat = headSeat != null ? headSeat : dealer
-    this.wallOffset = wallOffset || 0
-    this.state = createGame({
+    // 开局仪式信息（骰子 / 先后手分配等，纯展示，不参与任何判定），
+    // 由适配器产出，viewFor 时原样摊进 meta 供前端做开局表现。
+    this.ceremony = (opening && opening.ceremony) || {}
+    this.state = adapter.createState(opening.engineInit, {
+      room,
       seed: this.seed,
-      dealer,
-      wallOffset,
       rules: room.rules
     })
 
@@ -190,7 +76,7 @@ export class GameSession {
   }
 
   get finished() {
-    return this.state.phase === PHASE_FINISHED
+    return this.adapter.isFinished(this.state)
   }
 
   /** 对外信封字段（文档 §31 / §45） */
@@ -217,20 +103,21 @@ export class GameSession {
   /** 按当前引擎状态同步 ActionWindow（每次 dispatch 后调用） */
   syncWindow() {
     if (this.aborted) return
-    if (this.state.phase === PHASE_FINISHED) {
+    if (this.finished) {
       this.closeWindow()
       return
     }
-    const identity = windowIdentity(this.state)
-    const eligible = eligibleSeatsOf(this.state).filter(
-      seat => legalActions(this.state, seat).length > 0
-    )
+    const adapter = this.adapter
+    const identity = adapter.windowIdentityOf(this.state)
+    const eligible = adapter
+      .eligibleSeatsOf(this.state)
+      .filter(seat => adapter.legalActions(this.state, seat).length > 0)
     if (!identity || !eligible.length) {
       this.closeWindow()
       return
     }
     const legalBySeat = {}
-    for (const seat of eligible) legalBySeat[seat] = legalActions(this.state, seat)
+    for (const seat of eligible) legalBySeat[seat] = adapter.legalActions(this.state, seat)
 
     const reused = this.window && this.window.identity === identity
     if (reused) {
@@ -242,7 +129,7 @@ export class GameSession {
       this.window = createWindow({
         windowId: ++this.windowSeq,
         identity,
-        type: windowTypeOf(this.state),
+        type: adapter.windowTypeOf(this.state),
         eligibleSeats: eligible,
         legalActionsBySeat: legalBySeat,
         timeoutMs: this.windowTimeoutMs(),
@@ -265,24 +152,16 @@ export class GameSession {
     this.window = null
   }
 
-  /**
-   * 本窗口的 deadline 时长（毫秒）。
-   *   · 定缺 / 换三张是**并行窗口**：全桌都在等同一家选完，固定走
-   *     config.voidTimeoutSeconds（不随房间思考时长放大，否则开局会被拖住）；
-   *   · 摸打 / 响应按本房间的思考时长（建房间时房主可设置，缺省服务端默认值）。
-   */
+  /** 本窗口的 deadline 时长（毫秒），由适配器按游戏与阶段决定 */
   windowTimeoutMs() {
-    if (this.state.phase === PHASE_SWAP || this.state.phase === PHASE_VOID) {
-      return config.voidTimeoutSeconds * 1000
-    }
-    return (this.room.turnTimeoutSeconds || config.turnTimeoutSeconds) * 1000
+    return this.adapter.windowTimeoutMs(this.state, this.room)
   }
 
   // ---------- 计时（服务端是计时权威） ----------
 
-  /** 真 AI 座位的出牌节奏（纯表现，不是超时配置） */
+  /** 真 AI 座位的出招节奏（纯表现，不是超时配置） */
   aiPaceMs(seat) {
-    return 350 + (seat % 4) * 120
+    return 350 + (seat % this.room.seats.length) * 120
   }
 
   /**
@@ -365,22 +244,29 @@ export class GameSession {
     if (this.aborted) return
     if (!this.window || this.window.windowId !== windowId) return
     if (!isEligible(this.window, seat)) return
-    const legal = legalActions(this.state, seat)
+    const adapter = this.adapter
+    const legal = adapter.legalActions(this.state, seat)
     if (!legal.length) return
-    const view = playerView(this.state, seat)
+    const view = adapter.playerView(this.state, seat)
 
-    const action = await this.ai.decide(view, seat, { seed: this.seed })
+    const level = adapter.aiLevelOf ? adapter.aiLevelOf(this.room) : null
+    const action = await this.ai.decide(adapter, view, seat, {
+      seed: this.seed,
+      level: level || undefined
+    })
 
     // 返回队列任务：调用方（测试 / 关停流程）可以 await 到这一步真正落子
     return this.room.queue.push(() => {
-      if (this.aborted || this.state.phase === PHASE_FINISHED) return
+      if (this.aborted || this.finished) return
       if (!this.window || this.window.windowId !== windowId) return // 窗口已推进，丢弃
       if (!isEligible(this.window, seat)) return
-      const nowLegal = legalActions(this.state, seat)
+      const nowLegal = adapter.legalActions(this.state, seat)
       if (!nowLegal.length) return
-      let final = action && matchesLegalOption(nowLegal, action) ? action : null
-      if (!final) final = fallbackAction(playerView(this.state, seat))
-      if (!final || !matchesLegalOption(nowLegal, final)) final = firstLegalAction(nowLegal)
+      let final = action && adapter.matchesLegalOption(nowLegal, action) ? action : null
+      if (!final) final = adapter.aiFallback(adapter.playerView(this.state, seat))
+      if (!final || !adapter.matchesLegalOption(nowLegal, final)) {
+        final = adapter.aiLastResort(nowLegal)
+      }
       if (!final) return
       this.applyAction({ seat, action: final, source, requestId: null })
     })
@@ -391,25 +277,25 @@ export class GameSession {
   /**
    * 真人的 PLAYER_ACTION（调用方需已在房间队列内）。
    * 校验：房间状态 / 是否轮到你 / windowId 是否仍有效 / 动作是否合法
-   * （文档 §33）；最终裁决仍由引擎 dispatch 完成。
+   * （文档 §33）；最终裁决仍由适配器 dispatch 完成。
    */
   handlePlayerAction({ seat, windowId, action, requestId, source = SOURCE.HUMAN }) {
     if (this.aborted) fail(ERR.ROOM_DESTROYED)
-    if (this.state.phase === PHASE_FINISHED) fail(ERR.GAME_ALREADY_FINISHED)
+    if (this.finished) fail(ERR.GAME_ALREADY_FINISHED)
     if (!this.window) fail(ERR.ACTION_WINDOW_EXPIRED)
     if (windowId == null || windowId !== this.window.windowId) {
       fail(ERR.ACTION_WINDOW_EXPIRED, '行动窗口已失效')
     }
     if (!isEligible(this.window, seat)) fail(ERR.NOT_YOUR_TURN)
-    const legal = legalActions(this.state, seat)
-    if (!matchesLegalOption(legal, action)) fail(ERR.INVALID_ACTION)
+    const legal = this.adapter.legalActions(this.state, seat)
+    if (!this.adapter.matchesLegalOption(legal, action)) fail(ERR.INVALID_ACTION)
 
     const res = this.applyAction({ seat, action, source, requestId })
     if (!res.ok) fail(ENGINE_ERROR_MAP[res.error] || ERR.INVALID_ACTION, '引擎拒绝：' + res.error)
     return res
   }
 
-  /** 统一落子入口：补 actionId / stateVersion → 引擎裁决 → 推进窗口 → 广播 */
+  /** 统一落子入口：补 actionId / stateVersion → 适配器裁决 → 推进窗口 → 广播 */
   applyAction({ seat, action, source, requestId }) {
     const payload = {
       ...action,
@@ -417,7 +303,7 @@ export class GameSession {
       actionId: requestId || 'srv-' + this.gameId + '-' + ++this.actionSeq,
       stateVersion: this.state.version
     }
-    const res = engineDispatch(this.state, payload)
+    const res = this.adapter.dispatch(this.state, payload)
     if (!res.ok) {
       this.logger('action-rejected', { gameId: this.gameId, seat, source, error: res.error })
       return res
@@ -431,7 +317,7 @@ export class GameSession {
       gameVersion: this.state.version
     })
 
-    if (this.state.phase === PHASE_FINISHED) {
+    if (this.finished) {
       this.finish()
     } else {
       this.syncWindow()
@@ -444,7 +330,7 @@ export class GameSession {
   finish() {
     this.finishedAt = Date.now()
     this.closeWindow()
-    const results = settlementOf(this.state)
+    const results = this.adapter.settlementOf(this.state)
     this.hub.broadcastEvent(this.room, 'GAME_FINISHED', {
       gameId: this.gameId,
       results
@@ -452,7 +338,7 @@ export class GameSession {
     this.room.onSessionFinished(this, results)
   }
 
-  /** 终止牌局（最后一个真人退出 / 房间销毁）：撤掉全部定时器与待处理动作 */
+  /** 终止对局（最后一个真人退出 / 房间销毁）：撤掉全部定时器与待处理动作 */
   abort(reason) {
     if (this.aborted) return
     this.aborted = true
@@ -464,7 +350,7 @@ export class GameSession {
     this.abort(reason || 'disposed')
   }
 
-  /** 该座位可见的完整视图（含房间 meta） */
+  /** 该座位可见的完整视图（含房间 meta），由适配器序列化 */
   viewFor(seat) {
     const room = this.room
     const meta = {
@@ -477,17 +363,15 @@ export class GameSession {
       windowId: this.window ? this.window.windowId : null,
       deadlineAt: this.window ? this.window.deadlineAt : null,
       serverTime: Date.now(),
-      // 开局骰子 / 局号 / 墙头方位：前端据此做掷骰仪式与牌墙缺口（纯展示）
       round: this.round,
-      dice: this.dice,
-      headSeat: this.headSeat,
-      mode: 'dealer',
-      // 多局联机：房间累计积分（绝对座位口径，serializer 会按视角旋转）与破产座位
+      // 开局仪式（骰子 / 先后手等，纯展示）由适配器产出，原样摊进 meta
+      ...this.ceremony,
+      // 多局联机：房间累计积分与破产座位（绝对座位口径，适配器按视角处理）
       scores: (room.scores || []).slice(),
       bankruptSeats: (room.bankruptSeats || []).slice(),
       seats: room.seats.map(seatSnapshot)
     }
-    return buildPlayerViewForSeat(this.state, seat, meta)
+    return this.adapter.serializeView(this.state, seat, meta)
   }
 
   stats() {

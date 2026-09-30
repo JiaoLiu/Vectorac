@@ -13,7 +13,7 @@ import { ERR } from './errors.js'
 import { OCCUPANT, ROOM_STATUS, humanCount } from './rooms/seat.js'
 import { config } from './config.js'
 import { createGame, legalActions } from './engine/engine.js'
-import { matchesLegalOption } from './rooms/action-window.js'
+import { matchesLegalOption } from './rooms/adapters/mahjong.js'
 import WebSocket from 'ws'
 
 // ---------- 迷你测试框架 ----------

@@ -1,7 +1,9 @@
 // ============================================================
 // 房间（mahjong-service/rooms/room.js）
 // ------------------------------------------------------------
-// 一个 Room = 4 个 Seat + 一条串行事件队列 + 可选的一个 GameSession。
+// 一个 Room = N 个 Seat（座位数由游戏适配器定）+ 一条串行事件队列
+// + 可选的一个 GameSession。本模块游戏无关：规则清洗 / 开局仪式 /
+// 先后手轮换全部委托给 this.adapter（rooms/adapters/）。
 //
 // 多局联机：一局打完房间**不销毁**，回到 WAITING 等全员「准备」后自动开下一局；
 // 每人起始 config.startScore 分，每局 delta 跨局累加，任一家 ≤ 0 即破产 → FINISHED。
@@ -10,7 +12,7 @@
 //   · 任何会修改 Room / GameState 的操作都必须走 this.queue（串行）；
 //   · Admin 必须是 HUMAN；AI 永远不能成为管理员；
 //   · DISCONNECT 不减少 humanCount、不转移管理员；只有 LEAVE 才永久退出；
-//   · PLAYING 的 HUMAN Leave → 该 Seat 转 AI（不重新发牌、不重建 Seat）；
+//   · PLAYING 的 HUMAN Leave → 该 Seat 转 AI（不重开对局、不重建 Seat）；
 //   · humanCount == 0 → 立即走 RoomManager.destroyRoom 统一销毁；
 //   · PLAYING 后完全锁房：JOIN / ADD_AI / REMOVE_AI / UPDATE_RULES 全拒。
 //
@@ -18,7 +20,6 @@
 // ============================================================
 
 import { randomInt, randomUUID } from 'node:crypto'
-import { DEFAULT_RULES } from '../engine/contract.js'
 import { config } from '../config.js'
 import { ERR, fail } from '../errors.js'
 import {
@@ -41,63 +42,10 @@ import { RoomQueue } from './room-queue.js'
 import { GameSession } from './game-session.js'
 import { roomSummary } from './serializer.js'
 
-const RULE_KEYS = Object.keys(DEFAULT_RULES)
-/** 牌墙每边牌位（双层 2×7），与前端 ui.js WALL_SIDE_SLOTS 一致 */
-const WALL_SEG = 14
-/** 数值型规则的合法区间（越界直接 INVALID_RULES，不做静默 clamp） */
-const RULE_RANGES = {
-  baseScore: [1, 100],
-  capFan: [2, 6],
-  zimoFan: [0, 10],
-  haidiFan: [0, 10],
-  gangShangFan: [0, 10],
-  qianggangFan: [0, 10],
-  genFan: [0, 10],
-  gangMing: [0, 20],
-  gangAn: [0, 20],
-  gangBu: [0, 20],
-  xiThree: [0, 100],
-  xiFour: [0, 100],
-  endWhenHuPlayers: [1, 4]
-}
-
-/**
- * 规则清洗（文档 §23）：只接受 DEFAULT_RULES 里已有的字段，
- * 服务端固定项（players / ruleVersion）不允许客户端改写。
- * 未知字段（如未来可能出现的 variant）一律忽略——引擎只认 DEFAULT_RULES 的键，
- * 静默忽略比直接报错更不容易因前端多带一个字段就把整局拦下来；
- * 但已知字段的类型与取值区间必须合法，越界返回 INVALID_RULES。
- */
-export function sanitizeRules(input) {
-  const out = { ...DEFAULT_RULES }
-  if (input == null) return out
-  if (typeof input !== 'object') fail(ERR.INVALID_RULES, 'rules 必须是对象')
-  const fixed = new Set(['ruleVersion', 'players'])
-  for (const key of RULE_KEYS) {
-    if (fixed.has(key)) continue
-    if (!Object.prototype.hasOwnProperty.call(input, key)) continue
-    const def = DEFAULT_RULES[key]
-    const val = input[key]
-    if (typeof def === 'boolean') {
-      if (typeof val !== 'boolean') fail(ERR.INVALID_RULES, '规则 ' + key + ' 必须是布尔值')
-      out[key] = val
-      continue
-    }
-    const n = Math.floor(Number(val))
-    if (!Number.isFinite(n)) fail(ERR.INVALID_RULES, '规则 ' + key + ' 必须是数字')
-    const range = RULE_RANGES[key]
-    if (range && (n < range[0] || n > range[1])) {
-      fail(ERR.INVALID_RULES, '规则 ' + key + ' 超出允许范围 [' + range[0] + ',' + range[1] + ']')
-    }
-    out[key] = n
-  }
-  return out
-}
-
 /**
  * 房间思考时长（秒）清洗：建房间时可选传入，覆盖服务端默认 turnTimeoutSeconds。
  * 未传（null / 空串）→ 用默认值；传了必须是 [min,max] 区间内的整数秒，
- * 越界直接 INVALID_RULES（与规则一致，不做静默 clamp）。
+ * 越界直接 INVALID_RULES（不做静默 clamp）。游戏无关，所有适配器共用。
  */
 export function sanitizeTurnTimeoutSeconds(input) {
   if (input == null || input === '') return config.turnTimeoutSeconds
@@ -116,35 +64,22 @@ export function sanitizeTurnTimeoutSeconds(input) {
   return n
 }
 
-/**
- * 下局庄家（与单机 ui.js nextDealerOf 同口径）：先胡者坐庄；一炮多响
- * （同一次出牌 / 抢杠被两家以上胡）时由点炮者坐庄；流局庄家留任。
- * results.huOrder 是绝对座位口径（服务端未经视角旋转），可直接用。
- */
-export function nextDealerOf(results, fallbackSeat) {
-  const huOrder = (results && results.huOrder) || []
-  if (!huOrder.length) return fallbackSeat != null ? fallbackSeat : 0
-  const first = huOrder[0]
-  if (first.how !== 'zimo' && first.from != null) {
-    const sameDiscard = huOrder.filter(
-      h => h.how !== 'zimo' && h.from === first.from && h.tag === first.tag
-    )
-    if (sameDiscard.length >= 2) return first.from
-  }
-  return first.seat
-}
-
 export class Room {
-  constructor({ roomId, roomCode, rules, turnTimeoutSeconds, manager, sessions, hub, aiService, logger }) {
+  constructor({ roomId, roomCode, adapter, hostSide, rules, turnTimeoutSeconds, manager, sessions, hub, aiService, logger }) {
     this.roomId = roomId || randomUUID()
     this.roomCode = roomCode
+    this.gameType = adapter.gameId
+    this.adapter = adapter
+    // 房主选边（2 人先后手游戏使用，如象棋执红/执黑、五子棋执黑/执白）；
+    // 由适配器在首局 openingFor / nextRoundCtx 时解释。
+    this.hostSide = hostSide || null
     this.status = ROOM_STATUS.WAITING
     this.adminSeat = -1
-    this.rules = rules || { ...DEFAULT_RULES }
-    // 本房间的思考时长（秒）：建房间时可选设置，摸打 / 响应窗口按它计时；
-    // 定缺 / 换三张这类并行窗口固定走 config.voidTimeoutSeconds（见 GameSession）。
+    this.rules = adapter.sanitizeRules(rules)
+    // 本房间的思考时长（秒）：建房间时可选设置，行动窗口按它计时；
+    // 适配器可对并行窗口（如麻将定缺/换三张）另行固定时长（见 GameSession）。
     this.turnTimeoutSeconds = sanitizeTurnTimeoutSeconds(turnTimeoutSeconds)
-    this.seats = createSeats(config.seatsPerRoom)
+    this.seats = createSeats(adapter.seatsPerRoom)
 
     this.createdAt = Date.now()
     this.startedAt = null
@@ -156,9 +91,11 @@ export class Room {
     // 多局联机：局号 + 每个座位（绝对口径）累计积分 + 上局结果 + 破产座位。
     // 积分只在每局结束时按 perSeat.delta 入账一次；破产只在局末判出。
     this.round = 1
-    this.scores = new Array(config.seatsPerRoom).fill(config.startScore)
+    this.scores = new Array(adapter.seatsPerRoom).fill(config.startScore)
     this.lastResults = null
     this.bankruptSeats = []
+    // 局间上下文（先后手轮换状态，如庄家 / 执先座位），由适配器维护
+    this.roundCtx = null
 
     this.gameSession = null
     this.queue = new RoomQueue()
@@ -465,7 +402,7 @@ export class Room {
     return this.queue.push(() => {
       this._requireAdmin(actorPlayerId)
       this._requireWaiting()
-      this.rules = sanitizeRules(rules)
+      this.rules = this.adapter.sanitizeRules(rules)
       // 思考时长与规则同属房主在等待室可改的房级参数；未传则保持不变
       if (turnTimeoutSeconds !== undefined) {
         this.turnTimeoutSeconds = sanitizeTurnTimeoutSeconds(turnTimeoutSeconds)
@@ -536,8 +473,11 @@ export class Room {
   }
 
   /**
-   * 本轮发牌开局（首局由房主触发，后续局由全员就绪自动触发）。
+   * 本轮开局（首局由房主触发，后续局由全员就绪自动触发）。
    * 调用方必须已在房间队列内。EMPTY 自动补 AI；真人开赛即清 ready。
+   * 开局仪式与先后手轮换全部委托给适配器：
+   *   nextRoundCtx 先推局间上下文（庄家 / 先手座位），
+   *   openingFor 产出 engineInit（引擎初始参数）+ ceremony（前端开局展示）。
    */
   _launchRound() {
     for (const seat of this.seats) {
@@ -555,27 +495,20 @@ export class Room {
     this.touch()
     this.bumpVersion()
 
-    // 掷骰（与单机开局同源）：骰子派给前端做掷骰仪式与牌墙缺口。
-    // 首局：点数之和定庄；后续局：沿用上一局结果推得的庄家（先胡者坐庄），
-    // 骰子只决定摸牌起点，与单机 onRestart 一致。
-    const dice = [randomInt(1, 7), randomInt(1, 7)]
-    const dealer =
-      this.round > 1 && this.lastResults != null
-        ? nextDealerOf(this.lastResults, this.gameSession ? this.gameSession.dealer : 0)
-        : (dice[0] + dice[1] - 2) % 4
-    const headSeat = this.round > 1 ? (dice[0] + dice[1] - 2) % 4 : dealer
-    const wallOffset = (headSeat * WALL_SEG + (dice[0] + dice[1])) % (WALL_SEG * 4)
+    this.roundCtx = this.adapter.nextRoundCtx(this, this.lastResults, this.roundCtx)
+    const opening = this.adapter.openingFor(this, this.roundCtx, randomInt)
+    if (this.roundCtx && typeof this.roundCtx === 'object') {
+      this.roundCtx.firstSeat = opening.firstMoverSeat
+    }
 
     this.gameSession = new GameSession({
       room: this,
       aiService: this.aiService,
       hub: this.hub,
       logger: this.logger,
+      adapter: this.adapter,
+      opening,
       seed: randomInt(0, 0x7fffffff),
-      dealer,
-      wallOffset,
-      dice,
-      headSeat,
       round: this.round
     })
     this.logger('game-started', {
@@ -586,9 +519,11 @@ export class Room {
     })
     this.hub.broadcast(this, 'GAME_STARTED', {
       gameId: this.gameSession.gameId,
+      gameType: this.gameType,
       round: this.round,
       rules: { ...this.rules },
       turnTimeoutSeconds: this.turnTimeoutSeconds,
+      ceremony: opening.ceremony || null,
       seats: this.seatSnapshots()
     })
     this.gameSession.start()

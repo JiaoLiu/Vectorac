@@ -50,33 +50,5 @@ export function legalFor(window, seat) {
   return window.legalActionsBySeat[seat] || []
 }
 
-/**
- * 客户端动作是否落在该座位当前的合法选项内（文档 §33）。
- * 只做「结构性」校验，真正裁决始终交给引擎 dispatch。
- */
-export function matchesLegalOption(legal, action) {
-  if (!action || !action.type) return false
-  const opt = legal.find(o => o.type === action.type)
-  if (!opt) return false
-  switch (action.type) {
-    case 'discard':
-      return (opt.tiles || []).indexOf(action.tile) >= 0
-    case 'peng':
-      return action.tile == null || action.tile === opt.tile
-    case 'gang':
-      return (opt.options || []).some(
-        o => o.tile === action.tile && o.gangType === action.gangType
-      )
-    case 'void':
-      return (opt.suits || []).indexOf(action.suit) >= 0
-    case 'swap':
-      return Array.isArray(action.tiles) && action.tiles.length === 3
-    case 'hu':
-      return true
-    case 'pass':
-    case 'swap-yaoji':
-      return true
-    default:
-      return false
-  }
-}
+// matchesLegalOption 是游戏专属逻辑（合法选项的结构由各游戏引擎定义），
+// 已迁入对应适配器（麻将见 rooms/adapters/mahjong.js）。

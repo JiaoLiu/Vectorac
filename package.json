@@ -11,7 +11,7 @@
     "predev": "npm run build:slime-worker",
     "dev": "NODE_OPTIONS=--openssl-legacy-provider vuepress dev . --open --host \"localhost\"",
     "prebuild": "npm run build:slime-worker",
-    "build": "NODE_OPTIONS=--openssl-legacy-provider vuepress build .",
+    "build": "NODE_OPTIONS=--openssl-legacy-provider vuepress build . || (echo '[build] first attempt failed (vuepress#temp-race), retrying once...' && NODE_OPTIONS=--openssl-legacy-provider vuepress build .)",
     "postbuild": "node scripts/check-slime-worker.js"
   },
   "devDependencies": {

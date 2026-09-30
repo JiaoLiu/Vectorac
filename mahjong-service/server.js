@@ -74,10 +74,11 @@ export function createServer({ logger } = {}) {
   })
 
   // 创建房间（创建者 = Seat0 + 第一任管理员）
+  // gameType 选择游戏适配器（缺省麻将）；hostSide 供 2 人先后手游戏房主选边
   app.post('/api/rooms', async (req, res) => {
     try {
-      const { displayName, rules, turnTimeoutSeconds } = req.body || {}
-      const { summary, player } = manager.createRoom({ displayName, rules, turnTimeoutSeconds })
+      const { displayName, gameType, hostSide, rules, turnTimeoutSeconds } = req.body || {}
+      const { summary, player } = manager.createRoom({ displayName, gameType, hostSide, rules, turnTimeoutSeconds })
       res.json({ ok: true, data: { room: summary, player } })
     } catch (err) {
       sendHttpError(res, err, log, 'create-room')

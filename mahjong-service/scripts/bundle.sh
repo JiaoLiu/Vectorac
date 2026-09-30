@@ -33,8 +33,40 @@ for f in contract rules engine ai; do
   cp "$SRC_MJ/$f.js" "$WORK/mahjong-service/engine/$f.js"
 done
 
+# 五子棋同理：engine/gomoku/ 子目录整体覆盖（保持 ai.js 的 './engine.js' 相对引用）
+SRC_GOMOKU="$(cd "$HERE/../.vuepress/components/gomoku" && pwd)"
+mkdir -p "$WORK/mahjong-service/engine/gomoku"
+for f in engine ai; do
+  if [ ! -f "$SRC_GOMOKU/$f.js" ]; then
+    echo "✗ 找不到 $SRC_GOMOKU/$f.js，无法打包" >&2
+    exit 1
+  fi
+  cp "$SRC_GOMOKU/$f.js" "$WORK/mahjong-service/engine/gomoku/$f.js"
+done
+
+# 象棋同理：engine/xiangqi/ 子目录覆盖（engine.mjs 自包含、无内部依赖，改名 .js 即可）
+SRC_XIANGQI="$(cd "$HERE/../.vuepress/components/xiangqi" && pwd)"
+mkdir -p "$WORK/mahjong-service/engine/xiangqi"
+if [ ! -f "$SRC_XIANGQI/engine.mjs" ]; then
+  echo "✗ 找不到 $SRC_XIANGQI/engine.mjs，无法打包" >&2
+  exit 1
+fi
+cp "$SRC_XIANGQI/engine.mjs" "$WORK/mahjong-service/engine/xiangqi/engine.js"
+
+# 军棋同理：engine/junqi/ 子目录覆盖（engine.mjs 自包含、无内部依赖，改名 .js 即可）
+SRC_JUNQI="$(cd "$HERE/../.vuepress/components/junqi" && pwd)"
+mkdir -p "$WORK/mahjong-service/engine/junqi"
+if [ ! -f "$SRC_JUNQI/engine.mjs" ]; then
+  echo "✗ 找不到 $SRC_JUNQI/engine.mjs，无法打包" >&2
+  exit 1
+fi
+cp "$SRC_JUNQI/engine.mjs" "$WORK/mahjong-service/engine/junqi/engine.js"
+
 # 不打包开发期文件
 rm -f "$WORK/mahjong-service/test.js"
+rm -f "$WORK/mahjong-service/test-gomoku.js"
+rm -f "$WORK/mahjong-service/test-xiangqi.js"
+rm -f "$WORK/mahjong-service/test-junqi.js"
 rm -rf "$WORK/mahjong-service/dist"
 
 # 复用本目录已装好的 node_modules（express / ws / dotenv 均为纯 JS，无原生模块）

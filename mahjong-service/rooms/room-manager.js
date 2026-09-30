@@ -13,7 +13,8 @@ import { randomInt, randomUUID } from 'node:crypto'
 import os from 'node:os'
 import { config } from '../config.js'
 import { ERR, fail } from '../errors.js'
-import { Room, sanitizeRules } from './room.js'
+import { Room } from './room.js'
+import { resolveAdapter } from './adapters/index.js'
 import { OCCUPANT, ROOM_STATUS, aiCount, connectedHumanCount, humanCount } from './seat.js'
 
 /** 房号规范化：大写、去空格与连字符（用户手抄容易带空格） */
@@ -42,20 +43,25 @@ export class RoomManager {
   /**
    * 创建房间并让创建者坐进 Seat0（第一任管理员）。
    * 全程同步、无 await ⇒ 上限检查与插入原子完成。
+   * gameType 决定使用哪个游戏适配器（未传默认麻将）；hostSide 供 2 人
+   * 先后手游戏使用（房主选边），由适配器解释。规则清洗在 Room 构造内完成。
    */
-  createRoom({ displayName, rules, turnTimeoutSeconds } = {}) {
+  createRoom({ displayName, gameType, hostSide, rules, turnTimeoutSeconds } = {}) {
     if (this.rooms.size >= config.maxRooms) {
       // 满员：先回收「已结束且无在线真人」的空转房间腾名额（已结束房是终态，不能
       // 原地重开，留着只是占位）；有人还在结算页则不动它。腾不出才拒绝建房。
       if (!this._reapIdleFinishedRoom()) fail(ERR.ROOM_CAPACITY_REACHED)
     }
 
+    const adapter = resolveAdapter(gameType)
     const roomId = randomUUID()
     const roomCode = this._allocRoomCode()
     const room = new Room({
       roomId,
       roomCode,
-      rules: sanitizeRules(rules),
+      adapter,
+      hostSide,
+      rules,
       turnTimeoutSeconds,
       manager: this,
       sessions: this.sessions,
@@ -70,6 +76,7 @@ export class RoomManager {
     this.logger('room-created', {
       roomId,
       roomCode,
+      gameType: adapter.gameId,
       activeRooms: this.rooms.size,
       maxRooms: config.maxRooms
     })

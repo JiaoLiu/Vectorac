@@ -2,7 +2,7 @@
   <section class="jq-game" :class="{'jq-fullscreen': fullscreen}" ref="root" @pointerdown="unlockAudio" @keydown="unlockAudio">
     <header class="jq-top">
       <div class="jq-brand"><span class="jq-emblem">棋</span><div><small>FOUR KINGDOMS</small><strong>四国军棋</strong></div></div>
-      <div class="jq-top-actions"><button @click="rules = true">规则</button><button @click="toggleFullscreen">{{ fullscreen ? '退出全屏' : '全屏' }}</button><a href="/blogs/other/games.html">大厅 ↗</a></div>
+      <div class="jq-top-actions"><button @click="rules = true">规则</button><button @click="toggleFullscreen">{{ fullscreen ? '退出全屏' : '全屏' }}</button><a href="/blogs/other/gamehall.html?game=junqi">🌐 联机</a><a href="/blogs/other/games.html">大厅 ↗</a></div>
     </header>
     <div v-if="game" class="jq-layout">
       <main class="jq-arena">

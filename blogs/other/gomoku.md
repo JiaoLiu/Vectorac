@@ -38,6 +38,7 @@ meta:
 <span class="gk-stats-scope">· <span data-gk-stats-level>中等</span></span>
 </div>
 <button type="button" class="gk-btn gk-feedback-entry" data-game-feedback aria-label="反馈五子棋问题">反馈</button>
+<a class="gk-btn gk-online-entry" href="/blogs/other/gamehall.html?game=gomoku" aria-label="联机对战">🌐 联机</a>
 <button type="button" class="gk-btn gk-fs-toggle" data-gk-fullscreen aria-label="退出全屏">✕</button>
 </div>
 <!-- 状态条 -->
@@ -171,6 +172,8 @@ meta:
   justify-content: center;
   gap: 8px;
   min-width: 158px;
+  max-width: 100%;
+  white-space: nowrap;
   padding: 7px 18px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.06);
@@ -265,6 +268,13 @@ meta:
   margin-top: 14px;
 }
 .gk-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  text-decoration: none;
+  line-height: 1.2;
+  white-space: nowrap;
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(255, 255, 255, 0.06);
   color: #dfe4f0;

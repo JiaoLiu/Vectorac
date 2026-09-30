@@ -165,7 +165,7 @@ function negamax(board, depth, alpha, beta, color, ply) {
 }
 
 /** 困难档：根节点选择 */
-function hardMove(board, color) {
+function hardMove(board, color, rng) {
   const opp = opponentOf(color)
   const cands = getCandidateMoves(board, 2)
 
@@ -215,7 +215,7 @@ function hardMove(board, color) {
       pool.push({ x, y })
     }
   }
-  return pool[Math.floor(Math.random() * pool.length)]
+  return pool[Math.floor(rng() * pool.length)]
 }
 
 /**
@@ -223,8 +223,9 @@ function hardMove(board, color) {
  * @param {number[][]} board
  * @param {number} color 当前 AI 执子颜色
  * @param {string} level easy | medium | hard
+ * @param {Function} [rng] 随机源（默认 Math.random；服务端注入种子 rng 保证可复现）
  */
-export function chooseMove(board, color, level = LEVEL.MEDIUM) {
+export function chooseMove(board, color, level = LEVEL.MEDIUM, rng = Math.random) {
   const stones = countStones(board)
 
   // 开局定式（轻量）：AI 执黑首手下天元；执白首手下对方斜角
@@ -247,10 +248,10 @@ export function chooseMove(board, color, level = LEVEL.MEDIUM) {
         }
       }
     }
-    if (cands.length) return cands[Math.floor(Math.random() * cands.length)]
+    if (cands.length) return cands[Math.floor(rng() * cands.length)]
   }
 
-  if (level === LEVEL.HARD) return hardMove(board, color)
+  if (level === LEVEL.HARD) return hardMove(board, color, rng)
 
   const opp = opponentOf(color)
   const cands = getCandidateMoves(board, 2)
@@ -264,9 +265,9 @@ export function chooseMove(board, color, level = LEVEL.MEDIUM) {
     let total
     if (level === LEVEL.EASY) {
       // 弱化攻防 + 大噪声：会漏挡、走出随手棋
-      total = attack * 0.6 + defense * 0.45 + Math.random() * 4000
+      total = attack * 0.6 + defense * 0.45 + rng() * 4000
     } else {
-      total = attack + defense * 0.95 + Math.random() * 200
+      total = attack + defense * 0.95 + rng() * 200
     }
     if (total > best) {
       best = total

@@ -1,7 +1,8 @@
 // ============================================================
 // 座位模型（mahjong-service/rooms/seat.js）
 // ------------------------------------------------------------
-// 固定 4 座。核心不变量（文档 §六十八）：
+// 座位数由游戏适配器决定（麻将/军棋 4 座，象棋/五子棋 2 座）。
+// 核心不变量（文档 §六十八）：
 //   · connected 只对 HUMAN 有意义；
 //   · HUMAN + connected=false ≠ AI 座 —— 玩家仍拥有该座位，只是断线由 AI 托管；
 //   · Admin 必须是 HUMAN，AI 永远不能当管理员；
@@ -20,7 +21,7 @@ export const ROOM_STATUS = {
 /** AI 座位固定人设：按座位号取，确定性且不与真人混淆 */
 const AI_PERSONAS = ['旺财', '阿福', '小美', '来福']
 
-export function createSeats(n = 4) {
+export function createSeats(n) {
   const seats = []
   for (let i = 0; i < n; i++) {
     seats.push({
@@ -125,12 +126,13 @@ export function pickJoinSeat(seats) {
 }
 
 /**
- * 管理员循环转移（文档 §10）：从 oldAdminSeat + 1 起按 0→1→2→3→0 找下一个 HUMAN。
+ * 管理员循环转移（文档 §10）：从 oldAdminSeat + 1 起按座次循环找下一个 HUMAN。
  * 找不到（已无真人）返回 -1，调用方据此解散房间。
  */
 export function nextAdminSeat(seats, oldAdminSeat) {
-  for (let step = 1; step <= 4; step++) {
-    const idx = (((oldAdminSeat + step) % 4) + 4) % 4
+  const n = seats.length
+  for (let step = 1; step <= n; step++) {
+    const idx = (((oldAdminSeat + step) % n) + n) % n
     const seat = seats[idx]
     if (seat && seat.occupantType === OCCUPANT.HUMAN) return idx
   }
