@@ -1,18 +1,17 @@
 // ============================================================
 // 四国军棋联机房间（junqi/remote.js）
 // ------------------------------------------------------------
-// 把通用联机服务渲染成军棋体验：
-//   等待室（4 座 / 思考时长；固定四暗，只能看自己棋子）→ 并行布阵（换阵 / 两子交换 /
-//   确认出征，四家确认态）→ 掷骰定先手 → 十字棋盘对局（暗子背面、
-//   合法落点高亮、战场记录）→ 阵营结算（±10）→ 全员准备开下一局。
-//
-// 服务端是权威：本地只发意图（randomize / swap / confirm / move /
-// surrender），棋盘完全按 GAME_STATE_CHANGED 视图绘制。
+// 与单机共用同一套棋盘 UI（FourKingdoms.vue 的 online 适配器模式）：
+//   对局区直接挂载单机组件（木纹 SVG 棋盘 / 横屏全屏布局 / 布阵交换 /
+//   掷骰动画 / 音效全部与单机一致，自己永远旋转到下方）；本类只负责：
+//   等待室（4 座 / AI / 思考时长；固定四暗）→ 视图适配（服务端权威，
+//   本地只发意图 randomize / swap / confirm / move / surrender）→
+//   阵营结算（±10、多局累计、破产）→ 全员准备自动开下一局。
 // 暗棋隐私由服务端视图保证：敌子只发匿名 ref，没有棋种。
-// 棋盘 SVG 与单机版同源（engine.mjs 的 BOARD 拓扑），按 mySeat 旋转
-// 视角：自己永远在下方，对家（队友）在上方。
+// 网络层复用 mahjong/multiplayer/net-client.js（HTTP + WS + 自动重连）。
 // ============================================================
 
+import Vue from 'vue'
 import {
   NetClient,
   saveCredential,
@@ -34,21 +33,11 @@ import {
   chatDockHtml,
   bindChatDock
 } from '../gamehall/chatkit.js'
-import { BOARD, TYPES, ARMIES } from './engine.mjs'
+import FourKingdoms from '../FourKingdoms.vue'
+import { ARMIES } from './engine.mjs'
 
 const COLORS = ['#176b5a', '#9d4139', '#355f92', '#936028']
 const TEAM_NAMES = ['青龙 × 玄武', '赤虎 × 朱雀']
-// 单机版徽标锚点（下 / 左 / 上 / 右），联机版按视角旋转后重新定位
-const BADGE_ANCHORS = [
-  [680, 792],
-  [173, 235],
-  [221, 106],
-  [727, 663]
-]
-// 骰子点位：3×3 九宫格下标
-const PIPS = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] }
-
-const px = n => 50 + n * 50
 
 function esc(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({
@@ -72,26 +61,27 @@ export default class JunqiRemote {
     this.player = player || {}
     this.onExit = typeof onExit === 'function' ? onExit : () => {}
 
-    this.view = null
-    this.results = null
-    this.selected = null // 当前选中的己方棋子 id
+    this.view = null // 最新 GAME_STATE_CHANGED（自己座位视角）
+    this.results = null // 最近一局的结算（ROOM_UPDATED 口径，含 scores）
     this.destroyed = false
     this.readySent = false
     this._openingShown = null // 已展示过掷骰的 gameId
 
+    this.vm = null // FourKingdoms 的包装实例
+    this.game = null // FourKingdoms 组件实例（online 模式）
     this._unsub = this.net.subscribe(msg => this._onEvent(msg))
     this._tickTimer = null
-    this._diceTimer = null
     this._recorder = null
     this._recordAt = 0
     this._voiceBubbles = []
   }
 
   mount() {
-    enterFullscreen(this.root)
+    enterFullscreen()
     this._renderShell()
     this._renderWaiting()
     this._tickTimer = setInterval(() => this._tick(), 500)
+    // 已进入房间的对局（刷新重连）：快照随后由服务器推送
     if (this.room && this.room.status === 'PLAYING') this._showGame()
     return this
   }
@@ -100,10 +90,14 @@ export default class JunqiRemote {
     this.destroyed = true
     if (this._unsub) this._unsub()
     if (this._tickTimer) clearInterval(this._tickTimer)
-    if (this._diceTimer) clearTimeout(this._diceTimer)
     this._stopRecording(true)
     if (this._chat) this._chat.destroy()
-    exitFullscreen(this.root)
+    if (this.vm) {
+      this.vm.$destroy()
+      this.vm = null
+      this.game = null
+    }
+    exitFullscreen()
     this.root.innerHTML = ''
   }
 
@@ -127,6 +121,22 @@ export default class JunqiRemote {
       case 'PLAYER_DISCONNECTED':
         if (p.seats && this.room) this.room.seats = p.seats
         if (p.adminSeat != null && this.room) this.room.adminSeat = p.adminSeat
+        // 对局中座位状态（断线 / 托管）实时进棋盘徽标
+        if (p.seats && this.view && this.view.meta && Array.isArray(this.view.meta.seats)) {
+          this.view.meta.seats = this.view.meta.seats.map((m, i) => {
+            const s = p.seats[i]
+            if (!s) return m
+            return {
+              ...m,
+              displayName: s.displayName || m.displayName,
+              occupantType: s.occupantType,
+              isAi: s.occupantType === 'AI',
+              connected: s.connected,
+              autoPlay: s.autoPlay
+            }
+          })
+          this._syncGame()
+        }
         if (this.room && this.room.status !== 'PLAYING') this._renderWaiting()
         break
       case 'ADMIN_CHANGED':
@@ -144,7 +154,7 @@ export default class JunqiRemote {
       case 'GAME_STARTED':
         this.results = null
         this.readySent = false
-        this.selected = null
+        this.view = null // 旧局视图作废，等本局首个 GAME_STATE_CHANGED
         this._openingShown = null
         if (this.$settle) this.$settle.hidden = true
         if (this.room) {
@@ -161,14 +171,12 @@ export default class JunqiRemote {
         const prevPhase = this.view && this.view.phase
         this.view = p
         if (this.room) this.room.status = 'PLAYING'
-        if (this.selected && !(p.pieces || []).some(x => x.id === this.selected)) this.selected = null
         this._showGame()
-        this._renderGame()
-        // 布阵 → 开战：展示一次掷骰结果
+        // 布阵 → 开战：四家确认后展示一次掷骰定先手
         const gid = p.meta && p.meta.gameId
         if (p.phase === 'play' && p.opening && prevPhase === 'setup' && this._openingShown !== gid) {
           this._openingShown = gid
-          this._showDice(p.opening)
+          this.game.showOnlineDice(p.opening)
         }
         break
       }
@@ -182,13 +190,12 @@ export default class JunqiRemote {
         }
         if (p.results) {
           this.results = p
-          this.selected = null
+          this._syncGame()
           this._renderSettlement()
-          this._drawBoard()
         }
         break
       case 'GAME_FINISHED':
-        this._drawBoard()
+        this._syncGame()
         break
       case 'VOICE_MSG':
         this._addVoiceBubble(p, false)
@@ -232,14 +239,18 @@ export default class JunqiRemote {
       '    <button type="button" class="gkr-btn gkr-btn-danger" data-gkr="leave">退出房间</button>' +
       '  </div>' +
       '</div>' +
-      '<div class="gkr-status-pill" data-gkr-status hidden></div>' +
-      '<div class="gkr-stage" data-gkr-stage></div>' +
+      '<div class="gkr-stage" data-gkr-stage>' +
+      '  <div data-jqr-waiting></div>' +
+      '  <div data-jqr-host hidden></div>' +
+      '</div>' +
+      '<div class="gkr-settle gkr-settle-fixed" data-gkr-settle hidden></div>' +
       chatDockHtml() +
       '<div class="gkr-bubbles" data-gkr-bubbles></div>' +
       '<div class="gkr-toast" data-gkr-toast hidden></div>'
 
-    this.$stage = this.root.querySelector('[data-gkr-stage]')
-    this.$status = this.root.querySelector('[data-gkr-status]')
+    this.$waiting = this.root.querySelector('[data-jqr-waiting]')
+    this.$host = this.root.querySelector('[data-jqr-host]')
+    this.$settle = this.root.querySelector('[data-gkr-settle]')
     this.$bubbles = this.root.querySelector('[data-gkr-bubbles]')
     this.$toast = this.root.querySelector('[data-gkr-toast]')
 
@@ -281,20 +292,6 @@ export default class JunqiRemote {
       case 'ready':
         this._toggleReady(true)
         break
-      case 'rules':
-        this._sendRules()
-        break
-      case 'randomize':
-        this._sendIntent({ type: 'randomize' })
-        break
-      case 'confirm':
-        this.selected = null
-        this._sendIntent({ type: 'confirm' })
-        break
-      case 'surrender':
-        this.selected = null
-        this._sendIntent({ type: 'surrender' })
-        break
       case 'voice-play':
         this._playVoice(Number(t.getAttribute('data-idx')))
         break
@@ -310,10 +307,47 @@ export default class JunqiRemote {
     })
   }
 
+  // ---------- 联机适配器（FourKingdoms 的数据源） ----------
+
+  _makeOnlineAdapter() {
+    return {
+      getView: () => this.view,
+      trySwap: (first, second) => this._sendIntent({ type: 'swap', first, second }),
+      tryRandomize: () => this._sendIntent({ type: 'randomize' }),
+      tryConfirm: () => this._sendIntent({ type: 'confirm' }),
+      tryMove: (pieceId, to) => this._sendIntent({ type: 'move', pieceId, to }),
+      trySurrender: () => this._sendIntent({ type: 'surrender' }),
+      seatLabel: seat => this._seatLabel(seat),
+      copyInvite: () => this._copyInvite(),
+      leave: () => this._leave(),
+      roomCode: () => this._roomCode()
+    }
+  }
+
+  /** 棋盘徽标文案：军色由组件拼，这里出玩家名 + 关系 + 连接状态 */
+  _seatLabel(seat) {
+    const metaSeats = (this.view && this.view.meta && this.view.meta.seats) || []
+    const m = metaSeats[seat] || {}
+    const mySeat = this._mySeat()
+    const name = m.displayName || (m.isAi ? 'AI' : '虚位')
+    const tag = seat === mySeat ? '·你' : seat % 2 === mySeat % 2 ? '·队友' : ''
+    let st = ''
+    if (!m.isAi) {
+      if (m.connected === false) st = ' ·断线'
+      else if (m.autoPlay) st = ' ·托管'
+    }
+    return name + tag + st
+  }
+
   // ---------- 等待室 ----------
 
   _renderWaiting() {
     if (!this.room) return
+    // 容器归位：等待室显示，对局区与结算浮层收起（组件保持挂载不销毁）
+    this.$waiting.hidden = false
+    this.$host.hidden = true
+    if (this.$settle) this.$settle.hidden = true
+
     const room = this.room
     const seats = room.seats || []
     const admin = this._isAdmin()
@@ -364,7 +398,7 @@ export default class JunqiRemote {
       actionHtml = '<div class="gkr-hint">等待房主开始游戏…</div>'
     }
 
-    this.$stage.innerHTML =
+    this.$waiting.innerHTML =
       '<div class="gkr-waiting">' +
       '  <div class="gkr-seats">' + seatHtml + '</div>' +
       '  <div class="gkr-rules-row">' +
@@ -381,7 +415,7 @@ export default class JunqiRemote {
     // 联机固定四暗（只能看自己棋子），房主只能改思考时长
     this.net.sendAdmin('UPDATE_RULES', {
       rules: { mode: 'dark' },
-      turnTimeoutSeconds: Number(ctlValue(this.$stage, 'turnTimeoutSeconds')) || undefined
+      turnTimeoutSeconds: Number(ctlValue(this.$waiting, 'turnTimeoutSeconds')) || undefined
     })
   }
 
@@ -391,332 +425,41 @@ export default class JunqiRemote {
     const me = this.room && (this.room.seats || []).find(s => s.seatIndex === this._mySeat())
     if (me) me.ready = ready
     if (this.room && this.room.status !== 'PLAYING') this._renderWaiting()
-    this._renderSettlement()
+    else this._renderSettlement()
   }
 
-  // ---------- 对局 ----------
+  // ---------- 对局（单机组件挂载） ----------
 
   _showGame() {
-    if (this.$game) return
-    this.$stage.innerHTML =
-      '<div class="gkr-game">' +
-      '  <div class="jqr-board-wrap">' +
-      '    <svg class="jqr-board" data-jqr-svg viewBox="24 24 852 852" role="group" aria-label="四国军棋棋盘"></svg>' +
-      '  </div>' +
-      '  <div class="jqr-actions" data-jqr-actions></div>' +
-      '  <div class="jqr-log" data-jqr-log><ol></ol></div>' +
-      '  <div class="gkr-settle" data-gkr-settle hidden></div>' +
-      '</div>' +
-      '<div class="jqr-dice" data-jqr-dice hidden></div>'
-    this.$game = this.$stage.querySelector('.gkr-game')
-    this.$svg = this.$stage.querySelector('[data-jqr-svg]')
-    this.$actions = this.$stage.querySelector('[data-jqr-actions]')
-    this.$log = this.$stage.querySelector('[data-jqr-log] ol')
-    this.$settle = this.$stage.querySelector('[data-gkr-settle]')
-    this.$dice = this.root.querySelector('[data-jqr-dice]')
-
-    this.$svg.addEventListener('click', ev => {
-      const g = ev.target && ev.target.closest ? ev.target.closest('[data-node]') : null
-      if (g) this._clickNode(g.getAttribute('data-node'))
-    })
-    this._renderGame()
-  }
-
-  _renderGame() {
-    if (!this.$game || !this.view) return
-    this._renderActions()
-    this._renderLog()
-    this._drawBoard()
-    if (this.results) this._renderSettlement()
-  }
-
-  _setStatus(text, thinking) {
-    this.$status.hidden = false
-    this.$status.textContent = text
-    this.$status.classList.toggle('is-thinking', !!thinking)
-  }
-
-  _baseStatus() {
-    const v = this.view
-    if (!v) return { text: '', thinking: false }
-    if (v.phase === 'setup') {
-      return v.myConfirmed
-        ? { text: '已确认出征 · 等待其他玩家布阵', thinking: true }
-        : { text: '布阵阶段 · 点击两枚己方棋子交换位置', thinking: false }
+    if (!this.vm) {
+      const adapter = this._makeOnlineAdapter()
+      this.vm = new Vue({
+        render: h => h(FourKingdoms, { props: { online: adapter }, ref: 'game' })
+      })
+      this.vm.$mount()
+      this.$host.appendChild(this.vm.$el)
+      this.game = this.vm.$refs.game
     }
-    if (v.phase === 'play') {
-      const myTurn = (v.legal || []).some(o => o.type === 'move')
-      return myTurn
-        ? { text: '轮到你行棋', thinking: false }
-        : { text: ARMIES[v.turn] + ' 行棋中', thinking: true }
-    }
-    return { text: '本局结束', thinking: false }
+    // 容器归位：对局区显示，等待室收起
+    this.$waiting.hidden = true
+    this.$host.hidden = false
+    if (this.$settle && !this.results) this.$settle.hidden = true
+    this._syncGame()
+  }
+
+  _syncGame() {
+    if (this.game) this.game.syncFromOnline()
   }
 
   _tick() {
-    if (!this.view || !this.view.meta || this.view.phase === 'finished') return
-    const dl = this.view.meta.deadlineAt
-    if (!dl) return
-    const left = Math.max(0, Math.ceil((dl - Date.now()) / 1000))
-    const base = this._baseStatus()
-    this._setStatus(base.text + ' · ' + left + 's', base.thinking)
-  }
-
-  // ---------- 布阵 / 走子交互 ----------
-
-  _legalMovesFor(pieceId) {
-    const opt = (this.view && this.view.legal ? this.view.legal : []).find(o => o.type === 'move')
-    if (!opt) return []
-    return opt.moves.filter(m => m.pieceId === pieceId).map(m => m.to)
-  }
-
-  _clickNode(nodeId) {
+    if (!this.game) return
     const v = this.view
-    if (!v || this.results) return
-    const piece = (v.pieces || []).find(p => p.pos === nodeId)
-    const mySeat = v.mySeat
-
-    if (v.phase === 'setup') {
-      if (v.myConfirmed) return this._toast('已确认出征，等待其他玩家')
-      if (!piece || piece.seat !== mySeat) return this._toast('只能调整自己的棋子')
-      if (this.selected && this.selected !== piece.id) {
-        this._sendIntent({ type: 'swap', first: this.selected, second: piece.id })
-        this.selected = null
-      } else {
-        this.selected = this.selected === piece.id ? null : piece.id
-      }
-      this._drawBoard()
+    if (!v || !v.meta || v.phase === 'finished') {
+      this.game.countdown = ''
       return
     }
-
-    if (v.phase !== 'play') return
-    const canMove = (v.legal || []).some(o => o.type === 'move')
-    if (!canMove) return // 非我方回合
-
-    if (this.selected && this._legalMovesFor(this.selected).indexOf(nodeId) >= 0) {
-      const id = this.selected
-      this.selected = null
-      this._sendIntent({ type: 'move', pieceId: id, to: nodeId })
-      this._drawBoard()
-      return
-    }
-    if (piece && piece.seat === mySeat && piece.type) {
-      if (this.selected === piece.id) {
-        this.selected = null
-      } else {
-        this.selected = piece.id
-        if (!this._legalMovesFor(piece.id).length) this._toast('这枚棋子不能移动')
-      }
-    } else {
-      this.selected = null
-    }
-    this._drawBoard()
-  }
-
-  _renderActions() {
-    if (!this.$actions || !this.view) return
-    const v = this.view
-    if (v.phase === 'setup') {
-      const locked = v.myConfirmed
-      const confirmed = (v.confirmed || []).map((c, i) => (c ? ARMIES[i] : null)).filter(Boolean)
-      this.$actions.innerHTML =
-        '<button type="button" class="gkr-btn" data-gkr="randomize"' + (locked ? ' disabled' : '') + '>换一套阵型</button>' +
-        '<button type="button" class="gkr-btn gkr-btn-primary" data-gkr="confirm"' + (locked ? ' disabled' : '') + '>' +
-        (locked ? '已确认出征' : '确认出征') + '</button>' +
-        '<div class="jqr-actions-note">' +
-        (confirmed.length ? '已出征：' + confirmed.join('、') : '四家都在布阵中') +
-        '</div>'
-      return
-    }
-    if (v.phase === 'play') {
-      const canPlay = (v.legal || []).length > 0
-      this.$actions.innerHTML =
-        '<button type="button" class="gkr-btn gkr-btn-danger" data-gkr="surrender"' + (canPlay ? '' : ' disabled') + '>投降</button>' +
-        '<div class="jqr-actions-note">' + v.quiet + ' / 70 无碰撞</div>'
-      return
-    }
-    this.$actions.innerHTML = ''
-  }
-
-  _renderLog() {
-    if (!this.$log || !this.view) return
-    const logs = (this.view.logs || []).slice(0, 8)
-    this.$log.innerHTML = logs.length
-      ? logs.map(line => '<li>' + esc(line) + '</li>').join('')
-      : '<li>布阵完成后四家确认出征，掷骰定先手。</li>'
-  }
-
-  // ---------- 棋盘绘制（视角：自己永远在下方） ----------
-
-  _viewAngle() {
-    return ((360 - 90 * this._mySeat()) % 360 + 360) % 360
-  }
-
-  _edgePath(e) {
-    const a = BOARD.byId[e.a]
-    const b = BOARD.byId[e.b]
-    if (!e.curve) return 'M' + px(a.x) + ' ' + px(a.y) + 'L' + px(b.x) + ' ' + px(b.y)
-    const turn = BOARD.adjacency[e.a].find(x => x.to === e.b)
-    return 'M' + px(a.x) + ' ' + px(a.y) + 'Q' + px(a.x + turn.start[0]) + ' ' + px(a.y + turn.start[1]) + ' ' + px(b.x) + ' ' + px(b.y)
-  }
-
-  _drawBoard() {
-    if (!this.$svg || !this.view) return
-    const v = this.view
-    const A = this._viewAngle()
-    const mySeat = v.mySeat
-    const destinations = this.selected ? this._legalMovesFor(this.selected) : []
-    const seats = (v.meta && v.meta.seats) || []
-    const scores = (this.room && this.room.scores) || (v.meta && v.meta.scores) || []
-
-    const byPos = {}
-    for (const p of v.pieces || []) byPos[p.pos] = p
-
-    let out =
-      '<defs>' +
-      '<linearGradient id="jqr-surface" x2="0" y2="1"><stop stop-color="#203c38"/><stop offset="1" stop-color="#112a29"/></linearGradient>' +
-      '<linearGradient id="jqr-piece" x2="0" y2="1"><stop stop-color="#fff8df"/><stop offset="1" stop-color="#d5c596"/></linearGradient>' +
-      '<filter id="jqr-shadow" x="-25%" y="-25%" width="150%" height="160%"><feDropShadow dx="0" dy="3" stdDeviation="1" flood-opacity=".35"/></filter>' +
-      '</defs>' +
-      '<rect x="24" y="24" width="852" height="852" fill="url(#jqr-surface)"/>'
-
-    // 视野旋转层：四家阵地着色 → 道路 → 铁路枕木 → 最后一手 → 节点与棋子
-    out += '<g transform="rotate(' + A + ' 450 450)">'
-    for (let seat = 0; seat < 4; seat++) {
-      out +=
-        '<rect x="340" y="584" width="220" height="272" rx="14" transform="rotate(' + seat * 90 + ' 450 450)" fill="' +
-        COLORS[seat] + '" opacity=".1"/>'
-    }
-    for (const e of BOARD.edges) {
-      out +=
-        '<path d="' + this._edgePath(e) + '" fill="none" stroke="' + (e.rail ? '#8eaa97' : '#648279') +
-        '" stroke-width="' + (e.rail ? 6 : 1.5) + '" opacity="' + (e.rail ? 0.78 : 0.6) + '"/>'
-    }
-    for (const e of BOARD.edges) {
-      if (!e.rail) continue
-      out += '<path d="' + this._edgePath(e) + '" fill="none" stroke="#152e2a" stroke-width="2" stroke-dasharray="3 5"/>'
-    }
-    if (v.lastMove && BOARD.byId[v.lastMove.from] && BOARD.byId[v.lastMove.to]) {
-      const a = BOARD.byId[v.lastMove.from]
-      const b = BOARD.byId[v.lastMove.to]
-      out +=
-        '<path d="M' + px(a.x) + ' ' + px(a.y) + 'L' + px(b.x) + ' ' + px(b.y) + '" fill="none" stroke="#ffdc83" stroke-width="4" opacity=".6" stroke-dasharray="6 6" pointer-events="none"/>' +
-        '<circle cx="' + px(b.x) + '" cy="' + px(b.y) + '" r="24" fill="none" stroke="#ffdc83" stroke-width="2" pointer-events="none"/>'
-    }
-
-    for (const node of BOARD.nodes) {
-      const seatDeg = node.seat === 1 ? ' rotate(90)' : node.seat === 3 ? ' rotate(-90)' : ''
-      const labelDeg = -(A + (node.seat === 1 ? 90 : node.seat === 3 ? -90 : 0))
-      const piece = byPos[node.id]
-      const isDest = destinations.indexOf(node.id) >= 0
-      out += '<g data-node="' + node.id + '" transform="translate(' + px(node.x) + ' ' + px(node.y) + ')' + seatDeg + '" class="jqr-node">'
-      out += '<rect x="-24" y="-23" width="48" height="46" fill="transparent"/>'
-      if (node.kind === 'camp') {
-        out += '<circle r="16" fill="#243f35" stroke="#94af82" stroke-width="2"/>'
-      } else if (node.kind === 'hq') {
-        out += '<rect x="-21" y="-15" width="42" height="30" rx="3" fill="#3b4935" stroke="#c0a86e" stroke-width="2"/>'
-      } else {
-        out += '<circle r="' + (node.kind === 'junction' ? 7 : 4) + '" fill="#243c35" stroke="#a4aa87" stroke-width="1.5"/>'
-      }
-      if (!piece && (node.kind === 'camp' || node.kind === 'hq')) {
-        out +=
-          '<text class="jqr-site-label" text-anchor="middle" y="4" transform="rotate(' + labelDeg + ')">' +
-          (node.kind === 'camp' ? '营' : '本营') + '</text>'
-      }
-      if (isDest) {
-        out += '<circle r="22" fill="#f6db79" opacity=".25"/><circle r="7" fill="#ffe8a0"/>'
-      }
-      if (piece) {
-        const sel = this.selected === piece.id
-        out += '<g filter="url(#jqr-shadow)">'
-        out +=
-          '<rect x="-23" y="-20" width="46" height="40" rx="6" fill="' + (piece.type ? 'url(#jqr-piece)' : COLORS[piece.seat]) +
-          '" stroke="' + (sel ? '#fff0a0' : COLORS[piece.seat]) + '" stroke-width="' + (sel ? 4 : 2) + '"/>'
-        out +=
-          '<rect x="-19" y="-16" width="38" height="32" rx="3" fill="none" stroke="' +
-          (piece.type ? COLORS[piece.seat] : '#ffffff55') + '" stroke-width=".7"/>'
-        if (piece.type) {
-          out +=
-            '<text class="jqr-piece-t" text-anchor="middle" y="6" fill="' + COLORS[piece.seat] + '">' +
-            TYPES[piece.type].name + '</text>'
-        }
-        out += '</g>'
-      }
-      out += '</g>'
-    }
-    out += '</g>' // 视野旋转层结束
-
-    // 四家徽标（不随视野转，文字始终正立）：军色 + 军名 + 玩家 + 状态
-    const rad = (A * Math.PI) / 180
-    const cos = Math.cos(rad)
-    const sin = Math.sin(rad)
-    for (let seat = 0; seat < 4; seat++) {
-      const dx = BADGE_ANCHORS[seat][0] - 450
-      const dy = BADGE_ANCHORS[seat][1] - 450
-      const bx = 450 + dx * cos - dy * sin
-      const by = 450 + dx * sin + dy * cos
-      const meta = seats[seat] || {}
-      const name = meta.displayName || (meta.isAi ? 'AI' : '虚位')
-      const meTag = seat === mySeat ? '（你）' : seat % 2 === mySeat % 2 ? '（队友）' : ''
-      let state
-      if (v.phase === 'setup') state = (v.confirmed || [])[seat] ? '已出征' : '布阵中'
-      else if (!(v.alive || [])[seat]) state = '已出局'
-      else if (v.phase === 'play' && v.turn === seat) state = '行棋中'
-      else state = ''
-      const active = v.phase === 'play' && v.turn === seat && (v.alive || [])[seat]
-      const score = scores[seat]
-      out +=
-        '<g transform="translate(' + bx + ' ' + by + ')" pointer-events="none">' +
-        '<rect x="-86" y="-15" width="172" height="30" rx="15" fill="' + (active ? COLORS[seat] : '#0b2321') +
-        '" stroke="' + (active ? '#ffdda1' : '#48635b') + '"/>' +
-        '<text text-anchor="middle" y="5" fill="#f8efd5" font-size="13">' +
-        esc(ARMIES[seat] + ' · ' + name + meTag + (state ? ' · ' + state : '') + (score != null ? ' · ' + score + '分' : '')) +
-        '</text></g>'
-    }
-
-    this.$svg.innerHTML = out
-  }
-
-  // ---------- 掷骰定先手 ----------
-
-  _showDice(opening) {
-    if (!this.$dice || !opening || !opening.rounds) return
-    const rounds = opening.rounds
-    const first = opening.first
-    const dieHtml = value =>
-      '<b class="jqr-die">' +
-      [0, 1, 2, 3, 4, 5, 6, 7, 8].map(n => '<i class="' + ((PIPS[value] || []).indexOf(n) >= 0 ? 'is-on' : '') + '"></i>').join('') +
-      '</b>'
-    let html =
-      '<div class="jqr-dice-card">' +
-      '<div class="jqr-dice-title">掷骰定先手</div>'
-    rounds.forEach((rows, i) => {
-      html += '<div class="jqr-dice-round">'
-      if (rounds.length > 1) {
-        html += '<div class="jqr-dice-round-tag">' + (i ? '并列最高点 · 重掷第 ' + i + ' 轮' : '第一轮') + '</div>'
-      }
-      html += '<ul class="jqr-dice-rows">'
-      for (const row of rows) {
-        const sum = row.dice[0] + row.dice[1]
-        html +=
-          '<li class="' + (i === rounds.length - 1 && row.seat === first ? 'is-first' : '') + (i < rounds.length - 1 ? ' is-past' : '') + '">' +
-          '<i class="jqr-dice-seat" style="background:' + COLORS[row.seat] + '"></i>' +
-          '<span class="jqr-dice-army">' + ARMIES[row.seat] + '</span>' +
-          '<span class="jqr-dice-hand">' + dieHtml(row.dice[0]) + dieHtml(row.dice[1]) + '</span>' +
-          '<strong>' + sum + '</strong></li>'
-      }
-      html += '</ul></div>'
-    })
-    html +=
-      '<div class="jqr-dice-msg">' + ARMIES[first] + ' 取得先手，对局开始' +
-      (rounds.length > 1 ? '（并列重掷 ' + (rounds.length - 1) + ' 次）' : '') + '</div></div>'
-    this.$dice.innerHTML = html
-    this.$dice.hidden = false
-    if (this._diceTimer) clearTimeout(this._diceTimer)
-    this._diceTimer = setTimeout(() => {
-      this.$dice.hidden = true
-      this.$dice.innerHTML = ''
-    }, 2600)
+    const dl = v.meta.deadlineAt
+    this.game.countdown = dl ? Math.max(0, Math.ceil((dl - Date.now()) / 1000)) + 's' : ''
   }
 
   // ---------- 结算 ----------

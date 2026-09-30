@@ -38,13 +38,26 @@ function saveJSON(key, val) {
 }
 
 export default class GomokuUI {
-  constructor(root) {
+  /**
+   * @param {HTMLElement} root 页面骨架（含 [data-gk-canvas] 等，结构与 gomoku.md 一致）
+   * @param {Object} [opts]
+   * @param {Object} [opts.online] 联机适配器：提供后 UI 进入联机模式——
+   *   棋盘 / 状态全部来自适配器，落子只发意图（服务端裁决），本地不跑 AI：
+   *     - getView()   → { board, myColor, lastMove, winLine, moves, canMove, over, iWon, draw }
+   *     - place(x, y) → 落子意图（合法性由服务端最终裁决）
+   *     - statusText()→ { text, dot: 'black'|'white'|null } 状态条文案（含倒计时）
+   *   状态变化后由外部调用 syncFromOnline() 触发重绘。
+   */
+  constructor(root, opts) {
     this.root = root
+    this.online = (opts && opts.online) || null
     this.canvas = root.querySelector('[data-gk-canvas]')
     this.ctx = this.canvas.getContext('2d')
 
-    // 设置（持久化）
+    // 设置（持久化）。联机模式不自动播 BGM（避免盖过语音聊天），
+    // 只改内存副本不写回 localStorage，用户仍可手动开。
     this.settings = Object.assign({ level: LEVEL.MEDIUM, first: 'player', sound: true, music: true }, loadJSON(SETTINGS_KEY, {}))
+    if (this.online) this.settings.music = false
     this.stats = loadJSON(STATS_KEY, {})
 
     // 对局状态
@@ -108,7 +121,14 @@ export default class GomokuUI {
     this._renderStats()
     // 进入页面即开始游戏：默认全屏（移动端棋盘不再被主题内容容器压缩）
     this.enterFullscreen()
-    this._newGame(true)
+    if (this.online) {
+      // 联机：状态由适配器提供，首次同步即出棋盘；不开新局、不跑本地 AI
+      this._setStatus('online')
+      this._updateMoveCount()
+      this._requestDraw()
+    } else {
+      this._newGame(true)
+    }
     this._music(true)
   }
 
@@ -199,6 +219,56 @@ export default class GomokuUI {
     btn.setAttribute('aria-label', this._fullscreen ? '退出全屏' : '进入全屏')
   }
 
+  // ---------------- 对局视图（单机 / 联机统一出口） ----------------
+
+  /** 渲染层唯一数据源：联机读适配器，单机读本地状态 */
+  _gv() {
+    if (this.online) return this.online.getView()
+    return {
+      board: this.board,
+      myColor: this.playerColor,
+      lastMove: this.history.length ? this.history[this.history.length - 1] : null,
+      winLine: this.winLine,
+      moves: this.history.length,
+      canMove: this.state === 'playing',
+      over: this.state === 'over',
+      iWon: this.result === 'win',
+      draw: this.result === 'draw'
+    }
+  }
+
+  /**
+   * 联机模式：外部（remote）收到服务端新视图后调用。
+   * diff 出新落子 → 补落子动画 + 音效；终局 → 胜负旋律；然后统一重绘。
+   */
+  syncFromOnline() {
+    if (!this.online) return
+    const v = this._gv()
+    const lm = v.lastMove
+    const key = lm ? v.moves + ':' + lm.x + ',' + lm.y : 'none'
+    if (lm && key !== this._lastSyncKey) {
+      this._lastSyncKey = key
+      this.anims.set(lm.y * BOARD_SIZE + lm.x, performance.now())
+      this._playStoneSound(lm.color)
+    }
+    if (v.over && !this._onlineOver) {
+      this._onlineOver = true
+      if (v.draw) this._playMelody([392], 0.2, 0.1)
+      else if (v.iWon) this._playMelody([523, 659, 784], 0.14, 0.12)
+      else this._playMelody([330, 247], 0.18, 0.14)
+    }
+    if (!v.over) this._onlineOver = false
+    this._setStatus('online')
+    this._updateMoveCount()
+    this._requestDraw()
+  }
+
+  /** 联机模式：状态条文案（倒计时等）的定时刷新，由 remote 的计时器调用 */
+  refreshStatus() {
+    if (!this.online) return
+    this._setStatus('online')
+  }
+
   // ---------------- 布局与绘制 ----------------
 
   _resize() {
@@ -254,12 +324,14 @@ export default class GomokuUI {
       if (this._destroyed) return
       this._draw(ts)
       // 有落子动画或胜利脉冲时持续刷新
-      if (this.anims.size > 0 || this.winLine) this._requestDraw()
+      if (this.anims.size > 0 || this._gv().winLine) this._requestDraw()
     })
   }
 
   _draw(ts = performance.now()) {
     const { ctx, size, pad, cell } = this
+    const view = this._gv()
+    const board = view.board
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0)
     ctx.clearRect(0, 0, size, size)
 
@@ -325,14 +397,14 @@ export default class GomokuUI {
     }
 
     // ----- 悬停预览 -----
-    if (this.hover && this.state === 'playing' && this.board[this.hover.y][this.hover.x] === EMPTY) {
-      this._drawStone(this.hover.x, this.hover.y, this.playerColor, 0.35, 1)
+    if (this.hover && view.canMove && !view.over && board[this.hover.y][this.hover.x] === EMPTY) {
+      this._drawStone(this.hover.x, this.hover.y, view.myColor, 0.35, 1)
     }
 
     // ----- 棋子 -----
     for (let y = 0; y < BOARD_SIZE; y++) {
       for (let x = 0; x < BOARD_SIZE; x++) {
-        const v = this.board[y][x]
+        const v = board[y][x]
         if (v === EMPTY) continue
         let scale = 1
         const animStart = this.anims.get(y * BOARD_SIZE + x)
@@ -353,8 +425,8 @@ export default class GomokuUI {
     }
 
     // ----- 最后一手标记 -----
-    if (this.history.length) {
-      const last = this.history[this.history.length - 1]
+    if (view.lastMove) {
+      const last = view.lastMove
       const cx = pad + last.x * cell
       const cy = pad + last.y * cell
       ctx.beginPath()
@@ -367,9 +439,9 @@ export default class GomokuUI {
     }
 
     // ----- 胜利连线 + 脉冲 -----
-    if (this.winLine) {
-      const first = this.winLine[0]
-      const lastPt = this.winLine[this.winLine.length - 1]
+    if (view.winLine) {
+      const first = view.winLine[0]
+      const lastPt = view.winLine[view.winLine.length - 1]
       const x1 = pad + first[0] * cell
       const y1 = pad + first[1] * cell
       const x2 = pad + lastPt[0] * cell
@@ -388,7 +460,7 @@ export default class GomokuUI {
       ctx.stroke()
       ctx.restore()
 
-      for (const [wx, wy] of this.winLine) {
+      for (const [wx, wy] of view.winLine) {
         ctx.beginPath()
         ctx.arc(pad + wx * cell, pad + wy * cell, this.stoneR * (1.12 + 0.1 * pulse), 0, Math.PI * 2)
         ctx.strokeStyle = `rgba(255, 120, 60, ${0.35 + 0.4 * pulse})`
@@ -475,6 +547,15 @@ export default class GomokuUI {
   _handlePointerDown(e) {
     e.preventDefault()
     this._ensureAudio()
+    // 联机模式：只发落子意图，棋盘等服务端视图回来再变（服务端是权威）
+    if (this.online) {
+      const v = this._gv()
+      if (v.over || !v.canMove) return
+      const g = this._eventToGrid(e)
+      if (!g || v.board[g.y][g.x] !== EMPTY) return
+      this.online.place(g.x, g.y)
+      return
+    }
     if (this.state !== 'playing') return
     const g = this._eventToGrid(e)
     if (!g || this.board[g.y][g.x] !== EMPTY) return
@@ -601,6 +682,7 @@ export default class GomokuUI {
   // ---------------- 控件绑定与状态同步 ----------------
 
   _bindControls() {
+    // 联机骨架没有难度 / 先后手 / 悔棋 / 重开 / 战绩控件，逐个判空（单机不受影响）
     this.root.querySelectorAll('[data-diff]').forEach((btn) => {
       btn.addEventListener('click', () => {
         this.settings.level = btn.dataset.diff
@@ -618,9 +700,13 @@ export default class GomokuUI {
         this._newGame(true)
       })
     })
-    this.root.querySelector('[data-gk-undo]').addEventListener('click', () => this._undo())
-    this.root.querySelector('[data-gk-restart]').addEventListener('click', () => this._newGame(true))
-    this.root.querySelector('[data-gk-sound]').addEventListener('click', () => {
+    const on = (sel, fn) => {
+      const el = this.root.querySelector(sel)
+      if (el) el.addEventListener('click', fn)
+    }
+    on('[data-gk-undo]', () => this._undo())
+    on('[data-gk-restart]', () => this._newGame(true))
+    on('[data-gk-sound]', () => {
       this.settings.sound = !this.settings.sound
       saveJSON(SETTINGS_KEY, this.settings)
       this._syncSettingsUI()
@@ -629,15 +715,15 @@ export default class GomokuUI {
         this._playMelody([660], 0.08, 0.1)
       }
     })
-    this.root.querySelector('[data-gk-music]').addEventListener('click', () => {
+    on('[data-gk-music]', () => {
       this.settings.music = !this.settings.music
       saveJSON(SETTINGS_KEY, this.settings)
       this._syncSettingsUI()
       this._music(this.settings.music)
     })
-    this.root.querySelector('[data-gk-again]').addEventListener('click', () => this._newGame(true))
-    this.root.querySelector('[data-gk-view]').addEventListener('click', () => this._hideResultOverlay())
-    this.root.querySelector('[data-gk-fullscreen]').addEventListener('click', () => {
+    on('[data-gk-again]', () => this._newGame(true))
+    on('[data-gk-view]', () => this._hideResultOverlay())
+    on('[data-gk-fullscreen]', () => {
       if (this._fullscreen) this.exitFullscreen()
       else this.enterFullscreen()
     })
@@ -651,16 +737,21 @@ export default class GomokuUI {
       btn.classList.toggle('active', btn.dataset.first === this.settings.first)
     })
     const soundBtn = this.root.querySelector('[data-gk-sound]')
-    soundBtn.classList.toggle('muted', !this.settings.sound)
-    soundBtn.textContent = this.settings.sound ? '🔊' : '🔇'
-    soundBtn.setAttribute('aria-label', this.settings.sound ? '关闭音效' : '打开音效')
+    if (soundBtn) {
+      soundBtn.classList.toggle('muted', !this.settings.sound)
+      soundBtn.textContent = this.settings.sound ? '🔊' : '🔇'
+      soundBtn.setAttribute('aria-label', this.settings.sound ? '关闭音效' : '打开音效')
+    }
     const musicBtn = this.root.querySelector('[data-gk-music]')
-    musicBtn.classList.toggle('muted', !this.settings.music)
-    musicBtn.setAttribute('aria-label', this.settings.music ? '关闭背景音乐' : '打开背景音乐')
+    if (musicBtn) {
+      musicBtn.classList.toggle('muted', !this.settings.music)
+      musicBtn.setAttribute('aria-label', this.settings.music ? '关闭背景音乐' : '打开背景音乐')
+    }
   }
 
   _syncButtons() {
     const undoBtn = this.root.querySelector('[data-gk-undo]')
+    if (!undoBtn) return // 联机骨架无悔棋
     undoBtn.disabled = this.state === 'thinking' || !this.history.some((m) => m.color === this.playerColor)
   }
 
@@ -669,7 +760,13 @@ export default class GomokuUI {
     const dot = this.root.querySelector('[data-gk-turn-dot]')
     pill.classList.remove('is-thinking', 'is-over')
     let text = ''
-    if (kind === 'thinking') {
+    if (kind === 'online') {
+      // 联机：文案由适配器给（含轮次 / 倒计时 / 对手断线托管提示）
+      const s = this.online.statusText() || {}
+      text = s.text || ''
+      dot.className = 'gk-dot' + (s.dot ? ' gk-dot-' + s.dot : '')
+      if (s.thinking) pill.classList.add('is-thinking')
+    } else if (kind === 'thinking') {
       text = 'AI 思考中'
       pill.classList.add('is-thinking')
       dot.className = 'gk-dot ' + (this.aiColor === BLACK ? 'gk-dot-black' : 'gk-dot-white')
@@ -687,7 +784,8 @@ export default class GomokuUI {
   }
 
   _updateMoveCount() {
-    this.root.querySelector('[data-gk-moves]').textContent = `第 ${this.history.length} 手`
+    const el = this.root.querySelector('[data-gk-moves]')
+    if (el) el.textContent = `第 ${this._gv().moves} 手`
   }
 
   // ---------------- 战绩 ----------------
@@ -717,12 +815,14 @@ export default class GomokuUI {
   }
 
   _renderStats() {
+    const scope = this.root.querySelector('[data-gk-stats-level]')
+    if (!scope) return // 联机骨架无战绩区
     const lv = this.settings.level
     const s = this.stats[lv] || { w: 0, l: 0, d: 0 }
     this.root.querySelector('[data-gk-win]').textContent = s.w
     this.root.querySelector('[data-gk-loss]').textContent = s.l
     this.root.querySelector('[data-gk-draw]').textContent = s.d
-    this.root.querySelector('[data-gk-stats-level]').textContent = DIFF_NAMES[lv]
+    scope.textContent = DIFF_NAMES[lv]
   }
 
   // ---------------- 结算浮层 ----------------

@@ -298,6 +298,27 @@ await withServer(async s => {
     assert(r3.ok, '换先后 seat1 应能先行')
   })
 
+  await test('断线托管：真人断线后 AI 在宽限期内代走，对局不卡死', async () => {
+    const { room, player: p0 } = m.createRoom({ displayName: '房主', gameType: 'gomoku', hostSide: 'black' })
+    const { player: p1 } = await m.joinRoom({ roomCode: room.roomCode, displayName: '挑战者' })
+    await room.startGame(p0.playerId)
+    const gs = room.gameSession
+    await move(room, p0.playerId, 7, 7) // 黑 1，轮到白（p1）
+    eq(gs.state.turn, WHITE)
+    // p1 断线（不退出）：座位保留、转 AI 托管
+    await room.disconnect(p1.playerId, 'TEST')
+    eq(room.seats[1].connected, false)
+    eq(room.seats[1].autoPlay, true)
+    // 断线宽限（默认 1.5s）+ AI 决策后，白子应落下，对局继续
+    const ok = await waitFor(() => gs.state.moves >= 2, 6000)
+    assert(ok, '断线座位应由 AI 代走')
+    eq(gs.state.turn, BLACK)
+    // 真人重连 → 撤销托管
+    await room.reconnect({ playerId: p1.playerId })
+    eq(room.seats[1].connected, true)
+    eq(room.seats[1].autoPlay, false)
+  })
+
   await test('AI 补位：房主执白 → AI 执黑先行；真人落子后 AI 应手', async () => {
     const { room, player: p0 } = m.createRoom({ displayName: '房主', gameType: 'gomoku', hostSide: 'white' })
     await room.startGame(p0.playerId) // seat1 自动补 AI
@@ -329,6 +350,67 @@ await withServer(async s => {
     eq(code, ERR.INVALID_RULES)
     const { room } = m.createRoom({ displayName: 'y' })
     eq(room.gameType, 'mahjong')
+  })
+})
+
+// ---------- HTTP 主动退出（/api/rooms/leave） ----------
+
+console.log('\n[HTTP] 无 WS 主动退出')
+
+await withServer(async s => {
+  await new Promise(r => s.server.listen(0, '127.0.0.1', r))
+  const base = 'http://127.0.0.1:' + s.server.address().port
+  const post = (path, body) =>
+    fetch(base + path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body || {})
+    }).then(r => r.json())
+
+  await test('凭 resumeToken 退旧房：唯一真人离开 → 房间销毁；幂等不炸', async () => {
+    const c = await post('/api/rooms', { displayName: 'A', gameType: 'gomoku' })
+    assert(c.ok, '建房应成功')
+    const code = c.data.room.roomCode
+    const token = c.data.player.resumeToken
+    const l = await post('/api/rooms/leave', { resumeToken: token })
+    assert(l.ok && l.data.left === true, 'leave 应成功')
+    // 唯一真人离开 → humanCount==0 → 房间销毁
+    const g = await fetch(base + '/api/rooms/' + code).then(r => r.json())
+    eq(g.ok, false)
+    eq(g.errorCode, ERR.ROOM_NOT_FOUND)
+    // 幂等：已作废的 token / 垃圾 token / 空 body 都返回 ok
+    assert((await post('/api/rooms/leave', { resumeToken: token })).ok, '重复 leave 应幂等')
+    assert((await post('/api/rooms/leave', { resumeToken: 'garbage' })).ok, '垃圾 token 应幂等')
+    assert((await post('/api/rooms/leave', {})).ok, '空 body 应幂等')
+  })
+
+  await test('对局中 HTTP leave → 座位转 AI 代打，对局继续', async () => {
+    const c = await post('/api/rooms', { displayName: 'A', gameType: 'gomoku', hostSide: 'black' })
+    const p0 = c.data.player
+    const j = await post('/api/rooms/join', { roomCode: c.data.room.roomCode, displayName: 'B' })
+    assert(j.ok, '加入应成功')
+    const room = s.manager.getRoomByCode(c.data.room.roomCode)
+    await room.startGame(p0.playerId)
+    const gs = room.gameSession
+    // B 对局中 HTTP leave → 座位转 AI（不销毁、不重开）
+    const l = await post('/api/rooms/leave', { resumeToken: j.data.player.resumeToken })
+    assert(l.ok, 'leave 应成功')
+    eq(room.seats[1].occupantType, 'AI')
+    eq(room.status, ROOM_STATUS.PLAYING)
+    // A 落黑 1 → 转 AI 的座位应手
+    await move(room, p0.playerId, 7, 7)
+    const ok = await waitFor(() => gs.state.moves >= 2, 6000)
+    assert(ok, '转 AI 的座位应代打')
+  })
+
+  await test('换房前退旧房：腾出房位，可再建', async () => {
+    const c1 = await post('/api/rooms', { displayName: 'A', gameType: 'gomoku' })
+    assert(c1.ok)
+    const before = s.manager.size
+    await post('/api/rooms/leave', { resumeToken: c1.data.player.resumeToken })
+    eq(s.manager.size, before - 1) // 旧房已销毁
+    const c2 = await post('/api/rooms', { displayName: 'A', gameType: 'gomoku' })
+    assert(c2.ok, '退旧后应能再建')
   })
 })
 

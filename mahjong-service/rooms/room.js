@@ -435,6 +435,12 @@ export class Room {
         seat.ready = want
         this.touch()
         this.bumpVersion()
+        this.logger('ready-changed', {
+          roomId: this.roomId,
+          roomCode: this.roomCode,
+          seatIndex: seat.seatIndex,
+          ready: seat.ready
+        })
         this.hub.broadcast(this, 'READY_CHANGED', { seats: this.seatSnapshots() })
       }
       const started = this._maybeStartNextRound()
@@ -608,7 +614,9 @@ export class Room {
         roomId: this.roomId,
         roomCode: this.roomCode,
         gameId: session.gameId,
-        round: this.round
+        round: this.round,
+        deltas: (results.perSeat || []).map(p => p && p.delta),
+        scores: this.scores.slice()
       })
     }
 

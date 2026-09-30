@@ -346,7 +346,6 @@ body.gkr-full #navbar, body.gkr-full .navbar { display: none !important; }
 body.gkr-full .gkr-stage { max-width: 760px; margin: 0 auto; width: 100%; }
 body.gkr-full .gkr-board-wrap,
 body.gkr-full .gk-board-wrap { max-width: min(96vw, calc(100dvh - 240px)) !important; margin-left: auto; margin-right: auto; }
-body.gkr-full .jqr-board-wrap { max-width: min(96vw, calc(100dvh - 230px)); margin-left: auto; margin-right: auto; }
 
 /* 提示 */
 .gh-toast, .gkr-toast {
@@ -358,59 +357,16 @@ body.gkr-full .jqr-board-wrap { max-width: min(96vw, calc(100dvh - 230px)); marg
   max-width: 86vw; text-align: center;
 }
 
-/* ============ 军棋房间棋盘 ============ */
-.jqr-board-wrap { display: flex; justify-content: center; }
-.jqr-board {
-  width: min(100%, 620px); height: auto; display: block;
-  border-radius: 12px; box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
-  touch-action: manipulation; user-select: none; -webkit-user-select: none;
-}
-.jqr-node { cursor: pointer; }
-.jqr-piece-t { font-size: 17px; font-weight: 800; font-family: 'Songti SC', 'SimSun', serif; pointer-events: none; }
-.jqr-site-label { fill: #abb68d; font-size: 12px; pointer-events: none; }
+/* ============ 军棋房间（对局棋盘复用单机组件 FourKingdoms.vue） ============ */
 .jqr-army-tag {
   display: inline-block; border-radius: 6px; padding: 1px 7px; margin-right: 7px;
   font-size: 11px; color: #f8efd5; letter-spacing: 1px;
 }
 .jqr-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
-.jqr-actions { display: flex; gap: 8px; justify-content: center; align-items: center; flex-wrap: wrap; margin-top: 10px; }
-.jqr-actions-note { width: 100%; text-align: center; font-size: 12px; color: #8b93a8; }
-.jqr-log {
-  margin-top: 10px; background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px;
-  padding: 8px 12px; max-height: 118px; overflow: auto;
-  font-size: 12px; line-height: 1.7; color: #b9c2d4;
-}
-.jqr-log ol { margin: 0; padding: 0; list-style: none; }
-.jqr-log li:first-child { color: #ffd9a0; }
-
-/* 军棋掷骰定先手 */
-.jqr-dice { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; padding: 20px; background: rgba(6, 15, 12, 0.8); }
-.jqr-dice-card {
-  display: flex; flex-direction: column; align-items: center; gap: 14px;
-  padding: 24px 30px; border: 1px solid #c6ac70; border-radius: 20px;
-  background: #122a25; box-shadow: 0 18px 60px rgba(0, 0, 0, 0.6);
-  max-width: 92vw; max-height: 86vh; overflow: auto;
-}
-.jqr-dice-title { color: #e5c785; font-size: 16px; font-weight: 800; letter-spacing: 4px; }
-.jqr-dice-round-tag { font-size: 11px; letter-spacing: 2px; color: #9fb2a3; }
-.jqr-dice-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; min-width: min(320px, 80vw); }
-.jqr-dice-rows li { display: flex; align-items: center; gap: 10px; padding: 7px 12px; border: 1px solid #3f5951; border-radius: 12px; background: #1b352e; }
-.jqr-dice-rows li.is-past { opacity: 0.55; }
-.jqr-dice-rows li.is-first { border-color: #ffdda1; background: #2b4839; }
-.jqr-dice-seat { flex: 0 0 auto; width: 9px; height: 9px; border-radius: 50%; }
-.jqr-dice-army { min-width: 46px; font-size: 14px; letter-spacing: 2px; color: #f3eddd; }
-.jqr-dice-hand { display: flex; gap: 8px; margin-left: auto; }
-.jqr-die {
-  display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr);
-  gap: 2px; width: 32px; height: 32px; padding: 5px; border-radius: 8px;
-  background: linear-gradient(#fffdf2, #e3d9bd);
-  box-shadow: inset 0 -2px 0 #bfb392, 0 3px 8px rgba(0, 0, 0, 0.5);
-}
-.jqr-die i { border-radius: 50%; }
-.jqr-die i.is-on { background: #26382f; }
-.jqr-dice-rows strong { min-width: 28px; font-family: Georgia, serif; font-size: 19px; color: #e5d09c; text-align: right; }
-.jqr-dice-msg { min-height: 18px; font-size: 13px; color: #e9e2c9; text-align: center; }
+/* 单机组件全屏层 .jq-fullscreen 为 z-15000：语音条 / 气泡 / 提示 / 结算浮层需压在其上 */
+body.gkr-full .gkr-voice-dock, body.gkr-full .gkr-bubbles { z-index: 15020; }
+body.gkr-full .gkr-toast { z-index: 15030; }
+.gkr-settle.gkr-settle-fixed { position: fixed; z-index: 15010; border-radius: 0; }
 
 /* ============ 移动端 ============ */
 @media (max-width: 640px) {
@@ -422,9 +378,6 @@ body.gkr-full .jqr-board-wrap { max-width: min(96vw, calc(100dvh - 230px)); marg
   .gkr-room-head .gkr-head-btns { width: 100%; }
   .gkr-room-head .gkr-head-btns .gkr-btn { flex: 1; }
   .gkr-settle-card { padding: 18px 20px; }
-  .jqr-dice-card { padding: 18px 16px; gap: 10px; }
-  .jqr-die { width: 27px; height: 27px; padding: 4px; }
-  .jqr-log { max-height: 90px; }
 }
 </style>
 

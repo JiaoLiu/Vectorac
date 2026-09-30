@@ -1,12 +1,23 @@
 <template>
   <section class="jq-game" :class="{'jq-fullscreen': fullscreen}" ref="root" @pointerdown="unlockAudio" @keydown="unlockAudio">
     <header class="jq-top">
-      <div class="jq-brand"><span class="jq-emblem">棋</span><div><small>FOUR KINGDOMS</small><strong>四国军棋</strong></div></div>
-      <div class="jq-top-actions"><button @click="rules = true">规则</button><button @click="toggleFullscreen">{{ fullscreen ? '退出全屏' : '全屏' }}</button><a href="/blogs/other/gamehall.html?game=junqi">🌐 联机</a><a href="/blogs/other/games.html">大厅 ↗</a></div>
+      <div class="jq-brand"><span class="jq-emblem">棋</span><div><small>{{ online ? '联机 · 房间 ' + online.roomCode() : 'FOUR KINGDOMS' }}</small><strong>四国军棋</strong></div></div>
+      <div class="jq-top-actions">
+        <button @click="rules = true">规则</button>
+        <template v-if="online">
+          <button @click="online.copyInvite()">邀请</button>
+          <button @click="online.leave()">退出房间</button>
+        </template>
+        <template v-else>
+          <button @click="toggleFullscreen">{{ fullscreen ? '退出全屏' : '全屏' }}</button>
+          <a href="/blogs/other/gamehall.html?game=junqi">🌐 联机</a>
+          <a href="/blogs/other/games.html">大厅 ↗</a>
+        </template>
+      </div>
     </header>
-    <div v-if="game" class="jq-layout">
+    <div v-if="g" class="jq-layout">
       <main class="jq-arena">
-        <div class="jq-command"><span class="jq-live" :class="{'is-waiting': game.phase==='setup'}"></span><strong>{{ headline }}</strong><span>{{ game.phase === 'setup' ? '布阵阶段' : '第 ' + game.turns + ' 手' }}</span></div>
+        <div class="jq-command"><span class="jq-live" :class="{'is-waiting': g.phase==='setup'}"></span><strong>{{ headline }}</strong><span>{{ commandRight }}</span></div>
         <div class="jq-board-window" ref="boardWindow" :class="{'is-zoomed': zoom > 1}">
           <svg class="jq-board" :style="{width: (zoom*100)+'%'}" viewBox="24 24 852 852" aria-label="四国军棋棋盘：你在下方，对家是队友" role="group">
             <defs>
@@ -18,10 +29,11 @@
             <!-- 视口紧贴棋子范围，不再留出金色描边那一圈空白，棋子因此可以画得更大。 -->
             <rect x="24" y="24" width="852" height="852" fill="url(#jq-surface)"/>
             <rect x="24" y="24" width="852" height="852" fill="url(#jq-grid)"/>
+            <g :transform="boardTurn">
             <g class="jq-arm-tints"><rect v-for="seat in [0,1,2,3]" :key="seat" x="340" y="584" width="220" height="272" rx="14" :transform="'rotate('+seat*90+' 450 450)'" :fill="colors[seat]" opacity=".1"/></g>
             <g class="jq-roads"><path v-for="(edge,i) in board.edges" :key="i" :d="edgePath(edge)" fill="none" :stroke="edge.rail ? '#8eaa97' : '#648279'" :stroke-width="edge.rail ? 6 : 1.5" :opacity="edge.rail ? .78 : .6"/></g>
             <g class="jq-rail-sleepers"><path v-for="(edge,i) in railEdges" :key="i" :d="edgePath(edge)" fill="none" stroke="#152e2a" stroke-width="2" stroke-dasharray="3 5"/></g>
-            <g v-if="game.lastMove" pointer-events="none"><path :d="lastPath" fill="none" stroke="#ffdc83" stroke-width="4" opacity=".6" stroke-dasharray="6 6"/><circle :cx="px(board.byId[game.lastMove.to].x)" :cy="px(board.byId[game.lastMove.to].y)" r="24" fill="none" stroke="#ffdc83" stroke-width="2"/></g>
+            <g v-if="g.lastMove" pointer-events="none"><path :d="lastPath" fill="none" stroke="#ffdc83" stroke-width="4" opacity=".6" stroke-dasharray="6 6"/><circle :cx="px(board.byId[g.lastMove.to].x)" :cy="px(board.byId[g.lastMove.to].y)" r="24" fill="none" stroke="#ffdc83" stroke-width="2"/></g>
             <g v-for="node in board.nodes" :key="node.id" :data-node="node.id" :transform="'translate('+px(node.x)+' '+px(node.y)+')'+seatTurn(node.seat)" class="jq-site" :class="{'is-target': destinations.includes(node.id)}" role="button" :tabindex="node.seat === 0 || destinations.includes(node.id) ? 0 : -1" :aria-label="nodeLabel(node)" @click="clickNode(node)" @keydown.enter.prevent="clickNode(node)" @keydown.space.prevent="clickNode(node)">
               <rect x="-24" y="-23" width="48" height="46" fill="transparent"/>
               <circle v-if="node.kind === 'camp'" r="16" fill="#243f35" stroke="#94af82" stroke-width="2"/>
@@ -32,12 +44,13 @@
               <g v-if="pieceAt(node.id)" :class="['jq-piece', {'is-selected': selected === pieceAt(node.id).id}]" filter="url(#jq-shadow)">
                 <rect x="-23" y="-20" width="46" height="40" rx="6" :fill="pieceType(pieceAt(node.id)) ? 'url(#jq-piece)' : colors[pieceAt(node.id).seat]" :stroke="selected === pieceAt(node.id).id ? '#fff0a0' : colors[pieceAt(node.id).seat]" :stroke-width="selected === pieceAt(node.id).id ? 4 : 2"/>
                 <rect x="-19" y="-16" width="38" height="32" rx="3" fill="none" :stroke="pieceType(pieceAt(node.id)) ? colors[pieceAt(node.id).seat] : '#ffffff55'" stroke-width=".7"/>
-                <text v-if="pieceType(pieceAt(node.id))" text-anchor="middle" y="6" :fill="colors[pieceAt(node.id).seat]">{{ pieceName(pieceAt(node.id)) }}</text>
+                <text v-if="pieceType(pieceAt(node.id))" text-anchor="middle" y="6" :fill="colors[pieceAt(node.id).seat]" :transform="pieceTurn(node.seat)">{{ pieceName(pieceAt(node.id)) }}</text>
               </g>
             </g>
+            </g>
             <g v-for="seat in [0,1,2,3]" :key="'badge'+seat" :transform="badgeTransform(seat)">
-              <rect x="-78" y="-15" width="156" height="30" rx="15" :fill="game.turn===seat&&game.phase==='play' ? colors[seat] : '#0b2321'" :stroke="game.turn===seat&&game.phase==='play' ? '#ffdda1' : '#48635b'"/>
-              <text text-anchor="middle" y="5" fill="#f8efd5" font-size="13">{{ armies[seat] }} · {{ !game.alive[seat] ? '已出局' : seat===0 ? '你' : seat===2 ? 'AI 队友' : 'AI 对手' }}</text>
+              <rect :x="online ? -86 : -78" y="-15" :width="online ? 172 : 156" height="30" rx="15" :fill="g.turn===seat&&g.phase==='play' ? colors[seat] : '#0b2321'" :stroke="g.turn===seat&&g.phase==='play' ? '#ffdda1' : '#48635b'"/>
+              <text text-anchor="middle" y="5" fill="#f8efd5" font-size="13">{{ badgeText(seat) }}</text>
             </g>
           </svg>
         </div>
@@ -46,21 +59,25 @@
       <aside class="jq-panel">
         <div class="jq-panel-title"><span>战局指挥台</span><small>对家同盟 · 智谋对决</small></div>
         <div class="jq-button-pair jq-audio"><button @click="toggleSound">音效 {{soundOn?'开':'关'}}</button><button @click="toggleMusic">音乐 {{musicOn?'开':'关'}}</button></div>
-        <div class="jq-team-card"><div><span class="jq-team-name">青龙 × 玄武</span><small>同盟 · 你与 AI 队友</small></div><b>{{ teamCount(0) }}<em> / 2</em></b></div>
-        <div class="jq-team-card enemy"><div><span class="jq-team-name">赤虎 × 朱雀</span><small>对手 · 两名 AI</small></div><b>{{ teamCount(1) }}<em> / 2</em></b></div>
-        <div class="jq-select-label">棋子可见模式<button class="jq-mode-trigger" :disabled="game.phase !== 'setup'" aria-haspopup="dialog" :aria-expanded="modePicker?'true':'false'" @click="modePicker=true">{{modeLabel}}<span aria-hidden="true">⌄</span></button></div>
-        <div class="jq-intel"><small>{{ game.phase === 'setup' ? '布阵提示' : '当前情报' }}</small><strong>{{ selectedTitle }}</strong><p>{{ selectedHelp }}</p></div>
-        <template v-if="game.phase === 'setup'">
-          <button class="jq-primary" @click="begin">完成调度 · 出征 <span>→</span></button>
-          <div class="jq-button-pair"><button @click="shuffle">换一套阵型</button><button @click="saveFormation">保存阵型</button></div>
-          <button v-if="savedFormation" class="jq-wide" @click="loadFormation">使用我的阵型</button>
-          <button v-if="savedGame" class="jq-wide" @click="resume">继续上次对局</button>
+        <div class="jq-team-card"><div><span class="jq-team-name">{{ teamName(myTeam) }}</span><small>{{ online ? '同盟 · 你与队友' : '同盟 · 你与 AI 队友' }}</small></div><b>{{ teamCount(myTeam) }}<em> / 2</em></b></div>
+        <div class="jq-team-card enemy"><div><span class="jq-team-name">{{ teamName(1 - myTeam) }}</span><small>{{ online ? '对手阵营' : '对手 · 两名 AI' }}</small></div><b>{{ teamCount(1 - myTeam) }}<em> / 2</em></b></div>
+        <div class="jq-select-label" v-if="!online">棋子可见模式<button class="jq-mode-trigger" :disabled="g.phase !== 'setup'" aria-haspopup="dialog" :aria-expanded="modePicker?'true':'false'" @click="modePicker=true">{{modeLabel}}<span aria-hidden="true">⌄</span></button></div>
+        <div class="jq-select-label" v-else>棋子可见模式<button class="jq-mode-trigger" disabled>四暗 · 只看见己方<span aria-hidden="true">🔒</span></button></div>
+        <div class="jq-intel"><small>{{ g.phase === 'setup' ? '布阵提示' : '当前情报' }}</small><strong>{{ selectedTitle }}</strong><p>{{ selectedHelp }}</p></div>
+        <template v-if="g.phase === 'setup'">
+          <button class="jq-primary" :disabled="!!online && g.myConfirmed" @click="begin">{{ online && g.myConfirmed ? '已出征 · 等待其他玩家' : '完成调度 · 出征' }} <span>→</span></button>
+          <div class="jq-button-pair"><button :disabled="!!online && g.myConfirmed" @click="shuffle">换一套阵型</button><button v-if="!online" @click="saveFormation">保存阵型</button></div>
+          <div v-if="online" class="jq-conf-note">{{ confirmNote }}</div>
+          <template v-if="!online">
+            <button v-if="savedFormation" class="jq-wide" @click="loadFormation">使用我的阵型</button>
+            <button v-if="savedGame" class="jq-wide" @click="resume">继续上次对局</button>
+          </template>
         </template>
         <template v-else>
-          <button v-if="game.phase==='finished'" class="jq-primary" @click="newGame">再来一局 →</button>
-          <div class="jq-button-pair"><button @click="newGame">重新布阵</button><button :disabled="game.phase!=='play'||!game.alive[0]" @click="giveUp">我方投降</button></div>
+          <button v-if="!online && g.phase==='finished'" class="jq-primary" @click="newGame">再来一局 →</button>
+          <div class="jq-button-pair"><button v-if="!online" @click="newGame">重新布阵</button><button :disabled="g.phase!=='play'||!g.alive[mySeat]" @click="giveUp">我方投降</button></div>
         </template>
-        <div class="jq-journal"><div class="jq-journal-title">战场记录 <span>{{game.quiet}} / 70 无碰撞</span></div><ol><li v-for="(line,i) in game.logs.slice(0,7)" :key="i">{{line}}</li><li v-if="!game.logs.length">点击两枚己方棋子交换位置，完成布阵后出征。</li></ol></div>
+        <div class="jq-journal"><div class="jq-journal-title">战场记录 <span>{{g.quiet}} / 70 无碰撞</span></div><ol><li v-for="(line,i) in g.logs.slice(0,7)" :key="i">{{line}}</li><li v-if="!g.logs.length">点击两枚己方棋子交换位置，完成布阵后出征。</li></ol></div>
         <div class="jq-mini-rule">铁路长行 · 工兵转弯 · 行营免战<br>夺取两家军旗，赢得同盟胜利</div>
       </aside>
     </div>
@@ -89,7 +106,7 @@
       <div ref="modeDialog" role="dialog" aria-modal="true" aria-labelledby="jq-mode-title" @keydown.tab="trapDialogFocus">
         <header><h3 id="jq-mode-title">棋子可见模式</h3><button aria-label="关闭模式选择" @click="modePicker=false">✕</button></header>
         <p>开局后不能更改，选择后立即生效。</p>
-        <button v-for="option in modeOptions" :key="option.id" class="jq-mode-option" :class="{'is-active':game.mode===option.id}" :aria-pressed="game.mode===option.id?'true':'false'" @click="selectMode(option.id)"><strong>{{option.title}}<span v-if="game.mode===option.id">✓ 当前</span></strong><small>{{option.help}}</small></button>
+        <button v-for="option in modeOptions" :key="option.id" class="jq-mode-option" :class="{'is-active':g.mode===option.id}" :aria-pressed="g.mode===option.id?'true':'false'" @click="selectMode(option.id)"><strong>{{option.title}}<span v-if="g.mode===option.id">✓ 当前</span></strong><small>{{option.help}}</small></button>
       </div>
     </div>
     <div v-if="confirmBox" class="jq-modal jq-mode-modal" @click.self="confirmBox=null"><div role="dialog" aria-modal="true" aria-labelledby="jq-confirm-title" @keydown.tab="trapDialogFocus"><header><h3 id="jq-confirm-title">{{confirmBox.title}}</h3><button aria-label="关闭确认" @click="confirmBox=null">✕</button></header><p>{{confirmBox.text}}</p><div class="jq-button-pair"><button @click="confirmBox=null">取消</button><button class="jq-primary" @click="acceptConfirm">确认</button></div></div></div>
@@ -104,38 +121,88 @@ const SAVE = 'vectorac.junqi.game.v1', FORM = 'vectorac.junqi.formation.v1'
 // 骰子点位：3×3 九宫格下标，1~6 点各对应哪些格子。
 const PIPS = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] }
 const die = () => 1 + Math.floor(Math.random() * 6)
+const TEAM_NAMES = ['青龙 × 玄武', '赤虎 × 朱雀']
+// 四家徽标锚点（下 / 左 / 上 / 右），联机按视角旋转后重新定位
+const BADGE_ANCHORS = [[680, 792], [173, 235], [221, 106], [727, 663]]
 export default {
   name: 'FourKingdoms',
-  data: () => ({ game: null, board: BOARD, armies: ARMIES, colors: ['#176b5a','#9d4139','#355f92','#936028'], selected: null, rules: false, modePicker:false, confirmBox:null, pageHidden:false, modeOptions:[{id:'dark',title:'四暗',help:'只看见自己的棋子；司令阵亡后亮出该方军旗。'},{id:'dual',title:'双明',help:'看见自己与对家棋子的身份，方便配合。'},{id:'open',title:'全明',help:'看见所有棋子的身份，适合练习走法。'}], notice: '', fullscreen: false, zoom: 1, soundOn:true, musicOn:true, dice: null, savedGame: null, savedFormation: null }),
+  props: {
+    // 联机适配器（可选）。传入后棋盘改由服务端视图驱动，本地只发意图：
+    // { getView(), trySwap(a,b), tryRandomize(), tryConfirm(), tryMove(pieceId,to),
+    //   trySurrender(), seatLabel(seat), copyInvite(), leave(), roomCode() }
+    online: { type: Object, default: null }
+  },
+  data() {
+    return { game: null, mapped: null, countdown: '', board: BOARD, armies: ARMIES, colors: ['#176b5a','#9d4139','#355f92','#936028'], selected: null, rules: false, modePicker:false, confirmBox:null, pageHidden:false, modeOptions:[{id:'dark',title:'四暗',help:'只看见自己的棋子；司令阵亡后亮出该方军旗。'},{id:'dual',title:'双明',help:'看见自己与对家棋子的身份，方便配合。'},{id:'open',title:'全明',help:'看见所有棋子的身份，适合练习走法。'}], notice: '', fullscreen: false, zoom: 1, soundOn:true, musicOn: !this.online, dice: null, savedGame: null, savedFormation: null }
+  },
   computed: {
+    // 统一视图出口：联机读服务端映射（mapped），单机读本地引擎状态（game）
+    g() { return this.online ? this.mapped : this.game },
+    mySeat() { const g = this.g; return this.online && g ? g.mySeat : 0 },
+    myTeam() { return this.mySeat % 2 },
+    // 联机视角旋转：自己永远在下方（SVG rotate 顺时针为正）
+    viewAngle() { return (360 - 90 * this.mySeat) % 360 },
+    boardTurn() { return this.viewAngle ? 'rotate(' + this.viewAngle + ' 450 450)' : '' },
+    commandRight() { const s = this.g; return (s.phase === 'setup' ? '布阵阶段' : '第 ' + s.turns + ' 手') + (this.countdown ? ' · ' + this.countdown : '') },
+    confirmNote() { const c = (this.g && this.g.confirmed) || []; const names = c.map((ok, i) => ok ? ARMIES[i] : null).filter(Boolean); return names.length ? '已出征：' + names.join('、') : '四家都在布阵中' },
     modalOpen(){return !!(this.rules||this.modePicker||this.confirmBox)},
-    modeLabel(){return this.game?{dark:'四暗 · 只看见己方',dual:'双明 · 看见己方与对家',open:'全明 · 练习走法'}[this.game.mode]:''},
+    modeLabel(){return this.g?{dark:'四暗 · 只看见己方',dual:'双明 · 看见己方与对家',open:'全明 · 练习走法'}[this.g.mode]:''},
     railEdges() { return BOARD.edges.filter(e => e.rail) },
-    chosen() { return this.game && this.game.pieces.find(p => p.id === this.selected) },
-    destinations() { return this.chosen && this.game.phase === 'play' && this.game.turn === 0 && this.chosen.seat === 0 && !this.modalOpen ? legalMoves(this.game, this.selected) : [] },
-    headline() { const s = this.game; return s.phase === 'setup' ? '排兵布阵，守住你的军旗' : s.phase === 'finished' ? s.winner === 'draw' ? '势均力敌 · 本局和棋' : s.winner === 0 ? '同盟胜利 · 青龙 × 玄武' : '本局失利 · 赤虎 × 朱雀胜' : s.turn === 0 ? '轮到你行棋' : ARMIES[s.turn] + '正在思考…' },
-    selectedTitle() { const p = this.chosen; return p ? ARMIES[p.seat] + ' · ' + this.pieceName(p) : this.game.phase === 'setup' ? '你的阵地在下方' : this.game.alive[0] ? '点击棋子，查看可行路线' : '你已出局，队友仍在战斗' },
-    selectedHelp() { if (!this.chosen) return this.game.phase === 'setup' ? '选两枚棋子交换位置。金框是大本营，圆圈是行营。' : '金色落点是合法位置。对手身份隐藏时，碰撞只报告胜负，不泄露未公开的军衔。'; if (this.game.phase === 'setup') return '军旗入本营，地雷在后两排，炸弹不在第一排。大本营里的棋子出征后无法移动。'; const type = this.pieceType(this.chosen); return !type ? '身份未公开。可观察对手走法和交战结果进行判断。' : type === 'engineer' ? '工兵：可以在铁路转弯，唯一能直接排雷的普通棋子。' : type === 'bomb' ? '炸弹：与任何敌子同归于尽。谨慎选择攻击目标。' : type === 'mine' || type === 'flag' ? '固定棋子，不可移动。' : '沿公路一步，沿铁路直行或走弧线；不能转铁路直角弯。' },
-    lastPath() { const m = this.game.lastMove, a = BOARD.byId[m.from], b = BOARD.byId[m.to]; return `M${this.px(a.x)} ${this.px(a.y)}L${this.px(b.x)} ${this.px(b.y)}` }
+    chosen() { return this.g && this.g.pieces.find(p => p.id === this.selected) },
+    destinations() { const c = this.chosen; return c && this.g.phase === 'play' && this.g.turn === this.mySeat && c.seat === this.mySeat && !this.modalOpen ? this.movesFor(c.id) : [] },
+    headline() { const s = this.g; if (s.phase === 'setup') return this.online && s.myConfirmed ? '已确认出征 · 等待其他玩家' : '排兵布阵，守住你的军旗'; if (s.phase === 'finished') return s.winner === 'draw' ? '势均力敌 · 本局和棋' : s.winner === this.myTeam ? '同盟胜利 · ' + TEAM_NAMES[s.winner] : '本局失利 · ' + TEAM_NAMES[1 - this.myTeam] + '胜'; return s.turn === this.mySeat ? '轮到你行棋' : ARMIES[s.turn] + '正在行棋…' },
+    selectedTitle() { const p = this.chosen; return p ? ARMIES[p.seat] + ' · ' + this.pieceName(p) : this.g.phase === 'setup' ? '你的阵地在下方' : this.g.alive[this.mySeat] ? '点击棋子，查看可行路线' : '你已出局，队友仍在战斗' },
+    selectedHelp() { if (!this.chosen) return this.g.phase === 'setup' ? '选两枚棋子交换位置。金框是大本营，圆圈是行营。' : '金色落点是合法位置。对手身份隐藏时，碰撞只报告胜负，不泄露未公开的军衔。'; if (this.g.phase === 'setup') return '军旗入本营，地雷在后两排，炸弹不在第一排。大本营里的棋子出征后无法移动。'; const type = this.pieceType(this.chosen); return !type ? '身份未公开。可观察对手走法和交战结果进行判断。' : type === 'engineer' ? '工兵：可以在铁路转弯，唯一能直接排雷的普通棋子。' : type === 'bomb' ? '炸弹：与任何敌子同归于尽。谨慎选择攻击目标。' : type === 'mine' || type === 'flag' ? '固定棋子，不可移动。' : '沿公路一步，沿铁路直行或走弧线；不能转铁路直角弯。' },
+    lastPath() { const m = this.g.lastMove, a = BOARD.byId[m.from], b = BOARD.byId[m.to]; return `M${this.px(a.x)} ${this.px(a.y)}L${this.px(b.x)} ${this.px(b.y)}` }
   },
   watch: { modalOpen(open){this.schedule();if(open){this._modalFocus=document.activeElement;this._modalOverflow=document.body.style.overflow;document.body.style.overflow='hidden';this.$nextTick(()=>{const el=this.$el.querySelector('.jq-modal');if(el)(el.querySelector('.is-active')||el.querySelector('button')).focus()})}else{document.body.style.overflow=this._modalOverflow||'';if(this._modalFocus&&this._modalFocus.isConnected)this._modalFocus.focus()}} },
   mounted() {
     this._pageContent = this.$el.closest('.theme-reco-content')
     if (this._pageContent) this._pageContent.classList.add('jq-page-content')
-    try { this.savedGame = restoreGame(localStorage.getItem(SAVE)); this.savedFormation = JSON.parse(localStorage.getItem(FORM)) } catch (e) {}
-    this.game = createGame()
     this._audio=createJunqiAudio()
+    if (this.online) {
+      // 联机：默认关 BGM（避免盖过语音聊天）；即进即全屏；视图由 remote 推送
+      this._audio.music(false)
+      this._oldOverflow = document.body.style.overflow
+      document.body.style.overflow = 'hidden'
+      this.fullscreen = true
+      this.syncFromOnline()
+    } else {
+      try { this.savedGame = restoreGame(localStorage.getItem(SAVE)); this.savedFormation = JSON.parse(localStorage.getItem(FORM)) } catch (e) {}
+      this.game = createGame()
+    }
     if(window.innerWidth<900){this.zoom=1.8;this.$nextTick(this.focusOwn)}
     // SVG sizing may settle after Vue's first tick in WebKit. Recenter on the
     // actual viewport layout (also after rotation), not an early zero-size box.
     this.$nextTick(()=>{if(window.ResizeObserver&&this.$refs.boardWindow){this._boardResize=new ResizeObserver(()=>{if(this.zoom>1)this.focusOwn()});this._boardResize.observe(this.$refs.boardWindow)}})
     this._visibility = () => { this.pageHidden=document.hidden;this._audio.pause(this.pageHidden);this.schedule() }
-    this._key = e => { if (e.key === 'Escape') { if(this.modalOpen){this.modePicker=false;this.rules=false;this.confirmBox=null;return}if (this.fullscreen) this.toggleFullscreen() } }
+    this._key = e => { if (e.key === 'Escape') { if(this.modalOpen){this.modePicker=false;this.rules=false;this.confirmBox=null;return}if (this.fullscreen && !this.online) this.toggleFullscreen() } }
     document.addEventListener('visibilitychange', this._visibility); document.addEventListener('keydown', this._key)
   },
   beforeDestroy() { if(this._boardResize)this._boardResize.disconnect();if(this.modalOpen)document.body.style.overflow=this._modalOverflow||'';if(this._audio)this._audio.destroy();clearTimeout(this._timer); clearInterval(this._diceRoll); clearTimeout(this._diceSettle); clearTimeout(this._diceStart); clearTimeout(this._noticeTimer); document.removeEventListener('visibilitychange', this._visibility); document.removeEventListener('keydown', this._key); if (this._pageContent) this._pageContent.classList.remove('jq-page-content'); if (this.fullscreen) document.body.style.overflow = this._oldOverflow || '' },
   methods: {
-    selectMode(mode){if(this.game.phase!=='setup')return;this.game.mode=mode;this.persist();this.modePicker=false},
+    // ---------- 联机：视图同步（remote 在每次 GAME_STATE_CHANGED 后调用） ----------
+    syncFromOnline() {
+      if (!this.online) return
+      const v = this.online.getView()
+      if (!v) { this.mapped = null; return }
+      const prev = this.mapped
+      const lm = v.lastMove || null
+      this.mapped = {
+        phase: v.phase, mode: v.mode, turn: v.turn, turns: v.turns, quiet: v.quiet,
+        mySeat: v.mySeat, pieces: v.pieces || [], alive: v.alive || [true, true, true, true],
+        logs: v.logs || [], lastMove: lm, confirmed: v.confirmed || [false, false, false, false],
+        myConfirmed: !!v.myConfirmed, legal: v.legal || [],
+        winner: v.phase === 'finished' && v.results ? (v.results.draw ? 'draw' : v.results.winner) : null
+      }
+      // 新一手播调动/碰撞音；刚终局播收尾旋律（首次同步不补播历史）
+      if (prev && v.phase === 'play' && v.turns !== prev.turns && lm) this._audio.play(lm.outcome || 'move')
+      if (prev && prev.phase !== 'finished' && v.phase === 'finished') this._audio.play('finish')
+      if (!prev || prev.phase !== v.phase || (this.selected && !(v.pieces || []).some(p => p.id === this.selected))) this.selected = null
+    },
+    /** 联机：服务端已定先手，仅复用掷骰动画（不改对局状态） */
+    showOnlineDice(opening) { this._playDice(opening) },
+    selectMode(mode){if(this.online||this.game.phase!=='setup')return;this.game.mode=mode;this.persist();this.modePicker=false},
     trapDialogFocus(e){const buttons=Array.from(e.currentTarget.querySelectorAll('button'));const i=buttons.indexOf(document.activeElement);e.preventDefault();buttons[(i+(e.shiftKey?-1:1)+buttons.length)%buttons.length].focus()},
     askConfirm(title,text,action){this.confirmBox={title,text,action}},
     acceptConfirm(){const action=this.confirmBox&&this.confirmBox.action;this.confirmBox=null;if(action)action()},
@@ -150,36 +217,47 @@ export default {
     playMove(){this._audio.play(this.game.phase==='finished'?'finish':this.game.lastMove.outcome)},
     px(n) { return 50 + n * 50 },
     edgePath(e) { const a = BOARD.byId[e.a], b = BOARD.byId[e.b]; if (!e.curve) return `M${this.px(a.x)} ${this.px(a.y)}L${this.px(b.x)} ${this.px(b.y)}`; const turn = BOARD.adjacency[e.a].find(x => x.to === e.b); return `M${this.px(a.x)} ${this.px(a.y)}Q${this.px(a.x + turn.start[0])} ${this.px(a.y + turn.start[1])} ${this.px(b.x)} ${this.px(b.y)}` },
-    badgeTransform(s) { return ['translate(680 792)','translate(173 235)','translate(221 106)','translate(727 663)'][s] },
-    pieceAt(pos) { return at(this.game, pos) },
-    pieceType(p) { return visibleType(this.game, p, 0) },
+    badgeTransform(s) { const A = this.viewAngle * Math.PI / 180, c = Math.cos(A), si = Math.sin(A), a = BADGE_ANCHORS[s], dx = a[0] - 450, dy = a[1] - 450; return 'translate(' + (450 + dx * c - dy * si) + ' ' + (450 + dx * si + dy * c) + ')' },
+    badgeText(seat) { const s = this.g; if (!s.alive[seat]) return ARMIES[seat] + ' · 已出局'; if (this.online) return ARMIES[seat] + ' · ' + this.online.seatLabel(seat); return ARMIES[seat] + ' · ' + (seat === 0 ? '你' : seat === 2 ? 'AI 队友' : 'AI 对手') },
+    teamName(t) { return TEAM_NAMES[t] },
+    pieceAt(pos) { return at(this.g, pos) },
+    pieceType(p) { return this.online ? p.type : visibleType(this.g, p, this.mySeat) },
     pieceName(p) { const t = this.pieceType(p); return t ? TYPES[t].name : '军棋' },
     nodeLabel(n) { const p = this.pieceAt(n.id); return p ? ARMIES[p.seat] + this.pieceName(p) : n.kind === 'camp' ? '行营' : n.kind === 'hq' ? '大本营' : '空兵站' },
-    teamCount(t) { return this.game.alive.filter((a,i) => a && i%2===t).length },
+    // 合法落点：单机问本地引擎，联机取服务端视图附带的合法表
+    movesFor(pieceId) { if (!this.online) return legalMoves(this.g, pieceId); const opt = (this.g.legal || []).find(o => o.type === 'move'); return opt ? opt.moves.filter(m => m.pieceId === pieceId).map(m => m.to) : [] },
+    teamCount(t) { return this.g.alive.filter((a,i) => a && i%2===t).length },
     toast(text) { this.notice = text; clearTimeout(this._noticeTimer); this._noticeTimer = setTimeout(() => { this.notice = '' }, 3000) },
-    refresh() { this.game = Object.assign({}, this.game, { pieces: this.game.pieces.slice(), alive: this.game.alive.slice() }); this.persist(); this.schedule() },
-    persist() { try { localStorage.setItem(SAVE, JSON.stringify(this.game)) } catch (e) {} },
+    refresh() { if (this.online) return; this.game = Object.assign({}, this.game, { pieces: this.game.pieces.slice(), alive: this.game.alive.slice() }); this.persist(); this.schedule() },
+    persist() { if (this.online) return; try { localStorage.setItem(SAVE, JSON.stringify(this.game)) } catch (e) {} },
     clickNode(n) {
-      const p = this.pieceAt(n.id), s = this.game
+      const p = this.pieceAt(n.id), s = this.g
       if (s.phase === 'setup') {
-        if (!p || p.seat !== 0) return this.toast('请在下方自己的阵地交换棋子')
-        if (this.selected && this.selected !== p.id) { if (!swapFormation(s, this.selected, p.id)) this.toast('位置不合法：检查军旗、地雷和炸弹的布阵限制'); this.selected = null; this.refresh() } else this.selected = this.selected === p.id ? null : p.id
+        if (this.online && s.myConfirmed) return this.toast('已确认出征，等待其他玩家')
+        if (!p || p.seat !== this.mySeat) return this.toast('请在下方自己的阵地交换棋子')
+        if (this.selected && this.selected !== p.id) {
+          if (this.online) { this.online.trySwap(this.selected, p.id); this.selected = null }
+          else { if (!swapFormation(s, this.selected, p.id)) this.toast('位置不合法：检查军旗、地雷和炸弹的布阵限制'); this.selected = null; this.refresh() }
+        } else this.selected = this.selected === p.id ? null : p.id
         return
       }
-      if (this.destinations.includes(n.id)) { if (move(s, this.selected, n.id)) { this.playMove();this.selected = null; this.refresh() } return }
+      if (this.destinations.includes(n.id)) { if (this.online) { this.online.tryMove(this.selected, n.id); this.selected = null } else if (move(s, this.selected, n.id)) { this.playMove();this.selected = null; this.refresh() } return }
       this.selected = p ? p.id : null
-      if (p && p.seat === 0 && s.phase === 'play' && s.turn === 0 && !legalMoves(s,p.id).length) this.toast('这枚棋子不能移动，或通路已被挡住')
+      if (p && p.seat === this.mySeat && s.phase === 'play' && s.turn === this.mySeat && !this.movesFor(p.id).length) this.toast('这枚棋子不能移动，或通路已被挡住')
     },
-    begin() { const locked = this.game.pieces.find(p => p.seat === 0 && BOARD.byId[p.pos].kind === 'hq' && TYPES[p.type].rank >= 5); if(locked)return this.askConfirm('确认出征','大本营中的'+TYPES[locked.type].name+'整局不能移动，仍要出征吗？',()=>this.rollDice());this.rollDice() },
+    begin() { const locked = this.g.pieces.find(p => p.seat === this.mySeat && p.type && BOARD.byId[p.pos].kind === 'hq' && TYPES[p.type].rank >= 5); if(locked)return this.askConfirm('确认出征','大本营中的'+TYPES[locked.type].name+'整局不能移动，仍要出征吗？',()=>this.confirmBegin());this.confirmBegin() },
+    confirmBegin() { if (this.online) this.online.tryConfirm(); else this.rollDice() },
     // 左右两侧战区是下方战区旋转 90° 的同一套阵型，棋子长边与铁路方向垂直。
     seatTurn(seat) { return seat === 1 ? ' rotate(90)' : seat === 3 ? ' rotate(-90)' : '' },
-    // 行营/大本营的文字反向转回来，避免汉字跟着侧倒。
-    labelTurn(seat) { return seat === 1 ? 'rotate(-90)' : seat === 3 ? 'rotate(90)' : '' },
+    // 行营/大本营文字反向补回屏幕正立（含联机视角旋转量）。
+    labelTurn(seat) { const deg = this.viewAngle + (seat === 1 ? 90 : seat === 3 ? -90 : 0); return deg ? 'rotate(' + (-deg) + ')' : '' },
+    // 竖向阵地（我与对家）的棋子文字同样补到屏幕正立；侧向阵地保持朝向主人。
+    pieceTurn(seat) { if ((seat - this.mySeat + 4) % 2 !== 0) return ''; const deg = this.viewAngle + (seat === 1 ? 90 : seat === 3 ? -90 : 0); return deg ? 'rotate(' + (-deg) + ')' : '' },
     diePips(value) { return PIPS[value] || [] },
     // 决胜轮还在跳动时显示随机点数，之前的轮次已经作数，直接展示真实点数。
     dieFaces(index, row) { return this.dice.settled || index < this.dice.rounds.length - 1 ? row.dice : this.dice.faces[row.seat] },
-    rollDice() {
-      const opening = rollOpening(this.game), rounds = opening.rounds, decisive = rounds[rounds.length - 1]
+    _playDice(opening, done) {
+      const rounds = opening.rounds, decisive = rounds[rounds.length - 1]
       const faces = {}
       for (const row of decisive) faces[row.seat] = [die(), die()]
       this.dice = { opening, rounds, faces, first: opening.first, settled: false, msg: '' }
@@ -191,18 +269,19 @@ export default {
         const best = Math.max(...decisive.map(r => r.dice[0] + r.dice[1]))
         this.dice.settled = true; this.dice.faces = {}
         this.dice.msg = `${ARMIES[opening.first]}掷出 ${best} 点取得先手` + (rounds.length > 1 ? `（并列最高点重掷 ${rounds.length - 1} 次）` : '')
-        this._diceStart = setTimeout(() => { this.dice = null; this.startBattle(opening) }, 1300)
+        this._diceStart = setTimeout(() => { this.dice = null; if (done) done(opening) }, 1300)
       }, 1200)
     },
+    rollDice() { this._playDice(rollOpening(this.game), opening => this.startBattle(opening)) },
     startBattle(opening){startGame(this.game, opening);this.selected=null;this.savedGame=null;this.refresh()},
-    shuffle() { randomizeFormation(this.game); this.selected = null; this.refresh() },
+    shuffle() { if (this.online) { this.online.tryRandomize(); return } randomizeFormation(this.game); this.selected = null; this.refresh() },
     saveFormation() { this.savedFormation = this.game.pieces.filter(p=>p.seat===0).map(p=>({id:p.id,pos:p.pos})); try { localStorage.setItem(FORM,JSON.stringify(this.savedFormation)); this.toast('阵型已保存到此浏览器') } catch(e) { this.toast('当前浏览器无法保存阵型') } },
     loadFormation() { const saved = this.savedFormation; if (!Array.isArray(saved) || saved.length!==25 || new Set(saved.map(p=>p.pos)).size!==25) return this.toast('保存的阵型无效'); const own = this.game.pieces.filter(p=>p.seat===0); if (!own.every(p=>{const q=saved.find(q=>q.id===p.id);return q&&canDeploy(p.type,BOARD.byId[q.pos],0)})) return this.toast('保存的阵型不符合规则'); own.forEach(p=>{p.pos=saved.find(q=>q.id===p.id).pos}); this.selected=null;this.refresh() },
     resume() { this.game=this.savedGame;this.savedGame=null;this.selected=null;this.refresh() },
     resetGame(){clearTimeout(this._timer);this.dice=null;clearInterval(this._diceRoll);clearTimeout(this._diceSettle);clearTimeout(this._diceStart);this.game=createGame({mode:this.game.mode});this.selected=null;this.refresh();this.focusOwn()},
     newGame() { if(this.game.phase==='play')return this.askConfirm('重新布阵','结束当前对局并重新布阵？本局进度将被替换。',()=>this.resetGame());this.resetGame() },
-    giveUp() { this.askConfirm('确认投降','你将退出本局，但 AI 队友会继续作战。确认投降？',()=>{surrender(this.game,0);this.selected=null;this.refresh()}) },
-    schedule() { clearTimeout(this._timer);if(!this.game||this.game.phase!=='play'||this.pageHidden||this.modalOpen||this.game.turn===0&&this.game.alive[0])return;this._timer=setTimeout(()=>{const action=chooseAI(this.game);if(action&&move(this.game,action.pieceId,action.to))this.playMove();this.selected=null;this.refresh()},650) },
+    giveUp() { this.askConfirm('确认投降', this.online ? '你将退出本局，但队友会继续作战。确认投降？' : '你将退出本局，但 AI 队友会继续作战。确认投降？',()=>{ if (this.online) { this.online.trySurrender(); this.selected = null } else { surrender(this.game,0);this.selected=null;this.refresh() } }) },
+    schedule() { clearTimeout(this._timer);if(this.online||!this.game||this.game.phase!=='play'||this.pageHidden||this.modalOpen||this.game.turn===0&&this.game.alive[0])return;this._timer=setTimeout(()=>{const action=chooseAI(this.game);if(action&&move(this.game,action.pieceId,action.to))this.playMove();this.selected=null;this.refresh()},650) },
     toggleFullscreen() { if(!this.fullscreen){this._oldOverflow=document.body.style.overflow;document.body.style.overflow='hidden'}else document.body.style.overflow=this._oldOverflow||'';this.fullscreen=!this.fullscreen;this.$nextTick(()=>{if(this.fullscreen)this.$refs.root.scrollTop=0}) }
   }
 }
@@ -217,6 +296,7 @@ export default {
 /* On phones the default close view is pannable, rather than shrinking 17 files
    to unreadable labels. Overview remains one tap away. */
 .jq-audio{margin:0 0 12px}.jq-board-window{border-radius:12px}.jq-board-footer>div{display:flex;gap:5px}
+.jq-conf-note{margin-top:8px;font-size:11px;color:#c9b98a;letter-spacing:1px;text-align:center}
 @media(max-width:900px){
  .jq-game{margin-left:-12px;margin-right:-12px;border-radius:8px}.jq-fullscreen{margin:0}
  .jq-board-window.is-zoomed{height:min(62vh,540px);max-height:none}

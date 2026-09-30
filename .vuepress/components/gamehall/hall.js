@@ -226,8 +226,8 @@ export default class GameHall {
           this._resume()
           break
         case 'resume-dismiss':
-          clearCredential()
-          this.$resume.hidden = true
+          // 「忽略」= 放弃这个房间：真退掉旧座位（不回房又不退座 = 死座位挂到 TTL）
+          this._leaveStaleRoom()
           break
       }
     })
@@ -338,6 +338,26 @@ export default class GameHall {
 
   // ---------- 建房 / 加入 ----------
 
+  /**
+   * 换房先退旧房：同一浏览器凭据只有一份（localStorage 单槽），
+   * 建房 / 加入另一个房间前，必须先把旧房间的座位退掉——
+   * 否则旧座位挂着等 TTL（WAITING 10 分钟），反复几次就占满全服 20 房，
+   * 出现「再建房被拒 / 游戏开始不了」。
+   * targetCode：正准备进入的房号；若就是凭据所在的房，不动（由调用方走 resume）。
+   */
+  async _leaveStaleRoom(targetCode) {
+    const cred = loadCredential()
+    if (!cred || !cred.resumeToken) return
+    if (targetCode && cred.roomCode === String(targetCode).toUpperCase()) return
+    try {
+      await this.http.leaveRoomByToken(cred.resumeToken)
+    } catch (e) {
+      /* 旧房可能已销毁 / 网络异常：本地凭据照清，不阻塞进新房 */
+    }
+    clearCredential()
+    this._renderResumeBanner()
+  }
+
   async _createRoom() {
     if (this.createGame === 'mahjong') return this._createMahjongRoom()
     const gameType = this.createGame
@@ -345,6 +365,7 @@ export default class GameHall {
     const btn = this.root.querySelector('[data-gh="create-go"]')
     btn.disabled = true
     try {
+      await this._leaveStaleRoom()
       const optsRoot = this.root.querySelector('[data-gh-opts-' + gameType + ']')
       // 联机以人对人为主：AI 难度固定 medium（补位 / 托管同档），军棋固定四暗，
       // 均走服务端默认值，建房只带选边与思考时长
@@ -373,6 +394,7 @@ export default class GameHall {
     const btn = this.root.querySelector('[data-gh="create-go"]')
     btn.disabled = true
     try {
+      await this._leaveStaleRoom()
       const optsRoot = this.root.querySelector('[data-gh-opts-mahjong]')
       const on = name => ctlValue(optsRoot, name) === 'on'
       const data = await this.http.createRoom({
@@ -417,13 +439,24 @@ export default class GameHall {
   }
 
   async _sit(code, gameType, el) {
+    // 目标就是自己凭据所在的房 → 不重复入座，直接续上（避免同房出现两个自己）
+    const cred = loadCredential()
+    if (cred && cred.roomCode === String(code).toUpperCase()) {
+      if (gameType === 'mahjong') {
+        location.href = MAHJONG_PAGE + '?room=' + encodeURIComponent(code)
+        return
+      }
+      if (ENTER[gameType]) return this._resume()
+    }
     if (gameType === 'mahjong') {
+      await this._leaveStaleRoom(code)
       location.href = MAHJONG_PAGE + '?room=' + encodeURIComponent(code)
       return
     }
     if (!ENTER[gameType]) return this._toast('该游戏暂未开放在线房间')
     if (el) el.disabled = true
     try {
+      await this._leaveStaleRoom(code)
       const data = await this.http.joinRoom({ roomCode: code, displayName: this._displayName() })
       await this._enterOnline(data, gameType)
     } catch (e) {

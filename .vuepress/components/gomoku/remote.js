@@ -1,11 +1,13 @@
 // ============================================================
 // 五子棋联机房间（gomoku/remote.js）
 // ------------------------------------------------------------
-// 把通用联机服务（房间 / 座位 / 行动窗口 / 多局积分）渲染成五子棋体验：
-//   等待室（座位 / AI / 规则 / 开始）→ 对局（木质棋盘 + 倒计时）→
-//   结算（胜负 ±10、多局累计、破产）→ 全员准备自动开下一局（换先）。
+// 与单机共用同一套棋盘 UI（gomoku/ui.js 的 online 适配器模式）：
+//   房间骨架直接用 .gk-root/.gk-panel 结构（顶栏 / 状态条 / 棋盘 /
+//   结算浮层），GomokuUI 负责全屏接管、木纹棋盘、落子动画与音效，
+//   横屏布局与单机完全一致；本类只负责：
+//   等待室（座位 / AI / 规则 / 开始）→ 视图适配（服务端权威，本地只发
+//   落子意图）→ 结算（±10、多局累计、破产）→ 全员准备自动开下一局。
 // 网络层复用 mahjong/multiplayer/net-client.js（HTTP + WS + 自动重连）。
-// 服务端是权威：本地只发意图（move），棋盘完全按 GAME_STATE_CHANGED 视图绘制。
 // ============================================================
 
 import {
@@ -23,21 +25,12 @@ import {
 } from '../gamehall/controls.js'
 import {
   CHAT_PHRASES,
-  enterFullscreen,
-  exitFullscreen,
   speakPhrase,
   chatDockHtml,
   bindChatDock
 } from '../gamehall/chatkit.js'
-import { BOARD_SIZE, EMPTY, BLACK, WHITE } from './engine.js'
-
-const STAR_POINTS = [
-  [3, 3],
-  [3, 11],
-  [11, 3],
-  [11, 11],
-  [7, 7]
-]
+import GomokuUI from './ui.js'
+import { createBoard, BLACK } from './engine.js'
 
 function esc(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({
@@ -67,13 +60,11 @@ export default class GomokuRemote {
 
     this.view = null // 最新 GAME_STATE_CHANGED（自己座位视角）
     this.results = null // 最近一局的结算（ROOM_UPDATED 口径，含 scores）
-    this.hover = null
-    this.status = 'open'
     this.destroyed = false
     this.readySent = false
 
+    this.ui = null // GomokuUI（online 模式）：全屏 / 棋盘 / 动画 / 音效
     this._unsub = this.net.subscribe(msg => this._onEvent(msg))
-    this._unsubStatus = null
     this._tickTimer = null
     this._recorder = null
     this._recordAt = 0
@@ -81,8 +72,11 @@ export default class GomokuRemote {
   }
 
   mount() {
-    enterFullscreen(this.root)
     this._renderShell()
+    // 单机 UI 以联机适配器挂载：enterFullscreen 会把 gk-root 移挂 body，
+    // 等待室起即全屏；棋盘区在游戏开始前保持 hidden
+    this.ui = new GomokuUI(this.$roomRoot, { online: this._makeOnlineAdapter() })
+    this.ui.mount()
     this._renderWaiting()
     this._tickTimer = setInterval(() => this._tick(), 500)
     // 已进入房间的对局（刷新重连）：快照随后由服务器推送
@@ -94,11 +88,87 @@ export default class GomokuRemote {
     this.destroyed = true
     if (this._unsub) this._unsub()
     if (this._tickTimer) clearInterval(this._tickTimer)
-    if (this._onResize) window.removeEventListener('resize', this._onResize)
     this._stopRecording(true)
     if (this._chat) this._chat.destroy()
-    exitFullscreen(this.root)
+    // ui.destroy 内部 exitFullscreen 并把 gk-root 移回原位
+    if (this.ui) {
+      this.ui.destroy()
+      this.ui = null
+    }
     this.root.innerHTML = ''
+  }
+
+  // ---------- 联机适配器（GomokuUI 的数据源） ----------
+
+  _makeOnlineAdapter() {
+    return {
+      getView: () => this._onlineView(),
+      place: (x, y) => {
+        const meta = (this.view && this.view.meta) || {}
+        this.net.sendAction({
+          gameId: meta.gameId,
+          windowId: meta.windowId,
+          action: { type: 'move', x, y }
+        })
+      },
+      statusText: () => this._statusText()
+    }
+  }
+
+  /** 渲染层视图：把服务端 GAME_STATE_CHANGED 映射成 GomokuUI 的契约 */
+  _onlineView() {
+    const v = this.view
+    if (!v) {
+      // 等待室 / 开局快照未到的空窗：空棋盘（棋盘区此时 hidden，仅兜底）
+      if (!this._emptyBoard) this._emptyBoard = createBoard()
+      return {
+        board: this._emptyBoard,
+        myColor: BLACK,
+        lastMove: null,
+        winLine: null,
+        moves: 0,
+        canMove: false,
+        over: false,
+        iWon: false,
+        draw: false
+      }
+    }
+    const over = v.phase !== 'play'
+    const mySeat = v.meta && v.meta.mySeat != null ? v.meta.mySeat : this._mySeat()
+    return {
+      board: v.board,
+      myColor: v.myColor,
+      lastMove: v.lastMove,
+      winLine: v.winLine,
+      moves: v.moves || 0,
+      canMove: v.phase === 'play' && (v.legal || []).some(o => o.type === 'move'),
+      over,
+      iWon: over && v.winner != null && v.winner === mySeat,
+      draw: over && !!v.draw
+    }
+  }
+
+  /** 状态条文案：轮次 / 倒计时 / 对手断线托管提示 */
+  _statusText() {
+    const v = this.view
+    if (!v) return { text: '同步棋局中…', dot: null }
+    if (v.phase !== 'play') return { text: '本局结束', dot: null }
+    const myTurn = (v.legal || []).some(o => o.type === 'move')
+    const meta = v.meta || {}
+    let cd = ''
+    if (meta.deadlineAt) {
+      cd = ' · ' + Math.max(0, Math.ceil((meta.deadlineAt - Date.now()) / 1000)) + 's'
+    }
+    let text
+    if (myTurn) {
+      text = '轮到你落子' + cd
+    } else {
+      // 对手状态：断线 / 托管时给出明确提示（AI 补位不赘述）
+      const opp = (meta.seats || []).find(s => s.absSeat !== meta.mySeat)
+      const tag = opp && !opp.isAi ? (!opp.connected ? ' · 断线托管中' : (opp.autoPlay ? ' · 托管中' : '')) : ''
+      text = '对手思考中' + tag + cd
+    }
+    return { text, dot: v.turn === BLACK ? 'black' : 'white', thinking: !myTurn }
   }
 
   // ---------- 事件 ----------
@@ -139,7 +209,8 @@ export default class GomokuRemote {
       case 'GAME_STARTED':
         this.results = null
         this.readySent = false
-        if (this.$settle) this.$settle.hidden = true
+        this.view = null // 旧局视图作废，等本局首个 GAME_STATE_CHANGED
+        this._hideSettle()
         if (this.room) {
           this.room.status = 'PLAYING'
           this.room.round = p.round
@@ -155,7 +226,7 @@ export default class GomokuRemote {
         this.view = p
         if (this.room) this.room.status = 'PLAYING'
         this._showGame()
-        this._renderGame()
+        if (this.results) this._renderSettlement()
         break
       case 'ROOM_UPDATED':
         if (this.room) {
@@ -171,8 +242,8 @@ export default class GomokuRemote {
         }
         break
       case 'GAME_FINISHED':
-        // 结算展示统一走 ROOM_UPDATED（带累计积分）；这里仅兜底刷新棋盘
-        this._drawBoard()
+        // 结算展示统一走 ROOM_UPDATED（带累计积分）；这里仅兜底同步棋盘
+        if (this.ui) this.ui.syncFromOnline()
         break
       case 'VOICE_MSG':
         this._addVoiceBubble(p, false)
@@ -212,31 +283,62 @@ export default class GomokuRemote {
     return this.room && this.room.adminSeat === seat
   }
 
-  // ---------- 视图骨架 ----------
+  // ---------- 视图骨架（与单机 gomoku.md 同结构，复用其全屏 / 横屏样式） ----------
 
   _renderShell() {
     this.root.innerHTML =
-      '<div class="gkr-room-head">' +
-      '  <div class="gkr-room-title">五子棋 · 房间 <b class="gkr-code">' + esc(this._roomCode()) + '</b></div>' +
-      '  <div class="gkr-head-btns">' +
-      '    <button type="button" class="gkr-btn" data-gkr="copy">复制邀请链接</button>' +
-      '    <button type="button" class="gkr-btn gkr-btn-danger" data-gkr="leave">退出房间</button>' +
+      '<div class="gk-root" data-gkr-room>' +
+      '  <div class="gk-panel">' +
+      '    <div class="gk-topbar">' +
+      '      <div class="gk-title-row">' +
+      '        <span class="gk-title">五子棋</span>' +
+      '        <span class="gk-moves" data-gk-moves>第 0 手</span>' +
+      '      </div>' +
+      '      <span class="gkr-room-code">房号 <b class="gkr-code">' + esc(this._roomCode()) + '</b></span>' +
+      '      <button type="button" class="gk-btn" data-gkr="copy">邀请</button>' +
+      '      <button type="button" class="gk-btn gkr-btn-danger" data-gkr="leave">退出</button>' +
+      '      <button type="button" class="gk-btn gk-sound" data-gk-sound aria-label="关闭音效">🔊</button>' +
+      '      <button type="button" class="gk-btn gk-music" data-gk-music aria-label="打开背景音乐">♫</button>' +
+      '      <button type="button" class="gk-btn gk-fs-toggle" data-gk-fullscreen aria-label="退出全屏">✕</button>' +
+      '    </div>' +
+      '    <div class="gk-status-row" data-gkr-status-row hidden>' +
+      '      <div class="gk-status" data-gk-status>' +
+      '        <span class="gk-dot gk-dot-black" data-gk-turn-dot></span>' +
+      '        <span data-gk-status-text>…</span>' +
+      '      </div>' +
+      '    </div>' +
+      '    <div class="gkr-players" data-gkr-players hidden></div>' +
+      '    <div class="gkr-stage" data-gkr-stage></div>' +
+      '    <div class="gk-board-wrap" data-gkr-board-wrap hidden>' +
+      '      <canvas data-gk-canvas aria-label="五子棋棋盘"></canvas>' +
+      '      <div class="gk-result" data-gk-result hidden>' +
+      '        <div class="gk-result-card">' +
+      '          <div class="gk-result-title" data-gk-result-title></div>' +
+      '          <div class="gk-result-sub" data-gk-result-sub></div>' +
+      '          <div class="gkr-settle-scores" data-gkr-settle-scores></div>' +
+      '          <div class="gk-result-btns" data-gkr-settle-btns></div>' +
+      '        </div>' +
+      '      </div>' +
+      '    </div>' +
       '  </div>' +
-      '</div>' +
-      '<div class="gkr-status-pill" data-gkr-status hidden></div>' +
-      '<div class="gkr-stage" data-gkr-stage></div>' +
       chatDockHtml() +
       '<div class="gkr-bubbles" data-gkr-bubbles></div>' +
-      '<div class="gkr-toast" data-gkr-toast hidden></div>'
+      '<div class="gkr-toast" data-gkr-toast hidden></div>' +
+      '</div>'
 
-    this.$stage = this.root.querySelector('[data-gkr-stage]')
-    this.$status = this.root.querySelector('[data-gkr-status]')
-    this.$bubbles = this.root.querySelector('[data-gkr-bubbles]')
-    this.$toast = this.root.querySelector('[data-gkr-toast]')
+    this.$roomRoot = this.root.querySelector('[data-gkr-room]')
+    this.$stage = this.$roomRoot.querySelector('[data-gkr-stage]')
+    this.$boardWrap = this.$roomRoot.querySelector('[data-gkr-board-wrap]')
+    this.$statusRow = this.$roomRoot.querySelector('[data-gkr-status-row]')
+    this.$players = this.$roomRoot.querySelector('[data-gkr-players]')
+    this.$result = this.$roomRoot.querySelector('[data-gk-result]')
+    this.$bubbles = this.$roomRoot.querySelector('[data-gkr-bubbles]')
+    this.$toast = this.$roomRoot.querySelector('[data-gkr-toast]')
 
-    this.root.addEventListener('click', ev => this._onClick(ev))
+    // 事件委托挂在 gk-root 上：全屏时它被移挂 body，外层 root 已空
+    this.$roomRoot.addEventListener('click', ev => this._onClick(ev))
     // 聊天面板：🎤 点开 → 快捷语（普通话 TTS 播报）+ 按住说话
-    this._chat = bindChatDock(this.root.querySelector('[data-gkr-voice-dock]'), {
+    this._chat = bindChatDock(this.$roomRoot.querySelector('[data-gkr-voice-dock]'), {
       onStartRec: () => this._startRecording(),
       onStopRec: cancel => this._stopRecording(cancel),
       onPhrase: idx => this._sendPhrase(idx)
@@ -272,9 +374,6 @@ export default class GomokuRemote {
       case 'ready':
         this._toggleReady(true)
         break
-      case 'rules':
-        this._sendRules()
-        break
       case 'voice-play':
         this._playVoice(Number(t.getAttribute('data-idx')))
         break
@@ -285,6 +384,13 @@ export default class GomokuRemote {
 
   _renderWaiting() {
     if (!this.room) return
+    // 容器归位：等待室显示，棋盘 / 状态条 / 玩家条收起
+    this.$roomRoot.classList.add('is-waiting')
+    this.$stage.hidden = false
+    this.$boardWrap.hidden = true
+    this.$statusRow.hidden = true
+    this.$players.hidden = true
+
     const room = this.room
     const seats = room.seats || []
     const admin = this._isAdmin()
@@ -366,55 +472,17 @@ export default class GomokuRemote {
   // ---------- 对局 ----------
 
   _showGame() {
-    if (this.$game) return
-    this.$stage.innerHTML =
-      '<div class="gkr-game">' +
-      '  <div class="gkr-players" data-gkr-players></div>' +
-      '  <div class="gkr-board-wrap"><canvas data-gkr-canvas></canvas></div>' +
-      '  <div class="gkr-game-foot" data-gkr-foot></div>' +
-      '  <div class="gkr-settle" data-gkr-settle hidden></div>' +
-      '</div>'
-    this.$game = this.$stage.querySelector('.gkr-game')
-    this.$canvas = this.$stage.querySelector('[data-gkr-canvas]')
-    this.ctx = this.$canvas.getContext('2d')
-    this.$players = this.$stage.querySelector('[data-gkr-players]')
-    this.$foot = this.$stage.querySelector('[data-gkr-foot]')
-    this.$settle = this.$stage.querySelector('[data-gkr-settle]')
-
-    this.$canvas.addEventListener('click', ev => this._onBoardClick(ev))
-    this.$canvas.addEventListener('mousemove', ev => this._onBoardHover(ev))
-    this.$canvas.addEventListener('mouseleave', () => {
-      this.hover = null
-      this._drawBoard()
-    })
-    window.addEventListener('resize', this._onResize || (this._onResize = () => this._layoutBoard()))
-    this._layoutBoard()
-    this._renderGame()
-  }
-
-  _layoutBoard() {
-    if (!this.$canvas) return
-    const wrap = this.$canvas.parentElement
-    const avail = Math.min(wrap.clientWidth || 320, window.innerHeight - 240, 560)
-    const size = Math.max(280, Math.floor(avail))
-    this.size = size
-    this.dpr = window.devicePixelRatio || 1
-    this.$canvas.width = size * this.dpr
-    this.$canvas.height = size * this.dpr
-    this.$canvas.style.width = size + 'px'
-    this.$canvas.style.height = size + 'px'
-    this.pad = Math.round(size * 0.075)
-    this.cell = (size - this.pad * 2) / (BOARD_SIZE - 1)
-    this.stoneR = this.cell * 0.44
-    this._drawBoard()
-  }
-
-  _renderGame() {
-    if (!this.$game || !this.view) return
+    if (this.$boardWrap.hidden) {
+      this.$roomRoot.classList.remove('is-waiting')
+      this.$stage.hidden = true
+      this.$boardWrap.hidden = false
+      this.$statusRow.hidden = false
+      this.$players.hidden = false
+      // 棋盘区从 hidden 变为可见：量取真实尺寸重建木纹与画布
+      this.ui._resize()
+    }
+    this.ui.syncFromOnline()
     this._renderPlayersStrip()
-    this._renderFoot()
-    this._drawBoard()
-    if (this.results) this._renderSettlement()
   }
 
   _renderPlayersStrip() {
@@ -425,7 +493,7 @@ export default class GomokuRemote {
     const colorName = c => (c === BLACK ? '⚫ 黑棋' : '⚪ 白棋')
     const strip = seats
       .map(s => {
-        const color = this.view.seatColor ? this.view.seatColor[s.absSeat] : EMPTY
+        const color = this.view.seatColor ? this.view.seatColor[s.absSeat] : null
         const turn = this.view.phase === 'play' && this.view.seatColor && this.view.seatColor[s.absSeat] === this.view.turn
         const cls = 'gkr-pl' + (s.absSeat === meta.mySeat ? ' is-me' : '') + (turn ? ' is-turn' : '')
         const score = this.room && this.room.scores ? this.room.scores[s.absSeat] : null
@@ -442,237 +510,24 @@ export default class GomokuRemote {
         )
       })
       .join('')
-    this.$players.innerHTML = strip + '<div class="gkr-round">第 ' + (meta.round || 1) + ' 局 · ' + (this.view.moves || 0) + ' 手 · 你执' + (myColor === BLACK ? '黑' : '白') + '</div>'
-  }
-
-  _renderFoot() {
-    if (!this.$foot || !this.view) return
-    if (this.view.phase !== 'play') {
-      this._setStatus('本局结束', false)
-      this.$foot.innerHTML = ''
-      return
-    }
-    const myTurn = (this.view.legal || []).some(o => o.type === 'move')
-    const turnColor = this.view.turn === BLACK ? '黑' : '白'
-    this._setStatus(myTurn ? '轮到你落子（' + turnColor + '）' : '对手思考中', !myTurn)
-    this.$foot.innerHTML = myTurn ? '<div class="gkr-hint">点棋盘交叉点落子，超时由 AI 代下</div>' : ''
-  }
-
-  _setStatus(text, thinking) {
-    this.$status.hidden = false
-    this.$status.textContent = text
-    this.$status.classList.toggle('is-thinking', !!thinking)
+    this.$players.innerHTML = strip + '<div class="gkr-round">第 ' + (meta.round || 1) + ' 局 · 你执' + (myColor === BLACK ? '黑' : '白') + '</div>'
   }
 
   _tick() {
-    if (!this.view || !this.view.meta || this.view.phase !== 'play') return
-    const dl = this.view.meta.deadlineAt
-    if (!dl) return
-    const left = Math.max(0, Math.ceil((dl - Date.now()) / 1000))
-    const myTurn = (this.view.legal || []).some(o => o.type === 'move')
-    const base = myTurn ? '轮到你落子' : '对手思考中'
-    this._setStatus(base + ' · ' + left + 's', !myTurn)
+    if (!this.ui || !this.view || this.view.phase !== 'play') return
+    if (this.view.meta && this.view.meta.deadlineAt) this.ui.refreshStatus()
   }
 
-  // ---------- 棋盘绘制（与单机同款木质风格） ----------
+  // ---------- 结算（复用单机 gk-result 浮层，内容按联机口径填充） ----------
 
-  _boardPoint(ev) {
-    const rect = this.$canvas.getBoundingClientRect()
-    const px = ev.clientX - rect.left
-    const py = ev.clientY - rect.top
-    const x = Math.round((px - this.pad) / this.cell)
-    const y = Math.round((py - this.pad) / this.cell)
-    if (x < 0 || x >= BOARD_SIZE || y < 0 || y >= BOARD_SIZE) return null
-    const cx = this.pad + x * this.cell
-    const cy = this.pad + y * this.cell
-    if (Math.abs(px - cx) > this.cell * 0.45 || Math.abs(py - cy) > this.cell * 0.45) return null
-    return { x, y }
+  _hideSettle() {
+    if (!this.$result) return
+    this.$result.classList.remove('show')
+    this.$result.hidden = true
   }
-
-  _onBoardClick(ev) {
-    if (!this.view || this.view.phase !== 'play') return
-    if (!(this.view.legal || []).some(o => o.type === 'move')) return
-    const pt = this._boardPoint(ev)
-    if (!pt) return
-    if (this.view.board[pt.y][pt.x] !== EMPTY) return
-    const meta = this.view.meta || {}
-    this.net.sendAction({
-      gameId: meta.gameId,
-      windowId: meta.windowId,
-      action: { type: 'move', x: pt.x, y: pt.y }
-    })
-  }
-
-  _onBoardHover(ev) {
-    if (!this.view || this.view.phase !== 'play') return
-    if (!(this.view.legal || []).some(o => o.type === 'move')) {
-      if (this.hover) {
-        this.hover = null
-        this._drawBoard()
-      }
-      return
-    }
-    const pt = this._boardPoint(ev)
-    const next = pt && this.view.board[pt.y][pt.x] === EMPTY ? pt : null
-    if ((next && !this.hover) || (!next && this.hover) || (next && this.hover && (next.x !== this.hover.x || next.y !== this.hover.y))) {
-      this.hover = next
-      this._drawBoard()
-    }
-  }
-
-  _drawBoard() {
-    if (!this.ctx || !this.view) {
-      // 等待室还没视图时不画
-      if (this.ctx && !this.view) this._drawEmptyBoard()
-      return
-    }
-    const { ctx, size, pad, cell } = this
-    const board = this.view.board
-    ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0)
-    ctx.clearRect(0, 0, size, size)
-
-    // 外框 + 木板
-    const frame = ctx.createLinearGradient(0, 0, size, size)
-    frame.addColorStop(0, '#8a5a2b')
-    frame.addColorStop(0.5, '#6f4419')
-    frame.addColorStop(1, '#54310f')
-    ctx.fillStyle = frame
-    this._roundRect(0, 0, size, size, size * 0.03)
-    ctx.fill()
-    const inset = pad * 0.55
-    const wood = ctx.createLinearGradient(inset, inset, size - inset, size - inset)
-    wood.addColorStop(0, '#f0c98c')
-    wood.addColorStop(0.5, '#e2af6a')
-    wood.addColorStop(1, '#d29a52')
-    ctx.fillStyle = wood
-    this._roundRect(inset, inset, size - inset * 2, size - inset * 2, size * 0.02)
-    ctx.fill()
-
-    // 网格
-    ctx.strokeStyle = 'rgba(58, 34, 8, 0.78)'
-    ctx.lineWidth = 1
-    ctx.beginPath()
-    for (let i = 0; i < BOARD_SIZE; i++) {
-      const p = pad + i * cell
-      ctx.moveTo(pad, p)
-      ctx.lineTo(size - pad, p)
-      ctx.moveTo(p, pad)
-      ctx.lineTo(p, size - pad)
-    }
-    ctx.stroke()
-    ctx.strokeStyle = 'rgba(58, 34, 8, 0.95)'
-    ctx.lineWidth = 2
-    ctx.strokeRect(pad, pad, size - pad * 2, size - pad * 2)
-
-    // 星位
-    ctx.fillStyle = 'rgba(58, 34, 8, 0.9)'
-    for (const [sx, sy] of STAR_POINTS) {
-      ctx.beginPath()
-      ctx.arc(pad + sx * cell, pad + sy * cell, Math.max(3, cell * 0.1), 0, Math.PI * 2)
-      ctx.fill()
-    }
-
-    // 悬停预览
-    if (this.hover && board[this.hover.y][this.hover.x] === EMPTY) {
-      this._drawStone(this.hover.x, this.hover.y, this.view.myColor, 0.35)
-    }
-
-    // 棋子
-    for (let y = 0; y < BOARD_SIZE; y++) {
-      for (let x = 0; x < BOARD_SIZE; x++) {
-        if (board[y][x] !== EMPTY) this._drawStone(x, y, board[y][x], 1)
-      }
-    }
-
-    // 最后一手
-    const last = this.view.lastMove
-    if (last) {
-      ctx.beginPath()
-      ctx.arc(pad + last.x * cell, pad + last.y * cell, Math.max(2.5, cell * 0.09), 0, Math.PI * 2)
-      ctx.fillStyle = '#ff4d2d'
-      ctx.fill()
-      ctx.lineWidth = 1.5
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)'
-      ctx.stroke()
-    }
-
-    // 胜利连线
-    const line = this.view.winLine
-    if (line && line.length) {
-      const a = line[0]
-      const b = line[line.length - 1]
-      ctx.save()
-      ctx.lineCap = 'round'
-      ctx.strokeStyle = 'rgba(255, 77, 45, 0.85)'
-      ctx.lineWidth = Math.max(3, cell * 0.12)
-      ctx.shadowColor = 'rgba(255, 77, 45, 0.8)'
-      ctx.shadowBlur = 14
-      ctx.beginPath()
-      ctx.moveTo(pad + a[0] * cell, pad + a[1] * cell)
-      ctx.lineTo(pad + b[0] * cell, pad + b[1] * cell)
-      ctx.stroke()
-      ctx.restore()
-    }
-  }
-
-  _drawEmptyBoard() {
-    const { ctx, size } = this
-    ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0)
-    ctx.clearRect(0, 0, size, size)
-  }
-
-  _drawStone(x, y, color, alpha) {
-    const { ctx, pad, cell, stoneR } = this
-    const cx = pad + x * cell
-    const cy = pad + y * cell
-    const r = stoneR
-    ctx.save()
-    ctx.globalAlpha = alpha
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.4)'
-    ctx.shadowBlur = r * 0.35
-    ctx.shadowOffsetY = r * 0.14
-    const grad = ctx.createRadialGradient(cx - r * 0.35, cy - r * 0.4, r * 0.1, cx, cy, r)
-    if (color === BLACK) {
-      grad.addColorStop(0, '#777')
-      grad.addColorStop(0.35, '#333')
-      grad.addColorStop(1, '#000')
-    } else {
-      grad.addColorStop(0, '#fff')
-      grad.addColorStop(0.6, '#efefef')
-      grad.addColorStop(1, '#c6c6c6')
-    }
-    ctx.fillStyle = grad
-    ctx.beginPath()
-    ctx.arc(cx, cy, r, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.restore()
-    if (color === WHITE) {
-      ctx.save()
-      ctx.globalAlpha = alpha
-      ctx.beginPath()
-      ctx.arc(cx, cy, r, 0, Math.PI * 2)
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.18)'
-      ctx.lineWidth = 1
-      ctx.stroke()
-      ctx.restore()
-    }
-  }
-
-  _roundRect(x, y, w, h, r) {
-    const { ctx } = this
-    ctx.beginPath()
-    ctx.moveTo(x + r, y)
-    ctx.arcTo(x + w, y, x + w, y + h, r)
-    ctx.arcTo(x + w, y + h, x, y + h, r)
-    ctx.arcTo(x, y + h, x, y, r)
-    ctx.arcTo(x, y, x + w, y, r)
-    ctx.closePath()
-  }
-
-  // ---------- 结算 ----------
 
   _renderSettlement() {
-    if (!this.$settle || !this.results) return
+    if (!this.$result || !this.results) return
     const res = this.results.results || {}
     const scores = this.results.scores || (this.room && this.room.scores) || []
     const bankrupt = this.results.bankruptSeats || []
@@ -685,17 +540,19 @@ export default class GomokuRemote {
       title = '和棋'
       cls = 'is-draw'
     } else if (res.winner === mySeat) {
-      title = '你赢了 +' + Math.abs(mine.delta || 0)
+      title = '🎉 你赢了 +' + Math.abs(mine.delta || 0)
       cls = 'is-win'
     } else {
       title = '你输了 ' + (mine.delta || 0)
       cls = 'is-loss'
     }
 
-    const scoreLine = (this.view && this.view.meta ? this.view.meta.seats : [])
+    const seats = (this.view && this.view.meta ? this.view.meta.seats : (this.room && this.room.seats) || [])
+    const scoreLine = seats
       .map(s => {
-        const sc = scores[s.absSeat]
-        const bust = bankrupt.indexOf(s.absSeat) >= 0
+        const abs = s.absSeat != null ? s.absSeat : s.seatIndex
+        const sc = scores[abs]
+        const bust = bankrupt.indexOf(abs) >= 0
         return (
           '<span class="gkr-settle-score' + (bust ? ' is-bust' : '') + '">' +
           esc(s.displayName || (s.isAi ? 'AI' : '棋友')) + '：' + (sc == null ? '-' : sc) +
@@ -718,14 +575,14 @@ export default class GomokuRemote {
         '<button type="button" class="gkr-btn" data-gkr="leave">退出房间</button>'
     }
 
-    this.$settle.hidden = false
-    this.$settle.innerHTML =
-      '<div class="gkr-settle-card">' +
-      '<div class="gkr-settle-title ' + cls + '">' + title + '</div>' +
-      '<div class="gkr-settle-sub">第 ' + (this.results.round || 1) + ' 局 · 共 ' + (res.moves || 0) + ' 手</div>' +
-      '<div class="gkr-settle-scores">' + scoreLine + '</div>' +
-      '<div class="gkr-settle-btns">' + btns + '</div>' +
-      '</div>'
+    this.$result.querySelector('[data-gk-result-title]').textContent = title
+    this.$result.querySelector('[data-gk-result-title]').className = 'gk-result-title ' + cls
+    this.$result.querySelector('[data-gk-result-sub]').textContent =
+      '第 ' + (this.results.round || 1) + ' 局 · 共 ' + (res.moves || 0) + ' 手'
+    this.$result.querySelector('[data-gkr-settle-scores]').innerHTML = scoreLine
+    this.$result.querySelector('[data-gkr-settle-btns]').innerHTML = btns
+    this.$result.hidden = false
+    requestAnimationFrame(() => this.$result && this.$result.classList.add('show'))
   }
 
   // ---------- 语音 ----------

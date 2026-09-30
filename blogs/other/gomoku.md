@@ -335,7 +335,7 @@ meta:
 /* ============ 全屏沉浸模式（默认开启，占满整个屏幕，麻将同款方案） ============ */
 /* 主题容器 .theme-reco-content 带 transform，fixed 会被限制在其内部，
    因此全屏期间 JS 会把根节点临时移挂到 body 下，退出时还原。 */
-#gomokuGame.gk-fullscreen {
+.gk-root.gk-fullscreen {
   position: fixed;
   inset: 0;
   z-index: 200;
@@ -349,7 +349,7 @@ meta:
   flex-direction: column;
   box-sizing: border-box;
 }
-#gomokuGame.gk-fullscreen .gk-panel {
+.gk-root.gk-fullscreen .gk-panel {
   flex: 1 1 auto;
   min-height: 0;
   display: flex;
@@ -359,19 +359,19 @@ meta:
   margin: 0 auto;
   box-sizing: border-box;
 }
-#gomokuGame.gk-fullscreen .gk-topbar,
-#gomokuGame.gk-fullscreen .gk-status-row,
-#gomokuGame.gk-fullscreen .gk-controls,
-#gomokuGame.gk-fullscreen .gk-tips { flex: 0 0 auto; }
+.gk-root.gk-fullscreen .gk-topbar,
+.gk-root.gk-fullscreen .gk-status-row,
+.gk-root.gk-fullscreen .gk-controls,
+.gk-root.gk-fullscreen .gk-tips { flex: 0 0 auto; }
 /* 棋盘区吃满剩余空间；canvas 绝对定位居中，尺寸由 JS 按可用宽高中的小值计算，
    避免 canvas 撑开容器造成尺寸循环依赖 */
-#gomokuGame.gk-fullscreen .gk-board-wrap {
+.gk-root.gk-fullscreen .gk-board-wrap {
   flex: 1 1 auto;
   min-height: 0;
   width: 100%;
   position: relative;
 }
-#gomokuGame.gk-fullscreen .gk-board-wrap canvas {
+.gk-root.gk-fullscreen .gk-board-wrap canvas {
   position: absolute;
   left: 50%;
   top: 50%;
@@ -381,6 +381,12 @@ body.gk-lock { overflow: hidden; }
 /* 游戏全屏期间隐藏全局 AI 客服悬浮按钮与面板（退出游戏自动恢复） */
 body.gk-lock #cw-fab,
 body.gk-lock #cw-panel { display: none !important; }
+
+/* ============ 联机房间（remote.js 复用本骨架） ============ */
+/* 等待室容器：占满面板剩余高度，内容超高可滚动 */
+.gk-root.gk-fullscreen .gkr-stage { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+.gk-root.gk-fullscreen .gkr-players { flex: 0 0 auto; }
+.gkr-room-code { font-size: 13px; color: #aeb6c9; white-space: nowrap; }
 
 /* ============ 底部提示 ============ */
 .gk-tips {
@@ -402,63 +408,69 @@ body.gk-lock #cw-panel { display: none !important; }
   .gk-result-card { padding: 20px 24px; }
   .gk-result-title { font-size: 22px; }
   /* 全屏时收窄面板横向 padding，把宽度尽量让给棋盘 */
-  #gomokuGame.gk-fullscreen .gk-panel { padding: 12px 6px 10px; border-radius: 14px; }
+  .gk-root.gk-fullscreen .gk-panel { padding: 12px 6px 10px; border-radius: 14px; }
   /* 竖屏全屏：隐藏设置类控件（标题/难度/战绩/提示），只留手数、状态条与操作按钮，
      需要改难度/先后手设置时退出全屏在文章流里改 */
-  #gomokuGame.gk-fullscreen .gk-title,
-  #gomokuGame.gk-fullscreen .gk-diff,
-  #gomokuGame.gk-fullscreen .gk-stats,
-  #gomokuGame.gk-fullscreen .gk-tips { display: none; }
-  #gomokuGame.gk-fullscreen .gk-topbar { justify-content: space-between; margin-bottom: 8px; }
-  #gomokuGame.gk-fullscreen .gk-title-row { width: auto; margin-right: 0; }
-  #gomokuGame.gk-fullscreen .gk-status-row { margin-bottom: 8px; }
+  .gk-root.gk-fullscreen .gk-title,
+  .gk-root.gk-fullscreen .gk-diff,
+  .gk-root.gk-fullscreen .gk-stats,
+  .gk-root.gk-fullscreen .gk-tips { display: none; }
+  .gk-root.gk-fullscreen .gk-topbar { justify-content: space-between; margin-bottom: 8px; }
+  .gk-root.gk-fullscreen .gk-title-row { width: auto; margin-right: 0; }
+  .gk-root.gk-fullscreen .gk-status-row { margin-bottom: 8px; }
   /* 操作按钮一排靠底边、紧凑不折行 */
-  #gomokuGame.gk-fullscreen .gk-controls { flex-wrap: nowrap; gap: 6px; margin-top: 10px; }
-  #gomokuGame.gk-fullscreen .gk-controls .gk-btn { min-height: 34px; padding: 6px 10px; font-size: 12.5px; }
-  #gomokuGame.gk-fullscreen .gk-first button { padding: 5px 9px; font-size: 12px; }
-  #gomokuGame.gk-fullscreen .gk-sound { width: 40px; }
-  #gomokuGame.gk-fullscreen .gk-fs-toggle { width: 36px; min-height: 32px; }
+  .gk-root.gk-fullscreen .gk-controls { flex-wrap: nowrap; gap: 6px; margin-top: 10px; }
+  .gk-root.gk-fullscreen .gk-controls .gk-btn { min-height: 34px; padding: 6px 10px; font-size: 12.5px; }
+  .gk-root.gk-fullscreen .gk-first button { padding: 5px 9px; font-size: 12px; }
+  .gk-root.gk-fullscreen .gk-sound { width: 40px; }
+  .gk-root.gk-fullscreen .gk-fs-toggle { width: 36px; min-height: 32px; }
 }
 
 /* ============ 横屏手机全屏：棋盘居左占满高度，控制按钮竖排靠右 ============ */
 @media (max-height: 540px) and (orientation: landscape) {
-  #gomokuGame.gk-fullscreen {
+  .gk-root.gk-fullscreen {
     padding: max(6px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
   }
-  #gomokuGame.gk-fullscreen .gk-panel {
+  .gk-root.gk-fullscreen .gk-panel {
     display: grid;
     /* 右列固定宽度：状态条文本长度变化（轮到你落子/AI 思考中）不再
-       改变列宽，避免棋盘区尺寸跟着跳、canvas 反复重建闪动 */
+       改变列宽，避免棋盘区尺寸跟着跳、canvas 反复重建闪动。
+       第 3 行留给联机玩家条（单机无此元素，auto 行塌缩为 0，布局不变） */
     grid-template-columns: minmax(0, 1fr) 150px;
-    grid-template-rows: auto auto 1fr;
+    grid-template-rows: auto auto auto 1fr;
     column-gap: 10px;
     max-width: none;
     padding: 8px 10px;
     border-radius: 14px;
   }
-  #gomokuGame.gk-fullscreen .gk-board-wrap { grid-row: 1 / 4; grid-column: 1; }
-  #gomokuGame.gk-fullscreen .gk-topbar { grid-column: 2; grid-row: 1; margin: 0 0 6px; justify-content: space-between; }
-  #gomokuGame.gk-fullscreen .gk-title-row { width: auto; margin-right: 0; }
-  #gomokuGame.gk-fullscreen .gk-title,
-  #gomokuGame.gk-fullscreen .gk-diff,
-  #gomokuGame.gk-fullscreen .gk-stats,
-  #gomokuGame.gk-fullscreen .gk-tips { display: none; }
-  #gomokuGame.gk-fullscreen .gk-status-row { grid-column: 2; grid-row: 2; margin: 0 0 8px; }
-  #gomokuGame.gk-fullscreen .gk-status { min-width: 0; padding: 5px 12px; }
-  #gomokuGame.gk-fullscreen .gk-controls {
+  .gk-root.gk-fullscreen .gk-board-wrap { grid-row: 1 / 5; grid-column: 1; }
+  .gk-root.gk-fullscreen .gk-topbar { grid-column: 2; grid-row: 1; margin: 0 0 6px; justify-content: space-between; }
+  .gk-root.gk-fullscreen .gk-title-row { width: auto; margin-right: 0; }
+  .gk-root.gk-fullscreen .gk-title,
+  .gk-root.gk-fullscreen .gk-diff,
+  .gk-root.gk-fullscreen .gk-stats,
+  .gk-root.gk-fullscreen .gk-tips { display: none; }
+  .gk-root.gk-fullscreen .gk-status-row { grid-column: 2; grid-row: 2; margin: 0 0 8px; }
+  .gk-root.gk-fullscreen .gk-status { min-width: 0; padding: 5px 12px; }
+  .gk-root.gk-fullscreen .gk-controls {
     grid-column: 2;
-    grid-row: 3;
+    grid-row: 4;
     align-self: start;
     flex-direction: column;
     align-items: stretch;
     gap: 6px;
     margin: 0;
   }
-  #gomokuGame.gk-fullscreen .gk-controls .gk-btn { min-height: 34px; padding: 6px 10px; font-size: 12.5px; }
-  #gomokuGame.gk-fullscreen .gk-first { justify-content: center; }
-  #gomokuGame.gk-fullscreen .gk-first button { padding: 5px 8px; font-size: 12px; }
-  #gomokuGame.gk-fullscreen .gk-sound { width: auto; }
-  #gomokuGame.gk-fullscreen .gk-fs-toggle { width: 36px; min-height: 32px; }
+  /* 联机：玩家条归右列第 3 行 */
+  .gk-root.gk-fullscreen .gkr-players { grid-column: 2; grid-row: 3; margin: 0 0 8px; gap: 4px; }
+  /* 联机等待室：顶栏横跨整行，等待室占满顶栏下方（避免与右列按钮重叠） */
+  .gk-root.gk-fullscreen.is-waiting .gk-topbar { grid-column: 1 / 3; grid-row: 1; }
+  .gk-root.gk-fullscreen.is-waiting .gkr-stage { grid-column: 1 / 3; grid-row: 2 / 5; }
+  .gk-root.gk-fullscreen .gk-controls .gk-btn { min-height: 34px; padding: 6px 10px; font-size: 12.5px; }
+  .gk-root.gk-fullscreen .gk-first { justify-content: center; }
+  .gk-root.gk-fullscreen .gk-first button { padding: 5px 8px; font-size: 12px; }
+  .gk-root.gk-fullscreen .gk-sound { width: auto; }
+  .gk-root.gk-fullscreen .gk-fs-toggle { width: 36px; min-height: 32px; }
 }
 </style>
 

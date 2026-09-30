@@ -20,8 +20,19 @@ function boardPoint(file, rank, side) {
 }
 
 export default class XiangqiUI {
-  constructor(root) {
+  /**
+   * @param {HTMLElement} root 页面骨架（结构与 xiangqi.md 一致）
+   * @param {Object} [opts]
+   * @param {Object} [opts.online] 联机适配器：提供后 UI 进入联机模式——
+   *   棋盘 / 状态全部来自适配器，走子只发意图（服务端裁决），本地不跑 AI：
+   *     - getView() → { board, mySide, currentSide, lastMove, moves, canMove, over, winner, inCheck }
+   *     - tryMove({ fromX, fromY, toX, toY }) 走子意图
+   *     - statusText(view) → { text, thinking, check } 状态条文案（含倒计时）
+   *   状态变化后由外部调用 syncFromOnline() 触发重绘。
+   */
+  constructor(root, opts) {
     this.root = root
+    this.online = (opts && opts.online) || null
     this.board = createInitialBoard()
     this.mode = 'match'
     this.playerSide = RED
@@ -42,7 +53,8 @@ export default class XiangqiUI {
     this._placeholder = null
     this._expanded = false
     this._destroyed = false
-    this.musicEnabled = true
+    // 联机默认关 BGM（避免盖过语音聊天），用户可手动开；单机保持默认开
+    this.musicEnabled = !this.online
     this.musicStarted = false
     this.soundEnabled = true
     this.audioContext = null
@@ -292,6 +304,32 @@ export default class XiangqiUI {
   }
 
   chooseSquare(x, y) {
+    // 联机模式：只发走子意图，棋盘等服务端视图回来再变（服务端是权威）。
+    // 选中高亮 / 合法落点用本地引擎计算（与服务端同一套规则）。
+    if (this.online) {
+      const v = this.online.getView()
+      if (v.over || !v.canMove) return
+      const piece = this.board[y] && this.board[y][x]
+      if (this.selected) {
+        const move = this.legalFrom.find((item) => item.toX === x && item.toY === y)
+        if (move) {
+          this.online.tryMove({ fromX: move.fromX, fromY: move.fromY, toX: move.toX, toY: move.toY })
+          this.selected = null
+          this.legalFrom = []
+          this._renderOnline()
+          return
+        }
+      }
+      if (piece && piece.side === v.mySide) {
+        this.selected = { x, y }
+        this.legalFrom = getMovesFrom(this.board, x, y, v.mySide)
+      } else {
+        this.selected = null
+        this.legalFrom = []
+      }
+      this._renderOnline()
+      return
+    }
     if (this.phase !== 'playing' || this.thinking || this.currentSide !== this.playerSide) return
     const piece = this.board[y] && this.board[y][x]
     if (this.selected) {
@@ -628,6 +666,7 @@ export default class XiangqiUI {
 
   render() {
     if (this._destroyed) return
+    if (this.online) return this._renderOnline()
     this.boardEl.innerHTML = this._boardMarkup()
     this.animatingMove = null
     this.captureAnimation = null
@@ -804,6 +843,75 @@ export default class XiangqiUI {
       <g class="xq-board-pieces">${pieceGroups.join('')}</g>
       </g>
     </svg>`
+  }
+
+  // ---------------- 联机模式 ----------------
+
+  /**
+   * 联机：服务端新视图到达后由 remote 调用。
+   * diff 出新着 → 补落子动画 + 音效；然后统一重绘。
+   */
+  syncFromOnline() {
+    if (!this.online) return
+    const v = this.online.getView()
+    const lm = v.lastMove
+    const key = lm ? `${v.moves}:${lm.fromX},${lm.fromY}>${lm.toX},${lm.toY}` : 'none'
+    if (lm && key !== this._lastSyncKey) {
+      this._lastSyncKey = key
+      // 吃子判定用同步前的旧棋盘（落点上有无棋子）
+      const captured = this.board && this.board[lm.toY] && this.board[lm.toY][lm.toX]
+      this.board = v.board
+      this.lastMove = { ...lm }
+      const fromPoint = boardPoint(lm.fromX, lm.fromY, v.mySide)
+      const toPoint = boardPoint(lm.toX, lm.toY, v.mySide)
+      const frame = this.boardEl.getBoundingClientRect()
+      // 与单机 play() 同一坐标系：viewBox 恒为 540x620
+      this.animatingMove = {
+        x: lm.toX,
+        y: lm.toY,
+        dx: (fromPoint.x - toPoint.x) * frame.width / 540,
+        dy: (fromPoint.y - toPoint.y) * frame.height / 620
+      }
+      this.captureAnimation = captured ? { x: lm.toX, y: lm.toY } : null
+      this.playMoveSound(Boolean(captured))
+      // 新着落地后原选中态失效
+      this.selected = null
+      this.legalFrom = []
+    } else {
+      this.board = v.board
+      this.lastMove = lm ? { ...lm } : null
+    }
+    this.playerSide = v.mySide
+    this.currentSide = v.currentSide
+    this.phase = v.over ? 'over' : 'playing'
+    this.winner = v.winner || null
+    this.hintMove = null
+    this.thinking = false
+    this._renderOnline()
+  }
+
+  /** 联机：状态条文案（倒计时等）定时刷新，不重建棋盘 */
+  refreshStatus() {
+    if (!this.online || this._destroyed) return
+    const s = this.online.statusText(this.online.getView()) || {}
+    this.statusEl.classList.toggle('is-thinking', !!s.thinking)
+    this.statusEl.classList.toggle('is-check', !!s.check)
+    this.statusEl.textContent = s.text || ''
+  }
+
+  _renderOnline() {
+    if (this._destroyed) return
+    this.boardEl.innerHTML = this._boardMarkup()
+    this.animatingMove = null
+    this.captureAnimation = null
+    const v = this.online.getView()
+    const s = this.online.statusText(v) || {}
+    this.statusEl.classList.toggle('is-thinking', !!s.thinking)
+    this.statusEl.classList.toggle('is-check', !!s.check)
+    this.statusEl.classList.remove('is-puzzle-error')
+    this.statusEl.textContent = s.text || ''
+    if (this.moveCountEl) this.moveCountEl.textContent = `${v.moves || 0} 手`
+    this.syncAudioControls()
   }
 
   destroy() {

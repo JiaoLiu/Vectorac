@@ -96,6 +96,25 @@ export function createServer({ logger } = {}) {
     }
   })
 
+  // 主动退出（无需 WS）：同一浏览器凭据只有一份，建房 / 加入新房间前
+  // 先凭 resumeToken 退掉旧房，避免旧座位挂着等 TTL（占房位、占列表）。
+  // 幂等：token 失效 / 房间已销毁 / 已离开都返回 ok。
+  app.post('/api/rooms/leave', async (req, res) => {
+    try {
+      const { resumeToken } = req.body || {}
+      const session = resumeToken ? sessions.resolve(resumeToken) : null
+      if (session) {
+        const room = manager.getRoom(session.roomId)
+        if (room && room.status !== ROOM_STATUS.DESTROYED) {
+          await room.leave(session.playerId, 'LEAVE_ROOM')
+        }
+      }
+      res.json({ ok: true, data: { left: !!session } })
+    } catch (err) {
+      sendHttpError(res, err, log, 'leave-room')
+    }
+  })
+
   // 按房号查看房间（等待室直接刷新 / 邀请链接进入）
   app.get('/api/rooms/:roomCode', (req, res) => {
     const room = manager.getRoomByCode(normalizeRoomCode(req.params.roomCode))

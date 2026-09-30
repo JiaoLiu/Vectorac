@@ -1,13 +1,13 @@
 // ============================================================
 // 中国象棋联机房间（xiangqi/remote.js）
 // ------------------------------------------------------------
-// 把通用联机服务（房间 / 座位 / 行动窗口 / 多局积分）渲染成象棋体验：
-//   等待室（座位 / AI / 规则 / 开始）→ 对局（木质棋盘 + 选中高亮 + 将军提示
-//   + 倒计时）→ 结算（胜负 ±10、多局累计、破产）→ 全员准备自动开下一局（换先）。
+// 与单机共用同一套棋盘 UI（xiangqi/ui.js 的 online 适配器模式）：
+//   房间骨架直接用 .xq-root 结构（顶栏 / 棋盘卡 / 状态栏 / 结算浮层），
+//   XiangqiUI 负责全屏接管、木纹 SVG 棋盘、选中高亮、将军警示、
+//   落子动画与音效，横屏布局与单机完全一致；本类只负责：
+//   等待室（座位 / AI / 规则 / 开始）→ 视图适配（服务端权威，本地只发
+//   走子意图）→ 结算（±10、多局累计、破产）→ 全员准备自动开下一局。
 // 网络层复用 mahjong/multiplayer/net-client.js（HTTP + WS + 自动重连）。
-// 服务端是权威：本地只发意图（move），棋盘完全按 GAME_STATE_CHANGED 视图绘制；
-// 执黑时棋盘自动翻转（自己一方永远在下方）。
-// 样式复用 gamehall.md 里的 gkr-* 类（与五子棋联机房间同款外观）。
 // ============================================================
 
 import {
@@ -25,33 +25,14 @@ import {
 } from '../gamehall/controls.js'
 import {
   CHAT_PHRASES,
-  enterFullscreen,
-  exitFullscreen,
   speakPhrase,
   chatDockHtml,
   bindChatDock
 } from '../gamehall/chatkit.js'
-import { RED, BLACK, FILES, RANKS, PIECE_LABELS } from './engine.mjs'
+import XiangqiUI from './ui.js'
+import { RED, BLACK, createInitialBoard } from './engine.mjs'
 
-// 炮位 / 兵位的小角标（传统棋盘花符）
-const STAR_MARKS = [
-  [1, 2],
-  [7, 2],
-  [0, 3],
-  [2, 3],
-  [4, 3],
-  [6, 3],
-  [8, 3],
-  [1, 7],
-  [7, 7],
-  [0, 6],
-  [2, 6],
-  [4, 6],
-  [6, 6],
-  [8, 6]
-]
-
-const PIECE_FONT = '"Kaiti SC", "STKaiti", "KaiTi", "Noto Serif SC", serif'
+const SIDE_LABEL = { red: '红方', black: '黑方' }
 
 function esc(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({
@@ -81,11 +62,10 @@ export default class XiangqiRemote {
 
     this.view = null // 最新 GAME_STATE_CHANGED（自己座位视角）
     this.results = null // 最近一局的结算（ROOM_UPDATED 口径，含 scores）
-    this.selected = null // 选中的己方棋子 {x,y}（逻辑坐标）
-    this.status = 'open'
     this.destroyed = false
     this.readySent = false
 
+    this.ui = null // XiangqiUI（online 模式）：全屏 / 棋盘 / 动画 / 音效
     this._unsub = this.net.subscribe(msg => this._onEvent(msg))
     this._tickTimer = null
     this._recorder = null
@@ -94,8 +74,10 @@ export default class XiangqiRemote {
   }
 
   mount() {
-    enterFullscreen(this.root)
     this._renderShell()
+    // 单机 UI 以联机适配器挂载：构造函数内 enterFullscreen 把 xq-root
+    // 移挂 body，等待室起即全屏；对局区在开赛前保持 hidden
+    this.ui = new XiangqiUI(this.$roomRoot, { online: this._makeOnlineAdapter() })
     this._renderWaiting()
     this._tickTimer = setInterval(() => this._tick(), 500)
     // 已进入房间的对局（刷新重连）：快照随后由服务器推送
@@ -107,11 +89,85 @@ export default class XiangqiRemote {
     this.destroyed = true
     if (this._unsub) this._unsub()
     if (this._tickTimer) clearInterval(this._tickTimer)
-    if (this._onResize) window.removeEventListener('resize', this._onResize)
     this._stopRecording(true)
     if (this._chat) this._chat.destroy()
-    exitFullscreen(this.root)
+    // ui.destroy 内部 exitFullscreen 并把 xq-root 移回原位
+    if (this.ui) {
+      this.ui.destroy()
+      this.ui = null
+    }
     this.root.innerHTML = ''
+  }
+
+  // ---------- 联机适配器（XiangqiUI 的数据源） ----------
+
+  _makeOnlineAdapter() {
+    return {
+      getView: () => this._onlineView(),
+      tryMove: mv => {
+        const meta = (this.view && this.view.meta) || {}
+        this.net.sendAction({
+          gameId: meta.gameId,
+          windowId: meta.windowId,
+          action: { type: 'move', fromX: mv.fromX, fromY: mv.fromY, toX: mv.toX, toY: mv.toY }
+        })
+      },
+      statusText: v => this._statusText(v)
+    }
+  }
+
+  /** 渲染层视图：把服务端 GAME_STATE_CHANGED 映射成 XiangqiUI 的契约 */
+  _onlineView() {
+    const v = this.view
+    if (!v) {
+      // 等待室 / 开局快照未到的空窗：初始棋盘（对局区此时 hidden，仅兜底）
+      if (!this._emptyBoard) this._emptyBoard = createInitialBoard()
+      return {
+        board: this._emptyBoard,
+        mySide: RED,
+        currentSide: RED,
+        lastMove: null,
+        moves: 0,
+        canMove: false,
+        over: false,
+        winner: null,
+        inCheck: null
+      }
+    }
+    return {
+      board: v.board,
+      mySide: v.myColor === BLACK ? BLACK : RED,
+      currentSide: v.turn,
+      lastMove: v.lastMove,
+      moves: v.moves || 0,
+      canMove: v.phase === 'play' && (v.legal || []).some(o => o.type === 'move'),
+      over: v.phase !== 'play',
+      winner: v.winner != null ? v.winner : null,
+      inCheck: v.inCheck != null ? v.inCheck : null
+    }
+  }
+
+  /** 状态条文案：轮次 / 倒计时 / 将军 / 对手断线托管提示 */
+  _statusText(v) {
+    if (!v || !this.view) return { text: this.room && this.room.status === 'PLAYING' ? '同步棋局中…' : '等待开局…' }
+    if (v.phase !== 'play') return { text: '本局结束' }
+    const myTurn = (v.legal || []).some(o => o.type === 'move')
+    const meta = v.meta || {}
+    let cd = ''
+    if (meta.deadlineAt) {
+      cd = ' · ' + Math.max(0, Math.ceil((meta.deadlineAt - Date.now()) / 1000)) + 's'
+    }
+    const meInCheck = v.inCheck != null && v.inCheck === v.myColor
+    let text
+    if (myTurn) {
+      text = (meInCheck ? '将军！请你应将' : '轮到你行棋') + cd
+    } else {
+      // 对手状态：断线 / 托管时给出明确提示（AI 补位不赘述）
+      const opp = (meta.seats || []).find(s => s.absSeat !== meta.mySeat)
+      const tag = opp && !opp.isAi ? (!opp.connected ? ' · 断线托管中' : (opp.autoPlay ? ' · 托管中' : '')) : ''
+      text = (v.inCheck != null ? '对方被将军，思考应将' : '对方思考中') + tag + cd
+    }
+    return { text, thinking: !myTurn, check: meInCheck }
   }
 
   // ---------- 事件 ----------
@@ -135,7 +191,7 @@ export default class XiangqiRemote {
         if (p.seats && this.room) this.room.seats = p.seats
         if (p.adminSeat != null && this.room) this.room.adminSeat = p.adminSeat
         if (this.room && this.room.status !== 'PLAYING') this._renderWaiting()
-        else this._renderPlayersStrip()
+        else this._renderSideCards()
         break
       case 'ADMIN_CHANGED':
         if (this.room) this.room.adminSeat = p.newAdminSeat
@@ -152,8 +208,8 @@ export default class XiangqiRemote {
       case 'GAME_STARTED':
         this.results = null
         this.readySent = false
-        this.selected = null
-        if (this.$settle) this.$settle.hidden = true
+        this.view = null // 旧局视图作废，等本局首个 GAME_STATE_CHANGED
+        this._hideSettle()
         if (this.room) {
           this.room.status = 'PLAYING'
           this.room.round = p.round
@@ -165,16 +221,12 @@ export default class XiangqiRemote {
         this._showGame()
         this._toast('第 ' + (p.round || 1) + ' 局开始 · ' + this._firstMoveText(p.ceremony))
         break
-      case 'GAME_STATE_CHANGED': {
-        const prevTurn = this.view && this.view.turn
+      case 'GAME_STATE_CHANGED':
         this.view = p
         if (this.room) this.room.status = 'PLAYING'
-        // 换人走子时清掉旧选中；若选中的棋子已不在（被吃/已走）也清掉
-        if (this.selected && (!this._isMyTurn() || p.turn !== prevTurn)) this.selected = null
         this._showGame()
-        this._renderGame()
+        if (this.results) this._renderSettlement()
         break
-      }
       case 'ROOM_UPDATED':
         if (this.room) {
           this.room.status = p.status
@@ -185,13 +237,12 @@ export default class XiangqiRemote {
         }
         if (p.results) {
           this.results = p
-          this.selected = null
           this._renderSettlement()
         }
         break
       case 'GAME_FINISHED':
-        // 结算展示统一走 ROOM_UPDATED（带累计积分）；这里仅兜底刷新棋盘
-        this._drawBoard()
+        // 结算展示统一走 ROOM_UPDATED（带累计积分）；这里仅兜底同步棋盘
+        if (this.ui) this.ui.syncFromOnline()
         break
       case 'VOICE_MSG':
         this._addVoiceBubble(p, false)
@@ -231,35 +282,77 @@ export default class XiangqiRemote {
     return this.room && this.room.adminSeat === seat
   }
 
-  _isMyTurn() {
-    return !!(this.view && this.view.phase === 'play' && (this.view.legal || []).some(o => o.type === 'move'))
-  }
-
-  // ---------- 视图骨架 ----------
+  // ---------- 视图骨架（与单机 xiangqi.md 同结构，复用其全屏 / 横屏样式） ----------
 
   _renderShell() {
     this.root.innerHTML =
-      '<div class="gkr-room-head">' +
-      '  <div class="gkr-room-title">中国象棋 · 房间 <b class="gkr-code">' + esc(this._roomCode()) + '</b></div>' +
-      '  <div class="gkr-head-btns">' +
-      '    <button type="button" class="gkr-btn" data-gkr="copy">复制邀请链接</button>' +
-      '    <button type="button" class="gkr-btn gkr-btn-danger" data-gkr="leave">退出房间</button>' +
+      '<div class="xq-root" data-xqr-room>' +
+      '  <div class="xq-topbar">' +
+      '    <div class="xq-brand">' +
+      '      <div class="xq-brand-mark" aria-hidden="true"><span>帅</span><i>将</i></div>' +
+      '      <div><div class="xq-kicker">联机对战 · 房间 <b class="xqr-code">' + esc(this._roomCode()) + '</b></div><h1>中国象棋</h1></div>' +
+      '    </div>' +
+      '    <div class="xq-top-actions">' +
+      '      <span class="xq-move-count" data-xq-move-count>0 手</span>' +
+      '      <button type="button" class="xq-btn xq-btn-quiet" data-xqr="copy">邀请</button>' +
+      '      <button type="button" class="xq-btn xq-btn-quiet" data-xqr="leave">退出</button>' +
+      '    </div>' +
       '  </div>' +
-      '</div>' +
-      '<div class="gkr-status-pill" data-gkr-status hidden></div>' +
-      '<div class="gkr-stage" data-gkr-stage></div>' +
+      '  <div class="xq-layout" data-xqr-layout hidden>' +
+      '    <section class="xq-board-card" aria-label="象棋对局">' +
+      '      <div class="xq-board-frame">' +
+      '        <div class="xq-board" data-xq-board></div>' +
+      '        <div class="xq-result" data-xq-result hidden>' +
+      '          <div class="xq-result-card">' +
+      '            <div class="xq-result-stamp" data-xqr-settle-stamp>对局结束</div>' +
+      '            <h2 data-xq-result-title></h2>' +
+      '            <p data-xq-result-text></p>' +
+      '            <div class="xqr-settle-scores" data-xqr-settle-scores></div>' +
+      '            <div class="xq-result-actions" data-xqr-settle-btns></div>' +
+      '          </div>' +
+      '        </div>' +
+      '      </div>' +
+      '    </section>' +
+      '    <div class="xq-side">' +
+      '      <section class="xq-match-card">' +
+      '        <div class="xq-match-title"><span>联机对弈</span><span class="xq-match-live"><i></i> 联机</span></div>' +
+      '        <div class="xq-players">' +
+      '          <div class="xq-player black-player" data-xqr-opp-card>' +
+      '            <div class="xq-player-token" data-xqr-opp-token>将</div>' +
+      '            <div><b data-xqr-opp-label>对手</b><small data-xqr-opp-state>…</small></div>' +
+      '          </div>' +
+      '          <div class="xq-vs">VS</div>' +
+      '          <div class="xq-player red-player" data-xqr-me-card>' +
+      '            <div class="xq-player-token" data-xqr-me-token>帅</div>' +
+      '            <div><b data-xqr-me-label>你</b><small data-xqr-me-state>…</small></div>' +
+      '          </div>' +
+      '        </div>' +
+      '        <div class="xq-status" data-xq-status role="status" aria-live="polite">等待开局…</div>' +
+      '        <div class="xq-audio-controls" aria-label="音频设置">' +
+      '          <button type="button" class="xq-audio-toggle" data-xq-music aria-pressed="false">♫ 背景音乐：关</button>' +
+      '          <button type="button" class="xq-audio-toggle is-on" data-xq-sound aria-pressed="true">♩ 落子音效：开</button>' +
+      '        </div>' +
+      '        <div class="xqr-round-line" data-xqr-round></div>' +
+      '      </section>' +
+      '    </div>' +
+      '  </div>' +
+      '  <div class="xqr-stage" data-xqr-stage></div>' +
       chatDockHtml() +
       '<div class="gkr-bubbles" data-gkr-bubbles></div>' +
-      '<div class="gkr-toast" data-gkr-toast hidden></div>'
+      '<div class="gkr-toast" data-gkr-toast hidden></div>' +
+      '</div>'
 
-    this.$stage = this.root.querySelector('[data-gkr-stage]')
-    this.$status = this.root.querySelector('[data-gkr-status]')
-    this.$bubbles = this.root.querySelector('[data-gkr-bubbles]')
-    this.$toast = this.root.querySelector('[data-gkr-toast]')
+    this.$roomRoot = this.root.querySelector('[data-xqr-room]')
+    this.$layout = this.$roomRoot.querySelector('[data-xqr-layout]')
+    this.$stage = this.$roomRoot.querySelector('[data-xqr-stage]')
+    this.$result = this.$roomRoot.querySelector('[data-xq-result]')
+    this.$bubbles = this.$roomRoot.querySelector('[data-gkr-bubbles]')
+    this.$toast = this.$roomRoot.querySelector('[data-gkr-toast]')
 
-    this.root.addEventListener('click', ev => this._onClick(ev))
+    // 事件委托挂在 xq-root 上：全屏时它被移挂 body，外层 root 已空
+    this.$roomRoot.addEventListener('click', ev => this._onClick(ev))
     // 聊天面板：🎤 点开 → 快捷语（普通话 TTS 播报）+ 按住说话
-    this._chat = bindChatDock(this.root.querySelector('[data-gkr-voice-dock]'), {
+    this._chat = bindChatDock(this.$roomRoot.querySelector('[data-gkr-voice-dock]'), {
       onStartRec: () => this._startRecording(),
       onStopRec: cancel => this._stopRecording(cancel),
       onPhrase: idx => this._sendPhrase(idx)
@@ -273,9 +366,9 @@ export default class XiangqiRemote {
   _onClick(ev) {
     // 分段 chips / 步进器（等待室房规，改动即生效）
     if (handleCtlClick(ev, () => this._sendRules())) return
-    const t = ev.target.closest('[data-gkr]')
+    const t = ev.target.closest('[data-xqr]')
     if (!t) return
-    const act = t.getAttribute('data-gkr')
+    const act = t.getAttribute('data-xqr')
     switch (act) {
       case 'copy':
         this._copyInvite()
@@ -295,9 +388,6 @@ export default class XiangqiRemote {
       case 'ready':
         this._toggleReady(true)
         break
-      case 'rules':
-        this._sendRules()
-        break
       case 'voice-play':
         this._playVoice(Number(t.getAttribute('data-idx')))
         break
@@ -308,6 +398,10 @@ export default class XiangqiRemote {
 
   _renderWaiting() {
     if (!this.room) return
+    // 容器归位：等待室显示，对局区收起
+    this.$stage.hidden = false
+    this.$layout.hidden = true
+
     const room = this.room
     const seats = room.seats || []
     const admin = this._isAdmin()
@@ -319,24 +413,24 @@ export default class XiangqiRemote {
       let body
       if (s.occupantType === 'HUMAN') {
         body =
-          '<div class="gkr-seat-name">' + esc(s.displayName || '棋友') +
+          '<div class="xqr-seat-name">' + esc(s.displayName || '棋友') +
           (s.isAdmin ? ' 👑' : '') + (isMe ? '（你）' : '') + '</div>' +
-          '<div class="gkr-seat-sub">' +
+          '<div class="xqr-seat-sub">' +
           (s.connected ? (s.ready ? '已准备' : (room.hasPlayed ? '未准备' : '在线')) : '断线托管中') +
           '</div>'
       } else if (s.occupantType === 'AI') {
         body =
-          '<div class="gkr-seat-name">AI 陪练' + (s.isAdmin ? ' 👑' : '') + '</div>' +
-          '<div class="gkr-seat-sub">已就绪</div>' +
-          (admin ? '<button type="button" class="gkr-btn gkr-btn-mini" data-gkr="remove-ai" data-seat="' + s.seatIndex + '">移除</button>' : '')
+          '<div class="xqr-seat-name">AI 陪练' + (s.isAdmin ? ' 👑' : '') + '</div>' +
+          '<div class="xqr-seat-sub">已就绪</div>' +
+          (admin ? '<button type="button" class="xq-btn xqr-btn-mini" data-xqr="remove-ai" data-seat="' + s.seatIndex + '">移除</button>' : '')
       } else {
         body =
-          '<div class="gkr-seat-name gkr-empty">空位</div>' +
+          '<div class="xqr-seat-name xqr-empty">空位</div>' +
           (admin
-            ? '<button type="button" class="gkr-btn gkr-btn-mini" data-gkr="add-ai" data-seat="' + s.seatIndex + '">+ 添加 AI</button>'
-            : '<div class="gkr-seat-sub">分享房号邀好友，或等房主补 AI</div>')
+            ? '<button type="button" class="xq-btn xqr-btn-mini" data-xqr="add-ai" data-seat="' + s.seatIndex + '">+ 添加 AI</button>'
+            : '<div class="xqr-seat-sub">分享房号邀好友，或等房主补 AI</div>')
       }
-      seatHtml += '<div class="gkr-seat' + (isMe ? ' is-me' : '') + '">' + body + '</div>'
+      seatHtml += '<div class="xqr-seat' + (isMe ? ' is-me' : '') + '">' + body + '</div>'
     }
 
     let actionHtml
@@ -345,27 +439,32 @@ export default class XiangqiRemote {
       const ready = me && me.ready
       const othersReady = seats.every(s => s.occupantType !== 'HUMAN' || !s.connected || s.ready)
       actionHtml =
-        '<button type="button" class="gkr-btn gkr-btn-primary" data-gkr="ready"' + (ready ? ' disabled' : '') + '>' +
+        '<button type="button" class="xq-btn xq-btn-primary" data-xqr="ready"' + (ready ? ' disabled' : '') + '>' +
         (ready ? '已准备 · 等待对手' : '准备下一局') + '</button>' +
-        (ready && !othersReady ? '<div class="gkr-hint">对方还没准备…</div>' : '')
+        (ready && !othersReady ? '<div class="xqr-hint">对方还没准备…</div>' : '')
     } else if (admin) {
       actionHtml =
-        '<button type="button" class="gkr-btn gkr-btn-primary" data-gkr="start">开始游戏</button>' +
-        '<div class="gkr-hint">空位会自动补 AI；红棋先行，每局换先</div>'
+        '<button type="button" class="xq-btn xq-btn-primary" data-xqr="start">开始游戏</button>' +
+        '<div class="xqr-hint">空位会自动补 AI；红棋先行，每局换先</div>'
     } else {
-      actionHtml = '<div class="gkr-hint">等待房主开始游戏…</div>'
+      actionHtml = '<div class="xqr-hint">等待房主开始游戏…</div>'
     }
 
     this.$stage.innerHTML =
-      '<div class="gkr-waiting">' +
-      '  <div class="gkr-seats">' + seatHtml + '</div>' +
-      '  <div class="gkr-rules-row">' +
-      '    <span class="gh-field">思考时长 ' + stepperHtml('turnTimeoutSeconds', TIMEOUT_VALUES, room.turnTimeoutSeconds || 20, fmtTimeout, !admin) + '</span>' +
-      '    <span class="gh-field gkr-fixed-rule">AI 难度：中等（补位 / 托管同档）</span>' +
+      '<section class="xq-match-card xqr-waiting">' +
+      '  <div class="xq-match-title"><span>等待开局</span><span class="xq-match-live"><i></i> 房间 ' + esc(this._roomCode()) + '</span></div>' +
+      '  <div class="xqr-seats">' + seatHtml + '</div>' +
+      '  <div class="xqr-rules-row">' +
+      '    <span class="xqr-field">思考时长 ' + stepperHtml('turnTimeoutSeconds', TIMEOUT_VALUES, room.turnTimeoutSeconds || 30, fmtTimeout, !admin) + '</span>' +
+      '    <span class="xqr-field xqr-fixed-rule">AI 难度：中等（补位 / 托管同档）</span>' +
       '  </div>' +
-      '  <div class="gkr-waiting-actions">' + actionHtml + '</div>' +
-      '  <div class="gkr-share-hint">邀请好友：把房号 <b>' + esc(this._roomCode()) + '</b> 发给对方，或复制邀请链接</div>' +
-      '</div>'
+      '  <div class="xqr-waiting-actions">' + actionHtml + '</div>' +
+      '  <div class="xqr-waiting-ops">' +
+      '    <button type="button" class="xq-btn xq-btn-quiet" data-xqr="copy">复制邀请链接</button>' +
+      '    <button type="button" class="xq-btn xq-btn-quiet" data-xqr="leave">退出房间</button>' +
+      '  </div>' +
+      '  <div class="xqr-share-hint">邀请好友：把房号 <b>' + esc(this._roomCode()) + '</b> 发给对方，或复制链接邀请</div>' +
+      '</section>'
   }
 
   _sendRules() {
@@ -389,456 +488,59 @@ export default class XiangqiRemote {
   // ---------- 对局 ----------
 
   _showGame() {
-    if (this.$game) return
-    this.$stage.innerHTML =
-      '<div class="gkr-game">' +
-      '  <div class="gkr-players" data-gkr-players></div>' +
-      '  <div class="gkr-board-wrap"><canvas data-gkr-canvas></canvas></div>' +
-      '  <div class="gkr-game-foot" data-gkr-foot></div>' +
-      '  <div class="gkr-settle" data-gkr-settle hidden></div>' +
-      '</div>'
-    this.$game = this.$stage.querySelector('.gkr-game')
-    this.$canvas = this.$stage.querySelector('[data-gkr-canvas]')
-    this.ctx = this.$canvas.getContext('2d')
-    this.$players = this.$stage.querySelector('[data-gkr-players]')
-    this.$foot = this.$stage.querySelector('[data-gkr-foot]')
-    this.$settle = this.$stage.querySelector('[data-gkr-settle]')
-
-    this.$canvas.addEventListener('click', ev => this._onBoardClick(ev))
-    window.addEventListener('resize', this._onResize || (this._onResize = () => this._layoutBoard()))
-    this._layoutBoard()
-    this._renderGame()
+    if (this.$layout.hidden) {
+      this.$stage.hidden = true
+      this.$layout.hidden = false
+    }
+    this.ui.syncFromOnline()
+    this._renderSideCards()
   }
 
-  _layoutBoard() {
-    if (!this.$canvas) return
-    const wrap = this.$canvas.parentElement
-    const maxW = Math.min(wrap.clientWidth || 320, 480)
-    const maxH = Math.max(320, window.innerHeight - 260)
-    // 棋盘 9 路 × 10 路：宽 ≈ 9.6·cell（2×0.8 边距 + 8 格），高 ≈ 10.6·cell
-    let cell = Math.min(maxW / 9.6, maxH / 10.6)
-    cell = Math.max(24, Math.floor(cell))
-    this.cell = cell
-    this.pad = Math.round(cell * 0.8)
-    const w = this.pad * 2 + cell * (FILES - 1)
-    const h = this.pad * 2 + cell * (RANKS - 1)
-    this.w = w
-    this.h = h
-    this.dpr = window.devicePixelRatio || 1
-    this.$canvas.width = w * this.dpr
-    this.$canvas.height = h * this.dpr
-    this.$canvas.style.width = w + 'px'
-    this.$canvas.style.height = h + 'px'
-    this.pieceR = cell * 0.42
-    this._drawBoard()
-  }
-
-  _renderGame() {
-    if (!this.$game || !this.view) return
-    this._renderPlayersStrip()
-    this._renderFoot()
-    this._drawBoard()
-    if (this.results) this._renderSettlement()
-  }
-
-  _renderPlayersStrip() {
-    if (!this.$players || !this.view) return
+  /** 双方卡片：执子方 / 名字 / 在线状态 / 积分 / 回合 */
+  _renderSideCards() {
+    if (!this.view) return
     const meta = this.view.meta || {}
     const seats = meta.seats || []
-    const myColor = this.view.myColor
-    const colorName = c => (c === RED ? '🔴 红方' : '⚫ 黑方')
-    const strip = seats
-      .map(s => {
-        const color = this.view.seatColor ? this.view.seatColor[s.absSeat] : null
-        const turn = this.view.phase === 'play' && this.view.seatColor && this.view.seatColor[s.absSeat] === this.view.turn
-        const cls = 'gkr-pl' + (s.absSeat === meta.mySeat ? ' is-me' : '') + (turn ? ' is-turn' : '')
-        const score = this.room && this.room.scores ? this.room.scores[s.absSeat] : null
-        return (
-          '<div class="' + cls + '">' +
-          '<span class="gkr-pl-color">' + (color ? colorName(color) : '') + '</span>' +
-          '<span class="gkr-pl-name">' + esc(s.displayName || (s.isAi ? 'AI 陪练' : '棋友')) +
-          (s.absSeat === meta.mySeat ? '（你）' : '') + '</span>' +
-          (score != null ? '<span class="gkr-pl-score">' + score + ' 分</span>' : '') +
-          '<span class="gkr-pl-state">' +
-          (s.isAi ? 'AI' : s.connected ? (s.autoPlay ? '托管' : '在线') : '断线') +
-          '</span>' +
-          '</div>'
-        )
-      })
-      .join('')
-    this.$players.innerHTML =
-      strip +
-      '<div class="gkr-round">第 ' + (meta.round || 1) + ' 局 · ' + Math.floor((this.view.moves || 0) / 2) + ' 回合 · 你执' +
-      (myColor === RED ? '红' : '黑') + '</div>'
-  }
+    const me = seats.find(s => s.absSeat === meta.mySeat) || {}
+    const opp = seats.find(s => s.absSeat !== meta.mySeat) || {}
+    const mySide = this.view.myColor === BLACK ? BLACK : RED
+    const oppSide = mySide === RED ? BLACK : RED
+    const scores = (this.room && this.room.scores) || (meta.scores) || []
 
-  _renderFoot() {
-    if (!this.$foot || !this.view) return
-    if (this.view.phase !== 'play') {
-      this._setStatus('本局结束', false)
-      this.$foot.innerHTML = ''
-      return
+    const meCard = this.$roomRoot.querySelector('[data-xqr-me-card]')
+    const oppCard = this.$roomRoot.querySelector('[data-xqr-opp-card]')
+    meCard.className = 'xq-player ' + (mySide === RED ? 'red-player' : 'black-player')
+    oppCard.className = 'xq-player ' + (oppSide === RED ? 'red-player' : 'black-player')
+    this.$roomRoot.querySelector('[data-xqr-me-token]').textContent = mySide === RED ? '帅' : '将'
+    this.$roomRoot.querySelector('[data-xqr-opp-token]').textContent = oppSide === RED ? '帅' : '将'
+    this.$roomRoot.querySelector('[data-xqr-me-label]').textContent =
+      (me.displayName || '你') + ' · ' + SIDE_LABEL[mySide] + (scores[me.absSeat] != null ? ' · ' + scores[me.absSeat] + ' 分' : '')
+    this.$roomRoot.querySelector('[data-xqr-opp-label]').textContent =
+      (opp.displayName || (opp.isAi ? 'AI 陪练' : '对手')) + ' · ' + SIDE_LABEL[oppSide] + (scores[opp.absSeat] != null ? ' · ' + scores[opp.absSeat] + ' 分' : '')
+    this.$roomRoot.querySelector('[data-xqr-me-state]').textContent = '在线'
+    this.$roomRoot.querySelector('[data-xqr-opp-state]').textContent =
+      opp.isAi ? 'AI' : opp.connected ? (opp.autoPlay ? '托管中' : '在线') : '断线托管中'
+
+    const roundEl = this.$roomRoot.querySelector('[data-xqr-round]')
+    if (roundEl) {
+      roundEl.textContent = '第 ' + (meta.round || 1) + ' 局 · 你执' + (mySide === RED ? '红' : '黑') + (mySide === RED ? '（先行）' : '（后行）')
     }
-    const myTurn = this._isMyTurn()
-    const turnColor = this.view.turn === RED ? '红' : '黑'
-    const checked = !!this.view.inCheck
-    this._setStatus(
-      (myTurn ? '轮到你走子（' + turnColor + '）' : '对手思考中') + (checked ? ' · 将军！' : ''),
-      !myTurn
-    )
-    this.$foot.innerHTML = myTurn ? '<div class="gkr-hint">点选棋子，再点高亮落点；超时由 AI 代走</div>' : ''
-  }
-
-  _setStatus(text, thinking) {
-    this.$status.hidden = false
-    this.$status.textContent = text
-    this.$status.classList.toggle('is-thinking', !!thinking)
   }
 
   _tick() {
-    if (!this.view || !this.view.meta || this.view.phase !== 'play') return
-    const dl = this.view.meta.deadlineAt
-    if (!dl) return
-    const left = Math.max(0, Math.ceil((dl - Date.now()) / 1000))
-    const myTurn = this._isMyTurn()
-    const base = myTurn ? '轮到你走子' : '对手思考中'
-    this._setStatus(base + ' · ' + left + 's', !myTurn)
+    if (!this.ui || !this.view || this.view.phase !== 'play') return
+    if (this.view.meta && this.view.meta.deadlineAt) this.ui.refreshStatus()
   }
 
-  // ---------- 棋盘交互 ----------
+  // ---------- 结算（复用单机 xq-result 浮层，内容按联机口径填充） ----------
 
-  /** 执黑时棋盘翻转：显示坐标 = 8-x, 9-y（对合变换，正逆相同） */
-  _flip() {
-    return this.view && this.view.myColor === BLACK
+  _hideSettle() {
+    if (!this.$result) return
+    this.$result.hidden = true
   }
-
-  _toDisplay(x, y) {
-    return this._flip() ? { x: FILES - 1 - x, y: RANKS - 1 - y } : { x, y }
-  }
-
-  _boardPoint(ev) {
-    const rect = this.$canvas.getBoundingClientRect()
-    const px = ev.clientX - rect.left
-    const py = ev.clientY - rect.top
-    const dx = Math.round((px - this.pad) / this.cell)
-    const dy = Math.round((py - this.pad) / this.cell)
-    if (dx < 0 || dx >= FILES || dy < 0 || dy >= RANKS) return null
-    const cx = this.pad + dx * this.cell
-    const cy = this.pad + dy * this.cell
-    if (Math.abs(px - cx) > this.cell * 0.5 || Math.abs(py - cy) > this.cell * 0.5) return null
-    return this._toDisplay(dx, dy)
-  }
-
-  /** 当前选中棋子的合法落点表（服务端视图 legal 已按轮走方过滤） */
-  _targetsOf(sel) {
-    const opt = (this.view && (this.view.legal || []) || []).find(o => o.type === 'move')
-    if (!opt || !sel) return []
-    return (opt.moves || []).filter(m => m.fromX === sel.x && m.fromY === sel.y)
-  }
-
-  _onBoardClick(ev) {
-    if (!this._isMyTurn()) return
-    const pt = this._boardPoint(ev)
-    if (!pt) {
-      if (this.selected) {
-        this.selected = null
-        this._drawBoard()
-      }
-      return
-    }
-    const piece = this.view.board[pt.y] && this.view.board[pt.y][pt.x]
-    // 已选中：点高亮落点 → 走子；点回原棋子 → 取消
-    if (this.selected) {
-      if (pt.x === this.selected.x && pt.y === this.selected.y) {
-        this.selected = null
-        this._drawBoard()
-        return
-      }
-      const hit = this._targetsOf(this.selected).find(m => m.toX === pt.x && m.toY === pt.y)
-      if (hit) {
-        const meta = this.view.meta || {}
-        this.net.sendAction({
-          gameId: meta.gameId,
-          windowId: meta.windowId,
-          action: { type: 'move', fromX: hit.fromX, fromY: hit.fromY, toX: hit.toX, toY: hit.toY }
-        })
-        this.selected = null
-        this._drawBoard()
-        return
-      }
-    }
-    // 点己方棋子 → 选中 / 改选
-    if (piece && piece.side === this.view.myColor) {
-      this.selected = { x: pt.x, y: pt.y }
-      this._drawBoard()
-      return
-    }
-    if (this.selected) {
-      this.selected = null
-      this._drawBoard()
-    }
-  }
-
-  // ---------- 棋盘绘制（与单机同款木质配色） ----------
-
-  _drawBoard() {
-    if (!this.ctx) return
-    const { ctx, w, h, pad, cell, dpr } = this
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    ctx.clearRect(0, 0, w, h)
-
-    // 外框 + 木板
-    const frame = ctx.createLinearGradient(0, 0, w, h)
-    frame.addColorStop(0, '#a96e3b')
-    frame.addColorStop(1, '#5f3824')
-    ctx.fillStyle = frame
-    this._roundRect(0, 0, w, h, Math.min(18, cell * 0.4))
-    ctx.fill()
-    const inset = Math.max(5, cell * 0.14)
-    const wood = ctx.createLinearGradient(0, 0, w, h)
-    wood.addColorStop(0, '#f6d999')
-    wood.addColorStop(0.5, '#e9bd70')
-    wood.addColorStop(1, '#cf9148')
-    ctx.fillStyle = wood
-    this._roundRect(inset, inset, w - inset * 2, h - inset * 2, Math.min(12, cell * 0.3))
-    ctx.fill()
-
-    const X = lx => pad + this._toDisplay(lx, 0).x * cell
-    const Y = ly => pad + this._toDisplay(0, ly).y * cell
-
-    // 网格线
-    ctx.strokeStyle = 'rgba(74, 45, 16, 0.85)'
-    ctx.lineWidth = 1
-    ctx.beginPath()
-    for (let f = 0; f < FILES; f++) {
-      if (f === 0 || f === FILES - 1) {
-        ctx.moveTo(X(f), Y(0))
-        ctx.lineTo(X(f), Y(RANKS - 1))
-      } else {
-        // 河界处断开（两端各留 2px 小口，贴近传统棋盘）
-        ctx.moveTo(X(f), Y(0))
-        ctx.lineTo(X(f), Y(4) - 2)
-        ctx.moveTo(X(f), Y(5) + 2)
-        ctx.lineTo(X(f), Y(RANKS - 1))
-      }
-    }
-    for (let r = 0; r < RANKS; r++) {
-      ctx.moveTo(X(0), Y(r))
-      ctx.lineTo(X(FILES - 1), Y(r))
-    }
-    ctx.stroke()
-    // 外边框加粗（翻转时 X(0) 在右侧，必须取小值作起点）
-    ctx.lineWidth = 2
-    ctx.strokeRect(
-      Math.min(X(0), X(FILES - 1)),
-      Math.min(Y(0), Y(RANKS - 1)),
-      cell * (FILES - 1),
-      cell * (RANKS - 1)
-    )
-
-    // 九宫斜线
-    ctx.lineWidth = 1
-    ctx.beginPath()
-    for (const [fx, fy, tx, ty] of [
-      [3, 0, 5, 2],
-      [5, 0, 3, 2],
-      [3, 7, 5, 9],
-      [5, 7, 3, 9]
-    ]) {
-      ctx.moveTo(X(fx), Y(fy))
-      ctx.lineTo(X(tx), Y(ty))
-    }
-    ctx.stroke()
-
-    // 炮位 / 兵位角标
-    ctx.strokeStyle = 'rgba(74, 45, 16, 0.75)'
-    for (const [mx, my] of STAR_MARKS) this._starMark(X(mx), Y(my), mx, cell)
-
-    // 河界文字（屏幕向恒正；翻转时随棋盘互换左右）
-    ctx.save()
-    ctx.fillStyle = 'rgba(74, 45, 16, 0.66)'
-    ctx.font = '600 ' + Math.round(cell * 0.52) + 'px ' + PIECE_FONT
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    const riverY = (Y(4) + Y(5)) / 2
-    ctx.fillText('楚  河', X(1) + cell * 0.5, riverY)
-    ctx.fillText('漢  界', X(6) + cell * 0.5, riverY)
-    ctx.restore()
-
-    if (!this.view || !this.view.board) return
-    const board = this.view.board
-
-    // 最后一手高亮（起 / 止点）
-    const last = this.view.lastMove
-    if (last) {
-      ctx.save()
-      ctx.fillStyle = 'rgba(255, 126, 61, 0.28)'
-      for (const [lx, ly] of [
-        [last.fromX, last.fromY],
-        [last.toX, last.toY]
-      ]) {
-        const d = this._toDisplay(lx, ly)
-        this._roundRect(pad + d.x * cell - cell * 0.46, pad + d.y * cell - cell * 0.46, cell * 0.92, cell * 0.92, cell * 0.14)
-        ctx.fill()
-      }
-      ctx.restore()
-    }
-
-    // 选中棋子 + 合法落点
-    if (this.selected) {
-      const d = this._toDisplay(this.selected.x, this.selected.y)
-      ctx.save()
-      ctx.strokeStyle = 'rgba(46, 160, 90, 0.95)'
-      ctx.lineWidth = Math.max(2, cell * 0.06)
-      ctx.beginPath()
-      ctx.arc(pad + d.x * cell, pad + d.y * cell, this.pieceR + cell * 0.07, 0, Math.PI * 2)
-      ctx.stroke()
-      ctx.restore()
-      for (const m of this._targetsOf(this.selected)) {
-        const td = this._toDisplay(m.toX, m.toY)
-        const cx = pad + td.x * cell
-        const cy = pad + td.y * cell
-        ctx.save()
-        if (board[m.toY][m.toX]) {
-          // 可吃子：红圈
-          ctx.strokeStyle = 'rgba(210, 60, 40, 0.9)'
-          ctx.lineWidth = Math.max(2, cell * 0.055)
-          ctx.beginPath()
-          ctx.arc(cx, cy, this.pieceR + cell * 0.06, 0, Math.PI * 2)
-          ctx.stroke()
-        } else {
-          ctx.fillStyle = 'rgba(46, 160, 90, 0.75)'
-          ctx.beginPath()
-          ctx.arc(cx, cy, Math.max(3, cell * 0.11), 0, Math.PI * 2)
-          ctx.fill()
-        }
-        ctx.restore()
-      }
-    }
-
-    // 棋子
-    for (let ly = 0; ly < RANKS; ly++) {
-      for (let lx = 0; lx < FILES; lx++) {
-        const piece = board[ly][lx]
-        if (piece) this._drawPiece(lx, ly, piece)
-      }
-    }
-
-    // 将军警示圈（画在被将军的将 / 帅上）
-    if (this.view.inCheck) {
-      const side = this.view.inCheck
-      outer: for (let ly = 0; ly < RANKS; ly++) {
-        for (let lx = 0; lx < FILES; lx++) {
-          const piece = board[ly][lx]
-          if (piece && piece.side === side && piece.type === 'K') {
-            const d = this._toDisplay(lx, ly)
-            ctx.save()
-            ctx.strokeStyle = 'rgba(235, 50, 35, 0.95)'
-            ctx.lineWidth = Math.max(2.5, cell * 0.07)
-            ctx.shadowColor = 'rgba(235, 50, 35, 0.8)'
-            ctx.shadowBlur = 10
-            ctx.beginPath()
-            ctx.arc(pad + d.x * cell, pad + d.y * cell, this.pieceR + cell * 0.09, 0, Math.PI * 2)
-            ctx.stroke()
-            ctx.restore()
-            break outer
-          }
-        }
-      }
-    }
-  }
-
-  _starMark(cx, cy, file, cell) {
-    const g = Math.max(2.5, cell * 0.07)
-    const len = Math.max(4, cell * 0.14)
-    const { ctx } = this
-    ctx.save()
-    ctx.lineWidth = 1
-    ctx.beginPath()
-    // 边路的点只画朝内的两个角
-    const dirs = []
-    if (file > 0) dirs.push(-1)
-    if (file < FILES - 1) dirs.push(1)
-    for (const sx of dirs) {
-      for (const sy of [-1, 1]) {
-        ctx.moveTo(cx + sx * g, cy + sy * (g + len))
-        ctx.lineTo(cx + sx * g, cy + sy * g)
-        ctx.lineTo(cx + sx * (g + len), cy + sy * g)
-      }
-    }
-    ctx.stroke()
-    ctx.restore()
-  }
-
-  _drawPiece(lx, ly, piece) {
-    const { ctx, pad, cell, pieceR } = this
-    const d = this._toDisplay(lx, ly)
-    const cx = pad + d.x * cell
-    const cy = pad + d.y * cell
-    const r = pieceR
-    const isRed = piece.side === RED
-
-    ctx.save()
-    // 投影
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.35)'
-    ctx.shadowBlur = r * 0.3
-    ctx.shadowOffsetY = r * 0.12
-    // 木面
-    const grad = ctx.createRadialGradient(cx - r * 0.3, cy - r * 0.35, r * 0.15, cx, cy, r)
-    if (isRed) {
-      grad.addColorStop(0, '#fff8e8')
-      grad.addColorStop(0.5, '#f3dfbd')
-      grad.addColorStop(1, '#d7b278')
-    } else {
-      grad.addColorStop(0, '#fff5de')
-      grad.addColorStop(0.5, '#e8ddc5')
-      grad.addColorStop(1, '#c4b28e')
-    }
-    ctx.fillStyle = grad
-    ctx.beginPath()
-    ctx.arc(cx, cy, r, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.restore()
-
-    // 外沿 + 内圈
-    ctx.save()
-    ctx.strokeStyle = 'rgba(110, 66, 26, 0.85)'
-    ctx.lineWidth = Math.max(1, r * 0.07)
-    ctx.beginPath()
-    ctx.arc(cx, cy, r - ctx.lineWidth / 2, 0, Math.PI * 2)
-    ctx.stroke()
-    ctx.strokeStyle = isRed ? 'rgba(179, 35, 26, 0.8)' : 'rgba(43, 43, 43, 0.7)'
-    ctx.lineWidth = Math.max(1, r * 0.05)
-    ctx.beginPath()
-    ctx.arc(cx, cy, r * 0.78, 0, Math.PI * 2)
-    ctx.stroke()
-    ctx.restore()
-
-    // 字
-    ctx.save()
-    ctx.fillStyle = isRed ? '#b3231a' : '#2b2b2b'
-    ctx.font = '700 ' + Math.round(r * 1.02) + 'px ' + PIECE_FONT
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    ctx.fillText(PIECE_LABELS[piece.side][piece.type], cx, cy + r * 0.05)
-    ctx.restore()
-  }
-
-  _roundRect(x, y, w, h, r) {
-    const { ctx } = this
-    ctx.beginPath()
-    ctx.moveTo(x + r, y)
-    ctx.arcTo(x + w, y, x + w, y + h, r)
-    ctx.arcTo(x + w, y + h, x, y + h, r)
-    ctx.arcTo(x, y + h, x, y, r)
-    ctx.arcTo(x, y, x + w, y, r)
-    ctx.closePath()
-  }
-
-  // ---------- 结算 ----------
 
   _renderSettlement() {
-    if (!this.$settle || !this.results) return
+    if (!this.$result || !this.results) return
     const res = this.results.results || {}
     const scores = this.results.scores || (this.room && this.room.scores) || []
     const bankrupt = this.results.bankruptSeats || []
@@ -846,24 +548,23 @@ export default class XiangqiRemote {
     const mine = (res.perSeat || []).find(p => p.seat === mySeat) || {}
     const finished = this.results.status === 'FINISHED'
 
-    let title, cls
+    let title
     if (res.draw) {
       title = '和棋'
-      cls = 'is-draw'
     } else if (res.winner === mySeat) {
-      title = '你赢了 +' + Math.abs(mine.delta || 0)
-      cls = 'is-win'
+      title = '🎉 你赢了 +' + Math.abs(mine.delta || 0)
     } else {
       title = '你输了 ' + (mine.delta || 0)
-      cls = 'is-loss'
     }
 
-    const scoreLine = (this.view && this.view.meta ? this.view.meta.seats : [])
+    const seats = (this.view && this.view.meta ? this.view.meta.seats : (this.room && this.room.seats) || [])
+    const scoreLine = seats
       .map(s => {
-        const sc = scores[s.absSeat]
-        const bust = bankrupt.indexOf(s.absSeat) >= 0
+        const abs = s.absSeat != null ? s.absSeat : s.seatIndex
+        const sc = scores[abs]
+        const bust = bankrupt.indexOf(abs) >= 0
         return (
-          '<span class="gkr-settle-score' + (bust ? ' is-bust' : '') + '">' +
+          '<span class="xqr-settle-score' + (bust ? ' is-bust' : '') + '">' +
           esc(s.displayName || (s.isAi ? 'AI' : '棋友')) + '：' + (sc == null ? '-' : sc) +
           (bust ? '（已破产）' : '') + '</span>'
         )
@@ -873,26 +574,24 @@ export default class XiangqiRemote {
     let btns
     if (finished) {
       btns =
-        '<div class="gkr-settle-final">有玩家破产，房间进入终局</div>' +
-        '<button type="button" class="gkr-btn gkr-btn-primary" data-gkr="leave">退出房间</button>'
+        '<div class="xqr-settle-final">有玩家破产，房间进入终局</div>' +
+        '<button type="button" class="xq-btn xq-btn-primary" data-xqr="leave">退出房间</button>'
     } else {
       const me = this.room && (this.room.seats || []).find(s => s.seatIndex === mySeat)
       const ready = (me && me.ready) || this.readySent
       btns =
-        '<button type="button" class="gkr-btn gkr-btn-primary" data-gkr="ready"' + (ready ? ' disabled' : '') + '>' +
+        '<button type="button" class="xq-btn xq-btn-primary" data-xqr="ready"' + (ready ? ' disabled' : '') + '>' +
         (ready ? '已准备 · 等待对手' : '准备下一局（换先）') + '</button>' +
-        '<button type="button" class="gkr-btn" data-gkr="leave">退出房间</button>'
+        '<button type="button" class="xq-btn" data-xqr="leave">退出房间</button>'
     }
 
-    this.$settle.hidden = false
-    this.$settle.innerHTML =
-      '<div class="gkr-settle-card">' +
-      '<div class="gkr-settle-title ' + cls + '">' + title + '</div>' +
-      '<div class="gkr-settle-sub">第 ' + (this.results.round || 1) + ' 局 · 共 ' + Math.floor((res.moves || 0) / 2) + ' 回合' +
-      (res.winner != null ? ' · ' + (res.checkmate ? '绝杀' : '困毙') : '') + '</div>' +
-      '<div class="gkr-settle-scores">' + scoreLine + '</div>' +
-      '<div class="gkr-settle-btns">' + btns + '</div>' +
-      '</div>'
+    this.$result.querySelector('[data-xqr-settle-stamp]').textContent = '第 ' + (this.results.round || 1) + ' 局结束'
+    this.$result.querySelector('[data-xq-result-title]').textContent = title
+    this.$result.querySelector('[data-xq-result-text]').textContent =
+      (res.checkmate ? '将死' : '无棋可走') + ' · 共 ' + (res.moves || 0) + ' 手' + (res.winSide ? ' · ' + SIDE_LABEL[res.winSide] + '胜' : '')
+    this.$result.querySelector('[data-xqr-settle-scores]').innerHTML = scoreLine
+    this.$result.querySelector('[data-xqr-settle-btns]').innerHTML = btns
+    this.$result.hidden = false
   }
 
   // ---------- 语音 ----------
@@ -966,7 +665,7 @@ export default class XiangqiRemote {
     const el = document.createElement('button')
     el.type = 'button'
     el.className = 'gkr-bubble' + (mine ? ' is-mine' : '')
-    el.setAttribute('data-gkr', 'voice-play')
+    el.setAttribute('data-xqr', 'voice-play')
     el.setAttribute('data-idx', String(idx))
     el.textContent = '🔊 ' + who + ' · ' + Math.round(p.duration || 0) + '″'
     this.$bubbles.appendChild(el)
@@ -1001,7 +700,7 @@ export default class XiangqiRemote {
     setTimeout(() => {
       el.classList.add('is-old')
     }, 30000)
-    // 对方的快捷语用普通话 TTS 播报；自己的不播
+    // 对方（含 AI 位真人）的快捷语用普通话 TTS 播报；自己的不播
     if (!mine) speakPhrase(text)
   }
 
@@ -1027,7 +726,7 @@ export default class XiangqiRemote {
     } catch (e) {
       url = location.href + '?room=' + code
     }
-    const text = '来下中国象棋！房号 ' + code + ' → ' + url
+    const text = '来下象棋！房号 ' + code + ' → ' + url
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text).then(
         () => this._toast('邀请链接已复制'),
@@ -1061,7 +760,7 @@ export default class XiangqiRemote {
   }
 }
 
-/** 进入中国象棋房间：建 NetClient → 连接 → 挂载房间 UI（供大厅调用） */
+/** 进入象棋房间：建 NetClient → 连接 → 挂载房间 UI（供大厅调用） */
 export function enterXiangqiRoom(root, { room, player, cred, onExit }) {
   const net = new NetClient({
     onError: () => {}

@@ -196,6 +196,16 @@ export class NetClient {
     return this.http('/api/rooms/join', { method: 'POST', body: { roomCode, displayName } })
   }
 
+  /**
+   * 无 WS 主动退出：凭 resumeToken 退掉对应房间的座位。
+   * 用于「换房前清旧座」——同一浏览器凭据只有一份，建房 / 加入新房间前
+   * 必须先把旧房退掉，否则旧座位挂着等 TTL（占房位、占列表）。
+   * 幂等：token 失效 / 房间已销毁也返回成功，调用方无需处理错误。
+   */
+  leaveRoomByToken(resumeToken) {
+    return this.http('/api/rooms/leave', { method: 'POST', body: { resumeToken } })
+  }
+
   // ---------- 连接与重连 ----------
 
   /**

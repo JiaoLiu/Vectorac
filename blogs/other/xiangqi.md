@@ -351,6 +351,54 @@ meta:
   .xq-root:not(.xq-expanded) .xq-puzzle-actions,.xq-expanded .xq-puzzle-actions{margin-top:5px}
   .xq-root:not(.xq-expanded) .xq-puzzle-actions .xq-btn,.xq-expanded .xq-puzzle-actions .xq-btn{min-height:29px;padding:4px;font-size:9px}
 }
+
+/* ============ 联机房间（remote.js 复用本骨架，浅色木色系） ============ */
+.xqr-code{color:#f1cd80;letter-spacing:2px}
+.xqr-stage{width:100%;max-width:560px;margin:0 auto}
+.xqr-waiting{padding:16px}
+.xqr-seats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
+.xqr-seat{display:flex;flex-direction:column;gap:4px;padding:11px 12px;border:1px solid #e7dfcf;border-radius:14px;background:#fffaf0}
+.xqr-seat.is-me{border-color:#d8a94f;box-shadow:0 0 0 2px #d8a94f26}
+.xqr-seat-name{font-size:14px;font-weight:800;color:#35483d}
+.xqr-seat-name.xqr-empty{color:#b0a78d}
+.xqr-seat-sub{font-size:11px;color:#98a091}
+.xqr-btn-mini{min-height:30px;padding:4px 10px;font-size:11px;border-radius:9px;align-self:flex-start}
+.xqr-rules-row{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:14px}
+.xqr-field{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#7d8577;font-weight:700}
+.xqr-fixed-rule{color:#a89b7d}
+.xqr-waiting-actions{display:flex;flex-direction:column;gap:8px;align-items:center;margin-bottom:12px}
+.xqr-waiting-actions .xq-btn-primary{min-width:180px}
+.xqr-waiting-ops{display:flex;gap:8px;justify-content:center;margin-bottom:10px}
+.xqr-waiting-ops .xq-btn{min-height:36px;padding:7px 12px;font-size:12px}
+.xqr-hint,.xqr-share-hint{text-align:center;font-size:11.5px;color:#98a091}
+.xqr-share-hint b{color:#b7862f;letter-spacing:1.5px}
+.xqr-round-line{margin-top:8px;text-align:center;font-size:10.5px;color:#98a091;letter-spacing:.5px}
+.xqr-settle-scores{display:flex;flex-direction:column;gap:4px;margin:0 0 14px;font-size:13px;color:#57624f}
+.xqr-settle-score.is-bust{color:#c24434}
+.xqr-settle-final{width:100%;margin-bottom:6px;font-size:12px;color:#c24434}
+/* 等待室步进器（gh-stepper 的浅色覆写） */
+.xq-root .gh-stepper{border-color:#e4dcc9;background:#eee9dc}
+.xq-root .gh-stepper button{color:#b7862f}
+.xq-root .gh-stepper button:active{background:#fff6dd}
+.xq-root .gh-stepper button:disabled{color:#c9bfa4}
+.xq-root .gh-stepper-val{color:#405440;font-weight:700}
+.xq-root .gh-stepper.is-disabled button{color:#c9bfa4}
+/* 语音气泡 / toast 在浅色棋盘上保持深色胶囊（对比度） */
+.xq-root .gkr-toast{z-index:10060}
+@media(max-width:640px){
+  .xqr-waiting{padding:12px}
+  .xqr-seats{gap:8px}
+}
+@media(max-height:560px) and (orientation:landscape){
+  .xqr-stage{max-width:480px}
+  .xqr-waiting{padding:8px 10px}
+  .xqr-seats{margin:8px 0;gap:6px}
+  .xqr-seat{padding:6px 9px;gap:2px}
+  .xqr-seat-name{font-size:12px}
+  .xqr-rules-row{margin-bottom:8px;gap:8px}
+  .xqr-waiting-actions{margin-bottom:8px}
+  .xqr-waiting-actions .xq-btn-primary{min-height:32px}
+}
 </style>
 
 <script>

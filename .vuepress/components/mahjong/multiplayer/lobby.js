@@ -718,11 +718,29 @@ export class Lobby {
     }
   }
 
+  /**
+   * 换房先退旧房：同一浏览器凭据只有一份（localStorage 单槽），
+   * 建房 / 加入另一个房间前先把旧座位退掉，否则旧座位挂着等 TTL，
+   * 反复几次就占满全服房间上限（与 gamehall/hall.js 同名方法一致）。
+   */
+  async _leaveStaleRoom(targetCode) {
+    const cred = loadCredential()
+    if (!cred || !cred.resumeToken) return
+    if (targetCode && cred.roomCode === String(targetCode).toUpperCase()) return
+    try {
+      await this.net.leaveRoomByToken(cred.resumeToken)
+    } catch (e) {
+      /* 旧房可能已销毁 / 网络异常：本地凭据照清，不阻塞进新房 */
+    }
+    clearCredential()
+  }
+
   async _createRoom() {
     if (this.busy) return
     this.busy = true
     this.notice = ''
     try {
+      await this._leaveStaleRoom()
       const data = await this.net.createRoom({
         displayName: this.displayName,
         rules: { ...this.createRules }
@@ -747,6 +765,7 @@ export class Lobby {
     this.busy = true
     this.notice = ''
     try {
+      await this._leaveStaleRoom(roomCode)
       const data = await this.net.joinRoom({ roomCode, displayName: this.displayName })
       await this._enterWith(data)
     } catch (e) {
