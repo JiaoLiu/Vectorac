@@ -1,0 +1,233 @@
+{
+  "mode": "built-in imagegen",
+  "canvas": [
+    512,
+    1024
+  ],
+  "productCanvas": [
+    360,
+    360
+  ],
+  "background": "#f4ede5",
+  "note": "Existing original ponytail, face, clothes, and v11 small-hat product art unchanged. Mechanical calibration targets actual master anatomy.",
+  "assets": [
+    {
+      "id": "shoes-6",
+      "kind": "shoe",
+      "start": 917,
+      "padding": 3,
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-299d1894-f820-4f91-a2c1-5dd175427b10.png",
+      "prompt": "Use case: identity-preserve. Asset type: registered dress-up game transparent wearable sprite. Image 1 is the exact master BODY/POSE/CANVAS registration reference, not a product. Create only one PAIR OF SHOES worn on the exact reference feet, looking straight from the front. Keep the exact master full-body framing with the same 1:2 canvas, the shoes at the original bottom of the canvas, feet centres at 44% and 55%, soles at 96% height; do not zoom or recenter the shoes. Legs angle slightly outward; feet face directly forward, NOT side view, NOT tilted inward. Deliver shoes ONLY on transparent alpha, no feet, no skin, no legs, no model, no background or shadow. Opaque stitched material and realistic front-view toe boxes, equal sole baseline. Detailed polished semi-realistic doll-fashion illustration matching reference lighting. No white cutout holes, no peg heels, no reflections, no loose isolated laces. Product style: clean modern white leather low-top sneakers with tiny warm beige heel tab, flat padded tongue, real cream rubber cupsole, light grey lace stitching, NO logos"
+    },
+    {
+      "id": "shoes-7",
+      "kind": "shoe",
+      "start": 910,
+      "padding": 3,
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-b3751301-cc58-40dd-b007-0cb46d2479e0.png",
+      "prompt": "Use case: identity-preserve. Asset type: registered dress-up game transparent wearable sprite. Image 1 is the exact master BODY/POSE/CANVAS registration reference, not a product. Create only one PAIR OF SHOES worn on the exact reference feet, looking straight from the front. Keep the exact master full-body framing with the same 1:2 canvas, the shoes at the original bottom of the canvas, feet centres at 44% and 55%, soles at 96% height; do not zoom or recenter the shoes. Legs angle slightly outward; feet face directly forward, NOT side view, NOT tilted inward. Deliver shoes ONLY on transparent alpha, no feet, no skin, no legs, no model, no background or shadow. Opaque stitched material and realistic front-view toe boxes, equal sole baseline. Detailed polished semi-realistic doll-fashion illustration matching reference lighting. No white cutout holes, no peg heels, no reflections, no loose isolated laces. Product style: modern retro trail running sneakers, mesh panels, taupe and muted sage colour blocking, articulated thick outsole, curved textile lace panel, NO logos"
+    },
+    {
+      "id": "shoes-8",
+      "kind": "shoe",
+      "start": 852,
+      "padding": 2,
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-8d0daaf7-67d1-40ee-aef3-0e2ea03a64ec.png",
+      "prompt": "Use case: identity-preserve. Asset type: registered dress-up game transparent wearable sprite. Image 1 is the exact master BODY/POSE/CANVAS registration reference, not a product. Create only one PAIR OF SHOES worn on the exact reference feet, looking straight from the front. Keep the exact master full-body framing with the same 1:2 canvas, the shoes at the original bottom of the canvas, feet centres at 44% and 55%, soles at 96% height; do not zoom or recenter the shoes. Legs angle slightly outward; feet face directly forward, NOT side view, NOT tilted inward. Deliver shoes ONLY on transparent alpha, no feet, no skin, no legs, no model, no background or shadow. Opaque stitched material and realistic front-view toe boxes, equal sole baseline. Detailed polished semi-realistic doll-fashion illustration matching reference lighting. No white cutout holes, no peg heels, no reflections, no loose isolated laces. Product style: classic cream high-top canvas sneakers with tan rubber toe caps, brass eyelets and neat white laces, chunky flat rubber soles, NO logos"
+    },
+    {
+      "id": "shoes-9",
+      "kind": "shoe",
+      "start": 850,
+      "padding": 2,
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-1d76cfd7-67d4-4264-8b32-7e6da53d3a2e.png",
+      "prompt": "Use case: identity-preserve. Asset type: registered dress-up game transparent wearable sprite. Image 1 is the exact master BODY/POSE/CANVAS registration reference, not a product. Create only one PAIR OF SHOES worn on the exact reference feet, looking straight from the front. Keep the exact master full-body framing with the same 1:2 canvas, the shoes at the original bottom of the canvas, feet centres at 44% and 55%, soles at 96% height; do not zoom or recenter the shoes. Legs angle slightly outward; feet face directly forward, NOT side view, NOT tilted inward. Deliver shoes ONLY on transparent alpha, no feet, no skin, no legs, no model, no background or shadow. Opaque stitched material and realistic front-view toe boxes, equal sole baseline. Detailed polished semi-realistic doll-fashion illustration matching reference lighting. No white cutout holes, no peg heels, no reflections, no loose isolated laces. Product style: black leather lace-up combat ankle boots, eight eyelets, chunky tread sole, small silver side zip, contemporary design, NO logos"
+    },
+    {
+      "id": "shoes-10",
+      "kind": "shoe",
+      "start": 800,
+      "padding": 2,
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-72ab70f5-6a97-4b3f-87d3-1a20727428d7.png",
+      "prompt": "Use case: identity-preserve. Asset type: registered dress-up game transparent wearable sprite. Image 1 is the exact master BODY/POSE/CANVAS registration reference, not a product. Create only one PAIR OF SHOES worn on the exact reference feet, looking straight from the front. Keep the exact master full-body framing with the same 1:2 canvas, the shoes at the original bottom of the canvas, feet centres at 44% and 55%, soles at 96% height; do not zoom or recenter the shoes. Legs angle slightly outward; feet face directly forward, NOT side view, NOT tilted inward. Deliver shoes ONLY on transparent alpha, no feet, no skin, no legs, no model, no background or shadow. Opaque stitched material and realistic front-view toe boxes, equal sole baseline. Detailed polished semi-realistic doll-fashion illustration matching reference lighting. No white cutout holes, no peg heels, no reflections, no loose isolated laces. Product style: warm camel suede mid-calf western boots, V-shaped scalloped cuff, restrained embossed leaf seams, low block heel, pointed-but-rounded toe, NO logos"
+    },
+    {
+      "id": "shoes-11",
+      "kind": "shoe",
+      "start": 695,
+      "padding": 2,
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-fb754886-c7ac-4c51-8190-e65bc6b6f72e.png",
+      "prompt": "Use case: identity-preserve. Asset type: registered dress-up game transparent wearable sprite. Image 1 is the exact master BODY/POSE/CANVAS registration reference, not a product. Create only one PAIR OF SHOES worn on the exact reference feet, looking straight from the front. Keep the exact master full-body framing with the same 1:2 canvas, the shoes at the original bottom of the canvas, feet centres at 44% and 55%, soles at 96% height; do not zoom or recenter the shoes. Legs angle slightly outward; feet face directly forward, NOT side view, NOT tilted inward. Deliver shoes ONLY on transparent alpha, no feet, no skin, no legs, no model, no background or shadow. Opaque stitched material and realistic front-view toe boxes, equal sole baseline. Detailed polished semi-realistic doll-fashion illustration matching reference lighting. No white cutout holes, no peg heels, no reflections, no loose isolated laces. Product style: dark chocolate leather knee-high riding boots, slim gently tapered shaft, one small brass buckle below knee, low heel, clean rounded toe, NO logos"
+    },
+    {
+      "id": "catalog-shoes-6",
+      "item": "shoes-6",
+      "kind": "catalog",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-065ad368-1f28-4cbe-ac9b-2a5c08187b40.png",
+      "prompt": "Use case: product-mockup. Independent fashion-game product design illustration of a pair of clean modern white leather low-top sneakers with tiny warm beige heel tab, flat padded tongue, real cream rubber cupsole, light grey lace stitching, NO logos. Attractive three-quarter catalogue view shows the distinct silhouette, one shoe angled slightly left and the other slightly right, neatly arranged together. Exquisite clean fashion illustration matching semi-realistic elegant doll wardrobe. Complete shoes only, empty openings, visible sole construction, natural leather/fabric textures. Transparent background, no legs, no feet, no model, no skin inserts, no packaging, no text, no watermark, no logos, no glowing background or shadow. Do NOT draw a straight-on cropped worn-model sprite; this is a separately composed product-design card.",
+      "editPrompt": "Edit the supplied product asset. Preserve exactly the same object design, fine texture, colors, perspective, proportions, position and framing. REMOVE ALL THE BLURRED HALO / AURA / GLOW BEHIND AND AROUND THE OBJECT. Remove every bit of backdrop/floor/contact shadow. This is a crisp isolated fashion-game sprite, not a product photograph on a surface. All pixels outside the actual object contours, and all openings inside its chain or ring, must be fully alpha-transparent. Keep only the physical object, no silhouette fill, no beige/grey/colored soft haze. Preserve the small object details and natural material highlights ON the physical object itself. Transparent PNG."
+    },
+    {
+      "id": "catalog-shoes-7",
+      "item": "shoes-7",
+      "kind": "catalog",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-23006baf-8982-477b-bfe5-6ea802d39105.png",
+      "prompt": "Use case: product-mockup. Independent fashion-game product design illustration of a pair of modern retro trail running sneakers, mesh panels, taupe and muted sage colour blocking, articulated thick outsole, curved textile lace panel, NO logos. Attractive three-quarter catalogue view shows the distinct silhouette, one shoe angled slightly left and the other slightly right, neatly arranged together. Exquisite clean fashion illustration matching semi-realistic elegant doll wardrobe. Complete shoes only, empty openings, visible sole construction, natural leather/fabric textures. Transparent background, no legs, no feet, no model, no skin inserts, no packaging, no text, no watermark, no logos, no glowing background or shadow. Do NOT draw a straight-on cropped worn-model sprite; this is a separately composed product-design card.",
+      "editPrompt": "Edit the supplied product asset. Preserve exactly the same object design, fine texture, colors, perspective, proportions, position and framing. REMOVE ALL THE BLURRED HALO / AURA / GLOW BEHIND AND AROUND THE OBJECT. Remove every bit of backdrop/floor/contact shadow. This is a crisp isolated fashion-game sprite, not a product photograph on a surface. All pixels outside the actual object contours, and all openings inside its chain or ring, must be fully alpha-transparent. Keep only the physical object, no silhouette fill, no beige/grey/colored soft haze. Preserve the small object details and natural material highlights ON the physical object itself. Transparent PNG."
+    },
+    {
+      "id": "catalog-shoes-8",
+      "item": "shoes-8",
+      "kind": "catalog",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-903d5c84-7d63-4568-9158-0dba68c43273.png",
+      "prompt": "Use case: product-mockup. Independent fashion-game product design illustration of a pair of classic cream high-top canvas sneakers with tan rubber toe caps, brass eyelets and neat white laces, chunky flat rubber soles, NO logos. Attractive three-quarter catalogue view shows the distinct silhouette, one shoe angled slightly left and the other slightly right, neatly arranged together. Exquisite clean fashion illustration matching semi-realistic elegant doll wardrobe. Complete shoes only, empty openings, visible sole construction, natural leather/fabric textures. Transparent background, no legs, no feet, no model, no skin inserts, no packaging, no text, no watermark, no logos, no glowing background or shadow. Do NOT draw a straight-on cropped worn-model sprite; this is a separately composed product-design card."
+    },
+    {
+      "id": "catalog-shoes-9",
+      "item": "shoes-9",
+      "kind": "catalog",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-3bc76962-c9ad-4ca3-98ca-c936fa1382fa.png",
+      "prompt": "Use case: product-mockup. Independent fashion-game product design illustration of a pair of black leather lace-up combat ankle boots, eight eyelets, chunky tread sole, small silver side zip, contemporary design, NO logos. Attractive three-quarter catalogue view shows the distinct silhouette, one shoe angled slightly left and the other slightly right, neatly arranged together. Exquisite clean fashion illustration matching semi-realistic elegant doll wardrobe. Complete shoes only, empty openings, visible sole construction, natural leather/fabric textures. Transparent background, no legs, no feet, no model, no skin inserts, no packaging, no text, no watermark, no logos, no glowing background or shadow. Do NOT draw a straight-on cropped worn-model sprite; this is a separately composed product-design card.",
+      "editPrompt": "Edit the supplied product asset. Preserve exactly the same object design, fine texture, colors, perspective, proportions, position and framing. REMOVE ALL THE BLURRED HALO / AURA / GLOW BEHIND AND AROUND THE OBJECT. Remove every bit of backdrop/floor/contact shadow. This is a crisp isolated fashion-game sprite, not a product photograph on a surface. All pixels outside the actual object contours, and all openings inside its chain or ring, must be fully alpha-transparent. Keep only the physical object, no silhouette fill, no beige/grey/colored soft haze. Preserve the small object details and natural material highlights ON the physical object itself. Transparent PNG."
+    },
+    {
+      "id": "catalog-shoes-10",
+      "item": "shoes-10",
+      "kind": "catalog",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-aeb93c6e-7b9c-4f4e-8404-192130b20cd6.png",
+      "prompt": "Use case: product-mockup. Independent fashion-game product design illustration of a pair of warm camel suede mid-calf western boots, V-shaped scalloped cuff, restrained embossed leaf seams, low block heel, pointed-but-rounded toe, NO logos. Attractive three-quarter catalogue view shows the distinct silhouette, one shoe angled slightly left and the other slightly right, neatly arranged together. Exquisite clean fashion illustration matching semi-realistic elegant doll wardrobe. Complete shoes only, empty openings, visible sole construction, natural leather/fabric textures. Transparent background, no legs, no feet, no model, no skin inserts, no packaging, no text, no watermark, no logos, no glowing background or shadow. Do NOT draw a straight-on cropped worn-model sprite; this is a separately composed product-design card."
+    },
+    {
+      "id": "catalog-shoes-11",
+      "item": "shoes-11",
+      "kind": "catalog",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-49bcb5a4-aa0a-46f0-b36b-52baa915b2ea.png",
+      "prompt": "Use case: product-mockup. Independent fashion-game product design illustration of a pair of dark chocolate leather knee-high riding boots, slim gently tapered shaft, one small brass buckle below knee, low heel, clean rounded toe, NO logos. Attractive three-quarter catalogue view shows the distinct silhouette, one shoe angled slightly left and the other slightly right, neatly arranged together. Exquisite clean fashion illustration matching semi-realistic elegant doll wardrobe. Complete shoes only, empty openings, visible sole construction, natural leather/fabric textures. Transparent background, no legs, no feet, no model, no skin inserts, no packaging, no text, no watermark, no logos, no glowing background or shadow. Do NOT draw a straight-on cropped worn-model sprite; this is a separately composed product-design card."
+    },
+    {
+      "id": "necklace-0",
+      "kind": "necklace",
+      "dest": [
+        234,
+        174,
+        44,
+        31
+      ],
+      "frontFraction": 0.42,
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-921935ad-ea28-4151-9eaa-5e7e058ba441.png",
+      "prompt": "Use case: product-mockup. Independent fashion-game JEWELLERY PRODUCT DESIGN, NOT a crop of a model. One an elegant single short strand of small ivory pearls with one slightly larger central pearl, closed curved U necklace with hidden small clasp at back. Straight-on front view, balanced centred symmetry, natural wearing curvature, necklace open centre is truly transparent. Polished semi-realistic illustration, exquisite warm metal and natural material highlights, refined delicate proportions. Genuinely transparent background, no mannequin, no body, no face, no neck skin, no neck insert, no packaging, no border, no text, no watermark, no external glows or floor shadows. Full item visible. Render fine chain segments consistently and as connected jewellery, not loose disconnected sparkle dots.",
+      "editPrompt": "Edit the supplied product asset. Preserve exactly the same object design, fine texture, colors, perspective, proportions, position and framing. REMOVE ALL THE BLURRED HALO / AURA / GLOW BEHIND AND AROUND THE OBJECT. Remove every bit of backdrop/floor/contact shadow. This is a crisp isolated fashion-game sprite, not a product photograph on a surface. All pixels outside the actual object contours, and all openings inside its chain or ring, must be fully alpha-transparent. Keep only the physical object, no silhouette fill, no beige/grey/colored soft haze. Preserve the small object details and natural material highlights ON the physical object itself. Transparent PNG."
+    },
+    {
+      "id": "necklace-1",
+      "kind": "necklace",
+      "dest": [
+        233,
+        174,
+        46,
+        58
+      ],
+      "frontFraction": 0.22,
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-37552883-a8c0-49b1-8582-15b4bc8bb3d3.png",
+      "prompt": "Use case: product-mockup. Independent fashion-game JEWELLERY PRODUCT DESIGN, NOT a crop of a model. One a delicate fine rose-gold chain necklace with one small five-point star pendant and tiny crystal inset, restrained everyday jewellery. Straight-on front view, balanced centred symmetry, natural wearing curvature, necklace open centre is truly transparent. Polished semi-realistic illustration, exquisite warm metal and natural material highlights, refined delicate proportions. Genuinely transparent background, no mannequin, no body, no face, no neck skin, no neck insert, no packaging, no border, no text, no watermark, no external glows or floor shadows. Full item visible. Render fine chain segments consistently and as connected jewellery, not loose disconnected sparkle dots."
+    },
+    {
+      "id": "necklace-2",
+      "kind": "necklace",
+      "dest": [
+        233,
+        174,
+        46,
+        55
+      ],
+      "frontFraction": 0.22,
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-ed25ab8b-74db-4baf-b5d9-e9eeb076ffa2.png",
+      "prompt": "Use case: product-mockup. Independent fashion-game JEWELLERY PRODUCT DESIGN, NOT a crop of a model. One a fine warm gold necklace with a small translucent pale jade teardrop pendant in an ornate but delicate leaf bezel, Chinese-inspired elegant jewellery. Straight-on front view, balanced centred symmetry, natural wearing curvature, necklace open centre is truly transparent. Polished semi-realistic illustration, exquisite warm metal and natural material highlights, refined delicate proportions. Genuinely transparent background, no mannequin, no body, no face, no neck skin, no neck insert, no packaging, no border, no text, no watermark, no external glows or floor shadows. Full item visible. Render fine chain segments consistently and as connected jewellery, not loose disconnected sparkle dots."
+    },
+    {
+      "id": "necklace-3",
+      "kind": "necklace",
+      "dest": [
+        234,
+        168,
+        44,
+        19
+      ],
+      "frontFraction": 0.5,
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-a530254a-eb2e-47db-9a0a-7b4792f59b3f.png",
+      "prompt": "Use case: product-mockup. Independent fashion-game JEWELLERY PRODUCT DESIGN, NOT a crop of a model. One a slender burgundy velvet choker with a tiny oval ivory cameo and delicate gold bezel, flattering narrow band, no skin or mannequin. Straight-on front view, balanced centred symmetry, natural wearing curvature, necklace open centre is truly transparent. Polished semi-realistic illustration, exquisite warm metal and natural material highlights, refined delicate proportions. Genuinely transparent background, no mannequin, no body, no face, no neck skin, no neck insert, no packaging, no border, no text, no watermark, no external glows or floor shadows. Full item visible. Render fine chain segments consistently and as connected jewellery, not loose disconnected sparkle dots.",
+      "editPrompt": "Edit the supplied product asset. Preserve exactly the same object design, fine texture, colors, perspective, proportions, position and framing. REMOVE ALL THE BLURRED HALO / AURA / GLOW BEHIND AND AROUND THE OBJECT. Remove every bit of backdrop/floor/contact shadow. This is a crisp isolated fashion-game sprite, not a product photograph on a surface. All pixels outside the actual object contours, and all openings inside its chain or ring, must be fully alpha-transparent. Keep only the physical object, no silhouette fill, no beige/grey/colored soft haze. Preserve the small object details and natural material highlights ON the physical object itself. Transparent PNG."
+    },
+    {
+      "id": "wrist-0",
+      "kind": "wrist",
+      "dest": [
+        98,
+        462,
+        28,
+        18
+      ],
+      "rotate": 18,
+      "back": true,
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-db8af668-2daf-4bee-b1c3-af533b313ad9.png",
+      "prompt": "Use case: product-mockup. Independent fashion-game JEWELLERY PRODUCT DESIGN, NOT a crop of a model. One a delicate charm bracelet with warm gold links, one small enamel blossom and two ivory pearl drops, closed oval around an empty wrist opening. A single jewellery item, shallow frontal perspective as already around a relaxed downward-pointing wrist, closed gently oblique oval form, bracelet's display face toward viewer. Polished semi-realistic luxury doll-fashion illustration, natural metal highlights, restrained proportions, all item visible. Genuinely transparent alpha inside and outside, no hand, no model, no wrist, no skin, no support insert, no packaging, no text, no watermark, no external glow or cast shadows. Do not add stones or floating sparkles outside the item.",
+      "editPrompt": "Edit the supplied product asset. Preserve exactly the same object design, fine texture, colors, perspective, proportions, position and framing. REMOVE ALL THE BLURRED HALO / AURA / GLOW BEHIND AND AROUND THE OBJECT. Remove every bit of backdrop/floor/contact shadow. This is a crisp isolated fashion-game sprite, not a product photograph on a surface. All pixels outside the actual object contours, and all openings inside its chain or ring, must be fully alpha-transparent. Keep only the physical object, no silhouette fill, no beige/grey/colored soft haze. Preserve the small object details and natural material highlights ON the physical object itself. Transparent PNG."
+    },
+    {
+      "id": "wrist-1",
+      "kind": "wrist",
+      "dest": [
+        98,
+        462,
+        28,
+        14
+      ],
+      "rotate": 18,
+      "back": true,
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-49be6b78-2cf2-4a85-8612-c7bf213ce84f.png",
+      "prompt": "Use case: product-mockup. Independent fashion-game JEWELLERY PRODUCT DESIGN, NOT a crop of a model. One a refined smooth hinged pale-jade bangle, small golden seam clasp, circular bracelet seen from a shallow front-three-quarter angle with open centre, NOT a flat solid disc. A single jewellery item, shallow frontal perspective as already around a relaxed downward-pointing wrist, closed gently oblique oval form, bracelet's display face toward viewer. Polished semi-realistic luxury doll-fashion illustration, natural metal highlights, restrained proportions, all item visible. Genuinely transparent alpha inside and outside, no hand, no model, no wrist, no skin, no support insert, no packaging, no text, no watermark, no external glow or cast shadows. Do not add stones or floating sparkles outside the item.",
+      "editPrompt": "Edit the supplied product asset. Preserve exactly the same object design, fine texture, colors, perspective, proportions, position and framing. REMOVE ALL THE BLURRED HALO / AURA / GLOW BEHIND AND AROUND THE OBJECT. Remove every bit of backdrop/floor/contact shadow. This is a crisp isolated fashion-game sprite, not a product photograph on a surface. All pixels outside the actual object contours, and all openings inside its chain or ring, must be fully alpha-transparent. Keep only the physical object, no silhouette fill, no beige/grey/colored soft haze. Preserve the small object details and natural material highlights ON the physical object itself. Transparent PNG."
+    },
+    {
+      "id": "wrist-2",
+      "kind": "wrist",
+      "dest": [
+        98,
+        461,
+        28,
+        21
+      ],
+      "rotate": 108,
+      "back": false,
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-fbb8d923-d674-4844-a4d8-1f1a85e1c38e.png",
+      "prompt": "Use case: product-mockup. Independent fashion-game JEWELLERY PRODUCT DESIGN, NOT a crop of a model. One a modern elegant watch with a small round ivory dial, readable tiny hour dots but no words, slim tan leather strap in a closed oval wrist loop, face presented forward, not laid out flat. A single jewellery item, shallow frontal perspective as already around a relaxed downward-pointing wrist, closed gently oblique oval form, bracelet's display face toward viewer. Polished semi-realistic luxury doll-fashion illustration, natural metal highlights, restrained proportions, all item visible. Genuinely transparent alpha inside and outside, no hand, no model, no wrist, no skin, no support insert, no packaging, no text, no watermark, no external glow or cast shadows. Do not add stones or floating sparkles outside the item."
+    },
+    {
+      "id": "wrist-3",
+      "kind": "wrist",
+      "dest": [
+        98,
+        462,
+        28,
+        18
+      ],
+      "rotate": 18,
+      "back": true,
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-e454f3ec-4bf8-4618-b59b-7b4955dde576.png",
+      "prompt": "Use case: product-mockup. Independent fashion-game JEWELLERY PRODUCT DESIGN, NOT a crop of a model. One a contemporary double-strand silver bracelet with tiny turquoise bead stations and one silver butterfly charm, two close curved oval bands around an empty wrist opening. A single jewellery item, shallow frontal perspective as already around a relaxed downward-pointing wrist, closed gently oblique oval form, bracelet's display face toward viewer. Polished semi-realistic luxury doll-fashion illustration, natural metal highlights, restrained proportions, all item visible. Genuinely transparent alpha inside and outside, no hand, no model, no wrist, no skin, no support insert, no packaging, no text, no watermark, no external glow or cast shadows. Do not add stones or floating sparkles outside the item.",
+      "editPrompt": "Edit the supplied product asset. Preserve exactly the same object design, fine texture, colors, perspective, proportions, position and framing. REMOVE ALL THE BLURRED HALO / AURA / GLOW BEHIND AND AROUND THE OBJECT. Remove every bit of backdrop/floor/contact shadow. This is a crisp isolated fashion-game sprite, not a product photograph on a surface. All pixels outside the actual object contours, and all openings inside its chain or ring, must be fully alpha-transparent. Keep only the physical object, no silhouette fill, no beige/grey/colored soft haze. Preserve the small object details and natural material highlights ON the physical object itself. Transparent PNG."
+    },
+    {
+      "id": "hat-11",
+      "kind": "hat",
+      "dest": [
+        255,
+        18,
+        75,
+        55
+      ],
+      "source": "scripts/fixtures/wardrobe-v11-sources/hat-11.webp",
+      "registrationOnly": true
+    }
+  ]
+}

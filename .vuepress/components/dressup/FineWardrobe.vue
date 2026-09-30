@@ -1,6 +1,7 @@
 <template>
   <div class="fw-fine">
     <div class="fw-section-title"><h2>每一个细节，都由你搭配</h2><p>上衣、下装与妆饰分别选择；点击可试穿，解锁后永久拥有。</p></div>
+    <div class="fw-part-groups" aria-label="装扮分组"><button v-for="g in groups" :key="g.id" :aria-pressed="group===g.id" @click="chooseGroup(g.id)">{{g.name}}</button></div>
     <div class="fw-part-categories" aria-label="精细装扮分类"><button v-for="c in categories" :key="c.id" :aria-pressed="category===c.id" @click="category=c.id">{{c.name}}</button></div>
     <div class="fw-part-grid"><article v-for="p in choices" :key="p.id" :class="{selected:selected[category]===p.id}">
       <button class="fw-part-preview" :aria-label="'试戴'+p.name" @click="$emit('choose',p.id)">
@@ -16,12 +17,13 @@
   </div>
 </template>
 <script>
-import {CATEGORIES,PARTS,partThumbnail} from './parts.mjs'
+import {CATEGORIES,PART_GROUPS,PARTS,partThumbnail} from './parts.mjs'
 import PartDesign from './PartDesign.vue'
-export default {components:{PartDesign},props:['owned','selected'],data:()=>({category:'top',categories:CATEGORIES,lipColors:['#e8b5a3','#ad6375','#e5876d','#8d3e59','#d89aaf']}),computed:{choices(){return PARTS.filter(p=>p.category===this.category)}},methods:{partThumbnail}}
+export default {components:{PartDesign},props:['owned','selected'],data:()=>({category:'top',group:'clothing',groups:PART_GROUPS,lipColors:['#e8b5a3','#ad6375','#e5876d','#8d3e59','#d89aaf']}),computed:{categories(){const g=PART_GROUPS.find(g=>g.id===this.group);return CATEGORIES.filter(c=>g.categories.includes(c.id))},choices(){return PARTS.filter(p=>p.category===this.category)}},methods:{partThumbnail,chooseGroup(id){const g=PART_GROUPS.find(g=>g.id===id);if(!g)return;this.group=id;if(!g.categories.includes(this.category))this.category=g.categories[0]}}}
 </script>
 <style>
 .fw-part-categories{display:flex;overflow:auto;gap:5px;margin-bottom:16px;padding:3px 0 8px;scrollbar-width:thin}
+.fw-part-groups{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;margin:10px 0 6px}.fw-part-groups button{min-width:0;min-height:34px;padding:6px 3px;font-size:12px}.fw-part-groups [aria-pressed=true]{background:#eee2d9;color:#6f4c59;border-color:#cfb5bb}
 .fw-part-categories button{white-space:nowrap;flex:none;min-height:40px;padding:7px 12px}.fw-part-categories [aria-pressed=true]{background:#986177!important;color:#fff!important}
 .fw-part-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.fw-part-grid article{min-width:0;background:#fffdfa;border:1px solid #e8ded8;border-radius:14px;overflow:hidden;padding-bottom:10px;text-align:center}.fw-part-grid article.selected{border-color:#a9637c;box-shadow:0 0 0 1px #a9637c}
 .fw-part-grid .fw-part-preview{display:flex;justify-content:center;align-items:center;width:100%;height:150px;min-width:0;padding:0;border:0;border-radius:0;background:#f4ede5;overflow:hidden}.fw-part-preview img{display:block;width:100%;height:100%;max-width:100%;max-height:100%;object-fit:contain;pointer-events:none}

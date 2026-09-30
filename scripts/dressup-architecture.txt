@@ -4,7 +4,8 @@ VuePress page: blogs/other/flower_wardrobe.md; Vue 2 component: FlowerWardrobe.v
 Pure state/economy: dressup/engine.mjs. All item IDs, prices, tags and quest rewards are data.
 Art: fourteen original complete outfits x three separately illustrated poses. Changing garments uses
 full outfit sprites, so sleeves, hair, skirt and hands maintain correct occlusion in every pose.
-Fine wardrobe: separate neutral-standing model, 12 component categories and 111 selectable options.
+Fine wardrobe: separate neutral-standing model, 14 component categories and 127 selectable options.
+Four navigation groups: clothing, hair accessories, jewellery, makeup. Browsing groups never equips items.
 V5 art starts from one blank-feature full-body master. Clothes, footwear, hair and socks are
 generated already worn on that exact model, then extracted on a shared 512x1024 canvas.
 No runtime alpha-bound fitting, product-shoe scaling or flat-color eyebrow cover patches.
@@ -43,8 +44,19 @@ Stockings and boots follow master calf/ankle/foot landmarks; shoe opening height
 clip stockings without obscuring them inside ballerina instep windows.
 Sources, prompts and attachment landmarks: scripts/wardrobe-v11-art.json.
 Actual model matrices: 72 hat/hair, 48 crown/face/hair, 24 jewellery/hair,
-54 shoe/sock and 108 top/new-skirt combinations in test-dressup-accessories.mjs;
+108 shoe/sock and 108 top/new-skirt combinations in test-dressup-accessories.mjs;
 168 cap/face/hair checks also compare unoccluded side hair pixel-for-pixel.
+V12 adds six distinct shoe cuts (three sneakers, combat/cowboy/riding boots), four
+necklaces and four wrist pieces. Necklace and wrist selections are separate persistent
+slots; old saves/albums gain empty defaults without changing clothing or currency.
+Bracelet rear arcs load atomically and paint behind the master, with the front arc
+after clothing. Necklace rear clasps appear only on independent product cards.
+The original v11 small-hat design is repositioned 24 pixels left and 6 up on the
+shared canvas; its old product illustration and all existing hair remain unchanged.
+Generated prompts/landmarks: scripts/wardrobe-v12-art.json; reproducible delivery:
+SHARP_PATH=<sharp> node scripts/prepare-wardrobe-v12.mjs. No new costume colour clones.
+V12 fit checks: 24 small-hat/face/hair, 96 necklace/top/hair, 72 wrist/top combinations
+in test-dressup-jewellery.mjs. All new runtime art, including products, is under 1 MiB.
 
 32 material editions (8 tops, 8 bottoms, 6 headpieces, 6 hats, 4 earrings)
 reuse existing registered sprites and independent catalogue art. collections.mjs

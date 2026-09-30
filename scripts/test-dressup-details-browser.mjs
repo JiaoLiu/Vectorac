@@ -3,6 +3,7 @@ import {createRequire} from 'node:module'
 import {mkdtemp} from 'node:fs/promises'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
+import {chooseCategory} from './wardrobe-category-browser.mjs'
 const require=createRequire(import.meta.url),{chromium,webkit}=require(process.env.PLAYWRIGHT_PATH||'playwright')
 const base=process.env.DRESSUP_BASE||'http://127.0.0.1:8080',key='vectorac.flower-wardrobe.v1',out=await mkdtemp(join(tmpdir(),'wardrobe-details-'))
 for(const [name,engine] of [['chromium',chromium],['webkit',webkit]]){
@@ -27,10 +28,10 @@ for(const [name,engine] of [['chromium',chromium],['webkit',webkit]]){
   assert.equal((await save()).coins,1000,'migrating old save preserves currency')
   // Reproduce: unowned clothes -> owned headpiece -> makeup zoom -> return.
   await game.getByRole('button',{name:'试戴夜色丝绒',exact:true}).click()
-  await page.locator('.fw-part-categories').getByRole('button',{name:'下装',exact:true}).click();await game.getByRole('button',{name:'试戴桃花长裙',exact:true}).click()
-  await page.locator('.fw-part-categories').getByRole('button',{name:'头饰',exact:true}).click();await game.getByRole('button',{name:'试戴珍珠蝴蝶结',exact:true}).click()
-  await page.locator('.fw-part-categories').getByRole('button',{name:'脸型',exact:true}).click();await game.getByRole('button',{name:'试戴柔和圆脸',exact:true}).click()
-  await page.locator('.fw-part-categories').getByRole('button',{name:'眼睛',exact:true}).click();await game.getByRole('button',{name:'试戴碧绿眼眸',exact:true}).click()
+  await chooseCategory(page,'下装');await game.getByRole('button',{name:'试戴桃花长裙',exact:true}).click()
+  await chooseCategory(page,'头饰');await game.getByRole('button',{name:'试戴珍珠蝴蝶结',exact:true}).click()
+  await chooseCategory(page,'脸型');await game.getByRole('button',{name:'试戴柔和圆脸',exact:true}).click()
+  await chooseCategory(page,'眼睛');await game.getByRole('button',{name:'试戴碧绿眼眸',exact:true}).click()
   assert.equal((await save()).look.parts.eyes,'eyes-2','eye customization has its own saved slot')
   await page.waitForFunction(()=>{const p=document.querySelector('.fw-game').__vue__.displayParts;return p.top==='top-3'&&p.bottom==='bottom-2'&&(document.querySelector('.fw-model').dataset.src||'').includes('top-3')})
   const draftBefore=await game.evaluate(e=>JSON.stringify(e.__vue__.displayParts))
@@ -39,13 +40,13 @@ for(const [name,engine] of [['chromium',chromium],['webkit',webkit]]){
   assert.equal((await save()).ownedParts.includes('top-3'),false)
   await game.getByRole('button',{name:'结束全部试戴',exact:true}).click()
   await page.screenshot({path:join(out,`${name}-${viewport.width}-fine.png`)})
-  await page.locator('.fw-part-categories').getByRole('button',{name:'耳环',exact:true}).click()
+  await chooseCategory(page,'耳环')
   await game.getByRole('button',{name:'试戴珍珠耳坠',exact:true}).click()
   assert.equal((await save()).ownedParts.includes('earrings-0'),false,'preview cannot grant ownership')
   await page.locator('.fw-preview-action .fw-primary').click();await page.getByRole('button',{name:'确认解锁',exact:true}).click();assert.equal((await save()).coins,970)
-  await page.locator('.fw-part-categories').getByRole('button',{name:'脸型',exact:true}).click();await game.getByRole('button',{name:'试戴柔和圆脸',exact:true}).click()
-  await page.locator('.fw-part-categories').getByRole('button',{name:'眉毛',exact:true}).click();await game.getByRole('button',{name:'试戴弯月眉',exact:true}).click()
-  await page.locator('.fw-part-categories').getByRole('button',{name:'口红',exact:true}).click();await game.getByRole('button',{name:'试戴莓果红',exact:true}).click()
+  await chooseCategory(page,'脸型');await game.getByRole('button',{name:'试戴柔和圆脸',exact:true}).click()
+  await chooseCategory(page,'眉毛');await game.getByRole('button',{name:'试戴弯月眉',exact:true}).click()
+  await chooseCategory(page,'口红');await game.getByRole('button',{name:'试戴莓果红',exact:true}).click()
   await page.waitForFunction(()=>document.querySelector('.fw-model').dataset.src.includes('lip-3'))
   await page.screenshot({path:join(out,`${name}-${viewport.width}-makeup.png`)})
   await game.getByRole('button',{name:'查看全身',exact:true}).click()
@@ -63,8 +64,21 @@ for(const [name,engine] of [['chromium',chromium],['webkit',webkit]]){
   for(let i=0;i<6;i++){await page.waitForFunction(()=>{const g=document.querySelector('.fw-playroom').__vue__;return Math.abs(g.needle-.5)<.08});await room.getByRole('button',{name:'落针',exact:true}).dispatchEvent('pointerdown')}
   assert.ok((await save()).coins>=1075);assert.equal((await save()).gameClaims.length,2)
   await page.screenshot({path:join(out,`${name}-${viewport.width}-games.png`)})
+  // Multiple unowned slots, new navigation groups and a partial purchase:
+  // browsing/accessory purchases must not silently put clothes back.
+  await tab('装扮');await chooseCategory(page,'上衣');await game.getByRole('button',{name:'试戴夜色丝绒',exact:true}).click()
+  await chooseCategory(page,'鞋子');await game.getByRole('button',{name:'试戴山野复古跑鞋',exact:true}).click()
+  await chooseCategory(page,'项链');await game.getByRole('button',{name:'试戴玉叶坠链',exact:true}).click()
+  await chooseCategory(page,'手饰');await game.getByRole('button',{name:'试戴花信珍珠手链',exact:true}).click()
+  await page.waitForFunction(()=>{const vm=document.querySelector('.fw-game').__vue__;return !vm.loading&&vm.displayParts.top==='top-3'&&vm.displayParts.shoes==='shoes-7'&&vm.displayParts.necklace==='necklace-2'&&vm.displayParts.wrist==='wrist-0'})
+  const preview=await game.evaluate(e=>JSON.stringify(e.__vue__.displayParts));await chooseCategory(page,'帽子');await chooseCategory(page,'眼睛');assert.equal(await game.evaluate(e=>JSON.stringify(e.__vue__.displayParts)),preview)
+  await chooseCategory(page,'手饰');const coins=(await save()).coins
+  await page.locator('.fw-part-grid article').filter({hasText:'花信珍珠手链'}).getByRole('button',{name:'✦ 35 解锁',exact:true}).click();await page.getByRole('button',{name:'确认解锁',exact:true}).click()
+  assert.equal((await save()).coins,coins-35);assert.equal((await save()).look.parts.wrist,'wrist-0');assert.equal((await save()).ownedParts.includes('necklace-2'),false);assert.equal(await game.evaluate(e=>JSON.stringify(e.__vue__.displayParts)),preview,'buying wrist piece preserves the other fitting slots')
+  await page.screenshot({path:join(out,`${name}-${viewport.width}-jewellery.png`)})
+  await game.getByRole('button',{name:'结束全部试戴',exact:true}).click()
   for(let i=0;i<4;i++){await page.setViewportSize(i%2?{width:390,height:844}:{width:844,height:390});await page.waitForTimeout(80);assert.ok(await page.locator('.fw-model').evaluate(c=>{const d=c.getContext('2d').getImageData(0,0,c.width,c.height).data;let n=0;for(let j=3;j<d.length;j+=4)if(d[j]>100)n++;return n>10000}))}
-  await page.reload();await page.waitForFunction(()=>(document.querySelector('.fw-model').dataset.src||'').includes('lip-3'));assert.equal((await save()).look.parts.face,'face-1');assert.equal((await save()).look.parts.eyes,'eyes-2');assert.equal((await save()).look.parts.earrings,'earrings-0');assert.deepEqual(errors,[])
+  await page.reload();await page.waitForFunction(()=>(document.querySelector('.fw-model').dataset.src||'').includes('lip-3'));assert.equal((await save()).look.parts.face,'face-1');assert.equal((await save()).look.parts.eyes,'eyes-2');assert.equal((await save()).look.parts.earrings,'earrings-0');assert.equal((await save()).look.parts.wrist,'wrist-0');assert.equal((await save()).look.parts.necklace,'necklace-none');assert.deepEqual(errors,[])
   await page.close()
  }}finally{await browser.close()}
 }

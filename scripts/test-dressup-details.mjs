@@ -3,10 +3,11 @@ import assert from 'node:assert/strict'
 import {selectPreview,displayParts,purchasedPreview,previewItems} from '../.vuepress/components/dressup/preview.mjs'
 import {BASE,baseSource,layerSources,paintComposite,REGISTERED_ORDER,underbodySource} from '../.vuepress/components/dressup/compositor.mjs'
 import {freshState,normalize,act} from '../.vuepress/components/dressup/engine.mjs'
-import {DEFAULT_PARTS,FREE_PARTS,fineTags,PARTS,partAsset,partThumbnail,fitIndex} from '../.vuepress/components/dressup/parts.mjs'
+import {DEFAULT_PARTS,FREE_PARTS,fineTags,PARTS,CATEGORIES,PART_GROUPS,partAsset,partBackAsset,partThumbnail,fitIndex} from '../.vuepress/components/dressup/parts.mjs'
 import {EDITIONS} from '../.vuepress/components/dressup/collections.mjs'
 import {STYLES} from '../.vuepress/components/dressup/styles.mjs'
 import {ACCESSORIES} from '../.vuepress/components/dressup/accessories.mjs'
+import {JEWELLERY_FOOTWEAR} from '../.vuepress/components/dressup/jewellery-footwear.mjs'
 import {memoryGame,flipMemory,closeMemory,stylingGame,submitStyling,sewingGame,stitch,gameReward} from '../.vuepress/components/dressup/minigames.mjs'
 import {faceSampleX} from '../.vuepress/components/dressup/face-fit.mjs'
 test('six genuinely new garment cuts have separate wearable/design assets, not more colour editions',()=>{
@@ -21,8 +22,33 @@ test('twelve new accessory cuts purchase and persist without resetting clothing 
  assert.equal(ACCESSORIES.length,12)
  for(const category of ['hair','headpiece','hat','earrings','socks','shoes'])assert.equal(ACCESSORIES.filter(p=>p.category===category).length,2)
  let s={...freshState(),coins:2000}
- for(const p of ACCESSORIES){assert.ok(partAsset(p).includes('/v11/'));assert.ok(partThumbnail(p).includes('/v11/catalog/'));assert.notEqual(partAsset(p),partThumbnail(p));s=act(s,{type:'buy',kind:'part',id:p.id}).state;assert.ok(s.ownedParts.includes(p.id));assert.equal(s.look.parts[p.category],p.id);assert.equal(s.look.parts.top,DEFAULT_PARTS.top)}
+ for(const p of ACCESSORIES){assert.ok(partAsset(p).includes(p.id==='hat-11'?'/v12/':'/v11/'));assert.ok(partThumbnail(p).includes('/v11/catalog/'));assert.notEqual(partAsset(p),partThumbnail(p));s=act(s,{type:'buy',kind:'part',id:p.id}).state;assert.ok(s.ownedParts.includes(p.id));assert.equal(s.look.parts[p.category],p.id);assert.equal(s.look.parts.top,DEFAULT_PARTS.top)}
  const saved=normalize(JSON.parse(JSON.stringify(s)));assert.deepEqual(saved.look,s.look);assert.deepEqual(saved.ownedParts,s.ownedParts)
+})
+test('six shoe silhouettes and eight jewellery pieces have independent product art and persistent slots',()=>{
+ assert.equal(JEWELLERY_FOOTWEAR.length,14)
+ for(const [category,count] of [['shoes',6],['necklace',4],['wrist',4]])assert.equal(JEWELLERY_FOOTWEAR.filter(p=>p.category===category).length,count)
+ let s={...freshState(),coins:3000}
+ for(const p of JEWELLERY_FOOTWEAR){assert.ok(partAsset(p).includes('/v12/'));assert.ok(partThumbnail(p).includes('/v12/catalog/'));assert.notEqual(partAsset(p),partThumbnail(p));assert.equal(p.material,undefined);assert.equal(p.sourceIndex,undefined);s=act(s,{type:'buy',kind:'part',id:p.id}).state;assert.equal(s.look.parts[p.category],p.id);assert.equal(s.look.parts.top,'top-0')}
+ s=act(s,{type:'album',id:'new-jewels'}).state;s=act(s,{type:'part',id:'necklace-none'}).state;s=act(s,{type:'part',id:'wrist-none'}).state
+ s=act(normalize(JSON.parse(JSON.stringify(s))),{type:'restoreAlbum',id:'new-jewels'}).state
+ assert.equal(s.look.parts.necklace,'necklace-3');assert.equal(s.look.parts.wrist,'wrist-3');assert.equal(s.look.parts.shoes,'shoes-11')
+})
+test('old saves receive empty necklace and wrist slots without resetting clothing, albums or money',()=>{
+ const old={...DEFAULT_PARTS,top:'top-3',bottom:'bottom-2',hat:'hat-11'};delete old.necklace;delete old.wrist
+ const s=normalize({...freshState(),coins:487,ownedParts:[...FREE_PARTS,'top-3','bottom-2','hat-11'],look:{mode:'fine',parts:old},albums:[{id:'prior',look:{mode:'fine',parts:old}}]})
+ assert.equal(s.coins,487);assert.equal(s.look.parts.top,'top-3');assert.equal(s.look.parts.bottom,'bottom-2');assert.equal(s.look.parts.hat,'hat-11');assert.equal(s.look.parts.necklace,'necklace-none');assert.equal(s.look.parts.wrist,'wrist-none');assert.deepEqual(s.albums[0].look.parts,s.look.parts)
+ const draft=selectPreview(selectPreview(selectPreview({},'shoes-10',s.ownedParts),'necklace-2',s.ownedParts),'wrist-0',s.ownedParts)
+ assert.deepEqual(draft,{shoes:'shoes-10',necklace:'necklace-2',wrist:'wrist-0'});assert.deepEqual(purchasedPreview(draft,'necklace-2'),{shoes:'shoes-10',wrist:'wrist-0'});assert.equal(displayParts(s.look.parts,draft).top,'top-3')
+})
+test('grouping covers every category exactly once; bracelet rear sits behind body and front above clothing',()=>{
+ assert.deepEqual(PART_GROUPS.flatMap(g=>g.categories).sort(),CATEGORIES.map(c=>c.id).sort())
+ const parts={...DEFAULT_PARTS,necklace:'necklace-0',wrist:'wrist-0'},sources=layerSources(parts),draws=[]
+ const wrist=PARTS.find(p=>p.id==='wrist-0'),images=new Map(sources.map(src=>[src,{src}]))
+ const ctx=new Proxy({drawImage:img=>draws.push(img.src)},{get:(o,k)=>o[k]||(()=>{})});paintComposite(ctx,images,parts)
+ assert.ok(sources.includes(partBackAsset(wrist)));assert.ok(draws.indexOf(partBackAsset(wrist))<draws.indexOf(BASE));assert.ok(draws.indexOf(partAsset(wrist))>draws.indexOf(partAsset(PARTS.find(p=>p.id===parts.top))))
+ assert.equal(partBackAsset(PARTS.find(p=>p.id==='wrist-none')),'');assert.equal(partBackAsset(PARTS.find(p=>p.id==='wrist-2')),'')
+ const hat=PARTS.find(p=>p.id==='hat-11');assert.ok(partAsset(hat).includes('/v12/hat-11'));assert.ok(partThumbnail(hat).includes('/v11/catalog/hat-11'))
 })
 test('32 editions reuse registered assets, independent product designs and existing fit indices',()=>{
  assert.equal(EDITIONS.length,32);assert.equal(new Set(PARTS.map(p=>p.id)).size,PARTS.length)
