@@ -160,6 +160,13 @@ export default {
 @media(prefers-reduced-motion:reduce){.fw-game *{transition:none!important}}
 /* 按钮内联图标：随字号缩放、继承文字色，与 ♡ ✦ 字符图标风格一致。 */
 .fw-btn-icon{width:1.15em;height:1.15em;vertical-align:-.2em;margin-right:.35em}
+/* 触屏点击后 hover 会残留（sticky hover），落针等按钮像一直被按住；
+   触摸设备取消 hover 换色，按下瞬间改用 :active 短暂变暗。 */
+@media (hover:none),(pointer:coarse){
+ .fw-game button:hover{background:#fffcf8}
+ .fw-game button.fw-primary:hover{background:#986177}
+ .fw-game button:active:not(:disabled){filter:brightness(.93)}
+}
 
 /* Absolute canvas inside a definite flex slot avoids intrinsic-image sizing cycles on rotation. */
 .fw-model-space{flex:1 1 0;min-height:0}
