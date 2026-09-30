@@ -1,3 +1,4 @@
+import {EDITIONS} from './collections.mjs'
 export const CATEGORIES = [
   {id:'top',name:'上衣'},{id:'bottom',name:'下装'},{id:'hair',name:'发型'},{id:'headpiece',name:'头饰'},
   {id:'hat',name:'帽子'},{id:'earrings',name:'耳环'},{id:'socks',name:'袜子'},
@@ -18,6 +19,7 @@ const groups={
   lip:[['自然唇色',0,'自然'],['玫瑰豆沙',0,'甜美'],['珊瑚橘',0,'清新'],['莓果红',0,'古典'],['樱花粉',0,'梦幻']]
 }
 export const PARTS=Object.entries(groups).flatMap(([category,rows])=>rows.map(([name,price,tag],index)=>({id:`${category}-${index}`,category,index,name,price,tag})))
+PARTS.push(...EDITIONS)
 for(const category of ['headpiece','hat','earrings','socks'])PARTS.push({id:`${category}-none`,category,index:-1,name:'不佩戴',price:0,tag:''})
 export const FREE_PARTS=PARTS.filter(p=>p.price===0).map(p=>p.id)
 export const DEFAULT_PARTS={top:'top-0',bottom:'bottom-0',hair:'hair-0',headpiece:'headpiece-none',hat:'hat-none',earrings:'earrings-none',socks:'socks-0',shoes:'shoes-0',face:'face-0',eyes:'eyes-0',brows:'brows-0',lip:'lip-0'}
@@ -25,8 +27,9 @@ export const REGISTERED_CATEGORIES=['top','bottom','hair','hat','socks','shoes',
 export const HEAD_CATEGORIES=['hair','hat','face','eyes','brows','lip']
 // The ponytail keeps its original registered wearable; catalogue redesigns
 // must not substitute a newly illustrated hairstyle on the model.
-export const partAsset=p=>p.index<0?'':`/img/games/dressup/layers/${p.category==='face'?'v8/':HEAD_CATEGORIES.includes(p.category)?'v7/':REGISTERED_CATEGORIES.includes(p.category)?'v5/':''}${p.category}-${p.index}${p.id==='hair-2'?'-restored':''}.webp`
+export const fitIndex=p=>p.sourceIndex===undefined?p.index:p.sourceIndex
+export const partAsset=p=>p.index<0?'':`/img/games/dressup/layers/${p.category==='brows'&&p.index>=2?'v9/':p.category==='face'?'v8/':HEAD_CATEGORIES.includes(p.category)?'v7/':REGISTERED_CATEGORIES.includes(p.category)?'v5/':''}${p.category}-${fitIndex(p)}${p.id==='hair-2'?'-restored':''}.webp`
 // Product/design cards and the registered wearable layers have separate contracts.
-export const partThumbnail=p=>p.index<0?'':`/img/games/dressup/layers/v7/catalog/${p.id}.webp`
+export const partThumbnail=p=>p.index<0?'':`/img/games/dressup/layers/${p.category==='brows'&&p.index>=2?'v9':'v7'}/catalog/${p.category}-${fitIndex(p)}.webp`
 export function validParts(raw,owned=FREE_PARTS){const result={};for(const c of CATEGORIES){const p=PARTS.find(p=>p.id===(raw||{})[c.id]&&p.category===c.id);result[c.id]=p&&owned.includes(p.id)?p.id:DEFAULT_PARTS[c.id]}return result}
 export function fineTags(parts){return [...new Set(Object.values(parts).map(id=>PARTS.find(p=>p.id===id)).filter(Boolean).map(p=>p.tag).filter(Boolean))]}

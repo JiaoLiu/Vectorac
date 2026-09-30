@@ -25,6 +25,10 @@ const features={};for(const category of ['eyes','brows','lip'])for(const p of PA
  for(let y=120;y<138;y++)for(let x=247;x<265;x++)assert.equal(data[(y*512+x)*4+3],0,p.id+' contains nose/skin')
  for(let y=0;y<1024;y++)for(let x=0;x<512;x++)if(data[(y*512+x)*4+3])assert.ok(category==='eyes'?y>=99&&y<119:category==='brows'?y>=86&&y<101:y>=138&&y<151,'feature extends outside its anatomical region')
 }
+// At phone scale a different filename/hash is not enough: one style must arch,
+// the other must have a clear angular peak, with visibly different pigment.
+let browDifference=0;for(let p=3;p<features['brows-2'].length;p+=4)if(Math.abs(features['brows-2'][p]-features['brows-3'][p])>50)browDifference++
+assert.ok(browDifference>90,'crescent and angled brows are not visibly different')
 const faces=await Promise.all([0,1,2,3].map(i=>raw('face-'+i)))
 for(let i=1;i<4;i++){
  // Jaw really changes, but the one common nose stays EXACTLY identical.

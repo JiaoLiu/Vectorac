@@ -4,7 +4,7 @@ VuePress page: blogs/other/flower_wardrobe.md; Vue 2 component: FlowerWardrobe.v
 Pure state/economy: dressup/engine.mjs. All item IDs, prices, tags and quest rewards are data.
 Art: fourteen original complete outfits x three separately illustrated poses. Changing garments uses
 full outfit sprites, so sleeves, hair, skirt and hands maintain correct occlusion in every pose.
-Fine wardrobe: separate neutral-standing model, 12 component categories and 55 selectable options.
+Fine wardrobe: separate neutral-standing model, 12 component categories and 87 selectable options.
 V5 art starts from one blank-feature full-body master. Clothes, footwear, hair and socks are
 generated already worn on that exact model, then extracted on a shared 512x1024 canvas.
 No runtime alpha-bound fitting, product-shoe scaling or flat-color eyebrow cover patches.
@@ -24,6 +24,15 @@ Solid hats cover ponytail roots via their measured top silhouettes (hat-coverage
 not a horizontal y=59 crop that erases the side hair. Hats originate worn on a cropped head reference,
 then the fixed inverse crop transform puts them onto the shared full-body canvas.
 Product/design cards use a separate v7/catalog path with a single warm-ivory background.
+32 material editions (8 tops, 8 bottoms, 6 headpieces, 6 hats, 4 earrings)
+reuse existing registered sprites and independent catalogue art. collections.mjs
+declares colour/print and sourceIndex; materials.mjs preserves alpha and anatomy,
+uses no Safari canvas filter API, and keeps only 4 derived canvases (about 8 MB
+for full-body layers). Editions download no extra garment/hat bitmaps.
+V9 crescent/angled eyebrows use distinctly different native vector contours at
+the same registered brow landmarks, with transparent hair pigment only.
+Build native brow art: SHARP_PATH=<sharp> node scripts/prepare-wardrobe-brows.mjs.
+Edition fit/catalogue and browser composition checks: scripts/test-dressup-editions.mjs.
 Clothing/accessories use standalone product art; beauty/hair/hat/sock cards use independent
 imagegen design atlases (scripts/wardrobe-v7-art.json), never worn-layer crops.
 Four eye choices and six sock options include ankle, mid-calf, knee and thigh-high lengths.

@@ -3,9 +3,26 @@ import assert from 'node:assert/strict'
 import {selectPreview,displayParts,purchasedPreview,previewItems} from '../.vuepress/components/dressup/preview.mjs'
 import {BASE,baseSource,layerSources,paintComposite,REGISTERED_ORDER} from '../.vuepress/components/dressup/compositor.mjs'
 import {freshState,normalize,act} from '../.vuepress/components/dressup/engine.mjs'
-import {DEFAULT_PARTS,FREE_PARTS,fineTags,PARTS,partAsset} from '../.vuepress/components/dressup/parts.mjs'
+import {DEFAULT_PARTS,FREE_PARTS,fineTags,PARTS,partAsset,partThumbnail,fitIndex} from '../.vuepress/components/dressup/parts.mjs'
+import {EDITIONS} from '../.vuepress/components/dressup/collections.mjs'
 import {memoryGame,flipMemory,closeMemory,stylingGame,submitStyling,sewingGame,stitch,gameReward} from '../.vuepress/components/dressup/minigames.mjs'
 import {faceSampleX} from '../.vuepress/components/dressup/face-fit.mjs'
+test('32 editions reuse registered assets, independent product designs and existing fit indices',()=>{
+ assert.equal(EDITIONS.length,32);assert.equal(new Set(PARTS.map(p=>p.id)).size,PARTS.length)
+ for(const p of EDITIONS){const original=PARTS.find(q=>q.id===`${p.category}-${p.sourceIndex}`)
+  assert.equal(partAsset(p),partAsset(original));assert.equal(partThumbnail(p),partThumbnail(original));assert.equal(fitIndex(p),original.index)
+  assert.deepEqual(layerSources({...DEFAULT_PARTS,[p.category]:p.id}),layerSources({...DEFAULT_PARTS,[p.category]:original.id}))
+ }
+})
+test('edition purchases, trial drafts and albums persist their own identities without changing other slots',()=>{
+ let s=act(freshState(),{type:'buy',kind:'part',id:'top-4'}).state
+ assert.equal(s.coins,45);assert.equal(s.look.parts.top,'top-4');assert.equal(s.look.parts.bottom,'bottom-0')
+ let draft=selectPreview({},'hat-7',s.ownedParts);draft=selectPreview(draft,'bottom-11',s.ownedParts)
+ assert.deepEqual(displayParts(s.look.parts,draft),{...s.look.parts,hat:'hat-7',bottom:'bottom-11'})
+ s=act(s,{type:'album',id:'mint-edition'}).state;s=act(s,{type:'part',id:'top-0'}).state
+ s=act(normalize(JSON.parse(JSON.stringify(s))),{type:'restoreAlbum',id:'mint-edition'}).state
+ assert.equal(s.look.parts.top,'top-4');assert.equal(s.albums[0].look.parts.top,'top-4')
+})
 test('face shaping stays small and smooth, preserves the nose and never widens the neck',()=>{
  for(let face=0;face<4;face++)for(let y=25;y<164;y++)for(let x=190;x<322;x++){
   const mapped=faceSampleX(face,x,y)
