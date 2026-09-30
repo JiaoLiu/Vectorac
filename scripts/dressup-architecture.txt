@@ -14,7 +14,9 @@ Shoes preserve their actual worn position; transparent instep windows reveal cho
 V7 head: one genuinely feature-free head with a single shared nose; jaw/cheek silhouettes
 are morphed independently without moving central feature landmarks. Eyes, brows and lips
 are isolated registered pigment, not skin rectangles from different complete heads.
-Hair uses imagegen hair-only extractions with no residual cheeks/ears; no geometric ear holes.
+Hair uses imagegen hair-only extractions with no geometric ear holes, except hair-2:
+the ponytail wearable is restored byte-identically from v6/hair-2.webp and pinned by regression.
+Its independent v7/catalog/hair-2.webp design card cannot change that registered wearable.
 Jaw interpolation is premultiplied-alpha and converges to the original neck at the boundary.
 Ear jewellery draws after front hair at fixed anatomical lobe anchors, verified for each hairstyle.
 Solid hats cover ponytail roots; hats originate worn on a cropped registered head reference,

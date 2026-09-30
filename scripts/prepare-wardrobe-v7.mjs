@@ -13,7 +13,10 @@ for(const asset of manifest.assets){
  await sharp(data).webp({lossless:true}).toFile(dest);sources[asset.id]=dest
 }
 for(const c of ['eyes','brows','lip','hat'])for(let i=0;i<(c==='lip'?5:4);i++)await copyFile(`${old}/v6/${c}-${i}.webp`,`${root}/${c}-${i}.webp`)
-for(let i=0;i<4;i++)await sharp(sources['hair-'+i]).resize(W,H,{fit:'fill'}).webp({lossless:true}).toFile(`${root}/hair-${i}.webp`)
+for(let i=0;i<4;i++){
+ if(i===2)await copyFile(`${old}/v6/hair-2.webp`,`${root}/hair-2-restored.webp`)
+ else await sharp(sources['hair-'+i]).resize(W,H,{fit:'fill'}).webp({lossless:true}).toFile(`${root}/hair-${i}.webp`)
+}
 const master=await sharp('scripts/fixtures/wardrobe-v5-sources/master.webp').resize(W,H,{fit:'fill'}).ensureAlpha().raw().toBuffer()
 const clamp=(v,a=0,b=1)=>Math.max(a,Math.min(b,v))
 // Alpha must be interpolated in premultiplied space: otherwise transparent

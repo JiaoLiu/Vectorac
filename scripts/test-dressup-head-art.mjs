@@ -4,6 +4,7 @@ import {createRequire} from 'node:module'
 import {readFile,writeFile,mkdtemp} from 'node:fs/promises'
 import {join} from 'node:path'
 import {tmpdir} from 'node:os'
+import {createHash} from 'node:crypto'
 import {PARTS,DEFAULT_PARTS,partAsset,partThumbnail} from '../.vuepress/components/dressup/parts.mjs'
 const require=createRequire(import.meta.url),sharp=require(process.env.SHARP_PATH||'sharp'),{chromium}=require(process.env.PLAYWRIGHT_PATH||'playwright')
 const dir=await mkdtemp(join(tmpdir(),'wardrobe-v7-head-'))
@@ -33,6 +34,9 @@ for(let i=1;i<4;i++){
 }
 for(const id of ['hair-0','hair-1']){const data=await raw(id);assert.ok(data[(150*512+224)*4+3]>100,'rectangular ear/jaw hole returned')}
 for(let hair=0;hair<4;hair++){
+ // Restored ponytail is pinned to the original wearable, not the new generated
+ // sprite. A skin-colour heuristic is not a registration/visual test for it.
+ if(hair===2){const path=partAsset(PARTS.find(p=>p.id==='hair-2'));assert.ok(path.endsWith('/hair-2-restored.webp'));const wearable=await readFile('.vuepress/public'+path);assert.deepEqual(wearable,await readFile('.vuepress/public/img/games/dressup/layers/v6/hair-2.webp'),'catalogue regeneration must preserve the original ponytail wearable');assert.equal(createHash('sha256').update(wearable).digest('hex'),'779118293287eb733d2c0e318fa1c9e6d440467e53cabedcdcc702d4030a0331','original ponytail registration must not change');continue}
  const data=await raw('hair-'+hair);let skin=0
  for(let y=105;y<164;y++)for(let x=208;x<307;x++){const p=(y*512+x)*4,[r,g,b,a]=data.subarray(p,p+4);if(a>150&&r>165&&g>110&&r>g&&g>b&&r-g<65)skin++}
  assert.ok(skin<10,'hair sprite contains cheek/ear skin that produces stitched face edges: '+hair)
@@ -64,7 +68,16 @@ try{
    const crop=document.createElement('canvas');crop.width=180;crop.height=180;crop.getContext('2d').drawImage(canvas,166,5,180,180,0,0,180,180)
    earrings.push({hair,e,visible,png:crop.toDataURL().split(',')[1]})
   }
-  return {tiles,hats,earrings}
+  const ponytails=[]
+  const {PARTS,partAsset}=await import('/parts.mjs'),pony=partAsset(PARTS.find(p=>p.id==='hair-2'))
+  const original=new Image;await new Promise((ok,bad)=>{original.onload=ok;original.onerror=bad;original.src='/img/games/dressup/layers/v6/hair-2.webp'})
+  for(let face=0;face<4;face++)for(const hat of ['hat-none','hat-0','hat-1','hat-2','hat-3']){
+   const look={...defaults,hair:'hair-2',face:'face-'+face,hat,earrings:'earrings-0'}
+   await draw(look);const actual=canvas.toDataURL(),reference=new Map(cache);reference.set(pony,original);paintComposite(ctx,reference,look)
+   if(canvas.toDataURL()!==actual)throw Error('ponytail wearable changed with catalogue art: '+face+' '+hat)
+   const crop=document.createElement('canvas');crop.width=250;crop.height=200;crop.getContext('2d').drawImage(canvas,140,0,250,200,0,0,250,200);ponytails.push(crop.toDataURL().split(',')[1])
+  }
+  return {tiles,hats,earrings,ponytails}
  },DEFAULT_PARTS)
  for(let f=0;f<4;f++){
   const cells=results.tiles.slice(f*80,f*80+80);await sharp({create:{width:137*10,height:157*8,channels:4,background:'#f1e6db'}}).composite(cells.map((v,i)=>({input:Buffer.from(v,'base64'),left:i%10*137,top:Math.floor(i/10)*157}))).png().toFile(join(dir,'face-'+f+'-all-makeup.png'))
@@ -72,5 +85,6 @@ try{
  await sharp({create:{width:230*4,height:190*4,channels:4,background:'#f1e6db'}}).composite(results.hats.map((v,i)=>({input:Buffer.from(v,'base64'),left:i%4*230,top:Math.floor(i/4)*190}))).png().toFile(join(dir,'all-hats-and-hair.png'))
  for(const e of results.earrings)assert.ok(e.visible.every(n=>n>20),`both earrings must remain visible with hair ${e.hair}, jewellery ${e.e}: ${e.visible}`)
  await sharp({create:{width:180*4,height:180*4,channels:4,background:'#f1e6db'}}).composite(results.earrings.map((v,i)=>({input:Buffer.from(v.png,'base64'),left:i%4*180,top:Math.floor(i/4)*180}))).png().toFile(join(dir,'all-earrings-and-hair.png'))
+ await sharp({create:{width:1250,height:800,channels:4,background:'#f1e6db'}}).composite(results.ponytails.map((v,i)=>({input:Buffer.from(v,'base64'),left:i%5*250,top:Math.floor(i/5)*200}))).png().toFile(join(dir,'restored-ponytail-all-faces-and-hats.png'))
  console.log(JSON.stringify({passed:true,makeupCombinations:320,hatHairCombinations:16,screenshots:dir}))
 }finally{await browser.close()}
