@@ -4,6 +4,8 @@ import bounds from './layer-bounds.mjs'
 import {HAT_HAIR_CUTS} from './hat-coverage.mjs'
 import {NEW_CAP_CUTS} from './accessory-coverage.mjs'
 import {tucksIntoWaist,clipTuckedTop} from './waist-fit.mjs'
+import {bakedFeature} from './beauty.mjs'
+import {wearingHair} from './legacy-hair.mjs'
 export const BASE='/img/games/dressup/layers/v5/master.webp'
 export function baseSource(){return BASE}
 export const FEET='/img/games/dressup/layers/v5/feet.webp'
@@ -17,6 +19,7 @@ export function paintComposite(ctx,images,parts){
  const chosen=category=>PARTS.find(p=>p.id===parts[category]&&p.category===category)
  const tucked=tucksIntoWaist(chosen('top'),chosen('bottom'))
  function registered(category,back=false){const p=chosen(category);if(!p||p.index<0)return
+  if(!back&&bakedFeature(chosen('face'),p))return
   const source=back?partBackAsset(p):partAsset(p);if(!source)return
   const hat=chosen('hat'),capHair=category==='hair'&&hat&&(hat.cap||fitIndex(hat)>=0&&fitIndex(hat)<2)
   // Follow the cap's actual silhouette, not a horizontal cut through all hair.
@@ -25,7 +28,8 @@ export function paintComposite(ctx,images,parts){
   if(category==='shoes'){const end=sockEnd(p);ctx.clearRect(185,end,142,1024-end)}
   if(category==='socks'){const shoe=chosen('shoes');ctx.save();ctx.beginPath();ctx.rect(0,0,512,sockEnd(shoe));ctx.clip()}
   if(category==='top'&&tucked){ctx.save();clipTuckedTop(ctx)}
-  ctx.drawImage(materialImage(images.get(source),p),0,0,512,1024)
+  const image=materialImage(images.get(source),p)
+  ctx.drawImage(category==='hair'&&!back?wearingHair(image,p,images.get(BASE)):image,0,0,512,1024)
   if(category==='top'&&tucked)ctx.restore()
   if(category==='socks')ctx.restore()
   if(capHair)ctx.restore()

@@ -3,6 +3,7 @@ node_modules/
 **/.DS_Store
 /public/
 .claude/
+.trae/
 
 # 语音合成等第三方服务的密钥（不入 git）
 .private/doubao-tts.json

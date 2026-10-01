@@ -11,6 +11,7 @@ import {JEWELLERY_FOOTWEAR} from '../.vuepress/components/dressup/jewellery-foot
 import {memoryGame,flipMemory,closeMemory,stylingGame,submitStyling,sewingGame,stitch,gameReward} from '../.vuepress/components/dressup/minigames.mjs'
 import {faceSampleX} from '../.vuepress/components/dressup/face-fit.mjs'
 import {tucksIntoWaist} from '../.vuepress/components/dressup/waist-fit.mjs'
+import {BEAUTY_PRESETS,BEAUTY_SLOTS,bakedFeature} from '../.vuepress/components/dressup/beauty.mjs'
 test('waist wearing follows the shirt cut and colour editions, never forces Chinese outer hems under a belt',()=>{
  const tucked=[0,1,4,5,6,7,12,14,15]
  for(const top of PARTS.filter(p=>p.category==='top'))for(const bottom of PARTS.filter(p=>p.category==='bottom'))assert.equal(tucksIntoWaist(top,bottom),!!bottom.frontBand&&tucked.includes(top.index),`${top.id}/${bottom.id}`)
@@ -66,7 +67,7 @@ test('curtain long hair restores rear strands beneath a changed face without cov
  assert.ok(calls.indexOf(rear)<calls.indexOf(BASE));assert.equal(calls.filter(c=>c===rear).length,2)
  const reset=calls.indexOf('clear:190,25,132,138');assert.equal(calls[reset+1],rear);assert.equal(calls[reset+2],face)
  assert.ok(calls.lastIndexOf(rear)<calls.indexOf(face));assert.ok(calls.indexOf(earrings)>calls.lastIndexOf(partAsset(hair)))
- for(const p of PARTS.filter(p=>p.category==='hair'&&p.id!=='hair-5'))assert.equal(partBackAsset(p),'','unrelated hairstyles unchanged')
+ for(const p of PARTS.filter(p=>p.category==='hair'&&p.id!=='hair-5'&&p.id!=='hair-1'))assert.equal(partBackAsset(p),'','unrelated hairstyles unchanged')
 })
 test('32 editions reuse registered assets, independent product designs and existing fit indices',()=>{
  assert.equal(EDITIONS.length,32);assert.equal(new Set(PARTS.map(p=>p.id)).size,PARTS.length)
@@ -146,8 +147,27 @@ test('anatomical layers are drawn in place without per-item bounding-box resizin
  const ctx=new Proxy({drawImage:(img,...rect)=>draws.push({src:img.src,rect})},{get:(o,k)=>o[k]||(()=>{})})
  paintComposite(ctx,images,DEFAULT_PARTS)
  for(const call of draws)assert.deepEqual(call.rect,[0,0,512,1024])
- const order=REGISTERED_ORDER.map(c=>partAsset(PARTS.find(p=>p.id===DEFAULT_PARTS[c])))
+ const face=PARTS.find(p=>p.id===DEFAULT_PARTS.face)
+ const order=REGISTERED_ORDER.map(c=>PARTS.find(p=>p.id===DEFAULT_PARTS[c])).filter(p=>!bakedFeature(face,p)).map(partAsset)
  assert.deepEqual(draws.slice(4,4+order.length).map(d=>d.src),order)
+})
+test('beauty presets atomically replace only makeup and persist without losing clothing, coins or albums',()=>{
+ const original=act({...freshState(),coins:456},{type:'album',id:'prior'}).state
+ for(const preset of BEAUTY_PRESETS){
+  const r=act(original,{type:'beauty',id:preset.id});assert.equal(r.ok,true)
+  assert.equal(r.state.coins,456);assert.deepEqual(r.state.ownedParts,original.ownedParts);assert.deepEqual(r.state.albums,original.albums)
+  for(const slot of Object.keys(DEFAULT_PARTS))assert.equal(r.state.look.parts[slot],BEAUTY_SLOTS.includes(slot)?preset.parts[slot]:original.look.parts[slot])
+  assert.deepEqual(normalize(JSON.parse(JSON.stringify(r.state))).look,r.state.look)
+ }
+ assert.equal(act(original,{type:'beauty',id:'unknown'}).ok,false)
+ assert.equal(normalize(original).ownedParts.includes('eyes-4'),true,'older saves gain the new free eye option')
+})
+test('complete beauty faces keep matching features baked in; custom eyes never add a second face or nose',()=>{
+ for(const preset of BEAUTY_PRESETS){const parts={...DEFAULT_PARTS,...preset.parts},face=PARTS.find(p=>p.id===parts.face),draws=[]
+  paintComposite(new Proxy({drawImage:img=>draws.push(img.src)},{get:(o,k)=>o[k]||(()=>{})}),new Map(layerSources(parts).map(src=>[src,{src}])),parts)
+  for(const slot of ['eyes','brows','lip']){const p=PARTS.find(p=>p.id===parts[slot]);assert.equal(draws.includes(partAsset(p)),!bakedFeature(face,p))}
+  for(const slot of BEAUTY_SLOTS)assert.ok(partThumbnail(PARTS.find(p=>p.id===parts[slot])).includes('/v16/catalog/'))
+ }
 })
 test('old fine saves and albums gain independent eyes without losing purchased socks, face or clothing',()=>{
  const parts={...DEFAULT_PARTS,top:'top-3',socks:'socks-1',face:'face-2'};delete parts.eyes

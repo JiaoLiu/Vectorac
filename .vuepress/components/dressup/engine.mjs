@@ -1,4 +1,5 @@
 import {PARTS,FREE_PARTS,DEFAULT_PARTS,validParts,fineTags} from './parts.mjs'
+import {beautyPreset} from './beauty.mjs'
 export const SAVE_KEY = 'vectorac.flower-wardrobe.v1'
 export const OUTFITS = [
   {id:'blush', name:'蔷薇初绽', price:0, color:'#d894a2', tags:['甜美','茶会'], detail:'蔷薇刺绣 · 珍珠纽扣 · 三层花边', story:'把第一封春日邀请，缝进柔软的裙摆。'},
@@ -94,6 +95,11 @@ export function act(state,action){
     case 'pose': if(![0,1,2].includes(action.id))return fail('姿势不可用');s.look.pose=action.id;break
     case 'mode': if(!['fine','outfit'].includes(action.mode))return fail('装扮方式不可用');s.look.mode=action.mode;if(action.mode==='fine')s.look.pose=0;break
     case 'part': {const p=item(PARTS,action.id);if(!p||!s.ownedParts.includes(p.id))return fail('先解锁这件装扮吧');s.look.mode='fine';s.look.parts[p.category]=p.id;s.look.pose=0;break}
+    case 'beauty': {
+      const preset=beautyPreset(action.id)
+      if(!preset||!Object.values(preset.parts).every(id=>s.ownedParts.includes(id)))return fail('这套妆容暂不可用')
+      s.look.mode='fine';s.look.pose=0;s.look.parts={...s.look.parts,...preset.parts};break
+    }
     case 'gameReward': {
       if(typeof action.id!=='string'||!action.id||![45,60,65].includes(action.reward))return fail('工坊结算无效')
       if(s.gameClaims.includes(action.id))return fail('这局奖励已经领取')

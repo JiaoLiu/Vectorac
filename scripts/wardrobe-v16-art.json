@@ -1,0 +1,70 @@
+{
+  "mode": "built-in imagegen",
+  "references": [
+    "scripts/fixtures/wardrobe-v16-sources/head-registration.webp",
+    ".vuepress/public/img/games/dressup/layers/v7/catalog/hair-0.webp",
+    "scripts/fixtures/wardrobe-v16-sources/outfit-style.webp"
+  ],
+  "note": "Four complete beauty mother faces with distinct artist-drawn jaws; fifth eye/lip variant. Uniform registration only, no per-row face deformation. Preserve all existing hair, hats, earrings, garments and catalogue illustrations outside makeup.",
+  "assets": [
+    {
+      "index": 0,
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-107f067a-02a4-454e-9b6d-3352f5b7ebff.png",
+      "file": "scripts/fixtures/wardrobe-v16-sources/beauty-0.webp",
+      "prompt": "Use case: precise-object-edit. Asset type: registered complete beauty-head sprite for a modular fashion dress-up game. Input images: Image 1 is the EXACT head-registration edit target (square crop of the model); Image 2 is the desired beautiful natural painted portrait STYLE reference from the game's hair catalogue; Image 3 is a supporting game-outfit mood reference only. Create an attractive cohesive complete face with eyes, eyebrows, lips, subtle blush and soft three-dimensional facial shading, comparable in beauty to the catalogue portrait, but perfectly straight frontal view, NO turn or tilt. Adult feminine face, realistic human facial structure in elegant painted fashion-game illustration, not a photo and not oversized anime doll eyes. CRITICAL registration: preserve Image 1's full square canvas and the exact skull, ear, neck position and head size. Do not zoom to fill canvas. Using a 192-unit square coordinate system (scaled up in Image 1), keep the head centered at x96; scalp top near y40; eye centres x72 and120 at y109; brow arches near y94; nose tip x96 y126; mouth centre x96 y144; chin bottom around y160; ears centred near x59/133 y127. Keep both ears and neck identical to Image 1, and the same warm ivory skin tone and soft light direction. Only the cheek/jaw contour and the facial-feature art change. Keep facial features delicate but crisply detailed, with natural eyelid shadows, iris catchlights, fine individual brow hairs, no hard makeup strips. The ENTIRE neck below chin must remain identical and connect seamlessly to the reference body. Genuinely transparent outside skin, keep every transparent margin. Bald: NO hair, wig, lashes detached in space, earrings, hat, clothes, shoulders, props, text, watermark, background rectangle, colored registration markings or extra faces. One complete registered head only. FACE SHAPE: a balanced natural OVAL face, full soft cheeks, gracefully curved lower jaw and a visibly rounded chin (not a tiny triangular point). BEAUTY STYLE: expressive warm hazel-brown softly almond-shaped eyes, layered fine eyelashes and delicate upper lids, gently arched natural hair-stroke brows, softly smiling rose-nude lips. Preserve the shape distinction clearly while retaining the ear/eye/nose/mouth anchors.",
+      "refinements": [],
+      "registration": {
+        "eyeY": 636,
+        "chinY": 1034
+      }
+    },
+    {
+      "index": 1,
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-a2ef02b9-ea1d-4705-a0da-760fc6a22eb1.png",
+      "file": "scripts/fixtures/wardrobe-v16-sources/beauty-1.webp",
+      "prompt": "Use case: precise-object-edit. Asset type: registered complete beauty-head sprite for a modular fashion dress-up game. Input images: Image 1 is the EXACT head-registration edit target (square crop of the model); Image 2 is the desired beautiful natural painted portrait STYLE reference from the game's hair catalogue; Image 3 is a supporting game-outfit mood reference only. Create an attractive cohesive complete face with eyes, eyebrows, lips, subtle blush and soft three-dimensional facial shading, comparable in beauty to the catalogue portrait, but perfectly straight frontal view, NO turn or tilt. Adult feminine face, realistic human facial structure in elegant painted fashion-game illustration, not a photo and not oversized anime doll eyes. CRITICAL registration: preserve Image 1's full square canvas and the exact skull, ear, neck position and head size. Do not zoom to fill canvas. Using a 192-unit square coordinate system (scaled up in Image 1), keep the head centered at x96; scalp top near y40; eye centres x72 and120 at y109; brow arches near y94; nose tip x96 y126; mouth centre x96 y144; chin bottom around y160; ears centred near x59/133 y127. Keep both ears and neck identical to Image 1, and the same warm ivory skin tone and soft light direction. Only the cheek/jaw contour and the facial-feature art change. Keep facial features delicate but crisply detailed, with natural eyelid shadows, iris catchlights, fine individual brow hairs, no hard makeup strips. The ENTIRE neck below chin must remain identical and connect seamlessly to the reference body. Genuinely transparent outside skin, keep every transparent margin. Bald: NO hair, wig, lashes detached in space, earrings, hat, clothes, shoulders, props, text, watermark, background rectangle, colored registration markings or extra faces. One complete registered head only. FACE SHAPE: a genuinely ROUND face inspired by real human anatomy: broader lower cheeks and mandible, shorter round lower face, rounded U-shaped chin with visible width, NOT an oval taper or triangle. BEAUTY STYLE: bright warm chocolate-brown round eyes, fine curled lashes, softly curved airy brows (not horizontal strips), peach-rose closed lips with a gentle friendly smile. Preserve the shape distinction clearly while retaining the ear/eye/nose/mouth anchors.",
+      "refinements": [
+        "Use case: precise-object-edit. Edit ONLY the lower cheek/jaw OUTLINE of this exact face to make it genuinely ROUND, with a broad rounded U-shaped lower face, fuller curved lower cheeks, and a visibly wide rounded chin instead of the current point. This is a beautiful adult woman, real human round-face anatomy, NOT a swollen cheek bulge. Keep the existing eyes, nose, mouth, brow detail, skin shading, bald skull, ears, neck, head position and entire square canvas exactly unchanged. The jaw from below each ear should curve gently inward but NOT meet at a pointed V: the central rounded bottom chin should span approximately the width of the nose plus both nostrils, with a soft flat arc. Keep chin bottom at exactly its existing position. Same complete cohesive painted fashion-game face, no new features, no hair, no jewellery, no background or text. Genuine transparency preserved."
+      ],
+      "registration": {
+        "eyeY": 717,
+        "chinY": 1067
+      }
+    },
+    {
+      "index": 2,
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-17b2de42-ce8b-4a4c-b402-6e5bc6ad6891.png",
+      "file": "scripts/fixtures/wardrobe-v16-sources/beauty-2.webp",
+      "prompt": "Use case: precise-object-edit. Asset type: registered complete beauty-head sprite for a modular fashion dress-up game. Input images: Image 1 is the EXACT head-registration edit target (square crop of the model); Image 2 is the desired beautiful natural painted portrait STYLE reference from the game's hair catalogue; Image 3 is a supporting game-outfit mood reference only. Create an attractive cohesive complete face with eyes, eyebrows, lips, subtle blush and soft three-dimensional facial shading, comparable in beauty to the catalogue portrait, but perfectly straight frontal view, NO turn or tilt. Adult feminine face, realistic human facial structure in elegant painted fashion-game illustration, not a photo and not oversized anime doll eyes. CRITICAL registration: preserve Image 1's full square canvas and the exact skull, ear, neck position and head size. Do not zoom to fill canvas. Using a 192-unit square coordinate system (scaled up in Image 1), keep the head centered at x96; scalp top near y40; eye centres x72 and120 at y109; brow arches near y94; nose tip x96 y126; mouth centre x96 y144; chin bottom around y160; ears centred near x59/133 y127. Keep both ears and neck identical to Image 1, and the same warm ivory skin tone and soft light direction. Only the cheek/jaw contour and the facial-feature art change. Keep facial features delicate but crisply detailed, with natural eyelid shadows, iris catchlights, fine individual brow hairs, no hard makeup strips. The ENTIRE neck below chin must remain identical and connect seamlessly to the reference body. Genuinely transparent outside skin, keep every transparent margin. Bald: NO hair, wig, lashes detached in space, earrings, hat, clothes, shoulders, props, text, watermark, background rectangle, colored registration markings or extra faces. One complete registered head only. FACE SHAPE: a soft HEART-shaped face with broader upper cheeks and a slender but blunt rounded lower jaw, not an exaggerated pointed V or diamond chin. BEAUTY STYLE: slightly elongated softly upturned amber-brown almond eyes, delicate cat-eye lash definition, elegant crescent brows with fine hairs, softly smiling dusty-rose lips. Preserve the shape distinction clearly while retaining the ear/eye/nose/mouth anchors.",
+      "refinements": [],
+      "registration": {
+        "eyeY": 683,
+        "chinY": 1063
+      }
+    },
+    {
+      "index": 3,
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-b754f0d5-5db9-4861-92a2-9e707ad6838c.png",
+      "file": "scripts/fixtures/wardrobe-v16-sources/beauty-3.webp",
+      "prompt": "Use case: precise-object-edit. Asset type: registered complete beauty-head sprite for a modular fashion dress-up game. Input images: Image 1 is the EXACT head-registration edit target (square crop of the model); Image 2 is the desired beautiful natural painted portrait STYLE reference from the game's hair catalogue; Image 3 is a supporting game-outfit mood reference only. Create an attractive cohesive complete face with eyes, eyebrows, lips, subtle blush and soft three-dimensional facial shading, comparable in beauty to the catalogue portrait, but perfectly straight frontal view, NO turn or tilt. Adult feminine face, realistic human facial structure in elegant painted fashion-game illustration, not a photo and not oversized anime doll eyes. CRITICAL registration: preserve Image 1's full square canvas and the exact skull, ear, neck position and head size. Do not zoom to fill canvas. Using a 192-unit square coordinate system (scaled up in Image 1), keep the head centered at x96; scalp top near y40; eye centres x72 and120 at y109; brow arches near y94; nose tip x96 y126; mouth centre x96 y144; chin bottom around y160; ears centred near x59/133 y127. Keep both ears and neck identical to Image 1, and the same warm ivory skin tone and soft light direction. Only the cheek/jaw contour and the facial-feature art change. Keep facial features delicate but crisply detailed, with natural eyelid shadows, iris catchlights, fine individual brow hairs, no hard makeup strips. The ENTIRE neck below chin must remain identical and connect seamlessly to the reference body. Genuinely transparent outside skin, keep every transparent margin. Bald: NO hair, wig, lashes detached in space, earrings, hat, clothes, shoulders, props, text, watermark, background rectangle, colored registration markings or extra faces. One complete registered head only. FACE SHAPE: a softly SQUARE-OVAL face inspired by real women: visible gently rounded jaw corners and a wider flatter rounded chin, confident balanced proportions, NOT the same pointy oval as the reference. BEAUTY STYLE: clear calm dark-brown gently elongated eyes, soft taupe lid depth, shaped natural angled brows made of fine hairs (not a solid straight bar), muted mauve-rose lips with a tiny relaxed smile. Preserve the shape distinction clearly while retaining the ear/eye/nose/mouth anchors.",
+      "refinements": [
+        "Use case: precise-object-edit. Change ONLY the lower jaw silhouette of this exact face to a genuine SOFT SQUARE human female face. The current V-shaped jaw is wrong. Give her gently rounded but clearly visible mandible corners, a broader lower jaw, and a wide softly flat rounded chin instead of a point. The bottom-most chin should be a smooth shallow U arc with a visibly wide base, not a V. Keep the chin bottom at exactly the existing height and keep the eyes, brows, lips, nose, ears, upper cheeks, bald skull, neck, skin colour, art style and whole square canvas exactly unchanged. No protruding cheek blobs, no polygon corners, no extra skin patches, no hair or jewellery or text. Preserve all transparency. Beautiful natural adult woman, anatomical jaw contour rather than a triangular doll face."
+      ],
+      "registration": {
+        "eyeY": 704,
+        "chinY": 1056
+      }
+    },
+    {
+      "index": 4,
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-27b25b53-ed20-479e-b5b1-513046bb42d3.png",
+      "file": "scripts/fixtures/wardrobe-v16-sources/beauty-4.webp",
+      "prompt": "Use case: precise-object-edit. Edit ONLY iris colour and lip colour in this exact complete beauty head. Make irises a gentle realistic muted slate BLUE-GREY (natural human iris with preserved dark limbal ring, pupil, iris texture and exact catchlights; no icy neon blue), and lips a delicate soft SAKURA ROSE pink (preserve all lip texture, smile shape and shading). Keep every other pixel and the complete square canvas, head placement, face outline, eyes/eyelids/lashes, brows, nose, ears and neck identical. Same cohesive painted fashion-game beauty, no feature resizing, no new face, no hair, jewellery, matte skin patches, background or text. Preserve genuine transparency.",
+      "refinements": [],
+      "registration": {
+        "eyeY": 636,
+        "chinY": 1034
+      }
+    }
+  ]
+}

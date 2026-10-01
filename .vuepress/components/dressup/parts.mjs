@@ -22,9 +22,9 @@ const groups={
   earrings:[['珍珠耳坠',30,'古典'],['星星耳坠',35,'星光'],['玉滴耳坠',50,'国风'],['红心耳钉',30,'甜美']],
   socks:[['奶油花边短袜',0,'甜美'],['海军蓝及膝袜',35,'学院'],['花影薄纱中筒袜',45,'自然'],['夜色及膝袜',40,'古典'],['奶油蕾丝过膝袜',45,'甜美'],['夜色蕾丝过膝袜',45,'古典']],
   shoes:[['蔷薇玛丽珍',0,'甜美'],['学院乐福鞋',60,'学院'],['绣花软鞋',75,'国风'],['金扣短靴',80,'古典']],
-  face:[['自然鹅蛋脸',0,'自然'],['柔和圆脸',0,'甜美'],['精致心形脸',0,'梦幻'],['清晰轮廓脸',0,'古典']],
-  eyes:[['暖棕圆眸',0,'自然'],['深棕杏眼',0,'古典'],['碧绿眼眸',0,'自然'],['蓝灰眼眸',0,'梦幻']],
-  brows:[['自然眉',0,'自然'],['柔和一字眉',0,'甜美'],['弯月眉',0,'古典'],['英气眉',0,'学院']],
+  face:[['自然鹅蛋脸',0,'自然'],['柔和圆脸',0,'甜美'],['柔和心形脸',0,'梦幻'],['方圆轮廓脸',0,'古典']],
+  eyes:[['暖棕杏眼',0,'自然'],['蜜桃圆眸',0,'甜美'],['琥珀桃花眼',0,'自然'],['清雅长眸',0,'古典'],['自然蓝灰眼',0,'梦幻']],
+  brows:[['自然柳叶眉',0,'自然'],['柔弧雾眉',0,'甜美'],['纤细弯月眉',0,'古典'],['清晰眉峰',0,'学院']],
   lip:[['自然唇色',0,'自然'],['玫瑰豆沙',0,'甜美'],['珊瑚橘',0,'清新'],['莓果红',0,'古典'],['樱花粉',0,'梦幻']]
 }
 export const PARTS=Object.entries(groups).flatMap(([category,rows])=>rows.map(([name,price,tag],index)=>({id:`${category}-${index}`,category,index,name,price,tag})))
@@ -32,6 +32,11 @@ PARTS.push(...EDITIONS)
 PARTS.push(...STYLES)
 PARTS.push(...ACCESSORIES)
 PARTS.push(...JEWELLERY_FOOTWEAR)
+// Preserve old save IDs while replacing the old patchwork faces and features.
+for(const p of PARTS)if(['face','eyes','brows','lip'].includes(p.category)){p.assetVersion='v16';p.wearVersion='v16';p.beautyIndex=p.index}
+// Loose long hair needs actual rear strands beneath the new ear contour,
+// not empty background inside its old, wider face extraction window.
+Object.assign(PARTS.find(p=>p.id==='hair-1'),{back:true,backVersion:'v16'})
 // Reuse corrected wearing art across colour editions; catalogue designs stay
 // independent and old purchase/save IDs do not change.
 for(const p of PARTS)if(p.category==='bottom'&&((p.sourceIndex===undefined?p.index:p.sourceIndex)===2||p.index>=12))p.wearVersion='v13'
@@ -49,7 +54,7 @@ export function partAsset(p){
  const version=p.wearVersion||(p.category==='hat'&&[0,3].includes(fitIndex(p))||p.category==='bottom'&&p.index>=12?'v11':p.assetVersion||(p.category==='brows'&&p.index>=2?'v10':p.category==='face'?'v8':HEAD_CATEGORIES.includes(p.category)?'v7':REGISTERED_CATEGORIES.includes(p.category)?'v5':''))
  return `/img/games/dressup/layers/${version?version+'/':''}${p.category}-${fitIndex(p)}${p.id==='hair-2'?'-restored':''}.webp`
 }
-export const partBackAsset=p=>p&&p.back&&p.index>=0?`/img/games/dressup/layers/${p.wearVersion||p.assetVersion}/${p.id}-back.webp`:''
+export const partBackAsset=p=>p&&p.back&&p.index>=0?`/img/games/dressup/layers/${p.backVersion||p.wearVersion||p.assetVersion}/${p.id}-back.webp`:''
 // Product/design cards and the registered wearable layers have separate contracts.
 export const partThumbnail=p=>p.index<0?'':`/img/games/dressup/layers/${p.assetVersion|| (p.category==='brows'&&p.index>=2?'v10':'v7')}/catalog/${p.category}-${fitIndex(p)}.webp`
 export function validParts(raw,owned=FREE_PARTS){const result={};for(const c of CATEGORIES){const p=PARTS.find(p=>p.id===(raw||{})[c.id]&&p.category===c.id);result[c.id]=p&&owned.includes(p.id)?p.id:DEFAULT_PARTS[c.id]}return result}

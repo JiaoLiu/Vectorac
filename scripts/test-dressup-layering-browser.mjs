@@ -25,7 +25,7 @@ for(const [name,engine] of [['chromium',chromium],['webkit',webkit]]){
    // browsing the list; waiting for off-screen lazy images would never finish.
    for(const image of await page.locator('.fw-part-preview img').all())await image.scrollIntoViewIfNeeded()
    await page.waitForFunction(()=>Array.from(document.querySelectorAll('.fw-part-preview img')).every(i=>i.complete&&i.naturalWidth>0)&&Array.from(document.querySelectorAll('.fw-design-canvas')).every(c=>c.dataset.ready==='true'))
-   assert.ok(await page.locator('.fw-part-preview img').evaluateAll(es=>es.every(i=>/\/v(?:7|9|10|11|12)\/catalog\//.test(i.src))),'all item cards use independent catalogue art')
+   assert.ok(await page.locator('.fw-part-preview img').evaluateAll(es=>es.every(i=>/\/v(?:7|9|10|11|12|16)\/catalog\//.test(i.src))),'all item cards use independent catalogue art')
    if(['上衣','下装','帽子','耳环','项链','手饰','鞋子','脸型','眼睛','眉毛'].includes(category))await page.screenshot({path:join(out,`${name}-catalog-${category}.png`)})
   }
   const looks=[

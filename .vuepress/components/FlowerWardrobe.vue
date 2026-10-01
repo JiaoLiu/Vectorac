@@ -53,7 +53,7 @@
             </template>
           </template>
           <GameWorkshop v-show="tab==='workshop'&&workshopMode==='games'" :active="tab==='workshop'&&workshopMode==='games'" :look="state.look" :preview="isPreview" @dress="chooseTab('fine')" @reward="receiveGameReward" />
-          <FineWardrobe v-if="tab==='fine'" :owned="state.ownedParts" :selected="displayParts" @choose="choosePart" @buy="askBuy('part',$event)" />
+          <FineWardrobe v-if="tab==='fine'" :owned="state.ownedParts" :selected="displayParts" @choose="choosePart" @beauty="chooseBeauty" @buy="askBuy('part',$event)" />
           <template v-if="tab==='album'">
             <div class="fw-section-title"><h2>穿搭手记</h2><p>{{state.albums.length}} / 12 套收藏 · 点击即可重新穿上</p></div>
             <div v-if="!state.albums.length" class="fw-empty">♡<h3>留住今天的喜欢</h3><p>穿好衣服后，点击试衣台下方「收藏穿搭」。</p></div>
@@ -73,6 +73,7 @@ import {SAVE_KEY,OUTFITS,SCENES,POSES,QUESTS,asset,sceneAsset,item,freshState,no
 import {createModelRenderer} from './dressup/renderer.mjs'
 import {createWardrobeAudio} from './dressup/audio.mjs'
 import {PARTS} from './dressup/parts.mjs'
+import {BEAUTY_SLOTS} from './dressup/beauty.mjs'
 import {selectPreview,displayParts,previewItems,purchasedPreview} from './dressup/preview.mjs'
 import FineWardrobe from './dressup/FineWardrobe.vue'
 import GameWorkshop from './dressup/GameWorkshop.vue'
@@ -111,6 +112,7 @@ export default {
     partItem(id){return item(PARTS,id)},
     chooseTab(id){this.tab=id;if(id==='fine'){this.preview=null;if(this.state.look.mode!=='fine')this.perform({type:'mode',mode:'fine'})}if(this.$refs.panel)this.$refs.panel.scrollTop=0},
     choosePart(id){this.preview=null;this.faceZoom=['face','eyes','brows','lip','hair','hat','headpiece','earrings'].includes(this.partItem(id).category);this.finePreviews=selectPreview(this.finePreviews,id,this.state.ownedParts);if(this.state.ownedParts.includes(id))this.perform({type:'part',id});else this._audio.play('dress')},
+    chooseBeauty(id){this.preview=null;this.faceZoom=true;if(this.perform({type:'beauty',id})){const draft={...this.finePreviews};for(const slot of BEAUTY_SLOTS)delete draft[slot];this.finePreviews=draft}},
     receiveGameReward(result){this.perform({type:'gameReward',id:result.id,reward:result.reward})},
     unlockAudio(){if(this._audio)this._audio.unlock()},
     saveAudio(){try{localStorage.setItem('vectorac.wardrobe.audio',JSON.stringify({music:this.musicOn,sound:this.soundOn}))}catch(e){}},
