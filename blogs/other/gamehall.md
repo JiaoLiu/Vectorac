@@ -182,6 +182,9 @@ meta:
 .gh-card-sit { flex: none; }
 .gh-card-full { flex: none; font-size: 12.5px; color: #6d7488; }
 .gh-empty { text-align: center; color: #8b93a8; font-size: 13.5px; padding: 34px 0; }
+/* 首屏加载占位：呼吸感提示，避免冷启动空白被当成「卡死」 */
+.gh-loading { animation: ghLoadingPulse 1.1s ease-in-out infinite; }
+@keyframes ghLoadingPulse { 50% { opacity: 0.45; } }
 
 /* ============ 五子棋房间 ============ */
 .gkr-room-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 12px; }

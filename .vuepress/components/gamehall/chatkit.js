@@ -144,6 +144,12 @@ export function bindCommPrime() {
 
 function _primeComm() {
   if (_commPrimed || _commPriming) return
+  // 与麻将 _resumeVoiceFromGesture 同款顺序：先在手势栈内直接补播队列
+  // （首个已解锁的 play 就是用户刚点的快捷语，出声零延迟）；再在后台
+  // 静默解锁共享元素。绝不能反过来等 prime 完成再串行补播——否则
+  // 「静音 WAV(~20ms)→暂停→load 复位→再 drain」整条链结束才出声，
+  // 每次点快捷语都要白等 1 秒左右。
+  _drainComm()
   const el = _getCommEl()
   if (!el || !_SILENT_WAV) return
   _commPriming = true
@@ -161,7 +167,7 @@ function _primeComm() {
         el.removeAttribute('src')
         el.load()
         el.volume = 1
-        _drainComm() // 解锁后补播积压（iOS 手势外收到的语音）
+        // 不再在此补播：队列要么已在上面手势栈内播掉，要么等新入队触发
       })
   } catch (e) {
     _commPriming = false
@@ -348,6 +354,15 @@ export function primeMicPermission(onResult) {
       _micState = err && err.name === 'NotAllowedError' ? 'denied' : 'unknown'
       if (onResult) onResult(_micState)
     })
+}
+
+let _micWarmBound = false
+/** 挂首个手势的麦克风权限预热（bindChatDock 时调用一次） */
+function _bindMicWarm() {
+  if (_micWarmBound || typeof document === 'undefined') return
+  _micWarmBound = true
+  const warm = () => primeMicPermission()
+  document.addEventListener('pointerdown', warm, { capture: true, passive: true, once: true })
 }
 
 /**
@@ -566,6 +581,12 @@ export function bindChatDock(dock, { onStartRec, onStopRec, onPhrase } = {}) {
   // 语音通道手势解锁（全局一次）：iOS 手势栈外 play() 一律 NotAllowedError，
   // 必须趁真实手势把共享元素解锁，之后 WS 收到的语音 / 快捷语才播得出声
   bindCommPrime()
+  // 麦克风权限预热（全局一次）：进房后首个手势即后台 getUserMedia。
+  // iOS 的授权弹窗/静音检测是异步的，拖到点「按住说话」才第一次拿权限，
+  // 那次松手多半撞上 getUserMedia 还没 resolve 的 _abort 窗口——录音被丢，
+  // 体验就是「第一次点麦克风没反应」。提前在首个手势预热后，点麦克风时
+  // 权限已就绪（granted 静默缓存或已弹过一次窗）。
+  _bindMicWarm()
   const toggle = dock.querySelector('[data-chat="toggle"]')
   const panel = dock.querySelector('[data-chat-panel]')
   const micBtn = dock.querySelector('[data-chat="mic"]')

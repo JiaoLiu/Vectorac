@@ -73,6 +73,16 @@ export default class GameHall {
     this._renderShell()
     this._applyGameParam()
     this._bindStatic()
+    // 首屏骨架即时渲染后立刻给加载占位——否则移动冷启动 RTT 1~3s 内
+    // 房间列表区一片空白，观感就是「刷新进大厅卡好几秒」。
+    this.$list.innerHTML = '<div class="gh-empty gh-loading">正在加载房间…</div>'
+    this._listHtml = '<loading>'
+    // 慢网络提示：超过 4s 仍未返回，把占位文案换成「加载较慢」（不增加请求）
+    this._slowTimer = setTimeout(() => {
+      if (this._listHtml === '<loading>') {
+        this.$list.innerHTML = '<div class="gh-empty gh-loading">网络较慢，加载中…</div>'
+      }
+    }, 4000)
     this.refreshRooms()
     this._refreshTimer = setInterval(() => {
       if (!this.session) this.refreshRooms(true)
@@ -97,6 +107,7 @@ export default class GameHall {
 
   destroy() {
     if (this._refreshTimer) clearInterval(this._refreshTimer)
+    if (this._slowTimer) clearTimeout(this._slowTimer)
     if (this.session) {
       try {
         this.session.remote.destroy()
@@ -273,6 +284,7 @@ export default class GameHall {
       const data = await this.http.listRooms()
       this.rooms = data.rooms || []
       this.$meta.textContent = '全服房间 ' + (data.activeRooms || 0) + ' / ' + (data.maxRooms || 20)
+      if (this._slowTimer) { clearTimeout(this._slowTimer); this._slowTimer = null }
       this._renderList()
     } catch (e) {
       if (!quiet) this._toast(errorText(e.errorCode))
