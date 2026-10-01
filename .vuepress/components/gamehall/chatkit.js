@@ -322,6 +322,32 @@ function _speakCommSynth(item, done) {
 }
 
 /**
+ * 麦克风授权预请求（「点击语音 → 弹系统授权」的入口）：
+ * iOS 的授权弹窗必须在可信手势里发起，放在「点开语音面板」这一次普通点按里，
+ * 而不是长按录音时才第一次弹（弹窗出现的瞬间手指多半已松开，那次录音必被
+ * _abort 丢弃，体验上就是「点了语音没反应/拿不到授权」）。
+ * 结果缓存：granted 后长按直接开录；denied 后 iOS 不会再弹，只能去设置里开。
+ */
+let _micState = 'unknown' // 'unknown' | 'pending' | 'granted' | 'denied'
+export function primeMicPermission(onDenied) {
+  if (_micState === 'granted' || _micState === 'pending') return
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return
+  _micState = 'pending'
+  navigator.mediaDevices
+    .getUserMedia({ audio: true })
+    .then(stream => {
+      _micState = 'granted'
+      stream.getTracks().forEach(t => t.stop())
+    })
+    .catch(err => {
+      _micState = err && err.name === 'NotAllowedError' ? 'denied' : 'unknown'
+      if (_micState === 'denied' && onDenied) {
+        onDenied('麦克风权限被拒绝：请在系统设置中允许此网页使用麦克风')
+      }
+    })
+}
+
+/**
  * 语音录制器：与麻将联机同一套流程（mahjong/ui.js startVoiceRec/stopVoiceRec 的
  * 通用化移植）。iOS 关键点全部保留：
  *   · getUserMedia 异步窗口内松手可放弃开录（_abort），录音机不变孤儿；
@@ -371,7 +397,11 @@ export class VoiceRecorder {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true })
     } catch (err) {
       this._starting = false
-      this._error('无法使用麦克风，请检查系统授权')
+      this._error(
+        err && err.name === 'NotAllowedError'
+          ? '麦克风权限被拒绝：请在系统设置中允许后重试'
+          : '无法使用麦克风，请检查设备或授权'
+      )
       return
     }
     if (this._abort) { // 等待授权期间已松手：立即关轨，不开录
@@ -529,7 +559,7 @@ export function chatDockHtml() {
  *   - onPhrase(idx)       点了第 idx 条快捷语
  * @returns {{ setRecUI(on:boolean), closePanel(), destroy() }}
  */
-export function bindChatDock(dock, { onStartRec, onStopRec, onPhrase } = {}) {
+export function bindChatDock(dock, { onStartRec, onStopRec, onPhrase, onMicDenied } = {}) {
   // 语音通道手势解锁（全局一次）：iOS 手势栈外 play() 一律 NotAllowedError，
   // 必须趁真实手势把共享元素解锁，之后 WS 收到的语音 / 快捷语才播得出声
   bindCommPrime()
@@ -540,8 +570,14 @@ export function bindChatDock(dock, { onStartRec, onStopRec, onPhrase } = {}) {
 
   const onToggle = ev => {
     ev.stopPropagation()
+    const opening = panel.hidden
     panel.hidden = !panel.hidden
     toggle.setAttribute('aria-expanded', String(!panel.hidden))
+    if (opening) {
+      // 点开面板即预请求麦克风授权（见 primeMicPermission 注释）；
+      // 被拒时经 onPhrase 同款的 toast 通道提示（多数 remote 会传 onError）
+      primeMicPermission(onMicDenied)
+    }
   }
   toggle.addEventListener('click', onToggle)
 

@@ -316,7 +316,10 @@ meta:
   padding: 8px 10px; border-radius: 10px;
   border: 1px solid rgba(212, 175, 55, 0.4);
   background: rgba(23, 77, 46, 0.85); color: #f3ead8; font-size: 13px;
-  white-space: nowrap; cursor: pointer;
+  /* 棋类短语比麻将长（10 字 vs 麻将 3~4 字），nowrap 会横向溢出格子，
+     必须允许换行并左对齐（「快捷语弹出来都是溢出的」的根因） */
+  white-space: normal; text-align: left; line-height: 1.35;
+  word-break: break-all; cursor: pointer;
 }
 .gkr-chat-phrase:active { background: rgba(212, 175, 55, 0.3); }
 /* 录音态（toggle 圆钮与按住说话按钮共用，须放在各按钮底色规则之后才能盖过） */
@@ -354,6 +357,12 @@ meta:
     max-height: calc(100dvh - 20px); overflow-y: auto;
   }
   .gkr-chat-rectip { right: 44px; padding: 5px 10px; font-size: 11.5px; }
+  /* 底部 76px padding 是竖屏给 dock 让位的；横屏棋盘受高度约束后
+     垂直居中在上半区，底下空一截（「象棋横屏联机底部留白」）。
+     收窄 padding 并让房间容器垂直居中：auto margin 方案在内容超高时
+     自动退化为普通滚动，不会像 flex align-items:center 那样裁掉顶部 */
+  body.gkr-full .gh-root { display: flex; flex-direction: column; padding-bottom: max(6px, env(safe-area-inset-bottom)); }
+  body.gkr-full .gh-root > .gh-room { margin-top: auto; margin-bottom: auto; }
 }
 
 /* ============ 房间全屏接管（盖过主题导航与左下聊天浮标 cw-fab:9999） ============ */

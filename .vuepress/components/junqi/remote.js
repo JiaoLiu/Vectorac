@@ -263,7 +263,8 @@ export default class JunqiRemote {
     this._chat = bindChatDock(this.root.querySelector('[data-gkr-voice-dock]'), {
       onStartRec: () => this._startRecording(),
       onStopRec: cancel => this._stopRecording(cancel),
-      onPhrase: idx => this._sendPhrase(idx)
+      onPhrase: idx => this._sendPhrase(idx),
+      onMicDenied: text => this._toast(text)
     })
   }
 
@@ -540,6 +541,9 @@ export default class JunqiRemote {
           if (this.net.sendVoice({ mime, data, duration })) {
             // 本地即时回显（服务端不回环发件人）
             this._addVoiceBubble({ mime, data, duration, seatIndex: this._mySeat() }, true)
+            // 自动回放（对齐麻将：发出去就出声）。延迟 350ms：iOS 录音停止后
+            // 音频会话从「录制」切回「播放」需要一点时间，立刻播会哑火
+            setTimeout(() => enqueueVoice({ mime, data, duration }), 350)
           } else {
             this._toast('连接已断开，语音未发出')
           }
