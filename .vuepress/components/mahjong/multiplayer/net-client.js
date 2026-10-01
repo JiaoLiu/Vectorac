@@ -169,16 +169,24 @@ export class NetClient {
 
   // ---------- HTTP ----------
 
-  async http(path, { method = 'GET', body } = {}) {
+  async http(path, { method = 'GET', body, timeoutMs = 15000 } = {}) {
     let res
+    // 超时兜底：移动网络 / 前后台切换时 fetch 可能长时间悬挂，
+    // 没有超时会一直卡住「创建中…」按钮（只能刷新页面自救）。
+    const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null
+    const timer = ctrl ? setTimeout(() => ctrl.abort(), timeoutMs) : null
     try {
       res = await fetch(this.baseUrl + path, {
         method,
         headers: body ? { 'Content-Type': 'application/json' } : undefined,
-        body: body ? JSON.stringify(body) : undefined
+        body: body ? JSON.stringify(body) : undefined,
+        signal: ctrl ? ctrl.signal : undefined
       })
     } catch (e) {
-      throw new NetError('SERVER_ERROR', '无法连接服务器，请检查网络', 0)
+      const aborted = e && e.name === 'AbortError'
+      throw new NetError('SERVER_ERROR', aborted ? '请求超时，请检查网络后重试' : '无法连接服务器，请检查网络', 0)
+    } finally {
+      if (timer) clearTimeout(timer)
     }
     let data = null
     try {

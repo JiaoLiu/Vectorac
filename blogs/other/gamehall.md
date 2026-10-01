@@ -274,58 +274,74 @@ meta:
 .gkr-settle-btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
 .gkr-settle-final { font-size: 13px; color: #ff8a80; margin-bottom: 4px; width: 100%; }
 
-/* 语音 */
+/* 语音 / 聊天 dock：复刻麻将联机 scmj-chat 绿金样式（结构见 gamehall/chatkit.js） */
 .gkr-voice-dock {
   position: fixed; right: max(14px, env(safe-area-inset-right)); bottom: max(18px, env(safe-area-inset-bottom));
-  z-index: 30; display: flex; flex-direction: column; align-items: center; gap: 4px;
+  z-index: 30; display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
 }
-.gkr-mic {
-  width: 52px; height: 52px; border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  background: rgba(30, 35, 52, 0.92); color: #fff; font-size: 21px;
-  cursor: pointer; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+.gkr-chat-btn {
+  width: 44px; height: 44px; border-radius: 50%;
+  border: 1.5px solid rgba(212, 175, 55, 0.65);
+  background: rgba(9, 40, 21, 0.92); color: #f3ead8; font-size: 19px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4); cursor: pointer;
   touch-action: none; -webkit-user-select: none; user-select: none;
 }
-.gkr-mic.is-rec { background: #d24a35; transform: scale(1.1); }
-.gkr-voice-tip { font-size: 10.5px; color: #8b93a8; }
+.gkr-chat-btn span { font-size: 9px; line-height: 11px; }
+.gkr-chat-btn:active { transform: scale(0.94); }
+.gkr-chat-rectip {
+  position: absolute; right: 52px; bottom: 0; z-index: 1; pointer-events: none;
+  padding: 6px 12px; border-radius: 999px;
+  background: rgba(140, 24, 24, 0.95); border: 1px solid rgba(255, 138, 122, 0.7);
+  color: #ffe9e6; font-size: 12.5px; white-space: nowrap;
+}
+.gkr-chat-panel {
+  position: absolute; right: 0; bottom: 52px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+  padding: 10px; border-radius: 14px;
+  background: rgba(9, 40, 21, 0.96); border: 1px solid rgba(212, 175, 55, 0.55);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.5);
+  width: 228px; max-width: calc(100vw - 24px); box-sizing: border-box;
+}
+/* 面板顶部全宽「按住说话」：最常用的语音入口放第一位，短语退居其次 */
+.gkr-chat-micbtn {
+  grid-column: 1 / -1; padding: 12px 10px; border-radius: 10px;
+  border: 1.5px solid rgba(212, 175, 55, 0.65);
+  background: rgba(23, 77, 46, 0.9); color: #ffd968; font-size: 14px;
+  white-space: nowrap; cursor: pointer;
+  touch-action: none; -webkit-user-select: none; user-select: none;
+}
+.gkr-chat-micbtn:active { background: rgba(212, 175, 55, 0.3); }
+.gkr-chat-phrase {
+  padding: 8px 10px; border-radius: 10px;
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  background: rgba(23, 77, 46, 0.85); color: #f3ead8; font-size: 13px;
+  white-space: nowrap; cursor: pointer;
+}
+.gkr-chat-phrase:active { background: rgba(212, 175, 55, 0.3); }
+/* 录音态（toggle 圆钮与按住说话按钮共用，须放在各按钮底色规则之后才能盖过） */
+.gkr-chat-mic-on {
+  background: rgba(140, 24, 24, 0.95);
+  border-color: #ff8a7a;
+  animation: gkrMicPulse 1s ease-in-out infinite;
+}
+@keyframes gkrMicPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 90, 70, 0.55); }
+  50% { box-shadow: 0 0 0 9px rgba(255, 90, 70, 0); }
+}
 .gkr-bubbles {
   position: fixed; left: max(14px, env(safe-area-inset-left)); bottom: max(18px, env(safe-area-inset-bottom));
   z-index: 30; display: flex; flex-direction: column; gap: 6px;
 }
 .gkr-bubble {
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(30, 35, 52, 0.92); color: #dfe4f0;
+  border: 1px solid rgba(212, 175, 55, 0.6);
+  background: rgba(9, 40, 21, 0.96); color: #f3ead8;
   border-radius: 999px; padding: 6px 14px; font-size: 12.5px; cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
 }
-.gkr-bubble.is-mine { border-color: rgba(255, 178, 107, 0.5); }
+.gkr-bubble.is-mine { border-color: rgba(255, 217, 104, 0.9); color: #ffd968; }
 .gkr-bubble.is-old { opacity: 0.55; }
 .gkr-bubble.is-chat { cursor: default; }
-
-/* ============ 聊天面板（快捷语 + 按住说话，复刻麻将语音交互） ============ */
-.gkr-chat-panel {
-  position: absolute; right: 0; bottom: 62px; width: min(240px, 72vw);
-  background: rgba(24, 28, 42, 0.97);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 14px; padding: 10px;
-  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.5);
-  display: flex; flex-direction: column; gap: 8px;
-}
-.gkr-chat-phrases { display: flex; flex-direction: column; gap: 6px; }
-.gkr-phrase {
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.06); color: #e8eaf2;
-  border-radius: 10px; padding: 9px 12px; font-size: 13px; text-align: left;
-  cursor: pointer; min-height: 38px;
-}
-.gkr-phrase:active { background: rgba(255, 178, 107, 0.2); }
-.gkr-chat-mic {
-  border: none; border-radius: 12px; padding: 12px; font-size: 14px; font-weight: 700;
-  background: linear-gradient(135deg, #ffb26b, #ff7e3d); color: #2a1500;
-  cursor: pointer; min-height: 46px;
-  touch-action: none; -webkit-user-select: none; user-select: none;
-}
-.gkr-chat-mic.is-rec { background: #d24a35; color: #fff; }
-.gkr-chat-tip { font-size: 11px; color: #8b93a8; text-align: center; }
 
 /* ============ 房间全屏接管（盖过主题导航与左下聊天浮标 cw-fab:9999） ============ */
 /* class 挂在 body 上（Vue patch 会重置 #gameHall 自身的 class），选择器从 body 出发 */

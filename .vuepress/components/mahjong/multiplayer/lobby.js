@@ -211,6 +211,20 @@ export class Lobby {
     if (!msg || !msg.type) return
     switch (msg.type) {
       case 'ROOM_SNAPSHOT':
+        // 跨游戏串台兜底：快照不是麻将房（旧凭据无 gameType 标记等），
+        // 立刻退出并清凭据回列表，绝不能让外国房间状态进麻将牌桌。
+        if (msg.payload && msg.payload.gameType && msg.payload.gameType !== 'mahjong') {
+          this._toast('该房间属于其他游戏，已退出')
+          this.net.leaveRoom()
+          clearCredential()
+          this.player = null
+          this.room = null
+          this.mySeat = null
+          this.view = 'list'
+          this._renderList()
+          this._startPoll()
+          break
+        }
         this.room = msg.payload
         this.mySeat = msg.payload.mySeat
         if (this.mySeat != null) this._syncPlayerFromRoom()
@@ -816,6 +830,16 @@ export class Lobby {
   /** 创建/加入成功后：存凭据 → 建连接（RECONNECT 绑定）→ 等服务端快照 */
   async _enterWith(data) {
     if (!data || !data.player || !data.room) throw { errorCode: 'SERVER_ERROR', message: '服务器返回异常' }
+    // 跨游戏防护：本大厅只接麻将房。误进其他游戏房间（按房号加入 / 分享链接）时，
+    // 立刻退掉刚占的座位并报错，否则象棋等房间状态会被麻将牌桌接管直接卡死。
+    if (data.room.gameType && data.room.gameType !== 'mahjong') {
+      try {
+        await this.net.leaveRoomByToken(data.player.resumeToken)
+      } catch (e) {
+        /* 忽略 */
+      }
+      throw { errorCode: 'WRONG_GAME', message: '该房间是其他游戏的房间，请从联机大厅进入' }
+    }
     const p = data.player
     this.player = p
     this.room = data.room
@@ -827,6 +851,7 @@ export class Lobby {
       resumeToken: p.resumeToken,
       displayName: p.displayName,
       seatIndex: p.seatIndex,
+      gameType: 'mahjong',
       savedAt: Date.now()
     })
     this._ensureNet()
@@ -859,6 +884,9 @@ export class Lobby {
   async _resume() {
     const cred = loadCredential()
     if (!cred) return
+    // 其他游戏的房间凭据（联机大厅与麻将页共用一份 localStorage 凭据槽）：
+    // 不在麻将页恢复，留给联机大厅按 gameType 分发；否则象棋房会被麻将等待室接管。
+    if (cred.gameType && cred.gameType !== 'mahjong') return
     if (this.busy) return
     this.busy = true
     try {

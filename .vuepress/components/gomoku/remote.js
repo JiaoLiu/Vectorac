@@ -27,7 +27,8 @@ import {
   CHAT_PHRASES,
   speakPhrase,
   chatDockHtml,
-  bindChatDock
+  bindChatDock,
+  VoiceRecorder
 } from '../gamehall/chatkit.js'
 import GomokuUI from './ui.js'
 import { createBoard, BLACK } from './engine.js'
@@ -66,8 +67,7 @@ export default class GomokuRemote {
     this.ui = null // GomokuUI（online 模式）：全屏 / 棋盘 / 动画 / 音效
     this._unsub = this.net.subscribe(msg => this._onEvent(msg))
     this._tickTimer = null
-    this._recorder = null
-    this._recordAt = 0
+    this._voiceRec = null // VoiceRecorder（懒建，见 _startRecording）
     this._voiceBubbles = []
   }
 
@@ -587,65 +587,33 @@ export default class GomokuRemote {
 
   // ---------- 语音 ----------
 
-  async _startRecording() {
-    if (this._recorder || !navigator.mediaDevices || !window.MediaRecorder) {
-      if (!window.MediaRecorder) this._toast('当前浏览器不支持语音录制')
-      return
+  /** 录音器（与麻将联机同一流程，iOS 兼容）：懒建，用得到时才创建 */
+  _voiceRecorder() {
+    if (!this._voiceRec) {
+      this._voiceRec = new VoiceRecorder({
+        onSend: ({ mime, data, duration }) => {
+          if (this.net.sendVoice({ mime, data, duration })) {
+            // 本地即时回显（服务端不回环发件人）
+            this._addVoiceBubble({ mime, data, duration, seatIndex: this._mySeat() }, true)
+          } else {
+            this._toast('连接已断开，语音未发出')
+          }
+        },
+        onState: on => {
+          if (this._chat) this._chat.setRecUI(on)
+        },
+        onError: text => this._toast(text)
+      })
     }
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-        ? 'audio/webm;codecs=opus'
-        : MediaRecorder.isTypeSupported('audio/mp4')
-          ? 'audio/mp4'
-          : ''
-      const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined)
-      const chunks = []
-      rec.ondataavailable = e => {
-        if (e.data && e.data.size) chunks.push(e.data)
-      }
-      rec.onstop = () => {
-        for (const t of stream.getTracks()) t.stop()
-        if (this._recordCancel) return
-        const blob = new Blob(chunks, { type: rec.mimeType || 'audio/webm' })
-        const duration = Math.min(20, (Date.now() - this._recordAt) / 1000)
-        if (duration < 0.4 || !blob.size) return
-        const reader = new FileReader()
-        reader.onload = () => {
-          const base64 = String(reader.result || '').split(',')[1] || ''
-          if (!base64) return
-          this.net.sendVoice({ mime: blob.type, data: base64, duration })
-          this._addVoiceBubble({ mime: blob.type, data: base64, duration, seatIndex: this._mySeat() }, true)
-        }
-        reader.readAsDataURL(blob)
-      }
-      this._recorder = rec
-      this._recordCancel = false
-      this._recordAt = Date.now()
-      rec.start()
-      if (this._chat) this._chat.setRecUI(true)
-      // 硬上限：20s 自动停
-      this._recTimer = setTimeout(() => this._stopRecording(false), 20000)
-    } catch (e) {
-      this._toast('无法使用麦克风')
-    }
+    return this._voiceRec
+  }
+
+  _startRecording() {
+    this._voiceRecorder().start()
   }
 
   _stopRecording(cancel) {
-    if (this._recTimer) {
-      clearTimeout(this._recTimer)
-      this._recTimer = null
-    }
-    const rec = this._recorder
-    this._recorder = null
-    if (this._chat) this._chat.setRecUI(false)
-    if (!rec) return
-    this._recordCancel = !!cancel
-    try {
-      if (rec.state !== 'inactive') rec.stop()
-    } catch (e) {
-      /* 已停止 */
-    }
+    if (this._voiceRec) this._voiceRec.stop(cancel)
   }
 
   _addVoiceBubble(p, mine) {

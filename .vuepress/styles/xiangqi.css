@@ -15,6 +15,10 @@
 @media(prefers-reduced-motion:reduce){.xq-root *{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 /* 顶栏按钮一律不换行，避免窄屏下「联机」等两字竖排溢出 */
 .xq-top-actions .xq-btn{white-space:nowrap}
+/* 玩家卡中间列（名字 · 方 · 分）：flex item 默认 min-width:auto 不收缩，
+   nowrap 长文案会把整张卡撑破（横屏窄右栏溢出的根因）；允许收缩后
+   <b>/<small> 上的 ellipsis 才生效。token 列 flex:0 0 固定，不受影响 */
+.xq-player>div:not(.xq-player-token){min-width:0}
 @media(max-height:560px) and (orientation:landscape){
   .xq-root .xq-topbar{display:none}
   .xq-match-card>.xq-top-actions{display:flex;justify-content:flex-end;gap:6px;margin:0 0 6px;padding-bottom:6px;border-bottom:1px solid #ded4bf}
