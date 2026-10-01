@@ -573,9 +573,15 @@ export default class JunqiRemote {
     el.setAttribute('data-idx', String(idx))
     el.textContent = '🔊 ' + who + ' · ' + Math.round(p.duration || 0) + '″'
     this.$bubbles.appendChild(el)
-    setTimeout(() => {
-      el.classList.add('is-old')
-    }, 30000)
+    // 与麻将一致：语音气泡按内容时长停留后自动淡出移除（旧版只变淡不消失，积多了挡棋盘）
+    setTimeout(() => this._fadeBubble(el), Math.min(12000, 3000 + (p.duration || 1) * 1000))
+  }
+
+  /** 气泡退场：加过渡 class，动画结束即从 DOM 移除 */
+  _fadeBubble(el) {
+    if (!el || !el.isConnected) return
+    el.classList.add('is-out')
+    setTimeout(() => el.remove(), 240)
   }
 
   _seatName(seatIndex) {
@@ -601,9 +607,8 @@ export default class JunqiRemote {
     el.className = 'gkr-bubble is-chat' + (mine ? ' is-mine' : '')
     el.textContent = '💬 ' + who + '：' + text
     this.$bubbles.appendChild(el)
-    setTimeout(() => {
-      el.classList.add('is-old')
-    }, 30000)
+    // 快捷语气泡 4.5s 后自动淡出移除（对齐麻将）
+    setTimeout(() => this._fadeBubble(el), 4500)
     // 对方的快捷语播报（预生成普通话音频，缺文件回退 TTS）；自己的不播
     if (!mine) speakPhrase(p.phrase, text)
   }
@@ -673,6 +678,9 @@ export function enterJunqiRoom(root, { room, player, cred, onExit }) {
       .then(() => {
         const remote = new JunqiRemote(root, { net, room, player, onExit })
         remote.mount()
+        // 「回到房间」只带 roomCode 空壳，RECONNECT 的完整快照在订阅建立前已丢失；
+        // 订阅就绪后主动要一次全量同步（等待室快照 + 对局中补牌局视图），与麻将 lobby 同款
+        net.resync()
         resolve({ net, remote })
       })
       .catch(err => {

@@ -338,9 +338,10 @@ meta:
   background: rgba(9, 40, 21, 0.96); color: #f3ead8;
   border-radius: 999px; padding: 6px 14px; font-size: 12.5px; cursor: pointer;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+  transition: opacity 0.24s ease, transform 0.24s ease;
 }
 .gkr-bubble.is-mine { border-color: rgba(255, 217, 104, 0.9); color: #ffd968; }
-.gkr-bubble.is-old { opacity: 0.55; }
+.gkr-bubble.is-out { opacity: 0; transform: translateY(-6px); pointer-events: none; }
 .gkr-bubble.is-chat { cursor: default; }
 
 /* 横屏（矮屏）：dock 缩小，面板改为向左展开——向上弹会盖住横屏右栏的
