@@ -3,7 +3,7 @@ import {createRequire} from 'node:module'
 import {mkdtemp,writeFile} from 'node:fs/promises'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
-import {PARTS,DEFAULT_PARTS} from '../.vuepress/components/dressup/parts.mjs'
+import {PARTS,DEFAULT_PARTS,partAsset} from '../.vuepress/components/dressup/parts.mjs'
 import {chooseCategory} from './wardrobe-category-browser.mjs'
 const require=createRequire(import.meta.url),{chromium,webkit}=require(process.env.PLAYWRIGHT_PATH||'playwright')
 const base=process.env.DRESSUP_BASE||'http://127.0.0.1:8080',out=await mkdtemp(join(tmpdir(),'wardrobe-layering-'))
@@ -56,10 +56,25 @@ for(const [name,engine] of [['chromium',chromium],['webkit',webkit]]){
   for(const hair of ['hair-4','hair-5'])for(const hat of ['hat-none','hat-10','hat-11','hat-9'])looks.push({hair,hat,headpiece:hat==='hat-none'?'headpiece-11':'headpiece-10',earrings:'earrings-8',socks:'socks-6',shoes:'shoes-4'})
   looks.push({hair:'hair-5',hat:'hat-10',headpiece:'headpiece-none',earrings:'earrings-9',socks:'socks-7',shoes:'shoes-5'})
   for(let i=6;i<12;i++)looks.push({top:'top-1',bottom:'bottom-1',hair:'hair-'+(i%6),hat:'hat-11',headpiece:'headpiece-none',shoes:'shoes-'+i,socks:'socks-'+(i%8),necklace:'necklace-'+(i%4),wrist:'wrist-'+(i%4)})
+  for(const bottom of ['bottom-2','bottom-8','bottom-9','bottom-12','bottom-17'])for(const top of ['top-0','top-2','top-17'])looks.push({top,bottom,hair:'hair-0',hat:'hat-none',headpiece:'headpiece-none',socks:'socks-none',shoes:'shoes-6'})
   for(let i=0;i<looks.length;i++){
    const look=looks[i];await game.evaluate((e,p)=>Object.values(p).forEach(id=>e.__vue__.choosePart(id)),look)
    await page.waitForFunction(p=>{const vm=document.querySelector('.fw-game').__vue__,src=document.querySelector('.fw-model').dataset.src||'';return !vm.loading&&Object.values(p).every(id=>src.includes('"'+id+'"'))},look)
    assert.equal(await game.evaluate(e=>e.__vue__.imageError),false)
+   const top=PARTS.find(p=>p.id===look.top),bottom=PARTS.find(p=>p.id===look.bottom)
+   if(top&&bottom&&bottom.frontBand&&['top-0','top-2','top-17'].includes(top.id)){
+    // Assert the live canvas itself, not merely v14 asset requests (those
+    // paths were already present in the previous, incorrectly layered build).
+    const seam=await page.locator('.fw-model').evaluate(async(c,p)=>{
+     const actual=c.getContext('2d').getImageData(0,0,512,1024).data
+     if(p.id==='top-0')return [201,313].every(x=>actual[(361*512+x)*4+3]<5)
+     const image=new Image();image.src=p.src;await image.decode();const ref=document.createElement('canvas');ref.width=512;ref.height=1024;ref.getContext('2d').drawImage(image,0,0)
+     const expected=ref.getContext('2d').getImageData(0,0,512,1024).data;let checked=0
+     for(let y=353;y<365;y++)for(let x=220;x<292;x++){const i=(y*512+x)*4;if(expected[i+3]>250){checked++;for(let k=0;k<3;k++)if(Math.abs(actual[i+k]-expected[i+k])>=10)return false}}
+     return checked>300
+    },{id:top.id,src:partAsset(top)})
+    assert.ok(seam,`${name}: live ${top.id}/${bottom.id} retains loose shirt corners or cuts the outer hem`)
+   }
    const data=await page.locator('.fw-model').evaluate(c=>c.toDataURL('image/png').split(',')[1]);await writeFile(join(out,`${name}-${i}-model.png`),Buffer.from(data,'base64'))
    if(!await game.evaluate(e=>e.__vue__.faceZoom))await game.getByRole('button',{name:'查看妆容',exact:true}).click();await page.screenshot({path:join(out,`${name}-${i}-makeup.png`)})
    if(i===0||look.hair==='hair-2'||look.hat==='hat-1'||i>=20){await page.setViewportSize({width:844,height:390});await page.screenshot({path:join(out,`${name}-look-${i}-landscape.png`)});await page.setViewportSize({width:390,height:844})}

@@ -5,6 +5,7 @@ import {readFile} from 'node:fs/promises'
 import {createHash} from 'node:crypto'
 import {PARTS,partAsset,partBackAsset,partThumbnail,DEFAULT_PARTS} from '../.vuepress/components/dressup/parts.mjs'
 import {paintComposite,layerSources,BASE} from '../.vuepress/components/dressup/compositor.mjs'
+import {tucksIntoWaist} from '../.vuepress/components/dressup/waist-fit.mjs'
 const sharp=createRequire(import.meta.url)(process.env.SHARP_PATH||'sharp')
 const raw=async path=>sharp('.vuepress/public'+path).ensureAlpha().raw().toBuffer()
 const pixel=(d,x,y)=>d.subarray((y*512+x)*4,(y*512+x)*4+4)
@@ -32,9 +33,10 @@ for(const index of [2,8,9,12,17]){
  assert.ok(above>120,`${p.id}: complete waistband was cropped away`)
  let l=512,r=0;for(let x=0;x<512;x++)if(pixel(d,x,370)[3]>190){l=Math.min(l,x);r=Math.max(r,x)}
  assert.ok(r-l>=98&&r-l<=112,`${p.id}: lost the narrow fitted waist`)
- if(!p.material){const parts={...DEFAULT_PARTS,bottom:p.id},draws=[]
+ if(!p.material)for(const topId of ['top-0','top-1','top-2','top-3','top-12','top-17']){
+  const parts={...DEFAULT_PARTS,bottom:p.id,top:topId},draws=[],top=PARTS.find(p=>p.id===topId)
   paintComposite(new Proxy({drawImage:img=>draws.push(img.src)},{get:(o,k)=>o[k]||(()=>{})}),new Map(layerSources(parts).map(src=>[src,{src}])),parts)
-  assert.ok(draws.indexOf(partAsset(p))>draws.indexOf(partAsset(PARTS.find(p=>p.id===parts.top))),'complete band must sit in front of tucked blouse')
+  assert.equal(draws.indexOf(partAsset(p))>draws.indexOf(partAsset(top)),tucksIntoWaist(top,p),'belt may only cover a genuinely tucked blouse')
  }
 }
 for(const index of [2,12,13,14,15,16,17]){

@@ -9,6 +9,7 @@ import {ACCESSORIES} from '../.vuepress/components/dressup/accessories.mjs'
 import {sockEnd} from '../.vuepress/components/dressup/compositor.mjs'
 import {HAT_HAIR_CUTS} from '../.vuepress/components/dressup/hat-coverage.mjs'
 import {NEW_CAP_CUTS} from '../.vuepress/components/dressup/accessory-coverage.mjs'
+import {tucksIntoWaist} from '../.vuepress/components/dressup/waist-fit.mjs'
 const require=createRequire(import.meta.url),sharp=require(process.env.SHARP_PATH||'sharp'),{chromium}=require(process.env.PLAYWRIGHT_PATH||'playwright')
 const out=await mkdtemp(join(tmpdir(),'wardrobe-accessory-fit-')),browser=await chromium.launch({headless:true,executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'})
 const group=category=>PARTS.filter(p=>p.category===category&&p.index>=0),raw=async f=>sharp(f).ensureAlpha().raw().toBuffer()
@@ -45,9 +46,13 @@ try{
   for(const top of group('top')){
    const f=await render({...DEFAULT_PARTS,top:top.id,bottom:p.id,hair:'hair-0',socks:'socks-none'},`${top.id}-${p.id}`);waists.push(f)
    if(p.frontBand){
-    const actual=await raw(f),b64=await page.evaluate(async p=>{const {materialImage}=await import('/materials.mjs');const c=document.createElement('canvas');c.width=512;c.height=1024;c.getContext('2d').drawImage(materialImage(window.fitImages.get(p.src),p.part),0,0);return c.toDataURL().split(',')[1]},{src:partAsset(p),part:p}),expected=await raw(Buffer.from(b64,'base64'))
-    let visible=0;for(let y=353;y<382;y++)for(let x=210;x<306;x++){const i=(y*512+x)*4;if(expected[i+3]>250){visible++;for(let k=0;k<3;k++)assert.ok(Math.abs(actual[i+k]-expected[i+k])<10,`${top.id}/${p.id}: blouse hides front waistband at ${x},${y}`)}}
-    assert.ok(visible>1200,`${p.id}: missing complete waistband`)
+    const tucked=tucksIntoWaist(top,p),front=tucked?p:top
+    const actual=await raw(f),b64=await page.evaluate(async p=>{const {materialImage}=await import('/materials.mjs');const c=document.createElement('canvas');c.width=512;c.height=1024;c.getContext('2d').drawImage(materialImage(window.fitImages.get(p.src),p.part),0,0);return c.toDataURL().split(',')[1]},{src:partAsset(front),part:front}),expected=await raw(Buffer.from(b64,'base64'))
+    // Untucked garments MUST retain the complete hem, not expose the whole
+    // belt. Tucked blouses must expose it without leaving loose side tails.
+    let visible=0;for(let y=tucked?353:335;y<(tucked?382:390);y++)for(let x=tucked?210:194;x<(tucked?306:318);x++){const i=(y*512+x)*4;if(expected[i+3]>250){visible++;for(let k=0;k<3;k++)assert.ok(Math.abs(actual[i+k]-expected[i+k])<10,`${top.id}/${p.id}: ${tucked?'hidden waistband':'cut-off outer hem'} at ${x},${y}`)}}
+    assert.ok(visible>(tucked?1200:500),`${top.id}/${p.id}: missing ${tucked?'complete waistband':'complete shirt hem'}`)
+    if(tucked)for(let y=365;y<385;y++)for(let x=190;x<322;x++){const i=(y*512+x)*4;if(d[i+3]<5&&master[i+3]<5)assert.ok(actual[i+3]<5,`${top.id}/${p.id}: loose shirt corner beside band ${x},${y}`)}
    }
   }
  }

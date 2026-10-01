@@ -3,6 +3,7 @@ import {materialImage} from './materials.mjs'
 import bounds from './layer-bounds.mjs'
 import {HAT_HAIR_CUTS} from './hat-coverage.mjs'
 import {NEW_CAP_CUTS} from './accessory-coverage.mjs'
+import {tucksIntoWaist,clipTuckedTop} from './waist-fit.mjs'
 export const BASE='/img/games/dressup/layers/v5/master.webp'
 export function baseSource(){return BASE}
 export const FEET='/img/games/dressup/layers/v5/feet.webp'
@@ -14,6 +15,7 @@ export const SOCK_VISIBLE_END=[955,925,954,880]
 export const sockEnd=p=>p&&p.sockEnd!==undefined?p.sockEnd:SOCK_VISIBLE_END[p?fitIndex(p):0]
 export function paintComposite(ctx,images,parts){
  const chosen=category=>PARTS.find(p=>p.id===parts[category]&&p.category===category)
+ const tucked=tucksIntoWaist(chosen('top'),chosen('bottom'))
  function registered(category){const p=chosen(category);if(!p||p.index<0)return
   const hat=chosen('hat'),capHair=category==='hair'&&hat&&(hat.cap||fitIndex(hat)>=0&&fitIndex(hat)<2)
   // Follow the cap's actual silhouette, not a horizontal cut through all hair.
@@ -21,7 +23,9 @@ export function paintComposite(ctx,images,parts){
   if(capHair){const cuts=hat.cap?NEW_CAP_CUTS[hat.id]:HAT_HAIR_CUTS[fitIndex(hat)];ctx.save();ctx.beginPath();ctx.moveTo(0,1024);ctx.lineTo(0,cuts[0]);for(let x=1;x<512;x++){ctx.lineTo(x,cuts[x-1]);ctx.lineTo(x,cuts[x])}ctx.lineTo(512,cuts[511]);ctx.lineTo(512,1024);ctx.closePath();ctx.clip()}
   if(category==='shoes'){const end=sockEnd(p);ctx.clearRect(185,end,142,1024-end)}
   if(category==='socks'){const shoe=chosen('shoes');ctx.save();ctx.beginPath();ctx.rect(0,0,512,sockEnd(shoe));ctx.clip()}
+  if(category==='top'&&tucked){ctx.save();clipTuckedTop(ctx)}
   ctx.drawImage(materialImage(images.get(partAsset(p)),p),0,0,512,1024)
+  if(category==='top'&&tucked)ctx.restore()
   if(category==='socks')ctx.restore()
   if(capHair)ctx.restore()
  }
@@ -31,14 +35,13 @@ export function paintComposite(ctx,images,parts){
  ctx.drawImage(images.get(BASE),0,0,512,1024)
  ctx.drawImage(images.get(underbodySource(parts)),0,0,512,1024)
  ctx.drawImage(images.get(FEET),0,0,512,1024)
- const frontBand=chosen('bottom')&&chosen('bottom').frontBand
  for(const category of REGISTERED_ORDER){
-  if(category==='bottom'&&frontBand)continue
+  if(category==='bottom'&&tucked)continue
   if(category==='face')ctx.clearRect(190,25,132,138)
   registered(category)
-  // Long skirts wrap over a tucked blouse: their complete front waistband
-  // must stay visible, not be hidden behind the lower shirt panel.
-  if(category==='top'&&frontBand)registered('bottom')
+  // A tucked blouse has no loose side tails. Untucked Chinese jackets keep
+  // their whole curved hem over the skirt, even when it covers the band.
+  if(category==='top'&&tucked)registered('bottom')
  }
  registered('necklace');registered('wrist')
  // Small accessories retain their established attachment anchors.

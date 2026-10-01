@@ -10,6 +10,13 @@ import {ACCESSORIES} from '../.vuepress/components/dressup/accessories.mjs'
 import {JEWELLERY_FOOTWEAR} from '../.vuepress/components/dressup/jewellery-footwear.mjs'
 import {memoryGame,flipMemory,closeMemory,stylingGame,submitStyling,sewingGame,stitch,gameReward} from '../.vuepress/components/dressup/minigames.mjs'
 import {faceSampleX} from '../.vuepress/components/dressup/face-fit.mjs'
+import {tucksIntoWaist} from '../.vuepress/components/dressup/waist-fit.mjs'
+test('waist wearing follows the shirt cut and colour editions, never forces Chinese outer hems under a belt',()=>{
+ const tucked=[0,1,4,5,6,7,12,14,15]
+ for(const top of PARTS.filter(p=>p.category==='top'))for(const bottom of PARTS.filter(p=>p.category==='bottom'))assert.equal(tucksIntoWaist(top,bottom),!!bottom.frontBand&&tucked.includes(top.index),`${top.id}/${bottom.id}`)
+ assert.equal(tucksIntoWaist(null,PARTS.find(p=>p.id==='bottom-2')),false)
+ assert.equal(tucksIntoWaist(PARTS.find(p=>p.id==='top-0'),null),false)
+})
 test('six genuinely new garment cuts have separate wearable/design assets, not more colour editions',()=>{
  assert.equal(STYLES.length,12)
  for(const p of STYLES){assert.equal(p.material,undefined);assert.equal(p.sourceIndex,undefined);assert.ok(partAsset(p).includes(p.category==='bottom'?'/'+p.wearVersion+'/':'/v10/'));assert.ok(partThumbnail(p).includes('/v10/catalog/'));assert.notEqual(partAsset(p),partThumbnail(p));assert.ok(!EDITIONS.some(q=>q.id===p.id))}
