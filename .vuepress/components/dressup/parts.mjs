@@ -35,6 +35,7 @@ PARTS.push(...JEWELLERY_FOOTWEAR)
 // Reuse corrected wearing art across colour editions; catalogue designs stay
 // independent and old purchase/save IDs do not change.
 for(const p of PARTS)if(p.category==='bottom'&&((p.sourceIndex===undefined?p.index:p.sourceIndex)===2||p.index>=12))p.wearVersion='v13'
+for(const p of PARTS)if(p.category==='bottom'&&[2,12,17].includes(p.sourceIndex===undefined?p.index:p.sourceIndex)){p.wearVersion='v14';p.frontBand=true}
 for(const category of ['headpiece','hat','earrings','necklace','wrist','socks'])PARTS.push({id:`${category}-none`,category,index:-1,name:'不佩戴',price:0,tag:''})
 export const FREE_PARTS=PARTS.filter(p=>p.price===0).map(p=>p.id)
 export const DEFAULT_PARTS={top:'top-0',bottom:'bottom-0',hair:'hair-0',headpiece:'headpiece-none',hat:'hat-none',earrings:'earrings-none',necklace:'necklace-none',wrist:'wrist-none',socks:'socks-0',shoes:'shoes-0',face:'face-0',eyes:'eyes-0',brows:'brows-0',lip:'lip-0'}

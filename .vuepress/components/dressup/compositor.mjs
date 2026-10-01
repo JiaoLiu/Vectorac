@@ -6,7 +6,7 @@ import {NEW_CAP_CUTS} from './accessory-coverage.mjs'
 export const BASE='/img/games/dressup/layers/v5/master.webp'
 export function baseSource(){return BASE}
 export const FEET='/img/games/dressup/layers/v5/feet.webp'
-export function underbodySource(parts){const p=PARTS.find(p=>p.id===parts.bottom&&p.category==='bottom');return p&&p.wearVersion==='v13'?'/img/games/dressup/layers/v13/underbody.webp':p&&p.index>=12?'/img/games/dressup/layers/v11/underbody.webp':`/img/games/dressup/layers/v5/underbody-${p?fitIndex(p):0}.webp`}
+export function underbodySource(parts){const p=PARTS.find(p=>p.id===parts.bottom&&p.category==='bottom');return p&&['v13','v14'].includes(p.wearVersion)?'/img/games/dressup/layers/v13/underbody.webp':p&&p.index>=12?'/img/games/dressup/layers/v11/underbody.webp':`/img/games/dressup/layers/v5/underbody-${p?fitIndex(p):0}.webp`}
 export function layerSources(parts){return [...new Set([BASE,FEET,underbodySource(parts),...Object.values(parts).map(id=>PARTS.find(p=>p.id===id)).filter(Boolean).flatMap(p=>[partAsset(p),partBackAsset(p)]).filter(Boolean)])]}
 // Anatomical layers keep the master 512 x 1024 canvas, never independent alpha fits.
 export const REGISTERED_ORDER=['socks','shoes','bottom','top','face','eyes','brows','lip']
@@ -31,7 +31,15 @@ export function paintComposite(ctx,images,parts){
  ctx.drawImage(images.get(BASE),0,0,512,1024)
  ctx.drawImage(images.get(underbodySource(parts)),0,0,512,1024)
  ctx.drawImage(images.get(FEET),0,0,512,1024)
- for(const category of REGISTERED_ORDER){if(category==='face')ctx.clearRect(190,25,132,138);registered(category)}
+ const frontBand=chosen('bottom')&&chosen('bottom').frontBand
+ for(const category of REGISTERED_ORDER){
+  if(category==='bottom'&&frontBand)continue
+  if(category==='face')ctx.clearRect(190,25,132,138)
+  registered(category)
+  // Long skirts wrap over a tucked blouse: their complete front waistband
+  // must stay visible, not be hidden behind the lower shirt panel.
+  if(category==='top'&&frontBand)registered('bottom')
+ }
  registered('necklace');registered('wrist')
  // Small accessories retain their established attachment anchors.
  const anchors={headpiece:[[285,46,43,60],[289,66,38,42],[282,58,45,87],[286,54,40,62]]}

@@ -1,8 +1,8 @@
 // Each is a new silhouette, not a recolour. Jewellery uses independent slots.
 const item=(category,index,name,price,tag,fit={})=>({id:`${category}-${index}`,category,index,name,price,tag,assetVersion:'v12',...fit})
 export const JEWELLERY_FOOTWEAR=[
- item('shoes',6,'晴日轻跑运动鞋',65,'清新',{sockEnd:943,wearVersion:'v13'}),
- item('shoes',7,'山野复古跑鞋',75,'自然',{sockEnd:943,wearVersion:'v13'}),
+ item('shoes',6,'晴日轻跑运动鞋',65,'清新',{sockEnd:925,wearVersion:'v14'}),
+ item('shoes',7,'山野复古跑鞋',75,'自然',{sockEnd:943,wearVersion:'v14'}),
  item('shoes',8,'奶油高帮帆布鞋',65,'学院',{sockEnd:897,wearVersion:'v13'}),
  item('shoes',9,'夜色系带马丁靴',85,'古典',{sockEnd:864,wearVersion:'v13'}),
  item('shoes',10,'秋野麂皮牛仔靴',90,'自然',{sockEnd:837,wearVersion:'v13'}),

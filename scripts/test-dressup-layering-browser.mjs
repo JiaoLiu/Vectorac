@@ -77,7 +77,7 @@ for(const [name,engine] of [['chromium',chromium],['webkit',webkit]]){
   await page.setViewportSize({width:844,height:390});await page.setViewportSize({width:390,height:844})
   await page.waitForFunction(()=>{const vm=document.querySelector('.fw-game').__vue__,src=document.querySelector('.fw-model').dataset.src||'';return !vm.loading&&src.includes('top-17')&&src.includes('bottom-17')&&src.includes('brows-3')&&src.includes('shoes-11')&&src.includes('necklace-1')&&src.includes('wrist-1')})
   const last=await game.evaluate(e=>JSON.stringify(e.__vue__.state.look));await page.reload();await page.waitForFunction(()=>(document.querySelector('.fw-model').dataset.src||'').includes('bottom-17'));assert.equal(await page.locator('.fw-game').evaluate(e=>JSON.stringify(e.__vue__.state.look)),last)
-  for(const path of ['shoes-6','shoes-7','shoes-8','shoes-9','shoes-10','shoes-11','wrist-2','wrist-2-back','bottom-2','bottom-12','bottom-17'])assert.ok(requested.has('/img/games/dressup/layers/v13/'+path+'.webp'),`${name}: stale runtime did not load repaired wearing art ${path}`)
+  for(const path of ['shoes-6','shoes-7','shoes-8','shoes-9','shoes-10','shoes-11','wrist-2','wrist-2-back','bottom-2','bottom-12','bottom-17']){const version=['shoes-6','shoes-7','bottom-2','bottom-12','bottom-17'].includes(path)?'v14':'v13';assert.ok(requested.has('/img/games/dressup/layers/'+version+'/'+path+'.webp'),`${name}: stale runtime did not load repaired wearing art ${path}`)}
   assert.deepEqual(errors,[]);await page.close()
  }finally{await browser.close()}
 }
