@@ -328,11 +328,12 @@ function _speakCommSynth(item, done) {
 }
 
 /**
- * 麦克风授权预请求（「点击语音 → 弹系统授权」的入口）：
- * iOS 的授权弹窗必须在可信手势里发起，放在「点开语音面板」这一次普通点按里，
- * 而不是长按录音时才第一次弹（弹窗出现的瞬间手指多半已松开，那次录音必被
- * _abort 丢弃，体验上就是「点了语音没反应/拿不到授权」）。
- * 结果缓存：granted 后长按直接开录；denied 后 iOS 不会再弹，只能去设置里开。
+ * 麦克风授权预请求（仅非 iOS 调用，见 bindChatDock.onToggle / _bindMicWarm）：
+ * 提前在面板点开/进房手势里发起授权，让首次长按开录无需等弹窗。
+ * 结果缓存：granted 后长按直接开录；denied 后浏览器不再弹，只能去设置里开。
+ * iOS 不走这里——iOS Safari 麦克风是单捕获会话，prime + 开录两场请求会
+ * 以 InvalidStateError 失败；授权统一由开录那次手势内唯一的 getUserMedia
+ * 承担（对齐麻将 startVoiceRec）。
  */
 let _micState = 'unknown' // 'unknown' | 'pending' | 'granted' | 'denied'
 const _micSettle = [] // 等待预热落定的开录请求（见 VoiceRecorder.start）
@@ -363,17 +364,23 @@ export function primeMicPermission(onResult) {
 }
 
 let _micWarmBound = false
+/** iOS UA 判定（含 iPadOS 桌面模式） */
+function _isIOSUA() {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent || '') ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+}
 /** 麦克风权限预热：仅非 iOS 环境在 bindChatDock 挂载时后台触发一次
-    （桌面/安卓无弹窗时序问题，提前拿授权让首录更快）。iOS 不在此预热——
-    挂载时无手势，getUserMedia 会被拒/挂起；iOS 的授权统一走「点开🎤
-    面板」那次可信手势里的 primeMicPermission（见 onToggle）。 */
+    （桌面/安卓无弹窗时序问题，提前拿授权让首录更快）。iOS 不预热——
+    iOS Safari 的麦克风是单捕获会话：上一场 getUserMedia 刚结束或仍在途时
+    再发起一场，会被以 InvalidStateError 拒绝。面板 prime + 长按开录就是
+    两场，实测报 InvalidStateError；麻将从不 prime、只在「按住说话」的
+    pointerdown 手势里调唯一一次 getUserMedia，所以一直正常。iOS 对齐
+    麻将：授权交给开录那次手势内请求，被拒由录音错误 toast 指路设置。 */
 function _bindMicWarm() {
   if (_micWarmBound) return
   _micWarmBound = true
   if (typeof window === 'undefined') return
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent || '') ||
-    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
-  if (isIOS) return
+  if (_isIOSUA()) return
   setTimeout(() => primeMicPermission(), 0)
 }
 
@@ -622,21 +629,24 @@ export function bindChatDock(dock, { onStartRec, onStopRec, onPhrase } = {}) {
     panel.hidden = !panel.hidden
     toggle.setAttribute('aria-expanded', String(!panel.hidden))
     if (opening) {
-      // 点开面板即预请求麦克风授权（见 primeMicPermission 注释）。
-      // iOS 一旦拒绝过就永不重弹、getUserMedia 静默秒拒——用户只看到
-      // 「按住说话没反应」。被拒时在面板顶部挂常驻红条指路系统设置，
-      // 授权成功（或本就有效）则摘掉。
-      primeMicPermission(state => {
-        let banner = panel.querySelector('.gkr-chat-micdeny')
-        if (state === 'denied') {
-          if (!banner) {
-            banner = document.createElement('div')
-            banner.className = 'gkr-chat-micdeny'
-            banner.textContent = '麦克风权限被拒绝：iOS 设置 → Safari → 麦克风 → 允许本网页，然后刷新重试'
-            panel.prepend(banner)
-          }
-        } else if (banner) banner.remove()
-      })
+      // 点开面板预请求麦克风授权——仅非 iOS。iOS 是单捕获会话（见
+      // _bindMicWarm 注释）：面板 prime + 长按开录两场 getUserMedia 会
+      // 撞 InvalidStateError，iOS 的授权交给开录那次手势内请求；被拒时
+      // 由 VoiceRecorder 的错误 toast 指路系统设置。非 iOS 平台保留
+      // prime：被拒时在面板顶部挂常驻红条指路系统设置，授权成功则摘掉。
+      if (!_isIOSUA()) {
+        primeMicPermission(state => {
+          let banner = panel.querySelector('.gkr-chat-micdeny')
+          if (state === 'denied') {
+            if (!banner) {
+              banner = document.createElement('div')
+              banner.className = 'gkr-chat-micdeny'
+              banner.textContent = '麦克风权限被拒绝：请在系统设置中允许后重试'
+              panel.prepend(banner)
+            }
+          } else if (banner) banner.remove()
+        })
+      }
     }
   }
   toggle.addEventListener('click', onToggle)
