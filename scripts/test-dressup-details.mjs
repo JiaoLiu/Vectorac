@@ -29,7 +29,7 @@ test('twelve new accessory cuts purchase and persist without resetting clothing 
  assert.equal(ACCESSORIES.length,12)
  for(const category of ['hair','headpiece','hat','earrings','socks','shoes'])assert.equal(ACCESSORIES.filter(p=>p.category===category).length,2)
  let s={...freshState(),coins:2000}
- for(const p of ACCESSORIES){assert.ok(partAsset(p).includes(p.id==='hat-11'?'/v12/':'/v11/'));assert.ok(partThumbnail(p).includes('/v11/catalog/'));assert.notEqual(partAsset(p),partThumbnail(p));s=act(s,{type:'buy',kind:'part',id:p.id}).state;assert.ok(s.ownedParts.includes(p.id));assert.equal(s.look.parts[p.category],p.id);assert.equal(s.look.parts.top,DEFAULT_PARTS.top)}
+ for(const p of ACCESSORIES){assert.ok(partAsset(p).includes('/'+(p.wearVersion||'v11')+'/'));assert.ok(partThumbnail(p).includes('/v11/catalog/'));assert.notEqual(partAsset(p),partThumbnail(p));s=act(s,{type:'buy',kind:'part',id:p.id}).state;assert.ok(s.ownedParts.includes(p.id));assert.equal(s.look.parts[p.category],p.id);assert.equal(s.look.parts.top,DEFAULT_PARTS.top)}
  const saved=normalize(JSON.parse(JSON.stringify(s)));assert.deepEqual(saved.look,s.look);assert.deepEqual(saved.ownedParts,s.ownedParts)
 })
 test('six shoe silhouettes and eight jewellery pieces have independent product art and persistent slots',()=>{
@@ -56,6 +56,17 @@ test('grouping covers every category exactly once; bracelet rear sits behind bod
  assert.ok(sources.includes(partBackAsset(wrist)));assert.ok(draws.indexOf(partBackAsset(wrist))<draws.indexOf(BASE));assert.ok(draws.indexOf(partAsset(wrist))>draws.indexOf(partAsset(PARTS.find(p=>p.id===parts.top))))
  assert.equal(partBackAsset(PARTS.find(p=>p.id==='wrist-none')),'');assert.ok(partBackAsset(PARTS.find(p=>p.id==='wrist-2')).includes('/v13/wrist-2-back.webp'))
  const hat=PARTS.find(p=>p.id==='hat-11');assert.ok(partAsset(hat).includes('/v12/hat-11'));assert.ok(partThumbnail(hat).includes('/v11/catalog/hat-11'))
+})
+test('curtain long hair restores rear strands beneath a changed face without covering features or earrings',()=>{
+ const parts={...DEFAULT_PARTS,hair:'hair-5',earrings:'earrings-8'},hair=PARTS.find(p=>p.id===parts.hair),sources=layerSources(parts),calls=[]
+ const rear=partBackAsset(hair),face=partAsset(PARTS.find(p=>p.id===parts.face)),earrings=partAsset(PARTS.find(p=>p.id===parts.earrings))
+ assert.ok(sources.includes(rear));assert.ok(rear.includes('/v15/'));assert.ok(partThumbnail(hair).includes('/v11/catalog/'))
+ const ctx=new Proxy({drawImage:img=>calls.push(img.src),clearRect:(...rect)=>calls.push('clear:'+rect.join(','))},{get:(o,k)=>o[k]||(()=>{})})
+ paintComposite(ctx,new Map(sources.map(src=>[src,{src}])),parts)
+ assert.ok(calls.indexOf(rear)<calls.indexOf(BASE));assert.equal(calls.filter(c=>c===rear).length,2)
+ const reset=calls.indexOf('clear:190,25,132,138');assert.equal(calls[reset+1],rear);assert.equal(calls[reset+2],face)
+ assert.ok(calls.lastIndexOf(rear)<calls.indexOf(face));assert.ok(calls.indexOf(earrings)>calls.lastIndexOf(partAsset(hair)))
+ for(const p of PARTS.filter(p=>p.category==='hair'&&p.id!=='hair-5'))assert.equal(partBackAsset(p),'','unrelated hairstyles unchanged')
 })
 test('32 editions reuse registered assets, independent product designs and existing fit indices',()=>{
  assert.equal(EDITIONS.length,32);assert.equal(new Set(PARTS.map(p=>p.id)).size,PARTS.length)

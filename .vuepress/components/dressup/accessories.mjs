@@ -2,7 +2,7 @@
 const item=(category,index,name,price,tag,fit={})=>({id:`${category}-${index}`,category,index,name,price,tag,assetVersion:'v11',...fit})
 export const ACCESSORIES=[
  item('hair',4,'轻盈双麻花辫',65,'学院'),
- item('hair',5,'柔顺帘刘海长发',75,'清新'),
+ item('hair',5,'柔顺帘刘海长发',75,'清新',{wearVersion:'v15',back:true}),
  item('headpiece',10,'薰衣草丝带发梳',40,'自然'),
  item('headpiece',11,'星辉珍珠发箍',60,'星光'),
  item('hat',10,'缎带钟形帽',65,'自然',{cap:true}),

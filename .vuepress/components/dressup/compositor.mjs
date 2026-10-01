@@ -16,7 +16,8 @@ export const sockEnd=p=>p&&p.sockEnd!==undefined?p.sockEnd:SOCK_VISIBLE_END[p?fi
 export function paintComposite(ctx,images,parts){
  const chosen=category=>PARTS.find(p=>p.id===parts[category]&&p.category===category)
  const tucked=tucksIntoWaist(chosen('top'),chosen('bottom'))
- function registered(category){const p=chosen(category);if(!p||p.index<0)return
+ function registered(category,back=false){const p=chosen(category);if(!p||p.index<0)return
+  const source=back?partBackAsset(p):partAsset(p);if(!source)return
   const hat=chosen('hat'),capHair=category==='hair'&&hat&&(hat.cap||fitIndex(hat)>=0&&fitIndex(hat)<2)
   // Follow the cap's actual silhouette, not a horizontal cut through all hair.
   // No hat pixel in a column means no clipping of the side strands there.
@@ -24,12 +25,13 @@ export function paintComposite(ctx,images,parts){
   if(category==='shoes'){const end=sockEnd(p);ctx.clearRect(185,end,142,1024-end)}
   if(category==='socks'){const shoe=chosen('shoes');ctx.save();ctx.beginPath();ctx.rect(0,0,512,sockEnd(shoe));ctx.clip()}
   if(category==='top'&&tucked){ctx.save();clipTuckedTop(ctx)}
-  ctx.drawImage(materialImage(images.get(partAsset(p)),p),0,0,512,1024)
+  ctx.drawImage(materialImage(images.get(source),p),0,0,512,1024)
   if(category==='top'&&tucked)ctx.restore()
   if(category==='socks')ctx.restore()
   if(capHair)ctx.restore()
  }
  ctx.clearRect(0,0,512,1024)
+ registered('hair',true)
  registered('hair')
  const wristBack=partBackAsset(chosen('wrist'));if(wristBack)ctx.drawImage(images.get(wristBack),0,0,512,1024)
  ctx.drawImage(images.get(BASE),0,0,512,1024)
@@ -37,7 +39,12 @@ export function paintComposite(ctx,images,parts){
  ctx.drawImage(images.get(FEET),0,0,512,1024)
  for(const category of REGISTERED_ORDER){
   if(category==='bottom'&&tucked)continue
-  if(category==='face')ctx.clearRect(190,25,132,138)
+  if(category==='face'){
+   ctx.clearRect(190,25,132,138)
+   // Replacing the face must not erase the hair behind its outer ears.
+   // Restore only the rear hair under the new face, not over skin or eyes.
+   ctx.save();ctx.beginPath();ctx.rect(190,25,132,138);ctx.clip();registered('hair',true);ctx.restore()
+  }
   registered(category)
   // A tucked blouse has no loose side tails. Untucked Chinese jackets keep
   // their whole curved hem over the skirt, even when it covers the band.

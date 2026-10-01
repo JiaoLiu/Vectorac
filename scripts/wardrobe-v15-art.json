@@ -1,0 +1,22 @@
+{
+  "mode": "built-in imagegen",
+  "prompt": "Use case: precise-object-edit. Asset type: rear HAIR layer for a modular fashion dress-up game. Image 1 is the EXACT existing curtain-bang long hairstyle edit target, on a full 1:2 registered transparent canvas. Change ONLY the hollow region behind the ears and nape: fill the inner cutout from 10% to 21% of image height with dense continuous natural warm dark-brown hair strands, matching the adjacent original strand directions, highlights and painterly texture. This is a BACK HAIR layer, behind a separately drawn face/ears/neck, so do NOT preserve empty ear pockets or the face-shaped hollow in that upper region. Hair must flow naturally and continuously behind both ears and under the back of the head. Keep the crown at its exact original position; keep the curtain fringe, outside silhouette, colour, total length, side locks, waist-length ends, and hair volume elsewhere unchanged. Keep the entire original tall 1:2 canvas with the hairstyle occupying its original upper 43%, NO cropping, NO zoom, NO move, NO resize. The new rear hair can occupy the central face region at 10–21% height, because the face will be composited IN FRONT of it. Below 22% height retain the original central opening, do not add a giant solid curtain over torso. ONLY hair, genuine transparency outside hairstyle. NO face, skin, ears, head, mannequin, clothing, earrings, hat, white/matte patches, backdrop, shadow, text or props. Match original elegant semi-realistic painted fashion-game art. This is a localized continuity repair, not a new hairstyle.",
+  "reference": ".vuepress/public/img/games/dressup/layers/v11/hair-5.webp",
+  "file": "scripts/fixtures/wardrobe-v15-sources/hair-5-back.webp",
+  "registration": {
+    "left": 210,
+    "top": 102,
+    "width": 94,
+    "height": 113
+  },
+  "extraction": "Two rear locks only: central face 232..280 stays transparent above y150; locks widen inward behind the neck by 14px through y170. No per-row hair reshaping.",
+  "protectedAssets": {
+    "/img/games/dressup/layers/v11/hair-5.webp": "ab97b5b07d6ad3c662765633836a8d488de6c8082a5c7ee1fd22d5e04dae859e",
+    "/img/games/dressup/layers/v11/catalog/hair-5.webp": "f5bad87795d36555e4f1495fedbc4f473140af27aa33d35cb2ab379d98d64bee"
+  },
+  "outputs": [
+    ".vuepress/public/img/games/dressup/layers/v15/hair-5.webp",
+    ".vuepress/public/img/games/dressup/layers/v15/hair-5-back.webp"
+  ],
+  "note": "Only a registered ear/nape patch is extracted. Original bangs, front locks, silhouette and catalogue remain unchanged. Rear patch is restored after face clearing, behind skin and jewellery."
+}
