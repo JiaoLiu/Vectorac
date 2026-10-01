@@ -2,7 +2,9 @@
 // 经典斗地主 UI（doudizhu/ui.js）
 // QQ 游戏经典布局：地主居上/两农民分列左右（对家视角），
 // 自己坐下方；叫分阶梯按钮、底牌翻转、倒计时圈、报双警报、
-// 炸弹震动、结算明细。事件流驱动渲染，引擎权威。
+// 炸弹粒子爆炸、火箭升空拖尾、春天花瓣、胜利金币雨、
+// 出牌 TTS 报牌（mp3 优先、浏览器 TTS 兜底）、⛶ 全屏沉浸。
+// 事件流驱动渲染，引擎权威。
 // ============================================================
 
 import {
@@ -17,6 +19,9 @@ const SUIT_RED = [false, true, false, true]
 const TURN_SECONDS = 20
 const AI_NAMES = ['独孤求败', '常胜将军']
 const AI_AVATARS = ['🗡️', '🎖️']
+// 口播文本（语音兜底 & 与 gen-doudizhu-tts.mjs 条目一致）
+const SPOKEN = ['三', '四', '五', '六', '七', '八', '九', '十', '勾', '圈', '凯', '尖', '二']
+const BID_SPOKEN = ['不叫', '一分', '两分', '三分']
 
 // QQ 积分等级
 const LEVELS = [
@@ -35,17 +40,50 @@ const h = (tag, cls, text) => {
   return el
 }
 
+/** 报牌语音 key / 兜底文本（与 scripts/gen-doudizhu-tts.mjs 条目对齐） */
+function voiceForCombo(combo) {
+  const r = combo.rank
+  switch (combo.type) {
+    case 'single':
+      if (r === 17) return ['s-17', '大王']
+      if (r === 16) return ['s-16', '小王']
+      return [`s-${r}`, SPOKEN[r - 3]]
+    case 'pair': return [`p-${r}`, '对' + SPOKEN[r - 3]]
+    case 'triple': return [`t-${r}`, '三个' + SPOKEN[r - 3]]
+    case 'trio_solo': return ['trio-solo', '三带一']
+    case 'trio_pair': return ['trio-pair', '三带二']
+    case 'straight': return ['straight', '顺子']
+    case 'pair_seq': return ['pair-seq', '连对']
+    case 'plane': return ['plane', '飞机']
+    case 'plane_solo':
+    case 'plane_pair': return ['plane-wings', '飞机带翅膀']
+    case 'quad_solo':
+    case 'quad_pair': return ['quad', '四带二']
+    case 'bomb': return ['bomb', '炸弹']
+    case 'rocket': return ['rocket', '王炸']
+    default: return [null, null]
+  }
+}
+
+/** QQ 大牌面扑克：左上/右下（倒置）角标 + 中央花色水印 */
 function cardEl(card, mini) {
   const el = h('div', 'ddz-card' + (mini ? ' ddz-card-mini' : ''))
   const rank = rankOf(card)
   if (rank >= 16) {
     el.classList.add('ddz-joker', rank === 17 ? 'ddz-joker-big' : 'ddz-joker-small')
-    el.append(h('span', 'ddz-card-joker', rank === 17 ? '大王' : '小王'))
-  } else {
-    const suit = suitOf(card)
-    if (SUIT_RED[suit]) el.classList.add('ddz-red')
-    el.append(h('span', 'ddz-card-rank', RANK_LABEL[rank]), h('span', 'ddz-card-suit', SUIT_SYMBOL[suit]))
+    const face = h('div', 'ddz-joker-face')
+    face.append(h('span', 'ddz-joker-icon', '🃏'), h('span', '', rank === 17 ? '大王' : '小王'))
+    el.append(face)
+    return el
   }
+  const suit = suitOf(card)
+  if (SUIT_RED[suit]) el.classList.add('ddz-red')
+  const corner = cls => {
+    const c = h('div', cls)
+    c.append(h('span', 'ddz-rank', RANK_LABEL[rank]), h('span', 'ddz-suit', SUIT_SYMBOL[suit]))
+    return c
+  }
+  el.append(corner('ddz-corner'), h('div', 'ddz-pip', SUIT_SYMBOL[suit]), corner('ddz-corner ddz-corner-b'))
   return el
 }
 
@@ -59,14 +97,40 @@ export default class DoudizhuUI {
     this.points = Number(localStorage.getItem('ddz-points') || 0)
     this.timer = null
     this.aiTimer = null
+    this.particles = []
+    this.fxRaf = 0
+    this.rocketEl = null
+    this._playedKeys = {}
     // 隐藏全站右下角浮动客服，避免遮挡右侧玩家面板
     this.cwFab = document.getElementById('cw-fab')
     if (this.cwFab) { this.cwFabPrevDisplay = this.cwFab.style.display; this.cwFab.style.display = 'none' }
-    // 精确贴合视口：根元素顶到屏幕底，规避主题 navbar/页脚高度差异
+    // 站点 fixed navbar（全屏时需隐藏，否则盖住游戏顶栏 ⛶ 无法退出）
+    this.navbar = document.querySelector('header.navbar') || document.querySelector('.navbar')
+    // 精确贴合视口：根元素顶到屏幕底，规避主题 navbar/页脚高度差异。
+    // 内容微溢会让页面可滚动，一旦 scrollY>0 量到的 top 偏小、height 越算越大
+    // （恶性循环），所以测量前强制滚回顶部；全屏模式由 CSS 100dvh 接管。
     this.fitViewport = () => {
+      if (this.root.classList.contains('ddz-full')) {
+        // fixed 包含块是带 transform 的祖先（位于 navbar 下方），top:0 不对齐
+        // 视口；先清补偿量实测位置再重设，幂等且随旋转自校正
+        this.root.style.top = ''
+        this.root.style.left = ''
+        const rect = this.root.getBoundingClientRect()
+        this.root.style.top = `${-rect.top}px`
+        this.root.style.left = `${-rect.left}px`
+        if (this.resizeFx) this.resizeFx()
+        return
+      }
+      this.root.style.top = ''
+      this.root.style.left = ''
+      if (window.scrollY > 0) window.scrollTo(0, 0)
       const top = Math.max(0, this.root.getBoundingClientRect().top)
       this.root.style.height = Math.max(320, window.innerHeight - top) + 'px'
+      if (this.resizeFx) this.resizeFx()
     }
+    // 本页禁止整页滚动（游戏视口精确贴合，滚动只会触发上述漂移）
+    this.bodyPrevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
     window.addEventListener('resize', this.fitViewport)
     window.addEventListener('orientationchange', this.fitViewport)
     this.buildDom()
@@ -96,11 +160,15 @@ export default class DoudizhuUI {
     }
     const btnSound = h('button', 'ddz-icon-btn is-on', '🔔')
     btnSound.type = 'button'
-    btnSound.title = '音效'
+    btnSound.title = '音效与报牌'
     btnSound.onclick = () => {
       this.audio.setSoundOn(!this.audio.soundOn)
       btnSound.classList.toggle('is-on', this.audio.soundOn)
     }
+    this.btnFull = h('button', 'ddz-icon-btn', '⛶')
+    this.btnFull.type = 'button'
+    this.btnFull.title = '全屏'
+    this.btnFull.onclick = () => this.toggleFull()
     const btnExit = h('a', 'ddz-icon-btn', '✕')
     btnExit.href = '/blogs/other/games.html'
     btnExit.title = '返回游戏列表'
@@ -108,7 +176,7 @@ export default class DoudizhuUI {
       h('span', 'ddz-logo', '斗地主'),
       this.elBase, this.elMult,
       h('span', 'ddz-topbar-gap'),
-      this.elLevel, btnMusic, btnSound, btnExit
+      this.elLevel, btnMusic, btnSound, this.btnFull, btnExit
     )
     // 桌面
     this.table = h('div', 'ddz-table')
@@ -141,7 +209,9 @@ export default class DoudizhuUI {
     this.mePanel = h('div', 'ddz-me-panel')
     // 手牌
     this.handEl = h('div', 'ddz-hand')
-    // 特效层
+    // 粒子画布层
+    this.fxCanvas = h('canvas', 'ddz-fx-canvas')
+    // 特效层（emoji 文案）
     this.fx = h('div', 'ddz-fx')
     // 结算层
     this.overlay = h('div', 'ddz-overlay')
@@ -150,16 +220,46 @@ export default class DoudizhuUI {
       this.bottomWrap,
       this.oppPanels[2], this.oppPanels[1],
       this.playAreas[2], this.playAreas[1], this.playAreas[0],
-      this.status, this.actions, this.mePanel, this.handEl, this.fx, this.overlay
+      this.status, this.actions, this.mePanel, this.handEl,
+      this.fxCanvas, this.fx, this.overlay
     )
     r.append(this.topbar, this.table)
+    // 粒子画布随桌面尺寸
+    this.resizeFx = () => {
+      const rect = this.table.getBoundingClientRect()
+      const dpr = Math.min(2, window.devicePixelRatio || 1)
+      this.fxCanvas.width = Math.max(1, Math.round(rect.width * dpr))
+      this.fxCanvas.height = Math.max(1, Math.round(rect.height * dpr))
+      this.fxDpr = dpr
+    }
+    this.resizeFx()
   }
 
   bindGestures() {
-    // 首次手势解锁音频
+    // 首次手势解锁音频（WebAudio + 共享 <audio> 元素）
     const unlock = () => this.audio.unlock()
     this.root.addEventListener('pointerdown', unlock, { once: true })
     this.root.addEventListener('touchstart', unlock, { once: true })
+  }
+
+  // ---------- 全屏 ----------
+  toggleFull() {
+    const on = !this.root.classList.contains('ddz-full')
+    this.root.classList.toggle('ddz-full', on)
+    this.btnFull.classList.toggle('is-on', on)
+    // 全屏隐藏站点 navbar（它 z-index 更高，会盖住游戏顶栏导致无法退出全屏）
+    if (this.navbar) this.navbar.style.display = on ? 'none' : ''
+    const doc = /** @type {any} */ (document)
+    if (on && doc.documentElement.requestFullscreen) {
+      doc.documentElement.requestFullscreen().catch(() => { /* iOS Safari 不支持则仅用 CSS 沉浸 */ })
+    } else if (!on && doc.fullscreenElement && doc.exitFullscreen) {
+      doc.exitFullscreen().catch(() => { /* ignore */ })
+    }
+    // fixed 包含块偏移补偿在 fitViewport 全屏分支内幂等处理
+    if (on) this.fitViewport()
+    // 全屏切换后重测视口与粒子画布
+    setTimeout(this.fitViewport, 60)
+    setTimeout(this.fitViewport, 380)
   }
 
   // ---------- 对局控制 ----------
@@ -169,6 +269,7 @@ export default class DoudizhuUI {
     this.state = createGame({ seed: (Math.random() * 0xffffffff) >>> 0 })
     this.selected.clear()
     this.lastHint = null
+    this._playedKeys = {}
     this.renderAll()
     this.audio.sfx('deal')
     this.pump(drainEvents(this.state))
@@ -223,6 +324,7 @@ export default class DoudizhuUI {
       case 'bid':
         this.showBidBubble(e.seat, e.score)
         this.audio.sfx('bid')
+        this.audio.voice(`bid-${e.score}`, BID_SPOKEN[e.score] || '不叫')
         break
       case 'landlord':
         this.audio.sfx('landlord')
@@ -232,6 +334,8 @@ export default class DoudizhuUI {
         this.audio.sfx(e.combo === 'rocket' ? 'rocket' : 'bomb')
         this.flashFx(e.combo === 'rocket' ? '🚀' : '💥', e.combo === 'rocket' ? '王炸！' : '炸弹！')
         this.shake()
+        if (e.combo === 'rocket') this.rocketFly()
+        this.explosion()
         break
       case 'alarm':
         this.audio.sfx('alarm')
@@ -242,12 +346,20 @@ export default class DoudizhuUI {
       case 'over': {
         const win = e.scores[this.seat] > 0
         this.audio.sfx(win ? 'win' : 'lose')
-        if (e.spring) this.flashFx('🌸', '春天！')
+        if (e.spring) { this.flashFx('🌸', '春天！'); this.petals() }
+        if (win) this.coins()
         break
       }
     }
-    if (e.type === 'play') this.audio.sfx('play')
-    if (e.type === 'pass') this.audio.sfx('pass')
+    if (e.type === 'play') {
+      this.audio.sfx('play')
+      const [key, text] = voiceForCombo(e.combo)
+      if (key) this.audio.voice(key, text)
+    }
+    if (e.type === 'pass') {
+      this.audio.sfx('pass')
+      this.audio.voice('pass', '不要')
+    }
   }
 
   oppName(seat) { return seat === this.seat ? '你' : AI_NAMES[seat - 1] }
@@ -286,7 +398,7 @@ export default class DoudizhuUI {
     const s = this.state
     const active = s.phase === 'bidding' ? s.bidTurn : s.turn
     if (active === this.seat) {
-      this.meTimer.textContent = left <= 5 ? `${left}` : `${left}`
+      this.meTimer.textContent = `${left}`
       this.meTimer.classList.toggle('urgent', left <= 5)
     } else {
       const el = this.oppPanels[active].querySelector('.ddz-timer')
@@ -376,11 +488,21 @@ export default class DoudizhuUI {
     for (const seat of [0, 1, 2]) {
       const area = this.playAreas[seat]
       area.innerHTML = ''
-      if (s.phase !== 'playing' && s.phase !== 'over') continue
+      if (s.phase !== 'playing' && s.phase !== 'over') { this._playedKeys[seat] = null; continue }
       const lp = s.lastPlay
       // 每家展示区：lastPlay 属于他家→牌；本 trick pass→不出
+      // key 带 history 长度作 nonce，仅在新出牌时播 3D 飞入动画
+      let key = null
+      if (lp && lp.seat === seat) key = `c${lp.cards.join('.')}#${s.history.length}`
+      else if (lp && s.trickPasses.includes(seat)) key = `pass#${s.history.length}`
+      const fresh = key !== null && key !== this._playedKeys[seat]
+      this._playedKeys[seat] = key
       if (lp && lp.seat === seat) {
         const wrap = h('div', 'ddz-played-cards')
+        if (fresh) {
+          const isBomb = lp.combo.type === 'bomb' || lp.combo.type === 'rocket'
+          wrap.classList.add(isBomb ? 'bomb-in' : 'play-in')
+        }
         for (const c of lp.cards) wrap.append(cardEl(c, true))
         area.append(wrap, h('div', 'ddz-combo-label', COMBO_LABEL[lp.combo.type]))
       } else if (lp && s.trickPasses.includes(seat)) {
@@ -410,7 +532,6 @@ export default class DoudizhuUI {
     const s = this.state
     this.handEl.innerHTML = ''
     const hand = s.hands[this.seat]
-    const n = hand.length
     hand.forEach((c, i) => {
       const el = cardEl(c)
       el.style.zIndex = i
@@ -425,7 +546,24 @@ export default class DoudizhuUI {
       }
       this.handEl.append(el)
     })
-    this.handEl.style.setProperty('--hand-count', n)
+    this.fitHandShift()
+  }
+
+  /** 按可用宽度动态计算手牌错位（牌多时加深重叠，保证不换行不溢出） */
+  fitHandShift() {
+    const cards = this.handEl.children
+    const n = cards.length
+    if (n < 2) return
+    const cw = cards[0].offsetWidth
+    if (!cw) return
+    const avail = this.handEl.clientWidth - 20 // 左右 padding 各 10
+    // 理想错位 42% 牌宽；空间不足时压缩错位，至少露出 14px
+    const ideal = cw * 0.42
+    const shift = Math.max(14, Math.min(ideal, (avail - cw) / (n - 1)))
+    const overlap = cw - shift
+    for (let i = 1; i < n; i++) {
+      /** @type {HTMLElement} */ (cards[i]).style.marginLeft = `-${overlap.toFixed(1)}px`
+    }
   }
 
   renderStatus() {
@@ -536,7 +674,154 @@ export default class DoudizhuUI {
     this.overlay.style.display = 'flex'
   }
 
-  // ---------- 特效 ----------
+  // ---------- 粒子特效 ----------
+  fxLoop() {
+    if (this.fxRaf) return
+    const cvs = this.fxCanvas
+    const g = cvs.getContext('2d')
+    if (!g) return
+    const tick = () => {
+      const dpr = this.fxDpr || 1
+      g.clearRect(0, 0, cvs.width, cvs.height)
+      // 火箭飞行期间持续喷拖尾火花
+      if (this.rocketEl) {
+        const rr = this.rocketEl.getBoundingClientRect()
+        const cr = cvs.getBoundingClientRect()
+        const x = (rr.left + rr.width / 2 - cr.left) * dpr
+        const y = (rr.top + rr.height * 0.85 - cr.top) * dpr
+        for (let i = 0; i < 3; i++) {
+          this.particles.push({
+            kind: 'spark', x, y,
+            vx: (Math.random() - 0.5) * 2 * dpr, vy: (1 + Math.random() * 2) * dpr,
+            grav: 0, life: 22 + Math.random() * 14, age: 0,
+            size: (2 + Math.random() * 3) * dpr,
+            color: Math.random() < 0.5 ? '#ffb03a' : '#ffe27a'
+          })
+        }
+      }
+      this.particles = this.particles.filter(p => {
+        p.age++
+        const t = p.age / p.life
+        if (t >= 1) return false
+        if (p.kind === 'ring') {
+          const r = p.size + p.age * p.vr
+          g.beginPath()
+          g.arc(p.x, p.y, r, 0, Math.PI * 2)
+          g.strokeStyle = p.color
+          g.globalAlpha = (1 - t) * 0.85
+          g.lineWidth = Math.max(1, 5 * dpr * (1 - t))
+          g.stroke()
+        } else if (p.kind === 'spark') {
+          p.x += p.vx; p.y += p.vy; p.vy += p.grav || 0
+          g.globalAlpha = 1 - t
+          g.fillStyle = p.color
+          g.beginPath()
+          g.arc(p.x, p.y, p.size * (1 - t * 0.5), 0, Math.PI * 2)
+          g.fill()
+        } else if (p.kind === 'petal') {
+          p.x += p.vx + Math.sin(p.sway + p.age * 0.09) * 0.9 * dpr
+          p.y += p.vy
+          p.rot += p.vr
+          g.save()
+          g.translate(p.x, p.y)
+          g.rotate(p.rot)
+          g.globalAlpha = Math.min(1, (p.life - p.age) / 26)
+          g.fillStyle = p.color
+          g.beginPath()
+          g.ellipse(0, 0, p.size, p.size * 0.55, 0, 0, Math.PI * 2)
+          g.fill()
+          g.restore()
+        } else if (p.kind === 'coin') {
+          p.y += p.vy
+          p.x += Math.sin(p.sway + p.age * 0.07) * 1.2 * dpr
+          g.globalAlpha = Math.min(1, (p.life - p.age) / 26)
+          g.font = `${p.size}px serif`
+          g.fillText('🪙', p.x, p.y)
+        }
+        g.globalAlpha = 1
+        return true
+      })
+      if (this.particles.length || this.rocketEl) {
+        this.fxRaf = requestAnimationFrame(tick)
+      } else {
+        this.fxRaf = 0
+        g.clearRect(0, 0, cvs.width, cvs.height)
+      }
+    }
+    this.fxRaf = requestAnimationFrame(tick)
+  }
+
+  /** 炸弹爆炸：金橙火花 + 冲击波环 */
+  explosion() {
+    if (!this.fxCanvas.width) return
+    const dpr = this.fxDpr || 1
+    const cx = this.fxCanvas.width / 2
+    const cy = this.fxCanvas.height * 0.4
+    this.particles.push({ kind: 'ring', x: cx, y: cy, life: 32, age: 0, size: 8 * dpr, vr: 8 * dpr, color: '#ffd970' })
+    for (let i = 0; i < 70; i++) {
+      const a = Math.random() * Math.PI * 2
+      const sp = (2 + Math.random() * 7.5) * dpr
+      this.particles.push({
+        kind: 'spark', x: cx, y: cy,
+        vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 1.5 * dpr,
+        grav: 0.13 * dpr, life: 40 + Math.random() * 30, age: 0,
+        size: (2 + Math.random() * 3.5) * dpr,
+        color: ['#ffd970', '#ffb03a', '#ff7a3c', '#fff3c2'][i % 4]
+      })
+    }
+    this.fxLoop()
+  }
+
+  /** 王炸火箭升空（DOM 火箭 + 粒子拖尾） */
+  rocketFly() {
+    const el = h('div', 'ddz-rocket-fly', '🚀')
+    this.table.append(el)
+    this.rocketEl = el
+    this.fxLoop()
+    setTimeout(() => { el.remove(); if (this.rocketEl === el) this.rocketEl = null }, 1250)
+  }
+
+  /** 春天：花瓣飘落 */
+  petals() {
+    if (!this.fxCanvas.width) return
+    const dpr = this.fxDpr || 1
+    const W = this.fxCanvas.width
+    const H = this.fxCanvas.height
+    for (let i = 0; i < 34; i++) {
+      this.particles.push({
+        kind: 'petal',
+        x: Math.random() * W, y: -20 * dpr - Math.random() * H * 0.35,
+        vx: (Math.random() - 0.5) * 1.2 * dpr, vy: (1 + Math.random() * 1.6) * dpr,
+        sway: Math.random() * Math.PI * 2,
+        rot: Math.random() * Math.PI, vr: (Math.random() - 0.5) * 0.12,
+        life: 150 + Math.random() * 60, age: 0,
+        size: (5 + Math.random() * 5) * dpr,
+        color: ['#ffb7c5', '#ff9fb0', '#ffd0da'][i % 3]
+      })
+    }
+    this.fxLoop()
+  }
+
+  /** 胜利：金币雨 */
+  coins() {
+    if (!this.fxCanvas.width) return
+    const dpr = this.fxDpr || 1
+    const W = this.fxCanvas.width
+    const H = this.fxCanvas.height
+    for (let i = 0; i < 42; i++) {
+      this.particles.push({
+        kind: 'coin',
+        x: Math.random() * W, y: -30 * dpr - Math.random() * H * 0.5,
+        vy: (2 + Math.random() * 2.6) * dpr,
+        sway: Math.random() * Math.PI * 2,
+        life: 130 + Math.random() * 60, age: 0,
+        size: (16 + Math.random() * 12) * dpr
+      })
+    }
+    this.fxLoop()
+  }
+
+  // ---------- 特效（DOM） ----------
   flashFx(emoji, text) {
     const el = h('div', 'ddz-fx-item')
     el.append(h('div', 'ddz-fx-emoji', emoji), h('div', 'ddz-fx-text', text))
@@ -570,7 +855,12 @@ export default class DoudizhuUI {
     window.removeEventListener('orientationchange', this.fitViewport)
     window.removeEventListener('load', this.fitViewport)
     if (this.fitTimers) this.fitTimers.forEach(clearTimeout)
+    if (this.fxRaf) cancelAnimationFrame(this.fxRaf)
+    this.rocketEl = null
     if (this.cwFab) this.cwFab.style.display = this.cwFabPrevDisplay || ''
+    if (this.navbar) this.navbar.style.display = ''
+    document.body.style.overflow = this.bodyPrevOverflow || ''
+    this.root.classList.remove('ddz-full')
     this.root.innerHTML = ''
     this.root.style.height = ''
   }
