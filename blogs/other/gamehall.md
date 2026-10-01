@@ -343,6 +343,18 @@ meta:
 .gkr-bubble.is-old { opacity: 0.55; }
 .gkr-bubble.is-chat { cursor: default; }
 
+/* 横屏（矮屏）：dock 缩小，面板改为向左展开——向上弹会盖住横屏右栏的
+   玩家卡 / 控制区（「快捷语音 UI 溢出遮人」的修复）；面板限高可滚动 */
+@media (max-height: 560px) and (orientation: landscape) {
+  .gkr-chat-btn { width: 38px; height: 38px; font-size: 16px; }
+  .gkr-chat-btn span { font-size: 8px; line-height: 10px; }
+  .gkr-chat-panel {
+    right: 46px; bottom: 0; width: 216px;
+    max-height: calc(100dvh - 20px); overflow-y: auto;
+  }
+  .gkr-chat-rectip { right: 44px; padding: 5px 10px; font-size: 11.5px; }
+}
+
 /* ============ 房间全屏接管（盖过主题导航与左下聊天浮标 cw-fab:9999） ============ */
 /* class 挂在 body 上（Vue patch 会重置 #gameHall 自身的 class），选择器从 body 出发 */
 body.gkr-full .gh-root {

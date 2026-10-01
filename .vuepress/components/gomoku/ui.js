@@ -7,6 +7,7 @@
 
 import { createBoard, checkWin, isFull, opponentOf, BLACK, WHITE, EMPTY, BOARD_SIZE } from './engine.js'
 import { chooseMove, LEVEL } from './ai.js'
+import { registerBgm, unregisterBgm, isCommActive } from '../gamehall/chatkit.js'
 
 const STATS_KEY = 'gomoku-stats-v1'
 const SETTINGS_KEY = 'gomoku-settings-v1'
@@ -142,7 +143,7 @@ export default class GomokuUI {
     document.removeEventListener('pointerdown', this._onFirstGesture)
     document.removeEventListener('visibilitychange', this._onVisibility)
     this._music(false)
-    if (this._bgm) { this._bgm.pause(); this._bgm.removeAttribute('src'); this._bgm = null }
+    if (this._bgm) { unregisterBgm(this._bgm); this._bgm.pause(); this._bgm.removeAttribute('src'); this._bgm = null }
     if (this._ro) this._ro.disconnect()
     if (this._aiTimer) clearTimeout(this._aiTimer)
     if (this._raf) cancelAnimationFrame(this._raf)
@@ -864,6 +865,9 @@ export default class GomokuUI {
 
   _tone(freq, startDelay, duration, volume) {
     if (!this._audio || !this.settings.sound) return
+    // 语音（人语音 / 快捷语）播放期间音效静默：语音权重高于音效，
+    // 叠放会盖过人声（联机对局；单机 isCommActive 恒 false，无影响）
+    if (isCommActive()) return
     const ctx = this._audio
     if (ctx.state === 'suspended') ctx.resume().catch(() => {})
     const osc = ctx.createOscillator()
@@ -924,8 +928,9 @@ export default class GomokuUI {
           const a = new Audio('/audio/gomoku/bgm.mp3')
           a.loop = true
           a.volume = 0.5
-          a.addEventListener('error', () => { this._bgmFailed = true; this._bgm = null; this._music(true) })
+          a.addEventListener('error', () => { unregisterBgm(a); this._bgmFailed = true; this._bgm = null; this._music(true) })
           this._bgm = a
+          registerBgm(a) // 注册给 chatkit：语音播放期间自动 duck
           if ('mediaSession' in navigator) {
             try {
               navigator.mediaSession.metadata = new MediaMetadata({ title: '五子棋 · 背景音乐', artist: 'Kevin MacLeod', album: 'Vectorac' })

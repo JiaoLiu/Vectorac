@@ -117,6 +117,7 @@
 <script>
 import { BOARD, TYPES, ARMIES, createGame, at, legalMoves, visibleType, randomizeFormation, swapFormation, startGame, rollOpening, move, chooseAI, surrender, restoreGame, canDeploy } from './junqi/engine.mjs'
 import { createJunqiAudio } from './junqi/audio'
+import { isCommActive, registerBgm, unregisterBgm } from './gamehall/chatkit.js'
 const SAVE = 'vectorac.junqi.game.v1', FORM = 'vectorac.junqi.formation.v1'
 // 骰子点位：3×3 九宫格下标，1~6 点各对应哪些格子。
 const PIPS = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] }
@@ -159,7 +160,7 @@ export default {
   mounted() {
     this._pageContent = this.$el.closest('.theme-reco-content')
     if (this._pageContent) this._pageContent.classList.add('jq-page-content')
-    this._audio=createJunqiAudio()
+    this._audio=createJunqiAudio({ isCommActive, registerBgm, unregisterBgm })
     if (this.online) {
       // 联机：默认开 BGM（与单机一致，首次点击后才出声）；即进即全屏；视图由 remote 推送
       this._audio.music(true)

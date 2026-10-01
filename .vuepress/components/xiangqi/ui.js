@@ -4,6 +4,7 @@ import {
   otherSide, chooseMove
 } from './engine.mjs'
 import { XIANGQI_PUZZLES, createPuzzleBoard, isCorrectPuzzleChoice, getPuzzlePage } from './puzzles.mjs'
+import { registerBgm, unregisterBgm, isCommActive } from '../gamehall/chatkit.js'
 
 const SIDE_LABEL = { red: '红方', black: '黑方' }
 const FILE_X = (x) => 38 + x * 58
@@ -217,6 +218,7 @@ export default class XiangqiUI {
       this.bgm.loop = true
       this.bgm.preload = 'auto'
       this.bgm.volume = 0.18
+      registerBgm(this.bgm) // 注册给 chatkit：语音播放期间自动 duck
     }
     const audio = this.bgm
     try {
@@ -241,6 +243,9 @@ export default class XiangqiUI {
 
   playMoveSound(capture) {
     if (!this.soundEnabled) return
+    // 语音（人语音 / 快捷语）播放期间音效静默：语音权重高于音效，
+    // 叠放会盖过人声（联机对局；单机 isCommActive 恒 false，无影响）
+    if (isCommActive()) return
     const context = this.prepareAudio()
     if (!context) return
     const now = context.currentTime
@@ -925,6 +930,7 @@ export default class XiangqiUI {
       else if (this.landscapeQuery.removeListener) this.landscapeQuery.removeListener(this.onLandscapeChange)
     }
     if (this.bgm) {
+      unregisterBgm(this.bgm)
       this.bgm.pause()
       this.bgm.removeAttribute('src')
       this.bgm = null

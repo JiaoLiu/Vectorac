@@ -32,7 +32,8 @@ import {
   speakPhrase,
   chatDockHtml,
   bindChatDock,
-  VoiceRecorder
+  VoiceRecorder,
+  enqueueVoice
 } from '../gamehall/chatkit.js'
 import FourKingdoms from '../FourKingdoms.vue'
 import { ARMIES } from './engine.mjs'
@@ -199,6 +200,9 @@ export default class JunqiRemote {
         break
       case 'VOICE_MSG':
         this._addVoiceBubble(p, false)
+        // 人语音权重最高：收到即排队播报（插队队首）；iOS 未解锁时积压，
+        // 首次手势后由 chatkit 自动补播
+        enqueueVoice(p)
         break
       case 'CHAT_MSG':
         this._addChatBubble(p, false)
@@ -607,11 +611,8 @@ export default class JunqiRemote {
   _playVoice(idx) {
     const b = this._voiceBubbles[idx]
     if (!b) return
-    try {
-      new Audio('data:' + b.mime + ';base64,' + b.data).play()
-    } catch (e) {
-      this._toast('语音播放失败')
-    }
+    // 走 chatkit 通信通道重播（插队队首、播放期间 duck BGM）
+    enqueueVoice({ mime: b.mime, data: b.data, duration: b.duration })
   }
 
   // ---------- 通用 ----------

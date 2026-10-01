@@ -47,65 +47,277 @@ export function exitFullscreen() {
   document.body.classList.remove('gkr-full')
 }
 
-/**
- * 播报第 idx 条快捷语：优先播预生成普通话音频（/audio/gamehall/phrase-N.mp3），
- * 文件缺失 / 加载失败回退 speechSynthesis。连发时截断上一条（音频与 TTS 都掐）。
- */
-const PHRASE_AUDIO_BASE = '/audio/gamehall'
-const _phraseClips = {}
-let _phrasePlaying = null
+// ============================================================
+// 通信语音通道（权重：人语音 > 快捷语 > 音效 / 背景乐）
+// ------------------------------------------------------------
+// 与麻将联机同一套思路（mahjong/ui.js 的 _voicePrimed/_duckBgmComm 简化版）：
+//   · 单个共享 <audio> 元素：首次手势播一段静音 WAV 拿到「逐元素播放许可」，
+//     之后所有语音只换 src。iOS 对手势栈外的 play() 一律 NotAllowedError——
+//     旧版快捷语「TTS 没生效」的根因：WS 回调里 play 被拒后误标文件损坏，
+//     永久掉进 TTS 回退，而 TTS 在无手势上下文同样哑火；
+//   · 队列顺序播放，人语音插队到队首；当前在播的一条必播完（保证完整）；
+//   · 播放期间 duck 各游戏注册的 BGM：音量可写的平台压低，iOS（volume
+//     只读）整体暂停、播完恢复；
+//   · 播放期间 isCommActive() 为 true，各游戏音效入口自查静默。
+// ============================================================
 
-export function speakPhrase(idx, text) {
-  if (_phrasePlaying) {
-    try { _phrasePlaying.pause() } catch (e) { /* 忽略 */ }
-    _phrasePlaying = null
-  }
-  const key = 'phrase-' + idx
-  let clip = _phraseClips[key]
-  if (!clip) {
-    try {
-      clip = new Audio(`${PHRASE_AUDIO_BASE}/${key}.mp3`)
-      clip.preload = 'auto'
-      clip.addEventListener('error', () => { clip._broken = true })
-      _phraseClips[key] = clip
-    } catch (e) {
-      _speakPhraseSynth(text)
-      return
-    }
-  }
-  if (clip._broken) {
-    _speakPhraseSynth(text)
-    return
-  }
+const VOICE_MAX_SEC = 15 // 与麻将一致：语音消息最长秒数
+const PHRASE_AUDIO_BASE = '/audio/gamehall'
+const COMM_QUEUE_MAX = 6
+const COMM_DUCK_VOLUME = 0.06
+
+// 204 字节静音 WAV（8kHz 单声道），麻将同款手势解锁材料
+const _SILENT_WAV = (() => {
+  const bytes = new Uint8Array(204)
+  const v = new DataView(bytes.buffer)
+  const str = (at, s) => { for (let i = 0; i < s.length; i++) bytes[at + i] = s.charCodeAt(i) }
+  str(0, 'RIFF'); v.setUint32(4, 196, true); str(8, 'WAVEfmt ')
+  v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true)
+  v.setUint32(24, 8000, true); v.setUint32(28, 16000, true)
+  v.setUint16(32, 2, true); v.setUint16(34, 16, true)
+  str(36, 'data'); v.setUint32(40, 160, true)
   try {
-    clip.currentTime = 0
-    clip.addEventListener('ended', () => { if (_phrasePlaying === clip) _phrasePlaying = null }, { once: true })
-    const p = clip.play()
-    _phrasePlaying = clip
-    if (p && p.catch) {
-      p.catch(() => {
-        clip._broken = true
-        if (_phrasePlaying === clip) _phrasePlaying = null
-        _speakPhraseSynth(text)
-      })
-    }
+    return 'data:audio/wav;base64,' + btoa(String.fromCharCode.apply(null, bytes))
   } catch (e) {
-    clip._broken = true
-    _speakPhraseSynth(text)
+    return ''
+  }
+})()
+
+let _commEl = null // 共享播放元素（prime 后获得逐元素播放许可）
+let _commPrimed = false
+let _commPriming = false
+let _commPrimeBound = false
+let _commPlaying = null // 当前在播的队列项
+const _commQueue = [] // { kind:'voice'|'phrase', src, text, dur }
+const _phraseBroken = new Set() // 确认加载失败的 phrase mp3（直接走 TTS，不再反复 404）
+const _bgmRegistry = new Set() // 各游戏注册的 BGM <audio> 元素
+const _bgmDuckedByComm = new Set() // 当前被通信通道压低的元素
+
+/** 语音播放中（人语音 / 快捷语）：游戏音效入口自查，播放期间静默 */
+export function isCommActive() {
+  return !!_commPlaying
+}
+
+/** 各游戏 BGM 元素注册 / 注销（创建后注册，销毁前注销） */
+export function registerBgm(el) {
+  if (el) _bgmRegistry.add(el)
+}
+export function unregisterBgm(el) {
+  _bgmRegistry.delete(el)
+  _bgmDuckedByComm.delete(el)
+}
+
+function _getCommEl() {
+  if (_commEl || typeof Audio === 'undefined') return _commEl
+  try {
+    _commEl = new Audio()
+    _commEl.preload = 'auto'
+  } catch (e) {
+    /* 无 Audio 环境 */
+  }
+  return _commEl
+}
+
+/** 音量可写检测：iOS Safari 的 HTMLMediaElement.volume 只读（恒为 1） */
+let _volSettable = null
+function _volCanSet() {
+  if (_volSettable == null) {
+    try {
+      const a = document.createElement('audio')
+      a.volume = 0.42
+      _volSettable = a.volume === 0.42
+    } catch (e) {
+      _volSettable = false
+    }
+  }
+  return _volSettable
+}
+
+/** 首次手势解锁共享元素（bindChatDock 时挂一次；capture 保证最早看到手势） */
+export function bindCommPrime() {
+  if (_commPrimeBound || typeof document === 'undefined') return
+  _commPrimeBound = true
+  const onGesture = () => _primeComm()
+  document.addEventListener('pointerdown', onGesture, { capture: true, passive: true })
+  document.addEventListener('keydown', onGesture, { capture: true })
+}
+
+function _primeComm() {
+  if (_commPrimed || _commPriming) return
+  const el = _getCommEl()
+  if (!el || !_SILENT_WAV) return
+  _commPriming = true
+  el.src = _SILENT_WAV
+  el.volume = 0.01
+  try {
+    Promise.resolve(el.play())
+      .then(
+        () => { _commPrimed = true },
+        () => { /* 本次手势没解锁成，下次手势再试 */ }
+      )
+      .then(() => {
+        _commPriming = false
+        try { el.pause() } catch (e) { /* 忽略 */ }
+        el.removeAttribute('src')
+        el.load()
+        el.volume = 1
+        _drainComm() // 解锁后补播积压（iOS 手势外收到的语音）
+      })
+  } catch (e) {
+    _commPriming = false
   }
 }
 
-/** TTS 兜底（预生成音频不可用时） */
-function _speakPhraseSynth(text) {
+/** BGM duck 同步：通道活跃（在播或有积压）压低 / 暂停 BGM，空闲恢复 */
+function _syncCommDuck() {
+  const active = !!(_commPlaying || _commQueue.length)
+  for (const el of _bgmRegistry) {
+    if (active) {
+      if (_volCanSet()) {
+        if (!_bgmDuckedByComm.has(el)) {
+          _bgmDuckedByComm.add(el)
+          el._gkrVol = el.volume
+          try { el.volume = COMM_DUCK_VOLUME } catch (e) { /* 忽略 */ }
+        }
+      } else if (!el.paused) {
+        _bgmDuckedByComm.add(el)
+        try { el.pause() } catch (e) { /* 忽略 */ }
+      }
+    } else if (_bgmDuckedByComm.has(el)) {
+      _bgmDuckedByComm.delete(el)
+      if (_volCanSet()) {
+        try { el.volume = typeof el._gkrVol === 'number' ? el._gkrVol : el.volume } catch (e) { /* 忽略 */ }
+      } else if (el.paused) {
+        try {
+          const p = el.play()
+          if (p && p.catch) p.catch(() => { /* 恢复失败由游戏自身 BGM 逻辑兜底 */ })
+        } catch (e) { /* 忽略 */ }
+      }
+    }
+  }
+}
+
+/**
+ * 播报第 idx 条快捷语：入队顺序播（不截断，保证每条完整）。
+ * 优先预生成普通话 mp3，确认加载失败回退浏览器 speechSynthesis（zh-CN）。
+ */
+export function speakPhrase(idx, text) {
+  _enqueueComm({
+    kind: 'phrase',
+    src: `${PHRASE_AUDIO_BASE}/phrase-${idx}.mp3`,
+    text: text || CHAT_PHRASES[idx] || '',
+    dur: 3
+  }, false)
+}
+
+/** 人语音播报：权重最高——插队到队首（当前在播的一条不打断，下一条即播） */
+export function enqueueVoice({ mime, data, duration } = {}) {
+  if (!data) return
+  _enqueueComm({
+    kind: 'voice',
+    src: 'data:' + (mime || 'audio/webm') + ';base64,' + data,
+    text: '',
+    dur: Math.min(VOICE_MAX_SEC, Math.max(1, Math.round(duration || 1))) + 0.5
+  }, true)
+}
+
+function _enqueueComm(item, front) {
+  if (front) _commQueue.unshift(item)
+  else _commQueue.push(item)
+  // 积压修剪：优先丢快捷语，人语音尽量保住
+  while (_commQueue.length > COMM_QUEUE_MAX) {
+    const i = _commQueue.findIndex(q => q.kind === 'phrase')
+    if (i === -1) _commQueue.shift()
+    else _commQueue.splice(i, 1)
+  }
+  _drainComm()
+}
+
+function _drainComm() {
+  if (_commPlaying || _commPriming) return
+  const item = _commQueue.shift()
+  if (!item) {
+    _syncCommDuck()
+    return
+  }
+  _commPlaying = item
+  _syncCommDuck()
+  let settled = false
+  const done = () => {
+    if (settled || _commPlaying !== item) return
+    settled = true
+    _commPlaying = null
+    _syncCommDuck()
+    _drainComm()
+  }
+  // 已确认损坏的 phrase mp3 直接走 TTS；无 Audio 环境同样
+  const el = _getCommEl()
+  if (!el || (item.kind === 'phrase' && _phraseBroken.has(item.src))) {
+    _speakCommSynth(item, done)
+    return
+  }
+  el.onended = done
+  el.onerror = () => {
+    if (item.kind === 'phrase') {
+      _phraseBroken.add(item.src)
+      if (item.text) { _speakCommSynth(item, done); return }
+    }
+    done()
+  }
   try {
-    if (!window.speechSynthesis || !text) return
+    el.src = item.src
+    const p = el.play()
+    if (p && p.catch) {
+      p.catch(err => {
+        if (err && (err.name === 'NotAllowedError' || err.name === 'AbortError')) {
+          // 尚未解锁（prime 未完成或失败）：回队首等下次手势补播；
+          // 注意不能标 _phraseBroken——播放被拒 ≠ 文件损坏（旧版这个误判
+          // 导致快捷语永久掉进 TTS 回退，即「TTS 没生效」的根因之一）
+          if (_commPlaying === item) _commPlaying = null
+          settled = true
+          el.onended = null
+          el.onerror = null
+          _commQueue.unshift(item)
+          _syncCommDuck()
+        } else if (el.onerror) {
+          el.onerror()
+        }
+      })
+    }
+  } catch (e) {
+    if (item.kind === 'phrase' && item.text) _speakCommSynth(item, done)
+    else done()
+  }
+  // 兜底：ended 丢失时按估时收尾（仅当元素已停），防队列卡死
+  setTimeout(() => {
+    if (_commPlaying === item && !settled && (el.paused || el.ended)) done()
+  }, Math.max(2500, item.dur * 1000 + 1500))
+}
+
+/** TTS 回退（预生成音频不可用时）；onend 不可靠的平台按字数估时兜底 */
+function _speakCommSynth(item, done) {
+  try {
+    if (!window.speechSynthesis || !item.text) {
+      done()
+      return
+    }
     window.speechSynthesis.cancel()
-    const u = new SpeechSynthesisUtterance(text)
+    const u = new SpeechSynthesisUtterance(item.text)
     u.lang = 'zh-CN'
     u.rate = 1.05
+    let finished = false
+    const wrap = () => {
+      if (!finished) {
+        finished = true
+        done()
+      }
+    }
+    u.onend = wrap
+    u.onerror = wrap
     window.speechSynthesis.speak(u)
+    setTimeout(wrap, 1200 + item.text.length * 260)
   } catch (e) {
-    /* 无 TTS 环境忽略 */
+    done()
   }
 }
 
@@ -118,8 +330,6 @@ function _speakPhraseSynth(text) {
  *   · stop 前 requestData() 兜底；mime 逐个 try（iOS isTypeSupported 会抛）；
  *   · 太短 / 没录到声音给出明确提示，不静默吞掉。
  */
-const VOICE_MAX_SEC = 15 // 与麻将一致：语音消息最长秒数
-
 export class VoiceRecorder {
   /**
    * @param {Object} opts
@@ -320,6 +530,9 @@ export function chatDockHtml() {
  * @returns {{ setRecUI(on:boolean), closePanel(), destroy() }}
  */
 export function bindChatDock(dock, { onStartRec, onStopRec, onPhrase } = {}) {
+  // 语音通道手势解锁（全局一次）：iOS 手势栈外 play() 一律 NotAllowedError，
+  // 必须趁真实手势把共享元素解锁，之后 WS 收到的语音 / 快捷语才播得出声
+  bindCommPrime()
   const toggle = dock.querySelector('[data-chat="toggle"]')
   const panel = dock.querySelector('[data-chat-panel]')
   const micBtn = dock.querySelector('[data-chat="mic"]')
