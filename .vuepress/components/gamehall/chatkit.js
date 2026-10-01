@@ -203,6 +203,70 @@ function _syncCommDuck() {
   }
 }
 
+// ------------------------------------------------------------
+// iOS 录音会话切换（InvalidStateError 根治）
+// ------------------------------------------------------------
+// iOS Safari 音频会话处于「播放」态（BGM/语音正在响）时直接发起
+// getUserMedia 捕获，会以 InvalidStateError 拒绝——这是三棋「点了报错」
+// 的真正根因（nginx 日志证实按麦时 guzheng-city.mp3 在播）。麻将
+// startVoiceRec 先 _pauseVoiceQueue/_syncVoiceMix 停 BGM、把 audioSession
+// 切到 play-and-record，然后才 getUserMedia，所以从不报错。开录前必须：
+// 停掉所有在播媒体 → 切会话 → 请求麦克风；录完（或失败）切回 playback
+// 并恢复 BGM/语音。
+function _setAudioSession(type) {
+  try {
+    if (typeof navigator !== 'undefined' && navigator.audioSession && navigator.audioSession.type !== type)
+      navigator.audioSession.type = type
+  } catch (e) { /* 旧浏览器无此 API，媒体元素路径不受影响 */ }
+}
+
+let _recHeldBgm = [] // 录音期间被暂停的 BGM 元素（结束/失败时恢复）
+let _recHeldComm = false // 共享语音元素是否因开录被暂停
+
+function _pauseMediaForRecord() {
+  _recHeldBgm = []
+  _recHeldComm = false
+  for (const el of _bgmRegistry) {
+    try {
+      if (el && !el.paused) { el.pause(); _recHeldBgm.push(el) }
+    } catch (e) { /* 忽略 */ }
+  }
+  const comm = _commEl
+  if (comm && !comm.paused && _commPlaying) {
+    try { comm.pause(); _recHeldComm = true } catch (e) { /* 忽略 */ }
+  }
+  _setAudioSession('play-and-record')
+}
+
+function _resumeMediaAfterRecord() {
+  _setAudioSession('playback')
+  const held = _recHeldBgm
+  _recHeldBgm = []
+  // 录音会话刚切回时可暂时拒绝播放（麻将 _resumeVoiceBgm 同款），400ms 补一次；
+  // 元素此前已播过、持有逐元素播放许可，补播无需新手势
+  const tryPlay = el => {
+    try {
+      const p = el.play()
+      if (p && p.catch) {
+        p.catch(() => {
+          setTimeout(() => {
+            try { const q = el.play(); if (q && q.catch) q.catch(() => { /* 由游戏 BGM 循环兜底 */ }) } catch (e) { /* 忽略 */ }
+          }, 400)
+        })
+      }
+    } catch (e) { /* 忽略 */ }
+  }
+  held.forEach(tryPlay)
+  const comm = _commEl
+  if (_recHeldComm && comm && _commPlaying) {
+    _recHeldComm = false
+    try {
+      const p = comm.play()
+      if (p && p.catch) p.catch(() => { /* 当前条放弃，等下一条入队驱动 */ })
+    } catch (e) { /* 忽略 */ }
+  }
+}
+
 /**
  * 播报第 idx 条快捷语：入队顺序播（不截断，保证每条完整）。
  * 优先预生成普通话 mp3，确认加载失败回退浏览器 speechSynthesis（zh-CN）。
@@ -436,11 +500,15 @@ export class VoiceRecorder {
       await new Promise(res => _micSettle.push(res))
       if (this._abort) { this._starting = false; return }
     }
+    // iOS 关键：开「录制」前先停「播放」（见上方「iOS 录音会话切换」注释）。
+    // BGM/语音在响时直接 getUserMedia 会被以 InvalidStateError 拒绝。
+    _pauseMediaForRecord()
     let stream
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true })
     } catch (err) {
       this._starting = false
+      _resumeMediaAfterRecord()
       const name = err && err.name
       // 把真实错误名带出来，别让用户猜「设备或授权」——NotAllowedError=拒了，
       // NotFoundError=无麦克风，NotReadableError=被占用，SecurityError=非安全上下文
@@ -456,6 +524,7 @@ export class VoiceRecorder {
     if (this._abort) { // 等待授权期间已松手：立即关轨，不开录
       this._starting = false
       stream.getTracks().forEach(t => t.stop())
+      _resumeMediaAfterRecord()
       return
     }
     const mimes = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4']
@@ -473,6 +542,7 @@ export class VoiceRecorder {
     } catch (err) {
       this._starting = false
       stream.getTracks().forEach(t => t.stop())
+      _resumeMediaAfterRecord()
       this._error('录音初始化失败')
       return
     }
@@ -495,6 +565,7 @@ export class VoiceRecorder {
       this._stream = null
       this._startAt = 0
       stream.getTracks().forEach(t => t.stop())
+      _resumeMediaAfterRecord()
       this._error('录音启动失败')
       return
     }
@@ -527,7 +598,7 @@ export class VoiceRecorder {
     }
   }
 
-  /** 录音结束收尾：关轨、复位 UI、编码上送（或按场景丢弃） */
+  /** 录音结束收尾：关轨、恢复播放态（BGM/语音/audioSession）、复位 UI、编码上送（或按场景丢弃） */
   _finish() {
     if (!this._startAt) return // 已收尾过
     const durMs = Date.now() - this._startAt
@@ -537,6 +608,7 @@ export class VoiceRecorder {
       this._stream.getTracks().forEach(t => t.stop())
       this._stream = null
     }
+    _resumeMediaAfterRecord()
     this._state(false)
     const chunks = this._chunks
     this._chunks = []
