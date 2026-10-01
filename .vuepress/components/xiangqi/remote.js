@@ -359,8 +359,7 @@ export default class XiangqiRemote {
     this._chat = bindChatDock(this.$roomRoot.querySelector('[data-gkr-voice-dock]'), {
       onStartRec: () => this._startRecording(),
       onStopRec: cancel => this._stopRecording(cancel),
-      onPhrase: idx => this._sendPhrase(idx),
-      onMicDenied: text => this._toast(text)
+      onPhrase: idx => this._sendPhrase(idx)
     })
   }
 

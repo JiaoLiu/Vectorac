@@ -329,8 +329,12 @@ function _speakCommSynth(item, done) {
  * 结果缓存：granted 后长按直接开录；denied 后 iOS 不会再弹，只能去设置里开。
  */
 let _micState = 'unknown' // 'unknown' | 'pending' | 'granted' | 'denied'
-export function primeMicPermission(onDenied) {
-  if (_micState === 'granted' || _micState === 'pending') return
+export function primeMicPermission(onResult) {
+  if (_micState === 'pending') return
+  if (_micState === 'granted') {
+    if (onResult) onResult('granted')
+    return
+  }
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return
   _micState = 'pending'
   navigator.mediaDevices
@@ -338,12 +342,11 @@ export function primeMicPermission(onDenied) {
     .then(stream => {
       _micState = 'granted'
       stream.getTracks().forEach(t => t.stop())
+      if (onResult) onResult('granted')
     })
     .catch(err => {
       _micState = err && err.name === 'NotAllowedError' ? 'denied' : 'unknown'
-      if (_micState === 'denied' && onDenied) {
-        onDenied('麦克风权限被拒绝：请在系统设置中允许此网页使用麦克风')
-      }
+      if (onResult) onResult(_micState)
     })
 }
 
@@ -559,7 +562,7 @@ export function chatDockHtml() {
  *   - onPhrase(idx)       点了第 idx 条快捷语
  * @returns {{ setRecUI(on:boolean), closePanel(), destroy() }}
  */
-export function bindChatDock(dock, { onStartRec, onStopRec, onPhrase, onMicDenied } = {}) {
+export function bindChatDock(dock, { onStartRec, onStopRec, onPhrase } = {}) {
   // 语音通道手势解锁（全局一次）：iOS 手势栈外 play() 一律 NotAllowedError，
   // 必须趁真实手势把共享元素解锁，之后 WS 收到的语音 / 快捷语才播得出声
   bindCommPrime()
@@ -574,9 +577,21 @@ export function bindChatDock(dock, { onStartRec, onStopRec, onPhrase, onMicDenie
     panel.hidden = !panel.hidden
     toggle.setAttribute('aria-expanded', String(!panel.hidden))
     if (opening) {
-      // 点开面板即预请求麦克风授权（见 primeMicPermission 注释）；
-      // 被拒时经 onPhrase 同款的 toast 通道提示（多数 remote 会传 onError）
-      primeMicPermission(onMicDenied)
+      // 点开面板即预请求麦克风授权（见 primeMicPermission 注释）。
+      // iOS 一旦拒绝过就永不重弹、getUserMedia 静默秒拒——用户只看到
+      // 「按住说话没反应」。被拒时在面板顶部挂常驻红条指路系统设置，
+      // 授权成功（或本就有效）则摘掉。
+      primeMicPermission(state => {
+        let banner = panel.querySelector('.gkr-chat-micdeny')
+        if (state === 'denied') {
+          if (!banner) {
+            banner = document.createElement('div')
+            banner.className = 'gkr-chat-micdeny'
+            banner.textContent = '麦克风权限被拒绝：iOS 设置 → Safari → 麦克风 → 允许本网页，然后刷新重试'
+            panel.prepend(banner)
+          }
+        } else if (banner) banner.remove()
+      })
     }
   }
   toggle.addEventListener('click', onToggle)

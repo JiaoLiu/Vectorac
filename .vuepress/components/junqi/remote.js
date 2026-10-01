@@ -263,8 +263,7 @@ export default class JunqiRemote {
     this._chat = bindChatDock(this.root.querySelector('[data-gkr-voice-dock]'), {
       onStartRec: () => this._startRecording(),
       onStopRec: cancel => this._stopRecording(cancel),
-      onPhrase: idx => this._sendPhrase(idx),
-      onMicDenied: text => this._toast(text)
+      onPhrase: idx => this._sendPhrase(idx)
     })
   }
 

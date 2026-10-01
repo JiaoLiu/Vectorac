@@ -297,7 +297,9 @@ meta:
 }
 .gkr-chat-panel {
   position: absolute; right: 0; bottom: 52px;
-  display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+  /* 棋类短语较长（10 字 vs 麻将 3~4 字），两列一行放不下（挤压出横向溢出，
+     要左右滑动才能看完）——单列多行，短语整行显示 */
+  display: grid; grid-template-columns: 1fr; gap: 6px;
   padding: 10px; border-radius: 14px;
   background: rgba(9, 40, 21, 0.96); border: 1px solid rgba(212, 175, 55, 0.55);
   box-shadow: 0 6px 22px rgba(0, 0, 0, 0.5);
@@ -312,6 +314,13 @@ meta:
   touch-action: none; -webkit-user-select: none; user-select: none;
 }
 .gkr-chat-micbtn:active { background: rgba(212, 175, 55, 0.3); }
+/* 麦克风被拒常驻红条：iOS 拒绝过就静默秒拒、永不重弹，用户只会觉得
+   「按住说话没反应」，必须在面板里把去路写明白 */
+.gkr-chat-micdeny {
+  border: 1px solid rgba(255, 138, 122, 0.7); border-radius: 10px;
+  background: rgba(140, 24, 24, 0.9); color: #ffe9e6;
+  padding: 8px 10px; font-size: 12px; line-height: 1.5;
+}
 .gkr-chat-phrase {
   padding: 8px 10px; border-radius: 10px;
   border: 1px solid rgba(212, 175, 55, 0.4);
