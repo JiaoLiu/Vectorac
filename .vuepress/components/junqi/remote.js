@@ -600,6 +600,8 @@ export default class JunqiRemote {
     if (!text) return
     this.net.sendChat({ phrase: idx })
     this._addChatBubble({ phrase: idx, seatIndex: this._mySeat() }, true)
+    // 本地即时播报：服务端不回环发件人，且 AI 不会点短语——不播自己就永远听不到
+    speakPhrase(idx, text)
   }
 
   _addChatBubble(p, mine) {
