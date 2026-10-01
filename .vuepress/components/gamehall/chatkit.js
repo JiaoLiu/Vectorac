@@ -335,6 +335,10 @@ function _speakCommSynth(item, done) {
  * 结果缓存：granted 后长按直接开录；denied 后 iOS 不会再弹，只能去设置里开。
  */
 let _micState = 'unknown' // 'unknown' | 'pending' | 'granted' | 'denied'
+const _micSettle = [] // 等待预热落定的开录请求（见 VoiceRecorder.start）
+function _flushMicSettle() {
+  while (_micSettle.length) _micSettle.shift()()
+}
 export function primeMicPermission(onResult) {
   if (_micState === 'pending') return
   if (_micState === 'granted') {
@@ -348,21 +352,29 @@ export function primeMicPermission(onResult) {
     .then(stream => {
       _micState = 'granted'
       stream.getTracks().forEach(t => t.stop())
+      _flushMicSettle()
       if (onResult) onResult('granted')
     })
     .catch(err => {
       _micState = err && err.name === 'NotAllowedError' ? 'denied' : 'unknown'
+      _flushMicSettle()
       if (onResult) onResult(_micState)
     })
 }
 
 let _micWarmBound = false
-/** 挂首个手势的麦克风权限预热（bindChatDock 时调用一次） */
+/** 麦克风权限预热：仅非 iOS 环境在 bindChatDock 挂载时后台触发一次
+    （桌面/安卓无弹窗时序问题，提前拿授权让首录更快）。iOS 不在此预热——
+    挂载时无手势，getUserMedia 会被拒/挂起；iOS 的授权统一走「点开🎤
+    面板」那次可信手势里的 primeMicPermission（见 onToggle）。 */
 function _bindMicWarm() {
-  if (_micWarmBound || typeof document === 'undefined') return
+  if (_micWarmBound) return
   _micWarmBound = true
-  const warm = () => primeMicPermission()
-  document.addEventListener('pointerdown', warm, { capture: true, passive: true, once: true })
+  if (typeof window === 'undefined') return
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent || '') ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+  if (isIOS) return
+  setTimeout(() => primeMicPermission(), 0)
 }
 
 /**
@@ -410,16 +422,28 @@ export class VoiceRecorder {
     // 此窗口内松手必须能放弃开录，否则录音机变孤儿一直收音
     this._starting = true
     this._abort = false
+    // 若授权预热（面板 prime）还在路上，先等它落定再开录——iOS 对并发的
+    // getUserMedia 会把后到的 reject 成 AbortError，表现就是「点了报无法
+    // 使用麦克风」。等预热落定后权限已就绪，本次开录几乎瞬时返回。
+    if (_micState === 'pending') {
+      await new Promise(res => _micSettle.push(res))
+      if (this._abort) { this._starting = false; return }
+    }
     let stream
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true })
     } catch (err) {
       this._starting = false
-      this._error(
-        err && err.name === 'NotAllowedError'
-          ? '麦克风权限被拒绝：请在系统设置中允许后重试'
-          : '无法使用麦克风，请检查设备或授权'
-      )
+      const name = err && err.name
+      // 把真实错误名带出来，别让用户猜「设备或授权」——NotAllowedError=拒了，
+      // NotFoundError=无麦克风，NotReadableError=被占用，SecurityError=非安全上下文
+      const msg =
+        name === 'NotAllowedError' ? '麦克风权限被拒绝：请在系统设置中允许后重试'
+        : name === 'NotFoundError' ? '未检测到麦克风设备'
+        : name === 'NotReadableError' ? '麦克风被其它应用占用'
+        : name === 'SecurityError' ? '当前页面非安全上下文（需 https）'
+        : ('无法使用麦克风：' + (name || (err && err.message) || '未知错误'))
+      this._error(msg)
       return
     }
     if (this._abort) { // 等待授权期间已松手：立即关轨，不开录
