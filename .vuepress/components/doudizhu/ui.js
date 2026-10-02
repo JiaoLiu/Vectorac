@@ -1,9 +1,10 @@
 // ============================================================
 // 经典斗地主 UI（doudizhu/ui.js）
-// QQ 游戏经典布局：地主居上/两农民分列左右（对家视角），
-// 自己坐下方；叫分阶梯按钮、底牌翻转、倒计时圈、报双警报、
-// 炸弹粒子爆炸、火箭升空拖尾、春天花瓣、胜利金币雨、
-// 出牌 TTS 报牌（mp3 优先、浏览器 TTS 兜底）、⛶ 全屏沉浸。
+// 中国农村风牌桌：四方桌背景、地主/农民形象头像、对手牌背扇形；
+// 叫分阶梯按钮、底牌翻转（仅亮牌时翻一次）、倒计时圈、报双警报、
+// 炸弹粒子爆炸+翻倍提示、火箭升空拖尾、春天花瓣、胜利金币雨、
+// 出牌 TTS 报牌（mp3 优先、浏览器 TTS 兜底）、⛶ 全屏沉浸 +
+// 移动端默认强制横屏（移植 mahjong 的 CSS 虚拟视口方案）。
 // 事件流驱动渲染，引擎权威。
 // ============================================================
 
@@ -64,14 +65,17 @@ function voiceForCombo(combo) {
   }
 }
 
-/** 大/小王牌面：与小丑牌同源的 SVG 彩绘（大王红金 / 小王墨蓝），120x168 与扑克同版式 */
+/** 大/小王牌面：与小丑牌同源的 SVG 彩绘（大王红金 / 小王墨蓝），120x168 与扑克同版式。
+    左上/右下（倒置）加「大/小王」角标，否则两张王牌正面几乎无法区分 */
 function jokerSvg(rank) {
   const big = rank === 17
   const hue = big ? 0 : 215
   const label = big ? '大王' : '小王'
+  const idx = big ? '大' : '小'
   const color = big ? '#b63235' : '#232d35'
   const text = (x, y, t, size, extra = '') =>
     `<text x="${x}" y="${y}" font-family="Georgia, serif" font-size="${size}" text-anchor="middle" fill="${color}" ${extra}>${t}</text>`
+  const corner = `<g>${text(13, 24, idx, 13, 'font-weight="bold"')}${text(13, 40, '王', 13, 'font-weight="bold"')}</g>`
   // 小丑帽 + 脸谱（取自 balatro/art.mjs 的 joker face，按大/小王定色）
   const face = `
     <path d="M26 68Q14 29 39 43L56 24 73 43Q101 24 95 69L82 56 69 62 55 46 44 67Z" fill="hsl(${hue},55%,46%)" stroke="#273b43" stroke-width="3"/>
@@ -84,6 +88,7 @@ function jokerSvg(rank) {
     `<rect x="1" y="1" width="118" height="166" rx="7" fill="#f6f1df" stroke="#ded8c8" stroke-width="2"/>` +
     `<rect x="4" y="4" width="112" height="160" rx="5" fill="none" stroke="#fff" stroke-opacity=".6"/>` +
     text(60, 18, 'J O K E R', 10, 'font-weight="bold"') + face + text(60, 157, label, 16, 'font-weight="bold"') +
+    corner + `<g transform="rotate(180 60 84)">${corner}</g>` +
     `</svg>`
 }
 
@@ -112,6 +117,8 @@ export default class DoudizhuUI {
     this.fxRaf = 0
     this.rocketEl = null
     this._playedKeys = {}
+    this._bottomKey = null
+    this._destroyed = false
     // 隐藏全站右下角浮动客服，避免遮挡右侧玩家面板
     this.cwFab = document.getElementById('cw-fab')
     if (this.cwFab) { this.cwFabPrevDisplay = this.cwFab.style.display; this.cwFab.style.display = 'none' }
@@ -120,16 +127,19 @@ export default class DoudizhuUI {
     // 精确贴合视口：根元素顶到屏幕底，规避主题 navbar/页脚高度差异。
     // 内容微溢会让页面可滚动，一旦 scrollY>0 量到的 top 偏小、height 越算越大
     // （恶性循环），所以测量前强制滚回顶部；全屏时 root 已 portal 到 body 下
-    // （fixed 包含块即视口，CSS inset:0 铺满），此处只需重测粒子画布。
+    // （fixed 包含块即视口，CSS inset:0 铺满），此处只需重测粒子画布，
+    // 并重算手牌错位（否则转屏后还用旧宽度算出的负边距，牌会溢出看不见）。
     this.fitViewport = () => {
       if (this.root.classList.contains('ddz-full')) {
         if (this.resizeFx) this.resizeFx()
+        if (this.fitHandShift) this.fitHandShift()
         return
       }
       if (window.scrollY > 0) window.scrollTo(0, 0)
       const top = Math.max(0, this.root.getBoundingClientRect().top)
       this.root.style.height = Math.max(320, window.innerHeight - top) + 'px'
       if (this.resizeFx) this.resizeFx()
+      if (this.fitHandShift) this.fitHandShift()
     }
     // 本页禁止整页滚动（游戏视口精确贴合，滚动只会触发上述漂移）
     this.bodyPrevOverflow = document.body.style.overflow
@@ -138,6 +148,12 @@ export default class DoudizhuUI {
     window.addEventListener('orientationchange', this.fitViewport)
     this.buildDom()
     this.bindGestures()
+    // 强制横屏机制（竖屏持机时旋转桌面铺满），触屏设备进游戏默认沉浸横屏
+    this._setupForceLandscape()
+    const coarsePointer = (() => {
+      try { return window.matchMedia('(pointer: coarse)').matches } catch (e) { return false }
+    })()
+    if (coarsePointer) this.setImmersive(true)
     // 主题 navbar 水合/字体加载会二次撑高页头，分多次重测贴合
     requestAnimationFrame(this.fitViewport)
     window.addEventListener('load', this.fitViewport)
@@ -192,6 +208,8 @@ export default class DoudizhuUI {
       p.append(
         h('div', 'ddz-avatar', AI_AVATARS[s - 1]),
         h('div', 'ddz-opp-name', AI_NAMES[s - 1]),
+        // 牌背扇形：直观看出对手还剩几张
+        h('div', 'ddz-opp-backs'),
         h('div', 'ddz-opp-count'),
         h('div', 'ddz-role'),
         h('div', 'ddz-timer', ''),
@@ -227,55 +245,196 @@ export default class DoudizhuUI {
       this.fxCanvas, this.fx, this.overlay
     )
     r.append(this.topbar, this.table)
-    // 粒子画布随桌面尺寸
+    // 粒子画布随桌面尺寸（用 offset 尺寸：强制横屏旋转后
+    // getBoundingClientRect 返回的是变换后的包围盒，宽高是反的）
     this.resizeFx = () => {
-      const rect = this.table.getBoundingClientRect()
       const dpr = Math.min(2, window.devicePixelRatio || 1)
-      this.fxCanvas.width = Math.max(1, Math.round(rect.width * dpr))
-      this.fxCanvas.height = Math.max(1, Math.round(rect.height * dpr))
+      this.fxCanvas.width = Math.max(1, Math.round(this.table.offsetWidth * dpr))
+      this.fxCanvas.height = Math.max(1, Math.round(this.table.offsetHeight * dpr))
       this.fxDpr = dpr
     }
     this.resizeFx()
   }
 
   bindGestures() {
-    // 首次手势解锁音频（WebAudio + 共享 <audio> 元素）
-    const unlock = () => this.audio.unlock()
+    // 首次手势解锁音频（WebAudio + 共享 <audio> 元素）；
+    // 自动沉浸时原生全屏可能因缺少手势被拒，首次点按补一次请求
+    const unlock = () => {
+      this.audio.unlock()
+      if (this.root.classList.contains('ddz-full') && !document.fullscreenElement && !document.webkitFullscreenElement) {
+        try {
+          const req = this.root.requestFullscreen || this.root.webkitRequestFullscreen
+          if (req) {
+            const p = req.call(this.root)
+            if (p && p.catch) p.catch(() => { /* ignore */ })
+          }
+        } catch (e) { /* ignore */ }
+      }
+    }
     this.root.addEventListener('pointerdown', unlock, { once: true })
     this.root.addEventListener('touchstart', unlock, { once: true })
   }
 
-  // ---------- 全屏 ----------
-  // root 移入/移出 document.body（portal）：游戏 root 原本位于带
-  // transform/padding 的主题祖先内，fixed 包含块不可靠（曾因补偿时序
-  // 差异整屏移出视口），挂到 body 下后包含块即视口，inset:0 天然铺满。
-  toggleFull() {
-    const on = !this.root.classList.contains('ddz-full')
+  // ---------- 全屏 / 强制横屏 ----------
+  // 沉浸全屏：root 移入 document.body（portal，fixed 包含块即视口）+ 隐藏站点
+  // navbar；触屏设备再对 root 请求原生全屏（Android 生效；iOS 不支持则仅 CSS）。
+  setImmersive(on) {
+    if (this._destroyed) return
     if (on) {
       this._anchor = document.createComment('ddz-root-anchor')
       if (this.root.parentNode) this.root.parentNode.insertBefore(this._anchor, this.root)
       document.body.appendChild(this.root)
       this.root.classList.add('ddz-full')
+      this.root.style.height = '' // 清掉非全屏时的贴合高度，改由 CSS inset:0
+      if (this.navbar) this.navbar.style.display = 'none'
+      try {
+        const coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches
+        if (coarse && !document.fullscreenElement && !document.webkitFullscreenElement) {
+          const req = this.root.requestFullscreen || this.root.webkitRequestFullscreen
+          if (req) {
+            const p = req.call(this.root)
+            if (p && p.catch) p.catch(() => { /* 用户拒绝或不支持则仅用 CSS 全屏 */ })
+          }
+        }
+      } catch (e) { /* 不支持则仅使用 CSS 全屏 */ }
     } else {
       this.root.classList.remove('ddz-full')
+      this.root.style.width = ''
+      this.root.style.height = ''
+      this.root.style.top = ''
       if (this._anchor && this._anchor.parentNode) {
         this._anchor.parentNode.insertBefore(this.root, this._anchor)
         this._anchor.remove()
       }
       this._anchor = null
+      if (this.navbar) this.navbar.style.display = ''
+      try {
+        if (document.fullscreenElement || document.webkitFullscreenElement) {
+          const ex = document.exitFullscreen || document.webkitExitFullscreen
+          if (ex) {
+            const p = ex.call(document)
+            if (p && p.catch) p.catch(() => { /* ignore */ })
+          }
+        }
+      } catch (e) { /* ignore */ }
     }
     this.btnFull.classList.toggle('is-on', on)
-    // 全屏隐藏站点 navbar（双保险：portal 后 root z-index 已高于它，隐藏更干净）
-    if (this.navbar) this.navbar.style.display = on ? 'none' : ''
-    const doc = /** @type {any} */ (document)
-    if (on && doc.documentElement.requestFullscreen) {
-      doc.documentElement.requestFullscreen().catch(() => { /* iOS Safari 不支持则仅用 CSS 沉浸 */ })
-    } else if (!on && doc.fullscreenElement && doc.exitFullscreen) {
-      doc.exitFullscreen().catch(() => { /* ignore */ })
-    }
-    // 全屏切换后重测粒子画布
+    if (this._flsApply) this._flsApply()
     setTimeout(this.fitViewport, 60)
     setTimeout(this.fitViewport, 380)
+  }
+
+  toggleFull() {
+    this.setImmersive(!this.root.classList.contains('ddz-full'))
+  }
+
+  // 移植自 mahjong/ui.js：竖屏持机时把牌桌旋转 90° 铺满竖屏（用户看到横屏画面）。
+  // 难点在 CSS 媒体查询按「物理视口」评估——旋转后 portrait 规则错误命中、
+  // landscape 规则缺失。解法：CSSOM 直接改写 CSSMediaRule 的 mediaText，强制
+  // 横屏期间按「虚拟视口」（宽高互换）重新评估每条规则，解除时逐一还原原文。
+  // 用户一旦物理旋转过屏幕（orientationchange），本会话内横竖屏自由切换。
+  _setupForceLandscape() {
+    if (typeof window === 'undefined') return
+    const KEY = 'ddz-rotated'
+    let rotated = false
+    try { rotated = sessionStorage.getItem(KEY) === '1' } catch (e) { /* 隐私模式忽略 */ }
+    const isMobile = () => {
+      try { if (window.matchMedia('(pointer: coarse)').matches) return true } catch (e) { /* ignore */ }
+      return 'ontouchstart' in window && Math.min(window.screen.width, window.screen.height) < 820
+    }
+    const evalCond = (cond, vw, vh) => {
+      let m = cond.match(/max-width\s*:\s*([\d.]+)px/)
+      if (m) return vw <= +m[1]
+      m = cond.match(/min-width\s*:\s*([\d.]+)px/)
+      if (m) return vw >= +m[1]
+      m = cond.match(/max-height\s*:\s*([\d.]+)px/)
+      if (m) return vh <= +m[1]
+      m = cond.match(/min-height\s*:\s*([\d.]+)px/)
+      if (m) return vh >= +m[1]
+      if (/orientation\s*:\s*portrait/.test(cond)) return vh >= vw
+      if (/orientation\s*:\s*landscape/.test(cond)) return vw > vh
+      return null // 不认识的条件 → 整条媒体查询保持原样不动
+    }
+    // 逗号分组任一命中即命中；组内 and 需全部成立。有解析不了的组则整体返回 null。
+    const evalMedia = (text, vw, vh) => {
+      let sawUnknown = false, sawHit = false
+      for (const part of text.split(',')) {
+        const conds = []
+        const re = /\(([^)]+)\)/g
+        let mm
+        while ((mm = re.exec(part))) conds.push(mm[1])
+        if (!conds.length) {
+          if (/^\s*(all|screen)?\s*$/.test(part)) sawHit = true
+          else sawUnknown = true
+          continue
+        }
+        let allHit = true, unknown = false
+        for (const c of conds) {
+          const r = evalCond(c, vw, vh)
+          if (r === null) { unknown = true; break }
+          if (!r) { allHit = false; break }
+        }
+        if (unknown) sawUnknown = true
+        else if (allHit) sawHit = true
+      }
+      if (sawHit) return true
+      if (sawUnknown) return null
+      return false
+    }
+    // 懒收集全部 CSSMediaRule（跨域样式表读 cssRules 会抛 SecurityError，跳过）
+    this._flsMedia = null
+    const collectMediaRules = () => {
+      if (this._flsMedia) return this._flsMedia
+      this._flsMedia = []
+      for (const sheet of document.styleSheets) {
+        let rules
+        try { rules = sheet.cssRules } catch (e) { continue }
+        if (!rules) continue
+        for (const rule of rules) {
+          if (typeof CSSMediaRule !== 'undefined' && rule instanceof CSSMediaRule) {
+            this._flsMedia.push({ rule, orig: rule.media.mediaText })
+          }
+        }
+      }
+      return this._flsMedia
+    }
+    this._flsApply = () => {
+      if (this._destroyed) return
+      const portrait = window.innerHeight >= window.innerWidth
+      // 仅在牌桌全屏（ddz-full）时强制横屏
+      const inGame = this.root.classList.contains('ddz-full')
+      const force = !rotated && portrait && inGame && isMobile()
+      this.root.classList.toggle('ddz-fls', force)
+      if (force) {
+        // portal 状态下 root 已在 body 直下（setImmersive 保证），旋转后逻辑宽高互换
+        this.root.style.width = window.innerHeight + 'px'
+        this.root.style.height = window.innerWidth + 'px'
+        this.root.style.top = (-window.innerWidth) + 'px'
+      } else {
+        // 解除旋转：清掉内联尺寸，全屏时改由 CSS inset:0 铺满
+        this.root.style.width = ''
+        this.root.style.height = ''
+        this.root.style.top = ''
+      }
+      for (const item of collectMediaRules()) {
+        if (!force) { item.rule.media.mediaText = item.orig; continue }
+        // 虚拟视口：旋转 90° 后逻辑宽高互换
+        const hit = evalMedia(item.orig, window.innerHeight, window.innerWidth)
+        if (hit === null) continue
+        item.rule.media.mediaText = hit ? 'all' : 'not all'
+      }
+      if (this.fitViewport) this.fitViewport()
+    }
+    this._flsOnOrientation = () => {
+      // 只在全屏内才消耗「自由切换」名额
+      if (!this.root.classList.contains('ddz-full')) return
+      rotated = true
+      try { sessionStorage.setItem(KEY, '1') } catch (e) { /* ignore */ }
+      // iOS orientationchange 触发瞬间 innerWidth/innerHeight 可能还是旧值，延迟重评估
+      setTimeout(() => this._flsApply && this._flsApply(), 80)
+    }
+    window.addEventListener('orientationchange', this._flsOnOrientation)
+    window.addEventListener('resize', this._flsApply)
   }
 
   // ---------- 对局控制 ----------
@@ -346,13 +505,20 @@ export default class DoudizhuUI {
         this.audio.sfx('landlord')
         this.flashFx('👑', e.seat === this.seat ? '你当地主！' : `${this.oppName(e.seat)} 当地主`)
         break
-      case 'bomb':
+      case 'bomb': {
         this.audio.sfx(e.combo === 'rocket' ? 'rocket' : 'bomb')
         this.flashFx(e.combo === 'rocket' ? '🚀' : '💥', e.combo === 'rocket' ? '王炸！' : '炸弹！')
         this.shake()
         if (e.combo === 'rocket') this.rocketFly()
         this.explosion()
+        // 炸弹/王炸翻倍计分提示：爆炸特效后补一条醒目的 ×2
+        const st = this.state
+        const mult = st.multiplier
+        setTimeout(() => {
+          if (!this._destroyed && this.state === st) this.flashFx('×2', `翻倍！积分 ×${mult}`)
+        }, 700)
         break
+      }
       case 'alarm':
         this.audio.sfx('alarm')
         break
@@ -462,19 +628,31 @@ export default class DoudizhuUI {
 
   renderBottom() {
     const s = this.state
+    // 底牌只在「地主确定亮牌」那一刻重建并播翻面动画，之后每次出牌不再重绘
+    // （否则每打一张牌底牌都翻一次面）
+    const revealed = s.landlord >= 0
+    const key = revealed ? `r${s.bottom.join('.')}` : 'hidden'
+    if (key === this._bottomKey) return
+    const justRevealed = revealed && !String(this._bottomKey || '').startsWith('r')
+    this._bottomKey = key
     this.bottomWrap.innerHTML = ''
     const label = h('span', 'ddz-bottom-label', '底牌')
     this.bottomWrap.append(label)
-    const revealed = s.landlord >= 0
     const cards = revealed ? s.bottom : [null, null, null]
     for (const c of cards) {
       if (c === null) this.bottomWrap.append(h('div', 'ddz-card ddz-card-mini ddz-card-back'))
       else {
         const el = cardEl(c, true)
-        el.classList.add('flip-in')
+        if (justRevealed) el.classList.add('flip-in')
         this.bottomWrap.append(el)
       }
     }
+  }
+
+  /** 角色头像：地主用地主形象，农民/未定用农民形象 */
+  avatarHtml(seat) {
+    const isLord = this.state.landlord >= 0 && this.state.landlord === seat
+    return `<img class="ddz-avatar-img" src="/img/games/ddz-avatar-${isLord ? 'landlord' : 'farmer'}.jpg" alt="">`
   }
 
   renderOpps() {
@@ -482,6 +660,14 @@ export default class DoudizhuUI {
     for (const seat of [1, 2]) {
       const p = this.oppPanels[seat]
       const count = s.hands[seat].length
+      p.querySelector('.ddz-avatar').innerHTML = this.avatarHtml(seat)
+      // 牌背扇形：每张背对应一手牌，一眼看出对手剩牌
+      const backs = p.querySelector('.ddz-opp-backs')
+      const n = s.phase === 'over' ? 0 : count
+      if (backs.childElementCount !== n) {
+        backs.innerHTML = ''
+        for (let i = 0; i < n; i++) backs.append(h('div', 'ddz-back'))
+      }
       p.querySelector('.ddz-opp-count').textContent = s.landlord >= 0 ? `${count} 张` : '17 张'
       const role = p.querySelector('.ddz-role')
       role.textContent = ''
@@ -530,7 +716,8 @@ export default class DoudizhuUI {
   renderMe() {
     const s = this.state
     this.mePanel.innerHTML = ''
-    const avatar = h('div', 'ddz-avatar ddz-avatar-me', '😎')
+    const avatar = h('div', 'ddz-avatar ddz-avatar-me')
+    avatar.innerHTML = this.avatarHtml(this.seat)
     const name = h('div', 'ddz-opp-name', '你')
     const role = h('div', 'ddz-role')
     if (s.landlord >= 0) {
@@ -686,7 +873,7 @@ export default class DoudizhuUI {
     row.append(again, back)
     box.append(row)
     // BGM 署名（CC BY 3.0 要求）
-    box.append(h('div', 'ddz-settle-credit', '♪ BGM: Kawai Kitsune — Kevin MacLeod (incompetech.com) · CC BY 3.0'))
+    box.append(h('div', 'ddz-settle-credit', '♪ BGM: Guzheng City — Kevin MacLeod (incompetech.com) · CC BY 3.0'))
     this.overlay.innerHTML = ''
     this.overlay.append(box)
     this.overlay.style.display = 'flex'
@@ -867,8 +1054,17 @@ export default class DoudizhuUI {
   }
 
   destroy() {
+    this._destroyed = true
     this.clearTimers()
     this.audio.destroy()
+    // 还原强制横屏改写的媒体查询与监听
+    if (this._flsApply) {
+      window.removeEventListener('orientationchange', this._flsOnOrientation)
+      window.removeEventListener('resize', this._flsApply)
+      if (this._flsMedia) for (const item of this._flsMedia) item.rule.media.mediaText = item.orig
+      this._flsApply = null
+      this._flsOnOrientation = null
+    }
     window.removeEventListener('resize', this.fitViewport)
     window.removeEventListener('orientationchange', this.fitViewport)
     window.removeEventListener('load', this.fitViewport)
@@ -878,8 +1074,12 @@ export default class DoudizhuUI {
     if (this.cwFab) this.cwFab.style.display = this.cwFabPrevDisplay || ''
     if (this.navbar) this.navbar.style.display = ''
     document.body.style.overflow = this.bodyPrevOverflow || ''
-    // 全屏 portal 状态移回文档流原位
+    // 全屏 portal 状态移回文档流原位，并清掉强制横屏残留
     this.root.classList.remove('ddz-full')
+    this.root.classList.remove('ddz-fls')
+    this.root.style.width = ''
+    this.root.style.height = ''
+    this.root.style.top = ''
     if (this._anchor && this._anchor.parentNode) {
       this._anchor.parentNode.insertBefore(this.root, this._anchor)
       this._anchor.remove()

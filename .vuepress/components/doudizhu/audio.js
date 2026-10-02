@@ -1,7 +1,7 @@
 // ============================================================
 // 斗地主音频（doudizhu/audio.js）
-// BGM：真实录制音乐文件（/audio/doudizhu/bgm-kitsune.mp3，
-// Kevin MacLeod《Kawai Kitsune》CC BY 3.0，东方俏皮风），
+// BGM：真实录制音乐文件（/audio/doudizhu/bgm-guzheng.mp3，
+// Kevin MacLeod《Guzheng City》CC BY 3.0，中国风古筝），
 // <audio> 循环播放；文件加载失败回退 WebAudio 程序化合成 loop。
 // 音效：WebAudio 程序化合成。报牌语音：预生成 mp3 优先、
 // 浏览器 speechSynthesis 兜底，播放语音时 BGM 自动闪避（duck）。
@@ -10,7 +10,7 @@
 
 const MUSIC_BASE_GAIN = 0.3
 const MUSIC_DUCK_GAIN = 0.07
-const BGM_URL = '/audio/doudizhu/bgm-kitsune.mp3'
+const BGM_URL = '/audio/doudizhu/bgm-guzheng.mp3'
 const BGM_VOLUME = 0.34
 const BGM_DUCK_VOLUME = 0.07
 

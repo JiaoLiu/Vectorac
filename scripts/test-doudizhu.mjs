@@ -309,3 +309,26 @@ test('ai: 四带二能一手走完时可以直接出', () => {
   assert.equal(act.type, 'play')
   assert.equal(classifyCombo(act.cards).type, 'quad_solo', '一手走完不受首出限制')
 })
+
+test('ai: 首出优先带走最小散牌（不孤留 3）', () => {
+  // 手牌 3,K,7,7：出单 3 能把最小散牌带走，而不是先飞 K 留个 3
+  const s = playingState(35)
+  const seat = s.turn
+  s.hands[seat] = Cs(3, 13, 7, 7)
+  s.lastPlay = null
+  const act = aiDecide(playerView(s, seat), seat)
+  assert.equal(act.type, 'play')
+  const combo = classifyCombo(act.cards)
+  assert.equal(combo.type, 'single', '应出单张')
+  assert.equal(combo.rank, 3, '应先出 3 带走最小散牌，而不是 K')
+})
+
+test('ai: 不用大牌单飞开局（有更小单张时）', () => {
+  // 手牌 4,A：两张散单，先出 4 留 A 控制后手
+  const s = playingState(36)
+  const seat = s.turn
+  s.hands[seat] = Cs(4, 14)
+  s.lastPlay = null
+  const act = aiDecide(playerView(s, seat), seat)
+  assert.equal(classifyCombo(act.cards).rank, 4, '先出 4，A 留作控制')
+})

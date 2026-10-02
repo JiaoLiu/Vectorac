@@ -32,7 +32,8 @@
   flex-direction: column;
   height: calc(100dvh - 3.6rem);
   min-height: 420px;
-  background: #0a2c1a url('/img/games/doudizhu-bg.jpg') center / cover no-repeat;
+  /* 中国农村风四方桌：木桌+粗瓷茶壶+瓜子，怀旧农家堂屋 */
+  background: #0a2c1a url('/img/games/doudizhu-table.jpg') center / cover no-repeat;
   color: #fff;
   font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
   user-select: none;
@@ -47,8 +48,25 @@
   position: fixed;
   inset: 0;
   z-index: 1000;
-  height: auto !important;
   min-height: 0;
+}
+/* 强制横屏：竖屏持机时把整桌旋转 90° 铺满竖屏（用户看到横屏画面）。
+   JS 按虚拟视口（宽高互换）重写媒体查询，并以内联精确尺寸覆盖这里的
+   100vh/100vw fallback；用户物理旋转过屏幕后本会话不再强制 */
+.ddz-root.ddz-fls {
+  position: fixed;
+  inset: auto;
+  top: -100vw;
+  left: 0;
+  width: 100vh;
+  height: 100vw;
+  max-width: none;
+  min-height: 0;
+  margin: 0;
+  border-radius: 0;
+  transform: rotate(90deg);
+  transform-origin: bottom left;
+  z-index: 1000;
 }
 /* 桌面/全屏大视口：牌面继续放大（参考小丑牌 108px 手感） */
 @media (min-width: 900px) and (min-height: 600px) {
@@ -199,6 +217,7 @@
 .ddz-avatar {
   width: 40px;
   height: 40px;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -207,6 +226,32 @@
   border-radius: 50%;
   border: 2px solid rgba(245, 197, 66, 0.6);
 }
+/* 地主/农民形象头像图 */
+.ddz-avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+/* 对手手牌牌背扇形：每张背对应一手牌，直观看出剩牌数 */
+.ddz-opp-backs {
+  display: flex;
+  justify-content: center;
+  min-height: 16px;
+}
+.ddz-back {
+  width: 10px;
+  height: 15px;
+  border-radius: 2px;
+  border: 1px solid #5c0f0d;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(245, 197, 66, 0.5) 0 22%, transparent 23%),
+    repeating-linear-gradient(45deg, rgba(245, 197, 66, 0.28) 0 2px, transparent 2px 4px),
+    linear-gradient(160deg, #a02722, #701512);
+  box-sizing: border-box;
+}
+.ddz-back + .ddz-back { margin-left: -7px; }
 .ddz-opp-name {
   font-size: 11px;
   color: #ffe9a8;

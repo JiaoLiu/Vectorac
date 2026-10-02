@@ -122,12 +122,16 @@ function cheapest(cands) {
   return cands.slice().sort((a, b) => COMBO_COST(a) - COMBO_COST(b) || a.length - b.length)[0]
 }
 
-// 选首出组合：优先手数降幅大、点数低的长组合；炸弹王炸留后，四带二不留作首出
+// 选首出组合：优先手数降幅大、点数低的长组合；炸弹王炸留后，四带二不留作首出。
+// 额外偏好：① 能带走手里最小散牌的组合（避免大牌打完剩个 3 跑不掉）
+// ② 单张出小不出大（A/2/王单飞是控制权，除非没有别的选择）
 export function chooseLead(hand) {
   const all = enumerateCombos(hand)
   const finish = all.filter(c => c.length === hand.length)
   if (finish.length) return cheapest(finish)
   const baseHands = handsCount(hand)
+  let minRank = 99
+  for (const c of hand) minRank = Math.min(minRank, rankOf(c))
   let best = null
   let bestScore = Infinity
   for (const c of all) {
@@ -136,8 +140,11 @@ export function chooseLead(hand) {
     const rest = hand.filter(x => !c.cards.includes(x))
     const remain = handsCount(rest)
     if (remain > baseHands) continue // 拆烂了
-    // 代价：剩余手数为主，长牌优先，低点数优先
-    const s = remain * 100 - c.length * 6 + c.rank + (c.type === 'single' ? 4 : 0)
+    // 代价：剩余手数为主，长牌优先，点数越低越好，大牌单张重罚
+    const s = remain * 100 - c.length * 6 + c.rank * 1.5 +
+      (c.type === 'single' ? 4 : 0) +
+      (c.type === 'single' && c.rank >= 14 ? 30 : 0) +
+      (c.cards.some(x => rankOf(x) === minRank) ? -14 : 0)
     if (s < bestScore) { bestScore = s; best = c }
   }
   if (best) return best
