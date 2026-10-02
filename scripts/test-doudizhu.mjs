@@ -270,3 +270,42 @@ test('enumerate: 组合枚举个数合理且去重', () => {
   assert.ok(combos.every(c => classifyCombo(c.cards)), '枚举结果皆合法牌型')
   assert.ok(handsCount(hand) >= 1)
 })
+
+test('ai: 队友的小牌权也不抢（地主未表态、地主不急）', () => {
+  // 队友 2 出小对 9，农民 1 手上有对 Q，地主还有 10 张 → 应放行让队友继续走
+  const s = playingState(31)
+  const lord = s.landlord
+  const f1 = (lord + 1) % 3
+  const f2 = (lord + 2) % 3
+  s.hands[f1] = Cs(12, 12, 5, 6, 7, 8, 9)
+  s.hands[lord] = Cs(3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
+  s.lastPlay = { seat: f2, combo: classifyCombo(Cs(9, 9)), cards: Cs(9, 9) }
+  s.turn = f1
+  s.passCount = 0
+  s.trickPasses = []
+  const act = aiDecide(playerView(s, f1), f1)
+  assert.deepEqual(act, { type: 'pass' }, '队友的牌权不抢，对 Q 应留着')
+})
+
+test('ai: 首出不打四带二', () => {
+  // 手牌 8888+3+K+5：四带二（8888+3+5）不是一手走完，不得作为首出
+  const s = playingState(33)
+  const seat = s.turn
+  s.hands[seat] = Cs(8, 8, 8, 8, 3, 13, 5)
+  s.lastPlay = null
+  const act = aiDecide(playerView(s, seat), seat)
+  assert.equal(act.type, 'play')
+  const combo = classifyCombo(act.cards)
+  assert.ok(combo.type !== 'quad_solo' && combo.type !== 'quad_pair', `首出不应是四带二，实际 ${combo.type}`)
+  assert.equal(combo.type, 'single', '这手牌合理首出是最小单张')
+})
+
+test('ai: 四带二能一手走完时可以直接出', () => {
+  const s = playingState(34)
+  const seat = s.turn
+  s.hands[seat] = Cs(8, 8, 8, 8, 3, 5)
+  s.lastPlay = null
+  const act = aiDecide(playerView(s, seat), seat)
+  assert.equal(act.type, 'play')
+  assert.equal(classifyCombo(act.cards).type, 'quad_solo', '一手走完不受首出限制')
+})

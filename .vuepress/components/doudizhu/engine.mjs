@@ -236,7 +236,9 @@ export function enumerateCombos(hand) {
     const body = take(r, 4)
     const rest = ranks.filter(w => w !== r)
     for (let i = 0; i < rest.length; i++) {
-      push('quad_solo', r, [...body, ...take(rest[i], 1)])
+      // 翅膀必须为两张：同点一对（8888+33）或两张不同点单牌（8888+3K），
+      // 只带一张的 5 张牌不是合法牌型（classifyCombo 不认）
+      if (counts.get(rest[i]) >= 2) push('quad_solo', r, [...body, ...take(rest[i], 2)])
       for (let j = i + 1; j < rest.length; j++) push('quad_solo', r, [...body, ...take(rest[i], 1), ...take(rest[j], 1)])
     }
     const pairRest = rest.filter(w => counts.get(w) >= 2)

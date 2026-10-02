@@ -122,8 +122,8 @@ function cheapest(cands) {
   return cands.slice().sort((a, b) => COMBO_COST(a) - COMBO_COST(b) || a.length - b.length)[0]
 }
 
-// 选首出组合：优先手数降幅大、点数低的长组合；炸弹王炸留后
-function chooseLead(hand) {
+// 选首出组合：优先手数降幅大、点数低的长组合；炸弹王炸留后，四带二不留作首出
+export function chooseLead(hand) {
   const all = enumerateCombos(hand)
   const finish = all.filter(c => c.length === hand.length)
   if (finish.length) return cheapest(finish)
@@ -131,7 +131,8 @@ function chooseLead(hand) {
   let best = null
   let bestScore = Infinity
   for (const c of all) {
-    if (c.type === 'bomb' || c.type === 'rocket') continue
+    // 炸弹/王炸留作后手；四带二带牌质量差、易送对手小牌，绝不在有选择时首出
+    if (c.type === 'bomb' || c.type === 'rocket' || c.type === 'quad_solo' || c.type === 'quad_pair') continue
     const rest = hand.filter(x => !c.cards.includes(x))
     const remain = handsCount(rest)
     if (remain > baseHands) continue // 拆烂了
@@ -144,8 +145,8 @@ function chooseLead(hand) {
   return all.filter(c => c.type === 'single').sort((a, b) => a.rank - b.rank)[0]
 }
 
-// 跟牌：最小代价压过；农民配合；炸弹仅在关键时刻用
-function chooseFollow(view, hand, seat) {
+// 跟牌：最小代价压过；农民配合（队友的牌权不抢）；炸弹仅在关键时刻用
+export function chooseFollow(view, hand, seat) {
   const last = view.lastPlay
   const cands = enumerateCombos(hand).filter(c => canBeat(c, last.combo))
   if (!cands.length) return null
@@ -157,13 +158,11 @@ function chooseFollow(view, hand, seat) {
   const nonBomb = cands.filter(c => c.type !== 'bomb' && c.type !== 'rocket')
 
   if (lastIsTeammate) {
-    // 队友已压住地主（地主已 pass 本 trick），或队友牌很大 → 不压
-    const landlordPassed = view.trickPasses && view.trickPasses.includes(landlord)
-    if (finish.length && landlordLeft <= 3) return cheapest(finish)
-    if (landlordPassed) return null
-    if (last.combo.rank >= 13 || last.combo.type === 'bomb' || last.combo.type === 'rocket') return null
-    // 地主只剩少量牌且队友这手未必能走掉 → 廉价拦截
-    if (landlordLeft <= 2 && nonBomb.length) {
+    // 队友的牌权：能一手走净才接，否则让队友继续走
+    if (finish.length) return cheapest(finish)
+    // 地主只剩一两张、队友这手又走不完 → 廉价拦一下，防地主直接顺走
+    const mateLeft = typeof view.handCounts[last.seat] === 'number' ? view.handCounts[last.seat] : 99
+    if (mateLeft > 0 && landlordLeft <= 2 && nonBomb.length) {
       const c = cheapest(nonBomb)
       if (c.rank <= 14) return c
     }

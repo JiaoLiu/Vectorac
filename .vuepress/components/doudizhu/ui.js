@@ -9,15 +9,12 @@
 
 import {
   createGame, dispatch, playerView, settlementOf, drainEvents,
-  classifyCombo, rankOf, suitOf, RANK_LABEL, COMBO_LABEL
+  classifyCombo, rankOf, suitOf, COMBO_LABEL
 } from './engine.mjs'
 import { aiDecide, hintPlay } from './ai.js'
 import { createDoudizhuAudio } from './audio.js'
+import { playingCard } from '../balatro/art.mjs'
 
-const SUIT_SYMBOL = ['♠', '♥', '♣', '♦']
-const SUIT_RED = [false, true, false, true]
-// J/Q/K 人物牌面符号（骑士/王后/国王，unicode  chess 字符渲染稳定）
-const FACE_GLYPH = { 11: '♞', 12: '♛', 13: '♚' }
 const TURN_SECONDS = 20
 const AI_NAMES = ['独孤求败', '常胜将军']
 const AI_AVATARS = ['🗡️', '🎖️']
@@ -67,36 +64,37 @@ function voiceForCombo(combo) {
   }
 }
 
-/** QQ 大牌面扑克：左上/右下（倒置）角标 + 中央花色/人物图案 */
+/** 大/小王牌面：与小丑牌同源的 SVG 彩绘（大王红金 / 小王墨蓝），120x168 与扑克同版式 */
+function jokerSvg(rank) {
+  const big = rank === 17
+  const hue = big ? 0 : 215
+  const label = big ? '大王' : '小王'
+  const color = big ? '#b63235' : '#232d35'
+  const text = (x, y, t, size, extra = '') =>
+    `<text x="${x}" y="${y}" font-family="Georgia, serif" font-size="${size}" text-anchor="middle" fill="${color}" ${extra}>${t}</text>`
+  // 小丑帽 + 脸谱（取自 balatro/art.mjs 的 joker face，按大/小王定色）
+  const face = `
+    <path d="M26 68Q14 29 39 43L56 24 73 43Q101 24 95 69L82 56 69 62 55 46 44 67Z" fill="hsl(${hue},55%,46%)" stroke="#273b43" stroke-width="3"/>
+    <circle cx="27" cy="66" r="5" fill="#e9c967"/><circle cx="56" cy="25" r="5" fill="#e9c967"/><circle cx="95" cy="66" r="5" fill="#e9c967"/>
+    <path d="M39 61Q33 99 58 115Q85 102 82 60L65 67 55 53 45 70Z" fill="#f0d7af" stroke="#273b43" stroke-width="3"/>
+    <path d="M44 80l8-3m15 0 9 3M48 95Q61 106 74 92" fill="none" stroke="#293640" stroke-width="3"/>
+    <path d="M58 81L55 91 64 92" fill="none" stroke="#ba6960" stroke-width="2"/>
+    <path d="M34 122L43 108 58 118 76 108 87 123 71 121 60 135 46 121Z" fill="hsl(${hue},50%,42%)" stroke="#273b43" stroke-width="2"/>`
+  return `<svg viewBox="0 0 120 168" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">` +
+    `<rect x="1" y="1" width="118" height="166" rx="7" fill="#f6f1df" stroke="#ded8c8" stroke-width="2"/>` +
+    `<rect x="4" y="4" width="112" height="160" rx="5" fill="none" stroke="#fff" stroke-opacity=".6"/>` +
+    text(60, 18, 'J O K E R', 10, 'font-weight="bold"') + face + text(60, 157, label, 16, 'font-weight="bold"') +
+    `</svg>`
+}
+
+/** 牌面复用小丑牌（Balatro）SVG 绘制：数字牌对称花点、J/Q/K 双头人像、A 大花色。
+    斗地主 rank 3..15（15=2）映射到 balatro 的 2..14（14=A）；suit 编码两边一致（0♠1♥2♣3♦） */
 function cardEl(card, mini) {
   const el = h('div', 'ddz-card' + (mini ? ' ddz-card-mini' : ''))
   const rank = rankOf(card)
-  if (rank >= 16) {
-    el.classList.add('ddz-joker', rank === 17 ? 'ddz-joker-big' : 'ddz-joker-small')
-    const face = h('div', 'ddz-joker-face')
-    face.append(
-      h('span', 'ddz-joker-hat', rank === 17 ? '👑' : '🎩'),
-      h('span', 'ddz-joker-cn', rank === 17 ? '大王' : '小王'),
-      h('span', 'ddz-joker-en', 'JOKER')
-    )
-    el.append(face)
-    return el
-  }
-  const suit = suitOf(card)
-  if (SUIT_RED[suit]) el.classList.add('ddz-red')
-  const corner = cls => {
-    const c = h('div', cls)
-    c.append(h('span', 'ddz-rank', RANK_LABEL[rank]), h('span', 'ddz-suit', SUIT_SYMBOL[suit]))
-    return c
-  }
-  if (FACE_GLYPH[rank] && !mini) {
-    // J/Q/K 人物牌：中央人物符号 + 花色
-    const pip = h('div', 'ddz-pip ddz-pip-face')
-    pip.append(h('span', 'ddz-face-glyph', FACE_GLYPH[rank]), h('span', 'ddz-face-suit', SUIT_SYMBOL[suit]))
-    el.append(corner('ddz-corner'), pip, corner('ddz-corner ddz-corner-b'))
-  } else {
-    el.append(corner('ddz-corner'), h('div', 'ddz-pip', SUIT_SYMBOL[suit]), corner('ddz-corner ddz-corner-b'))
-  }
+  el.innerHTML = rank >= 16
+    ? jokerSvg(rank)
+    : playingCard({ suit: suitOf(card), rank: rank === 15 ? 2 : rank })
   return el
 }
 
