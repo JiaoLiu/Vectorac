@@ -22,9 +22,9 @@ ROOT = Path(__file__).resolve().parent.parent
 OUT_DIR = ROOT / '.vuepress' / 'public' / 'audio' / 'doudizhu'
 
 # 点数口播：rank 3..15 = 3..2（与 ui.js / gen-doudizhu-tts.mjs 条目一致）
-# K 直接用英文字母：Edge TTS 中文音色读字母 K 为 /keɪ/（kei），
-# 早期写成「凯」被用户吐槽（K 是 kei 不是 凯）
-SPOKEN = ['三', '四', '五', '六', '七', '八', '九', '十', '勾', '圈', 'K', '尖', '二']
+# Q/K 直接用英文字母：Edge TTS 中文音色读字母 Q 为 /kju:/、K 为 /keɪ/，
+# 早期写成「圈/凯」被用户吐槽（要读字母本音）
+SPOKEN = ['三', '四', '五', '六', '七', '八', '九', '十', '勾', 'Q', 'K', '尖', '二']
 
 
 def build_entries():

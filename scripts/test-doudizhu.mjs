@@ -332,3 +332,46 @@ test('ai: 不用大牌单飞开局（有更小单张时）', () => {
   const act = aiDecide(playerView(s, seat), seat)
   assert.equal(classifyCombo(act.cards).rank, 4, '先出 4，A 留作控制')
 })
+
+test('ai: 对手报单不出小单（有对子时改出对子）', () => {
+  // 地主手牌 3,3,4：任一农民（对手）报单时，首出对 3 而不是单 4/单 3 送走
+  const s = playingState(37)
+  const seat = s.turn // 叫完 3 分后轮到地主先出
+  s.hands[seat] = Cs(3, 3, 4)
+  const farmer = [0, 1, 2].find(x => x !== seat)
+  s.hands[farmer] = [Cs(15)[0]] // 该农民只剩一张 2
+  s.lastPlay = null
+  const act = aiDecide(playerView(s, seat), seat)
+  assert.equal(act.type, 'play')
+  const combo = classifyCombo(act.cards)
+  assert.equal(combo.type, 'pair', '对手报单时应出对子，不出单张放走')
+  assert.equal(combo.rank, 3)
+})
+
+test('ai: 对手报单、被迫只剩单张时出最大单', () => {
+  // 地主手牌 3,4（两张散单）：农民报单，出 4（大者）而非 3
+  const s = playingState(38)
+  const seat = s.turn
+  s.hands[seat] = Cs(3, 4)
+  const farmer = [0, 1, 2].find(x => x !== seat)
+  s.hands[farmer] = [Cs(15)[0]]
+  s.lastPlay = null
+  const act = aiDecide(playerView(s, seat), seat)
+  assert.equal(classifyCombo(act.cards).rank, 4, '被迫出单时出最大的，给对手压不穿的机会')
+})
+
+test('ai: 队友报单时喂最小单张', () => {
+  // 农民手牌 3,3,5，农民队友报单 → 喂单 3（拆对也值）
+  const s = playingState(39)
+  const farmer = [0, 1, 2].find(x => x !== s.landlord)
+  const mate = [0, 1, 2].find(x => x !== farmer && x !== s.landlord)
+  s.turn = farmer // 强制轮到该农民出牌
+  s.hands[farmer] = Cs(3, 3, 5)
+  s.hands[mate] = [Cs(15)[0]] // 队友只剩一张
+  s.lastPlay = null
+  const act = aiDecide(playerView(s, farmer), farmer)
+  assert.equal(act.type, 'play')
+  const combo = classifyCombo(act.cards)
+  assert.equal(combo.type, 'single', '队友报单应喂单张')
+  assert.equal(combo.rank, 3, '喂最小的单张')
+})

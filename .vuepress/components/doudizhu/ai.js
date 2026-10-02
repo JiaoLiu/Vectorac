@@ -125,11 +125,31 @@ function cheapest(cands) {
 // 选首出组合：优先手数降幅大、点数低的长组合；炸弹王炸留后，四带二不留作首出。
 // 额外偏好：① 能带走手里最小散牌的组合（避免大牌打完剩个 3 跑不掉）
 // ② 单张出小不出大（A/2/王单飞是控制权，除非没有别的选择）
-export function chooseLead(hand) {
+// ③ 报牌攻防（需要 view）：队友报单→喂最小单张送他走；
+//    对手报单→绝不出小单（出就是放走，"他打个4来放我"），
+//    被迫只剩单张可出时出最大单（对手压不穿）；对手报双→少出小对
+export function chooseLead(view, hand, seat) {
   const all = enumerateCombos(hand)
   const finish = all.filter(c => c.length === hand.length)
   if (finish.length) return cheapest(finish)
   const baseHands = handsCount(hand)
+  // 报牌信息（view 可缺省——单测/旧调用只传 hand 时跳过攻防逻辑）
+  const landlord = view ? view.landlord : -1
+  const iAmLandlord = seat === landlord
+  const hc = s => (view && typeof view.handCounts[s] === 'number' ? view.handCounts[s] : 99)
+  const others = [0, 1, 2].filter(s => s !== seat)
+  const oppSeats = others.filter(s => iAmLandlord || s === landlord)
+  const mateSeats = others.filter(s => !iAmLandlord && s !== landlord)
+  const oppOnOne = oppSeats.some(s => hc(s) === 1)
+  const oppOnTwo = oppSeats.some(s => hc(s) === 2)
+  const mateOnOne = !oppOnOne && mateSeats.some(s => hc(s) === 1)
+
+  // 队友报单：喂最小单张（拆对子也值——队友直接走人）
+  if (mateOnOne) {
+    const feed = all.filter(c => c.type === 'single').sort((a, b) => a.rank - b.rank)[0]
+    if (feed) return feed
+  }
+
   let minRank = 99
   for (const c of hand) minRank = Math.min(minRank, rankOf(c))
   let best = null
@@ -141,15 +161,27 @@ export function chooseLead(hand) {
     const remain = handsCount(rest)
     if (remain > baseHands) continue // 拆烂了
     // 代价：剩余手数为主，长牌优先，点数越低越好，大牌单张重罚
-    const s = remain * 100 - c.length * 6 + c.rank * 1.5 +
+    let s = remain * 100 - c.length * 6 + c.rank * 1.5 +
       (c.type === 'single' ? 4 : 0) +
       (c.type === 'single' && c.rank >= 14 ? 30 : 0) +
-      (c.cards.some(x => rankOf(x) === minRank) ? -14 : 0)
+      // 带走最小散牌的奖励——对手报单时对单张不适用（那正是要送走人的牌）
+      (c.cards.some(x => rankOf(x) === minRank) && !(oppOnOne && c.type === 'single') ? -14 : 0)
+    if (oppOnOne) {
+      if (c.type === 'single') {
+        // 对手报单：出单≈直接送走；万不得已要出，出越大越好（压不穿）
+        s += 90 + (17 - c.rank) * 5
+      } else {
+        s -= 25 // 对子/三张/顺子等多张牌型优先
+      }
+    }
+    if (oppOnTwo && c.type === 'pair') s += 40 // 对手报双：小对同样危险
     if (s < bestScore) { bestScore = s; best = c }
   }
   if (best) return best
-  // 兜底：最小单张
-  return all.filter(c => c.type === 'single').sort((a, b) => a.rank - b.rank)[0]
+  // 兜底：被迫出单——对手报单时出最大单，否则最小单
+  const singles = all.filter(c => c.type === 'single').sort((a, b) => a.rank - b.rank)
+  if (singles.length) return oppOnOne ? singles[singles.length - 1] : singles[0]
+  return all[0]
 }
 
 // 跟牌：最小代价压过；农民配合（队友的牌权不抢）；炸弹仅在关键时刻用
@@ -202,7 +234,7 @@ export function aiDecide(view, seat) {
   if (view.phase !== 'playing' || view.turn !== seat) return null
   const hand = view.hand
   if (!view.lastPlay) {
-    const c = chooseLead(hand)
+    const c = chooseLead(view, hand, seat)
     return { type: 'play', cards: c.cards }
   }
   const c = chooseFollow(view, hand, seat)
@@ -213,7 +245,8 @@ export function aiDecide(view, seat) {
 export function hintPlay(view, hand, prevHintCards) {
   if (view.phase !== 'playing') return null
   if (!view.lastPlay) {
-    const c = chooseLead(hand)
+    // 视角 = 人类（seat 0）：报牌攻防同样适用（别给玩家推荐送走的牌）
+    const c = chooseLead(view, hand, 0)
     return c ? c.cards : null
   }
   const cands = enumerateCombos(hand).filter(c => canBeat(c, view.lastPlay.combo))

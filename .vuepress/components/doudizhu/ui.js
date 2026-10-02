@@ -934,7 +934,7 @@ export default class DoudizhuUI {
     row.append(again, back)
     box.append(row)
     // BGM 署名（CC BY 3.0 要求）
-    box.append(h('div', 'ddz-settle-credit', '♪ BGM: Happy Happy Game Show — Kevin MacLeod (incompetech.com) · CC BY 3.0'))
+    box.append(h('div', 'ddz-settle-credit', '♪ BGM: Shenyang — Kevin MacLeod (incompetech.com) · CC BY 3.0'))
     this.overlay.innerHTML = ''
     this.overlay.append(box)
     this.overlay.style.display = 'flex'
