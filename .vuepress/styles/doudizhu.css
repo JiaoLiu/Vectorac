@@ -43,10 +43,16 @@
 }
 
 /* ⛶ 全屏沉浸模式：JS 会把 root 移到 document.body 下（portal），
-   fixed 包含块即视口，inset:0 直接铺满，无任何坐标补偿 */
+   fixed 包含块即视口。高度用 100lvh（大视口，地址栏收起后的完整高度），
+   iOS 地址栏可见时 inset:0 只能盖到小视口，底部会留出地址栏那条空白 */
 .ddz-root.ddz-full {
   position: fixed;
-  inset: 0;
+  inset: auto;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100lvh;
   z-index: 1000;
   min-height: 0;
 }
@@ -72,7 +78,11 @@
 @media (min-width: 900px) and (min-height: 600px) {
   .ddz-root { --card-w: clamp(58px, 10vh, 80px); --mini-w: clamp(26px, 4.6vh, 36px); }
 }
-.ddz-root.ddz-full { --card-w: clamp(58px, 11vh, 88px); --mini-w: clamp(26px, 5vh, 40px); }
+/* 全屏横屏才用 vh 基准放大牌面；竖屏下 vh 是屏幕长边，
+   会让牌宽虚胖到 88px 显得被拉长，故竖屏全屏沿用 vw 基准 */
+@media (orientation: landscape) {
+  .ddz-root.ddz-full { --card-w: clamp(58px, 11vh, 88px); --mini-w: clamp(26px, 5vh, 40px); }
+}
 
 /* ---------- 顶栏 ---------- */
 .ddz-topbar {
@@ -194,16 +204,16 @@
 }
 .ddz-card.flip-in { animation: ddzFlipIn 0.35s ease both; }
 
-/* ---------- 对手面板 ---------- */
+/* ---------- 对手面板：横排 = 头像信息块 + 竖排牌背列（QQ 式） ---------- */
 .ddz-opp {
   position: absolute;
   top: calc(var(--mini-w) * 1.4 + 26px);
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap: 3px;
-  width: 76px;
-  padding: 6px 4px;
+  gap: 6px;
+  width: auto;
+  padding: 7px 8px;
   border-radius: 12px;
   background: rgba(0, 0, 0, 0.34);
   backdrop-filter: blur(3px);
@@ -211,9 +221,12 @@
   transition: border-color 0.2s, box-shadow 0.2s;
   z-index: 6;
 }
+.ddz-opp-right { flex-direction: row-reverse; }
 .ddz-opp-left { left: max(8px, env(safe-area-inset-left)); }
 .ddz-opp-right { right: max(8px, env(safe-area-inset-right)); }
 .ddz-opp.is-active { border-color: var(--gold); box-shadow: 0 0 12px rgba(245, 197, 66, 0.45); }
+.ddz-opp-main { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.ddz-opp-side { display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .ddz-avatar {
   width: 40px;
   height: 40px;
@@ -234,24 +247,26 @@
   object-fit: cover;
   display: block;
 }
-/* 对手手牌牌背扇形：每张背对应一手牌，直观看出剩牌数 */
+/* 对手手牌牌背竖列：每张背对应一手牌，直观看出剩牌数 */
 .ddz-opp-backs {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
   min-height: 16px;
 }
 .ddz-back {
-  width: 10px;
-  height: 15px;
-  border-radius: 2px;
+  width: 24px;
+  height: 34px;
+  border-radius: 3px;
   border: 1px solid #5c0f0d;
   background:
     radial-gradient(circle at 50% 50%, rgba(245, 197, 66, 0.5) 0 22%, transparent 23%),
     repeating-linear-gradient(45deg, rgba(245, 197, 66, 0.28) 0 2px, transparent 2px 4px),
     linear-gradient(160deg, #a02722, #701512);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
   box-sizing: border-box;
 }
-.ddz-back + .ddz-back { margin-left: -7px; }
+.ddz-back + .ddz-back { margin-top: -25px; }
 .ddz-opp-name {
   font-size: 11px;
   color: #ffe9a8;
@@ -288,8 +303,8 @@
   opacity: 0;
   pointer-events: none;
 }
-.ddz-opp-left .ddz-bid-bubble { left: 70px; }
-.ddz-opp-right .ddz-bid-bubble { right: 70px; }
+.ddz-opp-left .ddz-bid-bubble { left: calc(100% + 8px); top: 10px; }
+.ddz-opp-right .ddz-bid-bubble { right: calc(100% + 8px); top: 10px; }
 .ddz-bid-bubble.pop { animation: ddzBubble 1.6s ease both; }
 @keyframes ddzBubble {
   0% { opacity: 0; transform: scale(0.5); }
@@ -306,15 +321,21 @@
   flex-direction: column;
   align-items: center;
   gap: 3px;
-  max-width: 46vw;
+  max-width: 58vw;
   z-index: 5;
   perspective: 600px;
 }
-.ddz-played-left { left: 96px; top: 33%; align-items: flex-start; }
-.ddz-played-right { right: 96px; top: 33%; align-items: flex-end; }
+.ddz-played-left { left: 118px; top: 33%; align-items: flex-start; }
+.ddz-played-right { right: 118px; top: 33%; align-items: flex-end; }
 .ddz-played-me { left: 50%; top: 44%; transform: translateX(-50%); }
 .ddz-played-cards { display: flex; }
-.ddz-played-cards .ddz-card-mini + .ddz-card-mini { margin-left: calc(var(--mini-w) * -0.5); }
+/* 出牌用大号牌面（约手牌 0.82），尽量大更醒目 */
+.ddz-played-cards .ddz-card-mini {
+  width: calc(var(--card-w) * 0.82);
+  height: calc(var(--card-w) * 0.82 * 1.4);
+  border-radius: calc(var(--card-w) * 0.082);
+}
+.ddz-played-cards .ddz-card-mini + .ddz-card-mini { margin-left: calc(var(--card-w) * -0.41); }
 
 /* 出牌 3D 飞入：牌组从俯仰姿态翻正落桌 */
 @keyframes ddzPlayIn {
@@ -582,8 +603,8 @@
   /* 对手面板贴左右边中 */
   .ddz-opp { top: 50%; transform: translateY(-56%); }
   /* 出牌区：左右居中偏上，我的贴着操作区上方 */
-  .ddz-played-left { left: 92px; top: 30%; }
-  .ddz-played-right { right: 92px; top: 30%; }
+  .ddz-played-left { left: 108px; top: 30%; }
+  .ddz-played-right { right: 108px; top: 30%; }
   .ddz-played-me { top: auto; bottom: calc(var(--card-w) * 2.05 + 34px); }
   /* 操作按钮悬浮在手牌上方，不挤占纵向空间；
      z-index 必须高于手牌（牌 z-index 最大 19），否则选牌弹起后盖住按钮 */
@@ -619,9 +640,10 @@
   .ddz-topbar { padding-top: 3px; padding-bottom: 3px; font-size: 12px; }
   .ddz-logo { font-size: 14px; }
   .ddz-avatar { width: 32px; height: 32px; font-size: 19px; }
-  .ddz-opp { width: 64px; }
-  .ddz-played-left { left: 78px; }
-  .ddz-played-right { right: 78px; }
+  .ddz-back { width: 20px; height: 28px; }
+  .ddz-back + .ddz-back { margin-top: -20px; }
+  .ddz-played-left { left: 94px; }
+  .ddz-played-right { right: 94px; }
   .ddz-btn { padding: 7px 18px; font-size: 13px; }
   .ddz-fx-emoji { font-size: 44px; }
   .ddz-rocket-fly { font-size: 42px; }
@@ -629,7 +651,6 @@
 
 /* ---------- 窄屏微调 ---------- */
 @media (max-width: 360px) {
-  .ddz-opp { width: 64px; }
-  .ddz-played-left { left: 78px; }
-  .ddz-played-right { right: 78px; }
+  .ddz-played-left { left: 94px; }
+  .ddz-played-right { right: 94px; }
 }

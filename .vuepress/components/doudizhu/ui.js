@@ -65,17 +65,15 @@ function voiceForCombo(combo) {
   }
 }
 
-/** 大/小王牌面：与小丑牌同源的 SVG 彩绘（大王红金 / 小王墨蓝），120x168 与扑克同版式。
-    左上/右下（倒置）加「大/小王」角标，否则两张王牌正面几乎无法区分 */
+/** 大/小王牌面：与小丑牌同源的 SVG 彩绘（大王红 / 小王黑），120x168 与扑克同版式。
+    左上/右下（倒置）竖排英文 JOKER 角标，红黑配色区分大小王 */
 function jokerSvg(rank) {
   const big = rank === 17
   const hue = big ? 0 : 215
-  const label = big ? '大王' : '小王'
-  const idx = big ? '大' : '小'
-  const color = big ? '#b63235' : '#232d35'
-  const text = (x, y, t, size, extra = '') =>
-    `<text x="${x}" y="${y}" font-family="Georgia, serif" font-size="${size}" text-anchor="middle" fill="${color}" ${extra}>${t}</text>`
-  const corner = `<g>${text(13, 24, idx, 13, 'font-weight="bold"')}${text(13, 40, '王', 13, 'font-weight="bold"')}</g>`
+  const color = big ? '#c22f3c' : '#22262e'
+  // 竖排 JOKER 角标（标准扑克样式）
+  const corner = '<g font-family="Georgia, serif" font-size="11" font-weight="bold" fill="' + color + '" text-anchor="middle">' +
+    'JOKER'.split('').map((ch, i) => `<text x="13" y="${26 + i * 13}">${ch}</text>`).join('') + '</g>'
   // 小丑帽 + 脸谱（取自 balatro/art.mjs 的 joker face，按大/小王定色）
   const face = `
     <path d="M26 68Q14 29 39 43L56 24 73 43Q101 24 95 69L82 56 69 62 55 46 44 67Z" fill="hsl(${hue},55%,46%)" stroke="#273b43" stroke-width="3"/>
@@ -87,8 +85,7 @@ function jokerSvg(rank) {
   return `<svg viewBox="0 0 120 168" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">` +
     `<rect x="1" y="1" width="118" height="166" rx="7" fill="#f6f1df" stroke="#ded8c8" stroke-width="2"/>` +
     `<rect x="4" y="4" width="112" height="160" rx="5" fill="none" stroke="#fff" stroke-opacity=".6"/>` +
-    text(60, 18, 'J O K E R', 10, 'font-weight="bold"') + face + text(60, 157, label, 16, 'font-weight="bold"') +
-    corner + `<g transform="rotate(180 60 84)">${corner}</g>` +
+    face + corner + `<g transform="rotate(180 60 84)">${corner}</g>` +
     `</svg>`
 }
 
@@ -202,19 +199,24 @@ export default class DoudizhuUI {
     // 底牌区
     this.bottomWrap = h('div', 'ddz-bottom-cards')
     // 对手面板（左 2 号位 = 我上家？逆时针：1 下家右，2 上家左）
+    // 横排布局：头像信息块 + 竖排牌背列（QQ 斗地主式，一眼看出剩牌数）
     this.oppPanels = {}
     for (const s of [2, 1]) {
       const p = h('div', `ddz-opp ddz-opp-${s === 2 ? 'left' : 'right'}`)
-      p.append(
+      const main = h('div', 'ddz-opp-main')
+      main.append(
         h('div', 'ddz-avatar', AI_AVATARS[s - 1]),
         h('div', 'ddz-opp-name', AI_NAMES[s - 1]),
-        // 牌背扇形：直观看出对手还剩几张
-        h('div', 'ddz-opp-backs'),
-        h('div', 'ddz-opp-count'),
         h('div', 'ddz-role'),
-        h('div', 'ddz-timer', ''),
-        h('div', 'ddz-bid-bubble')
+        h('div', 'ddz-timer', '')
       )
+      const side = h('div', 'ddz-opp-side')
+      side.append(
+        // 竖排牌背列：每张背对应一手牌
+        h('div', 'ddz-opp-backs'),
+        h('div', 'ddz-opp-count')
+      )
+      p.append(main, side, h('div', 'ddz-bid-bubble'))
       this.oppPanels[s] = p
     }
     // 出牌区
@@ -406,10 +408,15 @@ export default class DoudizhuUI {
       const force = !rotated && portrait && inGame && isMobile()
       this.root.classList.toggle('ddz-fls', force)
       if (force) {
-        // portal 状态下 root 已在 body 直下（setImmersive 保证），旋转后逻辑宽高互换
-        this.root.style.width = window.innerHeight + 'px'
-        this.root.style.height = window.innerWidth + 'px'
-        this.root.style.top = (-window.innerWidth) + 'px'
+        // portal 状态下 root 已在 body 直下（setImmersive 保证），旋转后逻辑宽高互换。
+        // 尺寸必须用屏幕物理尺寸而非 innerWidth/innerHeight：iOS Safari 地址栏
+        // 可见时 innerHeight 被压缩（如 844→664），旋转后铺不满整块物理屏，
+        // 底部会露出一条空白。screen 取长短边在横竖屏机型上都稳定。
+        const sw = Math.min(window.screen.width, window.screen.height)
+        const sh = Math.max(window.screen.width, window.screen.height)
+        this.root.style.width = sh + 'px'
+        this.root.style.height = sw + 'px'
+        this.root.style.top = (-sw) + 'px'
       } else {
         // 解除旋转：清掉内联尺寸，全屏时改由 CSS inset:0 铺满
         this.root.style.width = ''
