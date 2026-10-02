@@ -227,6 +227,21 @@ export function chooseAI(s, seat = s.turn) {
   }
   const distance = pos => distances.get(pos)
   const value = t => t === 'flag' ? 180 : t === 'bomb' ? 12 : t === 'engineer' ? 6 : t === 'mine' ? 5 : 3 + TYPES[t].rank * 1.8
+  // 动态剩余计数：某阵营已被本方确认存活的某类型棋子，要从该类型可分配权重里扣除
+  // （例如队友的司令可见时，敌方未知子仍可能是司令——类型池按阵营独立；
+  //   但自家可见的同阵营已用掉的类型名额不能再算进未知子的假设权重）
+  const knownAlive = new Map()
+  for (const q of s.pieces) {
+    const t = visibleType(s, q, seat)
+    if (!t) continue
+    const m = knownAlive.get(q.seat) || new Map()
+    m.set(t, (m.get(t) || 0) + 1)
+    knownAlive.set(q.seat, m)
+  }
+  const typeWeight = (t, pieceSeat) => {
+    const m = knownAlive.get(pieceSeat)
+    return Math.max(0, TYPES[t].count - (m ? (m.get(t) || 0) : 0))
+  }
   const hypotheses = p => {
     const known = visibleType(s,p,seat)
     if (known) return [known]
@@ -238,7 +253,7 @@ export function chooseAI(s, seat = s.turn) {
   const expectation = (p, target) => {
     const types = hypotheses(target); let total=0, weights=0
     for (const t of types) {
-      const weight=TYPES[t].count, result=battle(p.type,t)
+      const weight=typeWeight(t, target.seat), result=battle(p.type,t)
       total += weight * (result==='win' ? value(t) : result==='both' ? value(t)-value(p.type) : -value(p.type))
       weights += weight
     }
@@ -259,6 +274,19 @@ export function chooseAI(s, seat = s.turn) {
   }
   const ownFlag=s.pieces.find(p=>p.seat===seat&&p.type==='flag')
   const flagDanger=ownFlag && (threats.get(ownFlag.pos)||[])
+  // 护旗距离图（DL-Chess-AI 方案：靠旗越近防守价值越高，按 15/步数 递减）
+  const flagSteps=new Map()
+  if (ownFlag) {
+    const q=[[ownFlag.pos,0]]
+    flagSteps.set(ownFlag.pos,0)
+    while(q.length){
+      const [cur,d]=q.shift()
+      for(const e of BOARD.adjacency[cur]){
+        if(flagSteps.has(e.to))continue
+        flagSteps.set(e.to,d+1); q.push([e.to,d+1])
+      }
+    }
+  }
   for (const p of s.pieces.filter(p => p.seat === seat)) for (const to of legalMoves(s, p.id)) {
     const target = at(s, to), n = BOARD.byId[to], known = target && visibleType(s, target, seat)
     const progress=distance(p.pos)-distance(to)
@@ -267,10 +295,29 @@ export function chooseAI(s, seat = s.turn) {
     // opponent's side, not score free points by shuttling between safe camps.
     if(progress>0 && n.seat===targetSeat)score+=1.4
     if(!target && progress<=0)score-=1.2
-    if (n.kind === 'hq') score -= 14
+    if (n.kind === 'hq') {
+      if (n.seat === seat || team(n.seat) === team(seat)) score -= 14 // 进自家/队友大本营：永久失动，纯浪费
+      else if (target) score += 6 // 攻敌大本营：军旗必在其中一个大本营，值得搏
+      else score -= 10 // 空敌大本营：进去出不来，除非确定旗在此否则不进
+    }
     if (target) {
       score += expectation(p,target)*2 + (known==='flag'?300:4+Math.min(5,s.quiet*.15))
       if(flagDanger && flagDanger.some(e=>e.id===target.id)) score+=45+expectation(p,target)
+      // 工兵挖雷开路：敌大本营及其紧邻的未动棋子大概率是护旗雷，
+      // 工兵是唯一能安全吃雷的兵种，挖开就是夺旗通路
+      if (p.type === 'engineer' && hypotheses(target).includes('mine') &&
+          (n.kind === 'hq' || BOARD.adjacency[to].some(e => BOARD.byId[e.to].kind === 'hq' && BOARD.byId[e.to].seat === targetSeat)))
+        score += 22
+    }
+    // 位置价值：铁路机动性强、行营不可被攻击
+    if (!target) {
+      if (BOARD.adjacency[to].some(e => e.rail)) score += .35
+      if (n.kind === 'camp') score += .45
+    }
+    // 护旗：敌子逼近己旗时，向旗靠拢的防守加分（15/步数的轻量版）
+    if (ownFlag && n.kind !== 'hq') {
+      const fd = flagSteps.get(to)
+      if (fd >= 1) score += (flagDanger && flagDanger.length ? 7 : 1.8) / fd
     }
     if (n.kind!=='camp' && (!target || !known || battle(p.type,known)==='win')) {
       const danger=(threats.get(to)||[]).filter(e=>!target||e.id!==target.id)

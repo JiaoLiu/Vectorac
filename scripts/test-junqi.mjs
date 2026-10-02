@@ -151,6 +151,20 @@ test('combat intelligence belongs only to involved seats, and moving reveals no 
  assert.equal(s.intel['2:enemy'],undefined)
  assert.equal(visibleType(s,s.pieces.find(p=>p.id==='enemy'),0),null)
 })
+test('engineer digs the mine guarding an enemy HQ (flag path opener)',()=>{
+ // 敌 1 号的大本营 (1,5,1) 里是护旗雷（暗棋，未动），工兵贴脸应优先挖开
+ const s=fixture([piece('e','engineer',0,armyNode(1,4,1)),piece('mine','mine',1,armyNode(1,5,1))])
+ s.pieces.find(p=>p.id==='flag1').pos=armyNode(1,5,3)
+ const next=chooseAI(s,0)
+ assert.equal(next.pieceId,'e');assert.equal(next.to,armyNode(1,5,1))
+})
+test('does not step into an empty enemy headquarters (dead-end square)',()=>{
+ // 空敌大本营进去出不来：除非确定军旗在此，否则不进
+ const s=fixture([piece('e','engineer',0,armyNode(1,4,3))])
+ // 1 号旗在 (1,5,1)；(1,5,3) 是空大本营，与工兵相邻
+ const next=chooseAI(s,0)
+ assert.notEqual(next.to,armyNode(1,5,3))
+})
 test('dark flags remain concealed until commander death, including finished view',()=>{
  const s=createGame();s.phase='finished';const f=s.pieces.find(p=>p.seat===1&&p.type==='flag')
  assert.equal(visibleType(s,f),null);s.flags[1]=true;assert.equal(visibleType(s,f),'flag')
