@@ -334,23 +334,32 @@ body.ddz-lock { overflow: hidden; }
   flex-direction: column;
   align-items: center;
   gap: 3px;
-  max-width: 58vw;
+  /* 卡组永不越过半场：左/右家的出牌最宽到中线前 6px
+    （100vw-224 = 出牌左缘 118 + 面板占位 ~106），彻底杜绝
+    宽牌型横穿对家头像与牌背列（"挡住手牌头像看不出剩几张"） */
+  max-width: calc(100vw - 224px);
   /* 高于对手面板（z6）：左右家出牌贴着面板右缘起排，
      低了会被面板盖住一截（真机上"看不到出牌"） */
   z-index: 10;
   perspective: 600px;
 }
-.ddz-played-left { left: 110px; top: 33%; align-items: flex-start; }
-.ddz-played-right { right: 110px; top: 33%; align-items: flex-end; }
+.ddz-played-left { left: 118px; top: 33%; align-items: flex-start; }
+.ddz-played-right { right: 118px; top: 33%; align-items: flex-end; }
 .ddz-played-me { left: 50%; top: 44%; transform: translateX(-50%); }
-.ddz-played-cards { display: flex; }
+/* 长牌型超出半场净空时自动换行（QQ 同款：长连对/飞机分两行） */
+.ddz-played-cards { display: flex; flex-wrap: wrap; row-gap: 4px; --pw: calc(var(--card-w) * 0.92); }
 /* 出牌用大号牌面（约手牌 0.92），尽量大更醒目 */
 .ddz-played-cards .ddz-card-mini {
-  width: calc(var(--card-w) * 0.92);
-  height: calc(var(--card-w) * 0.92 * 1.4);
-  border-radius: calc(var(--card-w) * 0.092);
+  width: var(--pw);
+  height: calc(var(--pw) * 1.4);
+  border-radius: calc(var(--pw) * 0.1);
 }
-.ddz-played-cards .ddz-card-mini + .ddz-card-mini { margin-left: calc(var(--card-w) * -0.46); }
+.ddz-played-cards .ddz-card-mini + .ddz-card-mini { margin-left: calc(var(--pw) * -0.6); }
+/* 长牌型分档缩卡：宽牌型（顺子/连对/飞机）先按张数缩小，
+   仍超出半场净空的（12+ 张极端牌型）由上面的 wrap 兜底换行 */
+.ddz-played-cards.ddz-many { --pw: calc(var(--card-w) * 0.72); }
+.ddz-played-cards.ddz-huge { --pw: calc(var(--card-w) * 0.52); }
+.ddz-played-cards.ddz-mass { --pw: calc(var(--card-w) * 0.42); }
 
 /* 出牌 3D 飞入：牌组从俯仰姿态翻正落桌 */
 @keyframes ddzPlayIn {
@@ -653,10 +662,13 @@ body.ddz-lock { overflow: hidden; }
   .ddz-root.ddz-full { --card-w: clamp(46px, 13.5vh, 68px); --mini-w: clamp(22px, 6.5vh, 30px); }
   /* 对手面板贴左右边中 */
   .ddz-opp { top: 50%; transform: translateY(-56%); }
-  /* 出牌区：避开左右对手面板（面板含竖排牌背列宽约 100px+8 边距），
-     内移到 132px 且下移到 36%，既不被面板遮挡又更靠近视觉中心 */
-  .ddz-played-left { left: 132px; top: 36%; }
-  .ddz-played-right { right: 132px; top: 36%; }
+  /* 出牌区移到顶带（topbar 下方）：与两侧面板带（垂直居中 ~50%）和
+     自家出牌带（底部手牌上方）完全错开，长牌型横排不再贴住/穿过
+     对家头像与牌背；left 118 = 面板右缘 104 + 14px 间隙 */
+  .ddz-played-left { left: 118px; top: 16%; }
+  .ddz-played-right { right: 118px; top: 16%; }
+  /* 顶带高度有限（牌高 ~68px + 间隙），横屏隐藏牌型文字标签省一整行 */
+  .ddz-played .ddz-combo-label { display: none; }
   .ddz-played-me { top: auto; bottom: calc(var(--card-w) * 2.4 + 60px); }
   /* 操作按钮悬浮在手牌上方：弹起高度 -0.26×card-w + 手牌 padding 0.28×card-w，
      此前 1.72+12 时按钮下缘与弹起的牌顶重叠约 40px（"叫分按钮挡手牌"），
@@ -695,8 +707,6 @@ body.ddz-lock { overflow: hidden; }
   .ddz-avatar { width: 32px; height: 32px; font-size: 19px; }
   .ddz-back { width: 20px; height: 28px; }
   .ddz-back + .ddz-back { margin-top: -20px; }
-  .ddz-played-left { left: 112px; }
-  .ddz-played-right { right: 112px; }
   .ddz-btn { padding: 7px 18px; font-size: 13px; }
   .ddz-fx-emoji { font-size: 44px; }
   .ddz-rocket-fly { font-size: 42px; }
@@ -704,6 +714,12 @@ body.ddz-lock { overflow: hidden; }
 
 /* ---------- 窄屏微调 ---------- */
 @media (max-width: 360px) {
-  .ddz-played-left { left: 106px; }
-  .ddz-played-right { right: 106px; }
+  .ddz-played-left { left: 112px; }
+  .ddz-played-right { right: 112px; }
+}
+/* 极窄竖屏（320 宽 / SE1）：半场净空 ~96px，长牌型频繁换行撑高出牌区，
+   上移到 topbar 下方并隐藏牌型标签，避免换行后压到自家出牌带 */
+@media (max-width: 359px) and (orientation: portrait) {
+  .ddz-played-left, .ddz-played-right { top: 18%; }
+  .ddz-played .ddz-combo-label { display: none; }
 }

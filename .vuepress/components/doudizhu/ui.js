@@ -775,6 +775,12 @@ export default class DoudizhuUI {
       this._playedKeys[seat] = key
       if (lp && lp.seat === seat) {
         const wrap = h('div', 'ddz-played-cards')
+        // 长牌型分档缩卡（QQ 斗地主同款）：宽牌型横排会穿过对家
+        // 头像/牌背面板（竖屏半场净空仅 ~174px），按张数缩小卡面
+        const n = lp.cards.length
+        if (n >= 12) wrap.classList.add('ddz-mass')
+        else if (n >= 8) wrap.classList.add('ddz-huge')
+        else if (n >= 5) wrap.classList.add('ddz-many')
         if (fresh) {
           const isBomb = lp.combo.type === 'bomb' || lp.combo.type === 'rocket'
           wrap.classList.add(isBomb ? 'bomb-in' : 'play-in')
