@@ -1,7 +1,8 @@
 // ============================================================
 // 斗地主音频（doudizhu/audio.js）
-// BGM：真实录制音乐文件（/audio/doudizhu/bgm-guzheng.mp3，
-// Kevin MacLeod《Guzheng City》CC BY 3.0，中国风古筝），
+// BGM：真实录制音乐文件（/audio/doudizhu/bgm-happy.mp3，
+// Kevin MacLeod《Happy Happy Game Show》CC BY 3.0，欢快游戏风，
+// 对齐 QQ 斗地主经典 BGM 的热闹氛围），
 // <audio> 循环播放；文件加载失败回退 WebAudio 程序化合成 loop。
 // 音效：WebAudio 程序化合成。报牌语音：预生成 mp3 优先、
 // 浏览器 speechSynthesis 兜底，播放语音时 BGM 自动闪避（duck）。
@@ -10,9 +11,9 @@
 
 const MUSIC_BASE_GAIN = 0.3
 const MUSIC_DUCK_GAIN = 0.07
-const BGM_URL = '/audio/doudizhu/bgm-guzheng.mp3'
-const BGM_VOLUME = 0.34
-const BGM_DUCK_VOLUME = 0.07
+const BGM_URL = '/audio/doudizhu/bgm-happy.mp3'
+const BGM_VOLUME = 0.55
+const BGM_DUCK_VOLUME = 0.12
 
 export function createDoudizhuAudio() {
   let ctx = null

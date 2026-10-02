@@ -164,6 +164,7 @@ export default class DoudizhuUI {
   showLobby() {
     this.clearTimers()
     this.overlay.style.display = 'none'
+    this.root.classList.remove('ddz-over')
     if (!this.lobbyEl) {
       this.lobbyEl = h('div', 'ddz-lobby')
       const btn = h('button', 'ddz-btn ddz-btn-primary ddz-lobby-start', '开 始 游 戏')
@@ -498,6 +499,7 @@ export default class DoudizhuUI {
   newGame() {
     this.clearTimers()
     this.overlay.style.display = 'none'
+    this.root.classList.remove('ddz-over') // 新一局恢复桌面 chrome
     this.state = createGame({ seed: (Math.random() * 0xffffffff) >>> 0 })
     this.selected.clear()
     this.lastHint = null
@@ -891,6 +893,8 @@ export default class DoudizhuUI {
   showSettlement() {
     const s = settlementOf(this.state)
     if (!s) return
+    // 局终：隐藏桌面 chrome（对手面板等），结算画面干净（CSS .ddz-over）
+    this.root.classList.add('ddz-over')
     this.points = Math.max(0, this.points + s.scores[this.seat])
     localStorage.setItem('ddz-points', String(this.points))
     const win = s.scores[this.seat] > 0
@@ -930,7 +934,7 @@ export default class DoudizhuUI {
     row.append(again, back)
     box.append(row)
     // BGM 署名（CC BY 3.0 要求）
-    box.append(h('div', 'ddz-settle-credit', '♪ BGM: Guzheng City — Kevin MacLeod (incompetech.com) · CC BY 3.0'))
+    box.append(h('div', 'ddz-settle-credit', '♪ BGM: Happy Happy Game Show — Kevin MacLeod (incompetech.com) · CC BY 3.0'))
     this.overlay.innerHTML = ''
     this.overlay.append(box)
     this.overlay.style.display = 'flex'
@@ -1137,6 +1141,7 @@ export default class DoudizhuUI {
     // 全屏 portal 状态移回文档流原位，并清掉强制横屏残留
     this.root.classList.remove('ddz-full')
     this.root.classList.remove('ddz-fls')
+    this.root.classList.remove('ddz-over')
     this.root.style.width = ''
     this.root.style.height = ''
     this.root.style.top = ''
