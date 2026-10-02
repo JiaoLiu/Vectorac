@@ -646,8 +646,9 @@ export default class DoudizhuUI {
 
   oppName(seat) { return seat === this.seat ? '你' : AI_NAMES[seat - 1] }
 
-  /** 通用语音气泡：挂各家头像旁，1.6s 后自动淡出（叫分/抢地主/加倍/不要共用） */
+  /** 通用语音气泡：挂各家头像旁，动画后自动清文字（叫分/抢地主/加倍/不要共用） */
   showBubble(seat, text) {
+    if (!text) return // 空文字不弹：空 text 无行盒，气泡塌成 6px 白条
     const panel = seat === this.seat ? this.mePanel : this.oppPanels[seat]
     if (!panel) return
     const bubble = panel.querySelector('.ddz-bid-bubble')
@@ -656,6 +657,9 @@ export default class DoudizhuUI {
     bubble.classList.remove('pop')
     void bubble.offsetWidth
     bubble.classList.add('pop')
+    // 动画（1.2s）后清文字：残留文字的气泡若被重排会闪现
+    clearTimeout(bubble._t)
+    bubble._t = setTimeout(() => { bubble.textContent = '' }, 1300)
   }
 
   showBidBubble(seat, score) {
@@ -828,21 +832,26 @@ export default class DoudizhuUI {
 
   renderMe() {
     const s = this.state
-    this.mePanel.innerHTML = ''
-    const avatar = h('div', 'ddz-avatar ddz-avatar-me')
-    avatar.innerHTML = this.avatarHtml(this.seat)
-    const name = h('div', 'ddz-opp-name', '你')
-    const role = h('div', 'ddz-role')
+    // 子元素一次建好、之后只更新内容：innerHTML 重建会把气泡节点移出再放回，
+    // DOM 重插会从头重播 pop 动画——每次 AI 动作后我的气泡就重弹一次
+    // （空文字时更会反复闪出 60x6 白条，「气泡满屏飞」的根因）
+    if (!this._meBuilt) {
+      this._meBuilt = true
+      this.mePanel.innerHTML = ''
+      this.meAvatarEl = h('div', 'ddz-avatar ddz-avatar-me')
+      this.meRoleEl = h('div', 'ddz-role')
+      this.meTimer = h('div', 'ddz-timer')
+      this.meBubble = h('div', 'ddz-bid-bubble')
+      this.mePanel.append(this.meAvatarEl, h('div', 'ddz-opp-name', '你'), this.meRoleEl, this.meTimer, this.meBubble)
+    }
+    this.meAvatarEl.innerHTML = this.avatarHtml(this.seat)
+    this.meRoleEl.textContent = ''
+    this.meRoleEl.className = 'ddz-role'
     if (s.landlord >= 0) {
       const isLord = s.landlord === this.seat
-      role.textContent = isLord ? '👑 地主' : '🌾 农民'
-      role.classList.add(isLord ? 'ddz-role-lord' : 'ddz-role-farmer')
+      this.meRoleEl.textContent = isLord ? '👑 地主' : '🌾 农民'
+      this.meRoleEl.classList.add(isLord ? 'ddz-role-lord' : 'ddz-role-farmer')
     }
-    this.meTimer = h('div', 'ddz-timer')
-    // 气泡节点持久复用：renderMe 每次 innerHTML 重建会杀掉新气泡的
-    // pop 动画与文字，这里 re-append 同一节点保住状态
-    if (!this.meBubble) this.meBubble = h('div', 'ddz-bid-bubble')
-    this.mePanel.append(avatar, name, role, this.meTimer, this.meBubble)
     const active = this.activeSeat() === this.seat && s.phase !== 'over'
     this.mePanel.classList.toggle('is-active', active)
   }

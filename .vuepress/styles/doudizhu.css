@@ -320,12 +320,12 @@ body.ddz-lock { overflow: hidden; }
 .ddz-opp-right .ddz-bid-bubble { right: calc(100% + 8px); top: 10px; }
 /* 我的气泡：头像上方（不叫/不抢/不加倍/不要 全家共用） */
 .ddz-me-panel .ddz-bid-bubble { left: 0; top: auto; bottom: calc(100% + 6px); }
-.ddz-bid-bubble.pop { animation: ddzBubble 1.6s ease both; }
+.ddz-bid-bubble.pop { animation: ddzBubble 1.2s ease both; }
 @keyframes ddzBubble {
-  0% { opacity: 0; transform: scale(0.5); }
-  12% { opacity: 1; transform: scale(1.08); }
-  20% { transform: scale(1); }
-  80% { opacity: 1; }
+  0% { opacity: 0; transform: scale(0.6); }
+  14% { opacity: 1; transform: scale(1.06); }
+  24% { transform: scale(1); }
+  78% { opacity: 1; }
   100% { opacity: 0; }
 }
 
@@ -453,6 +453,9 @@ body.ddz-lock { overflow: hidden; }
   gap: 8px;
   padding: 2px max(12px, env(safe-area-inset-right)) 2px max(12px, env(safe-area-inset-left));
   min-height: 34px;
+  /* 竖屏下面板在文档流中（static），气泡 position:absolute 会锚到
+     .ddz-root 的 bottom:100%+6px → 弹到屏幕外；relative 让气泡贴面板上方 */
+  position: relative;
 }
 .ddz-avatar-me { width: 30px; height: 30px; font-size: 18px; }
 .ddz-me-panel .ddz-opp-name { font-size: 13px; }
