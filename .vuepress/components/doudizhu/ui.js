@@ -145,17 +145,39 @@ export default class DoudizhuUI {
     window.addEventListener('orientationchange', this.fitViewport)
     this.buildDom()
     this.bindGestures()
-    // 强制横屏机制（竖屏持机时旋转桌面铺满），触屏设备进游戏默认沉浸横屏
+    // 强制横屏机制（竖屏持机时旋转桌面铺满）。与 mahjong 对齐：
+    // 页面加载不自动进全屏——iOS 无用户手势时原生全屏必被拒绝、地址栏推不走；
+    // 点「开始游戏」拿到手势后再进全屏+强制横屏
     this._setupForceLandscape()
-    const coarsePointer = (() => {
-      try { return window.matchMedia('(pointer: coarse)').matches } catch (e) { return false }
-    })()
-    if (coarsePointer) this.setImmersive(true)
     // 主题 navbar 水合/字体加载会二次撑高页头，分多次重测贴合
     requestAnimationFrame(this.fitViewport)
     window.addEventListener('load', this.fitViewport)
     this.fitTimers = [setTimeout(this.fitViewport, 400), setTimeout(this.fitViewport, 1200)]
-    this.newGame()
+    this.showLobby()
+  }
+
+  /** 开始大厅：点「开始游戏」（用户手势）后才进全屏横屏开打（对齐 mahjong 流程） */
+  showLobby() {
+    this.clearTimers()
+    this.overlay.style.display = 'none'
+    if (!this.lobbyEl) {
+      this.lobbyEl = h('div', 'ddz-lobby')
+      const btn = h('button', 'ddz-btn ddz-btn-primary ddz-lobby-start', '开 始 游 戏')
+      btn.type = 'button'
+      btn.onclick = () => {
+        this.lobbyEl.style.display = 'none'
+        this.newGame()
+        this.setImmersive(true)
+      }
+      this.lobbyEl.append(
+        h('div', 'ddz-lobby-title', '🃏 斗地主'),
+        h('div', 'ddz-lobby-sub', '经典三人 · 叫分抢地主 · 炸弹翻倍'),
+        btn,
+        h('div', 'ddz-lobby-tip', '进入后为全屏牌桌 · 竖屏持机会自动转为横屏画面')
+      )
+      this.table.append(this.lobbyEl)
+    }
+    this.lobbyEl.style.display = ''
   }
 
   // ---------- DOM 骨架 ----------

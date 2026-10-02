@@ -32,8 +32,8 @@
   flex-direction: column;
   height: calc(100dvh - 3.6rem);
   min-height: 420px;
-  /* 中国农村风四方桌：木桌+粗瓷茶壶+瓜子，怀旧农家堂屋 */
-  background: #0a2c1a url('/img/games/doudizhu-table.jpg') center / cover no-repeat;
+  /* 中国农村风四方桌：木桌+粗瓷茶壶+瓜子，怀旧农家堂屋（?v=2 破旧图缓存） */
+  background: #0a2c1a url('/img/games/doudizhu-table.jpg?v=2') center / cover no-repeat;
   color: #fff;
   font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
   user-select: none;
@@ -43,16 +43,12 @@
 }
 
 /* ⛶ 全屏沉浸模式：JS 会把 root 移到 document.body 下（portal），
-   fixed 包含块即视口。高度用 100lvh（大视口，地址栏收起后的完整高度），
-   iOS 地址栏可见时 inset:0 只能盖到小视口，底部会留出地址栏那条空白 */
+   fixed 包含块即视口，inset:0 直接铺满。与 mahjong 同款方案
+   （注：曾试过 100lvh 大视口，iOS 上 fixed 元素比可视视口高，
+   底部手牌反被地址栏压住，已回退） */
 .ddz-root.ddz-full {
   position: fixed;
-  inset: auto;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  height: 100lvh;
+  inset: 0;
   z-index: 1000;
   min-height: 0;
 }
@@ -524,6 +520,30 @@
   z-index: 30;
 }
 .ddz-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ---------- 开始大厅（手势解锁全屏，对齐 mahjong 流程） ---------- */
+.ddz-lobby {
+  position: absolute;
+  inset: 0;
+  z-index: 45;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: rgba(4, 16, 10, 0.55);
+  backdrop-filter: blur(2px);
+}
+.ddz-lobby-title {
+  font-size: 42px;
+  font-weight: 800;
+  color: var(--gold);
+  letter-spacing: 6px;
+  text-shadow: 0 3px 10px rgba(0, 0, 0, 0.6);
+}
+.ddz-lobby-sub { font-size: 13px; color: rgba(255, 255, 255, 0.8); }
+.ddz-lobby-start { font-size: 17px; padding: 12px 46px; border-radius: 999px; }
+.ddz-lobby-tip { font-size: 11px; color: rgba(255, 255, 255, 0.55); }
 
 /* ---------- 结算 ---------- */
 .ddz-overlay {
