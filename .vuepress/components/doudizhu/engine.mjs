@@ -553,6 +553,8 @@ export function playerView(state, seat) {
     bottom: state.landlord >= 0 ? state.bottom.slice() : state.bottom.length,
     bidTurn: state.bidTurn, highBid: state.highBid, bids: state.bids.slice(),
     robTurn: state.robTurn, dblTurn: state.dblTurn,
+    // 出牌历史（公开信息）：AI 记牌器与残局蒙特卡洛的数据源
+    played: state.history.map(h => ({ seat: h.seat, combo: h.combo, cards: h.cards.slice() })),
     landlord: state.landlord, calledScore: state.calledScore,
     turn: state.turn, lastPlay: state.lastPlay,
     trickPasses: state.trickPasses.slice(),

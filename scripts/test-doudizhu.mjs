@@ -5,7 +5,10 @@ import {
   createGame, dispatch, playerView, settlementOf,
   classifyCombo, canBeat, enumerateCombos, rankOf
 } from '../.vuepress/components/doudizhu/engine.mjs'
-import { aiDecide, evaluateBid, handsCount, hintPlay } from '../.vuepress/components/doudizhu/ai.js'
+import { aiDecide, evaluateBid, handsCount, hintPlay, setMonteCarlo, unseenCounts } from '../.vuepress/components/doudizhu/ai.js'
+
+// 行为断言针对启发式层（MC 有采样随机性，专项测试里再开）
+setMonteCarlo(false)
 
 // 组牌工具：按点数造牌，同点多次出现依次取不同花色
 const Cs = (...rs) => {
@@ -486,4 +489,67 @@ test('ai: 三带一带最小散牌（333+7 而非 333+A）', () => {
   // 带的必须是 7（rank 7），不能是 A/2
   const wing = act.cards.find(c => classifyCombo([c]).rank !== 3)
   assert.equal(classifyCombo([wing]).rank, 7, '三带一带最小的散牌 7，不烧 A/2')
+})
+
+// ---------------- 记牌器 + 蒙特卡洛残局 ----------------
+test('记牌器: 未见牌 = 全牌 - 手牌 - 已出历史', () => {
+  const s = playingState(41)
+  const lord = s.landlord
+  // 用地主实际持有的牌出一张单（不做手牌手术，保持 unseen 不变量成立）
+  const card = s.hands[lord][s.hands[lord].length - 1]
+  const r0 = rankOf(card)
+  assert.ok(dispatch(s, { type: 'play', cards: [card] }, lord).ok)
+  dispatch(s, { type: 'pass' }, (lord + 1) % 3)
+  dispatch(s, { type: 'pass' }, (lord + 2) % 3)
+  const view = playerView(s, (lord + 1) % 3)
+  const cnt = unseenCounts(view)
+  const total = Object.values(cnt).reduce((a, b) => a + b, 0)
+  const others = [0, 1, 2].filter(x => x !== (lord + 1) % 3)
+  assert.equal(total, others.reduce((a, x) => a + s.hands[x].length, 0), '未见牌总数 = 两对手手牌之和')
+  const inHand = r => view.hand.filter(c => rankOf(c) === r).length
+  assert.equal(cnt[r0], 4 - 1 - inHand(r0), '该点数已出一张')
+})
+
+test('mc: 蒙特卡洛残局开启时决策合法且对局收敛（20 局）', () => {
+  setMonteCarlo(true)
+  try {
+    for (let seed = 900; seed < 920; seed++) {
+      const s = createGame({ seed })
+      let guard = 0
+      while (s.phase !== 'over' && guard++ < 2000) {
+        const seat = s.phase === 'bidding' ? s.bidTurn : s.phase === 'robbing' ? s.robTurn : s.phase === 'doubling' ? s.dblTurn : s.turn
+        const act = aiDecide(playerView(s, seat), seat)
+        assert.ok(act, `seed=${seed} 必须有动作`)
+        assert.ok(dispatch(s, act, seat).ok, `seed=${seed} MC 动作非法: ${JSON.stringify(act)}`)
+      }
+      assert.equal(s.phase, 'over', `seed=${seed} 对局必须收敛`)
+      assert.equal(s.scores.reduce((a, b) => a + b, 0), 0, '零和')
+    }
+  } finally {
+    setMonteCarlo(false)
+  }
+})
+
+test('mc: 残局必胜路线能被找到（大王+2 双控单张收尾）', () => {
+  setMonteCarlo(true)
+  try {
+    // 地主手 [大王, 2]，两农民各 1 张小单。先出大王必胜 → 再出 2 无人能压
+    const s = playingState(55)
+    const lord = s.landlord
+    s.hands[lord] = Cs(15, 17)
+    s.hands[(lord + 1) % 3] = Cs(5)
+    s.hands[(lord + 2) % 3] = Cs(9)
+    s.lastPlay = null
+    s.turn = lord
+    let guard = 0
+    while (s.phase !== 'over' && guard++ < 40) {
+      const seat = s.turn
+      const act = aiDecide(playerView(s, seat), seat)
+      assert.ok(act && dispatch(s, act, seat).ok)
+    }
+    assert.equal(s.phase, 'over')
+    assert.equal(s.winner, lord, '地主双控单张必须赢下')
+  } finally {
+    setMonteCarlo(false)
+  }
 })
