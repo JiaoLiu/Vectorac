@@ -43,14 +43,19 @@
 }
 
 /* ⛶ 全屏沉浸模式：JS 会把 root 移到 document.body 下（portal），
-   fixed 包含块即视口，inset:0 直接铺满。与 mahjong 同款方案
-   （注：曾试过 100lvh 大视口，iOS 上 fixed 元素比可视视口高，
-   底部手牌反被地址栏压住，已回退） */
+   fixed 包含块即视口。与 mahjong/gomoku 同款方案：
+   1. height:auto 必须显式声明——基础类的 height:calc(100dvh-3.6rem)
+      （非全屏避开 navbar 用）若不覆盖，fixed+top:0+显式高度会让
+      bottom:0 失效，底部永远留白 3.6rem；
+   2. overflow-y:auto：iOS Safari 地址栏收展手势需要可滚动容器配合 */
 .ddz-root.ddz-full {
   position: fixed;
   inset: 0;
+  height: auto;
   z-index: 1000;
   min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 /* 强制横屏：竖屏持机时把整桌旋转 90° 铺满竖屏（用户看到横屏画面）。
    JS 按虚拟视口（宽高互换）重写媒体查询，并以内联精确尺寸覆盖这里的

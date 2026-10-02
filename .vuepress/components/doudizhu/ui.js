@@ -431,14 +431,13 @@ export default class DoudizhuUI {
       this.root.classList.toggle('ddz-fls', force)
       if (force) {
         // portal 状态下 root 已在 body 直下（setImmersive 保证），旋转后逻辑宽高互换。
-        // 尺寸必须用屏幕物理尺寸而非 innerWidth/innerHeight：iOS Safari 地址栏
-        // 可见时 innerHeight 被压缩（如 844→664），旋转后铺不满整块物理屏，
-        // 底部会露出一条空白。screen 取长短边在横竖屏机型上都稳定。
-        const sw = Math.min(window.screen.width, window.screen.height)
-        const sh = Math.max(window.screen.width, window.screen.height)
-        this.root.style.width = sh + 'px'
-        this.root.style.height = sw + 'px'
-        this.root.style.top = (-sw) + 'px'
+        // 尺寸用 innerWidth/innerHeight（当前可视区，与 mahjong 一致）：
+        // 铺满可视区且不溢出；地址栏收起/展开时 resize 会带着 _flsApply 重算，
+        // 始终贴合。曾试过 screen 物理尺寸（想盖住地址栏），结果地址栏展开时
+        // 旋转桌面反而超出可视区、左缘被地址栏盖住——已回退
+        this.root.style.width = window.innerHeight + 'px'
+        this.root.style.height = window.innerWidth + 'px'
+        this.root.style.top = (-window.innerWidth) + 'px'
       } else {
         // 解除旋转：清掉内联尺寸，全屏时改由 CSS inset:0 铺满
         this.root.style.width = ''
