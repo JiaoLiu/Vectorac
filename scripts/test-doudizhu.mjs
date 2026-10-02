@@ -133,6 +133,27 @@ test('play: 首出自由，跟牌必须压过或不出，两不出后清圈', ()
   assert.equal(s.lastPlay, null, '清圈后自由出牌')
 })
 
+test('play: 出牌展示排序（顺子降序、带翅膀主体前翅膀后）', () => {
+  const s = playingState()
+  const lord = s.landlord
+  const clearTrick = () => { dispatch(s, { type: 'pass' }, s.turn); dispatch(s, { type: 'pass' }, s.turn) }
+  // 手里始终留两张 A：出牌后手牌不空，避免触发终局（L441 出完即 finish）
+  // 顺子：从大到小展示，与手牌读牌习惯一致
+  s.hands[lord] = Cs(3, 4, 5, 6, 7, 14, 14)
+  assert.ok(dispatch(s, { type: 'play', cards: s.hands[lord].slice(0, 5) }, lord).ok)
+  assert.deepEqual(s.lastPlay.cards.map(rankOf), [7, 6, 5, 4, 3], '顺子降序')
+  // 三带一：主体 3 张在前、翅膀在后（纯降序会变成 J,3,3,3）
+  clearTrick()
+  s.hands[lord] = Cs(3, 3, 3, 11, 14, 14)
+  assert.ok(dispatch(s, { type: 'play', cards: s.hands[lord].slice(0, 4) }, lord).ok)
+  assert.deepEqual(s.lastPlay.cards.map(rankOf), [3, 3, 3, 11], '三带一主体前翅膀后')
+  // 飞机带单：连三主体降序在前、翅膀降序在后
+  clearTrick()
+  s.hands[lord] = Cs(5, 5, 5, 6, 6, 6, 9, 12, 14, 14)
+  assert.ok(dispatch(s, { type: 'play', cards: s.hands[lord].slice(0, 8) }, lord).ok)
+  assert.deepEqual(s.lastPlay.cards.map(rankOf), [6, 6, 6, 5, 5, 5, 12, 9], '飞机主体前翅膀后')
+})
+
 test('play: 牌不在手中 / 牌型非法 / 非轮次 都被拒绝', () => {
   const s = playingState()
   const lord = s.landlord

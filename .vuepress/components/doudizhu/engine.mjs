@@ -145,6 +145,34 @@ export function classifyCombo(cards) {
   return null
 }
 
+// 出牌展示排序：与手牌一致从大到小；带翅膀牌型（三带/四带/飞机带翅）
+// 主体在前、翅膀在后——纯降序会把大点翅膀排到主体前面（333+J → J,3,3,3），
+// 纯升序又让小翅膀打头（JJJ+3 → 3,J,J,J），都读不顺。
+// classifyCombo 的 rank 即主体点数（飞机族 = 连三最高位），据此分主体/翅膀
+function orderPlayedCards(cards, combo) {
+  const desc = cards.slice().sort(byRankDesc)
+  if (!combo) return desc
+  let bodyCount = 0
+  let bodyRanks = null
+  if (combo.type === 'trio_solo' || combo.type === 'trio_pair') { bodyCount = 3; bodyRanks = [combo.rank] }
+  else if (combo.type === 'quad_solo' || combo.type === 'quad_pair') { bodyCount = 4; bodyRanks = [combo.rank] }
+  else if (combo.type === 'plane_solo' || combo.type === 'plane_pair') {
+    bodyCount = 3
+    const k = Math.floor(cards.length / (combo.type === 'plane_solo' ? 4 : 5))
+    bodyRanks = []
+    for (let r = combo.rank; bodyRanks.length < k; r--) bodyRanks.push(r)
+  } else return desc
+  const used = new Map()
+  const body = []
+  const wings = []
+  for (const c of desc) {
+    const r = rankOf(c)
+    const usedN = used.get(r) || 0
+    if (bodyRanks.includes(r) && usedN < bodyCount) { body.push(c); used.set(r, usedN + 1) } else wings.push(c)
+  }
+  return body.concat(wings) // body / wings 内部保持降序
+}
+
 // ---------- 牌型比较 ----------
 export function canBeat(a, b) {
   if (!a || !b) return false
@@ -397,7 +425,8 @@ export function dispatch(state, action, seat) {
   const combo = classifyCombo(action.cards)
   const hand = state.hands[seat]
   state.hands[seat] = hand.filter(c => !action.cards.includes(c))
-  state.lastPlay = { seat, combo, cards: action.cards.slice().sort(byRankAsc) }
+  // 出牌记录：结构感知排序（序列降序、带牌主体在前），展示与手牌读牌习惯一致
+  state.lastPlay = { seat, combo, cards: orderPlayedCards(action.cards, combo) }
   state.passCount = 0
   state.trickPasses = []
   state.playCount[seat]++
