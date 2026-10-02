@@ -657,13 +657,14 @@ body.ddz-lock { overflow: hidden; }
      内移到 132px 且下移到 36%，既不被面板遮挡又更靠近视觉中心 */
   .ddz-played-left { left: 132px; top: 36%; }
   .ddz-played-right { right: 132px; top: 36%; }
-  .ddz-played-me { top: auto; bottom: calc(var(--card-w) * 2.05 + 34px); }
-  /* 操作按钮悬浮在手牌上方，不挤占纵向空间；
-     z-index 必须高于手牌（牌 z-index 最大 19），否则选牌弹起后盖住按钮 */
+  .ddz-played-me { top: auto; bottom: calc(var(--card-w) * 2.4 + 60px); }
+  /* 操作按钮悬浮在手牌上方：弹起高度 -0.26×card-w + 手牌 padding 0.28×card-w，
+     此前 1.72+12 时按钮下缘与弹起的牌顶重叠约 40px（"叫分按钮挡手牌"），
+     抬到 2.4 彻底让位；z-index 仍需高于手牌（牌最大 19）防选牌盖按钮 */
   .ddz-actions {
     position: absolute;
     left: 50%;
-    bottom: calc(var(--card-w) * 1.72 + 12px);
+    bottom: calc(var(--card-w) * 2.4 + 10px);
     transform: translateX(-50%);
     min-height: 0;
     padding: 0;

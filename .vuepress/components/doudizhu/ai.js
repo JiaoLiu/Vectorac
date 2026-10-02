@@ -166,6 +166,14 @@ export function chooseLead(view, hand, seat) {
       (c.type === 'single' && c.rank >= 14 ? 30 : 0) +
       // 带走最小散牌的奖励——对手报单时对单张不适用（那正是要送走人的牌）
       (c.cards.some(x => rankOf(x) === minRank) && !(oppOnOne && c.type === 'single') ? -14 : 0)
+    // 三带一/三带二/飞机带翅膀：带的牌越小越好（333+J 别去带 A）。
+    // 主牌外的"翅膀"张数少、点数小 = 保留大控制牌在后手
+    if (c.type === 'trio_solo' || c.type === 'trio_pair' || c.type === 'plane_solo' || c.type === 'plane_pair') {
+      const wings = c.cards.filter(x => rankOf(x) !== c.rank && !(c.run && c.run.includes(rankOf(x))))
+      let wingCost = 0
+      for (const w of wings) wingCost += rankOf(w) * 2
+      s += wingCost
+    }
     if (oppOnOne) {
       if (c.type === 'single') {
         // 对手报单：出单≈直接送走；万不得已要出，出越大越好（压不穿）

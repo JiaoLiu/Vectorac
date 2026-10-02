@@ -375,3 +375,31 @@ test('ai: 队友报单时喂最小单张', () => {
   assert.equal(combo.type, 'single', '队友报单应喂单张')
   assert.equal(combo.rank, 3, '喂最小的单张')
 })
+
+test('ai: 双三张先出小的三带一（333+散 不拆 JJJ）', () => {
+  // 手牌 333 JJJ 7 10 A：应出 333+7（最小三张带最小散牌），
+  // 而不是 JJJ+3 把 333 拆散（用户实测吐槽点）
+  const s = playingState(40)
+  const seat = s.turn
+  s.hands[seat] = Cs(3, 3, 3, 11, 11, 11, 7, 10, 14)
+  s.lastPlay = null
+  const act = aiDecide(playerView(s, seat), seat)
+  assert.equal(act.type, 'play')
+  const combo = classifyCombo(act.cards)
+  assert.equal(combo.type, 'trio_solo', '三张应带单张')
+  assert.equal(combo.rank, 3, '先出 333（小的三张），不拆 JJJ')
+})
+
+test('ai: 三带一带最小散牌（333+7 而非 333+A）', () => {
+  const s = playingState(41)
+  const seat = s.turn
+  s.hands[seat] = Cs(3, 3, 3, 7, 14, 15)
+  s.lastPlay = null
+  const act = aiDecide(playerView(s, seat), seat)
+  const combo = classifyCombo(act.cards)
+  assert.equal(combo.type, 'trio_solo')
+  assert.equal(combo.rank, 3)
+  // 带的必须是 7（rank 7），不能是 A/2
+  const wing = act.cards.find(c => classifyCombo([c]).rank !== 3)
+  assert.equal(classifyCombo([wing]).rank, 7, '三带一带最小的散牌 7，不烧 A/2')
+})
