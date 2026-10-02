@@ -45,7 +45,9 @@ function buildEntries() {
   m.set('peng', '碰')
   m.set('gang', '杠')
   m.set('hu', '胡了')
-  m.set('zimo', '自摸')
+  // 自摸：旧文案「自摸」两字 1.3s 太短促（用户反馈），改庆祝式长句，
+  // 与「胡了」的语气衔接，时长约 2s（zimo.mp3 曾在满音量处被硬切，2026-10-02 已临时 ffmpeg 补淡出）
+  m.set('zimo', '自摸，胡喽！')
   for (const [suit, name] of SUITS) {
     RANKS.forEach((r, i) => m.set(`${suit}${i + 1}`, r + name))
   }

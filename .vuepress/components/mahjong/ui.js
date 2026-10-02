@@ -387,6 +387,7 @@ export default class ScmjUI {
     this._onAudioGesture = ev => {
       if (ev.target && ev.target.closest && ev.target.closest('.scmj-bubble-voice')) return
       this._resumeVoiceFromGesture()
+      this._primeSpeakEl()
     }
     this.root.addEventListener('pointerdown', this._onAudioGesture, true)
     this.root.addEventListener('pointerup', this._onAudioGesture, true)
@@ -3676,30 +3677,50 @@ export default class ScmjUI {
     this._voiceNow = null
   }
 
+  /** 手势栈内解锁事件播报元素（碰/杠/胡/自摸/报牌共用）：静音 wav 播一次，
+      iOS Safari 逐元素播放许可终身有效，之后 AI 回合的播报不再被 autoplay 拒绝 */
+  _primeSpeakEl() {
+    if (this._destroyed || this._speakPrimed || this._speakPriming) return
+    if (!this._speakEl) {
+      const el = new Audio()
+      el.preload = 'auto'
+      this._speakEl = el
+    }
+    const a = this._speakEl
+    const bytes = new Uint8Array(204), v = new DataView(bytes.buffer)
+    const str = (at, s) => { for (let i = 0; i < s.length; i++) bytes[at + i] = s.charCodeAt(i) }
+    str(0, 'RIFF'); v.setUint32(4, 196, true); str(8, 'WAVEfmt '); v.setUint32(16, 16, true)
+    v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, 8000, true)
+    v.setUint32(28, 16000, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true)
+    str(36, 'data'); v.setUint32(40, 160, true)
+    a.src = 'data:audio/wav;base64,' + btoa(String.fromCharCode.apply(null, bytes))
+    this._speakPriming = true
+    try {
+      Promise.resolve(a.play()).then(() => { this._speakPrimed = true }, () => {})
+        .then(() => { this._speakPriming = false })
+    } catch (e) { this._speakPriming = false }
+  }
+
   _playVoiceItem(item) {
     const { key } = item
     // 播完/失败/超时统一收尾：只有没被更新的播报顶替时才释放占用标记
     const done = () => {
       if (this._voiceNow === item) this._voiceNow = null
     }
-    if (!this._voiceCache) this._voiceCache = {}
-    let clip = this._voiceCache[key]
-    if (!clip) {
-      try {
-        clip = new Audio(`${VOICE_BASE}/${key}.mp3`)
-        clip.preload = 'auto'
-        clip.addEventListener('error', () => { clip._broken = true })
-        this._voiceCache[key] = clip
-      } catch (e) {
-        this._speakSynth(item)
-        return
-      }
+    // 单一复用元素（iOS Safari 逐元素解锁：每个 new Audio 都要在用户手势栈内
+    // 成功播放过一次才能在后台自动播。自摸/碰/杠/胡常发生在 AI 回合（setTimeout），
+    // 独立元素首次 play() 被拒 → _broken → 永久回退普通话合成——用户听到的
+    // 「自摸变普通话又短促」正是合成音。复用一个手势内 prime 过的元素换 src 播放，
+    // 解锁状态终身有效）。src 直切，浏览器自带 HTTP 缓存，无需预取。
+    if (!this._speakEl) {
+      const el = new Audio()
+      el.preload = 'auto'
+      this._speakEl = el
     }
-    if (clip._broken) {
-      this._speakSynth(item)
-      return
-    }
+    const clip = this._speakEl
     try {
+      clip.pause()
+      clip.src = `${VOICE_BASE}/${key}.mp3`
       clip.currentTime = 0
       let settled = false
       const timer = setTimeout(() => finish(), 5000) // 加载卡死兜底，防占用标记永不释放
@@ -3712,27 +3733,23 @@ export default class ScmjUI {
         if (this._voicePlaying === clip) this._voicePlaying = null
         done()
       }
-      const onErr = () => { clip._broken = true; finish() }
+      // 仅文件级错误（404/解码失败）回退浏览器合成；autoplay 被拒不回退——
+      // 合成音是普通话，用户明确要求全部用四川话版本，宁可这遍静默
+      const onErr = () => {
+        finish()
+        if (this._voiceNow === item) this._speakSynth(item)
+        else done()
+      }
       clip.addEventListener('ended', finish, { once: true })
       clip.addEventListener('error', onErr, { once: true })
       const p = clip.play()
       this._voicePlaying = clip
       if (p && p.catch) {
         p.catch(() => {
-          if (settled) return
-          settled = true
-          clearTimeout(timer)
-          clip.removeEventListener('ended', finish)
-          clip.removeEventListener('error', onErr)
-          clip._broken = true
-          if (this._voicePlaying === clip) this._voicePlaying = null
-          // 文件加载失败回退合成；若该条已被顶替则无需再播
-          if (this._voiceNow === item) this._speakSynth(item)
-          else done()
+          finish() // 未解锁：本遍静默，待手势 prime 后恢复（不播普通话）
         })
       }
     } catch (e) {
-      clip._broken = true
       this._speakSynth(item)
     }
   }
