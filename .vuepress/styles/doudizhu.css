@@ -662,11 +662,13 @@ body.ddz-lock { overflow: hidden; }
   .ddz-root.ddz-full { --card-w: clamp(46px, 13.5vh, 68px); --mini-w: clamp(22px, 6.5vh, 30px); }
   /* 对手面板贴左右边中 */
   .ddz-opp { top: 50%; transform: translateY(-56%); }
-  /* 出牌区移到顶带（topbar 下方）：与两侧面板带（垂直居中 ~50%）和
-     自家出牌带（底部手牌上方）完全错开，长牌型横排不再贴住/穿过
-     对家头像与牌背；left 118 = 面板右缘 104 + 14px 间隙 */
-  .ddz-played-left { left: 118px; top: 16%; }
-  .ddz-played-right { right: 118px; top: 16%; }
+  /* 出牌区移到中央上带（底牌下方、中线两侧）：renderPlayed 同屏只显示
+     lastPlay 一组牌，三家共用中央区互不冲突；牌面放大更醒目。
+     注意 top 相对 .ddz-table（topbar 之下）：69 = 视觉 108（topbar 39 + 69），
+     即底牌区底 92 + 16px 间隙；左家右缘贴中线左 14px，
+     最宽可延伸到面板右缘（50vw-130 ≈ 面板 118+间隙） */
+  .ddz-played-left { left: auto; right: calc(50% + 14px); top: 69px; align-items: flex-end; max-width: calc(50vw - 130px); }
+  .ddz-played-right { right: auto; left: calc(50% + 14px); top: 69px; align-items: flex-start; max-width: calc(50vw - 130px); }
   /* 顶带高度有限（牌高 ~68px + 间隙），横屏隐藏牌型文字标签省一整行 */
   .ddz-played .ddz-combo-label { display: none; }
   .ddz-played-me { top: auto; bottom: calc(var(--card-w) * 2.4 + 60px); }
@@ -718,8 +720,32 @@ body.ddz-lock { overflow: hidden; }
   .ddz-played-right { right: 112px; }
 }
 /* 极窄竖屏（320 宽 / SE1）：半场净空 ~96px，长牌型频繁换行撑高出牌区，
-   上移到 topbar 下方并隐藏牌型标签，避免换行后压到自家出牌带 */
+   上移到 topbar 下方并隐藏牌型标签，避免换行后压到自家出牌带；
+   me 出牌同步上移（基础 top 44% 在 568 屏 = 250，牌 67 + 标签 21
+   会压到 status 顶 336） */
 @media (max-width: 359px) and (orientation: portrait) {
   .ddz-played-left, .ddz-played-right { top: 18%; }
+  .ddz-played-me { top: 18%; }
   .ddz-played .ddz-combo-label { display: none; }
+}
+
+/* ---------- 竖屏中央出牌带（屏高≥601：主流机型） ----------
+   renderPlayed 同屏只显示 lastPlay 一组牌（每次全清重画），三家出牌区
+   共用中央同一水平带（对手面板下方），谁的牌谁显示——牌面大且居中，
+   替代旧两侧布局（牌小、贴边、牌桌中央大量留白）。
+   top 相对 .ddz-table（topbar 高 85 之下）：227 = 视觉 312
+   = 面板底 295 + 17px 间隙；667 屏 status 视觉顶 429，
+   312 + 大卡 71 + 标签 21 = 404 仍留 25px 余量 */
+@media (orientation: portrait) and (min-height: 601px) {
+  .ddz-played-left { left: auto; right: calc(50% + 14px); top: 227px; align-items: flex-end; max-width: calc(50vw - 16px); }
+  .ddz-played-right { right: auto; left: calc(50% + 14px); top: 227px; align-items: flex-start; max-width: calc(50vw - 16px); }
+  .ddz-played-me { top: 227px; max-width: calc(100vw - 24px); }
+  /* 牌背深重叠（QQ 式细条叠放，每张露 5px）：20 张牌背列 205→129px，
+     面板底视觉 364→288，给出牌带 312 让出 24px 间隙（剩牌数另有
+     "XX 张"文字冗余，不怕数不清） */
+  .ddz-back + .ddz-back { margin-top: -29px; }
+  /* 半场净空 ~175px，长牌型档位比横屏再收一档；超宽由 wrap 兜底换行 */
+  .ddz-played-cards.ddz-many { --pw: calc(var(--card-w) * 0.65); }
+  .ddz-played-cards.ddz-huge { --pw: calc(var(--card-w) * 0.5); }
+  .ddz-played-cards.ddz-mass { --pw: calc(var(--card-w) * 0.42); }
 }
