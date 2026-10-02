@@ -323,7 +323,20 @@ export default class DoudizhuUI {
     const coarse = (() => {
       try { return window.matchMedia('(pointer: coarse)').matches } catch (e) { return false }
     })()
+    const already = this.root.classList.contains('ddz-full')
     if (on) {
+      // 幂等：已全屏时只确保垫层在位，不重复 portal/建 anchor
+      // （大厅点全屏→开始游戏会连调两次 true；重复建 anchor 会让
+      //   退出时 root 回到 body 内的错误位置，页面结构错乱）
+      if (already) {
+        if (coarse) {
+          document.body.classList.remove('ddz-lock')
+          if (!this._scrollSpacer) this._scrollSpacer = h('div', 'ddz-scroll-spacer')
+          if (!this._scrollSpacer.parentNode) document.body.appendChild(this._scrollSpacer)
+          this._syncSpacer()
+        }
+        return
+      }
       this._anchor = document.createComment('ddz-root-anchor')
       if (this.root.parentNode) this.root.parentNode.insertBefore(this._anchor, this.root)
       document.body.appendChild(this.root)
@@ -332,12 +345,12 @@ export default class DoudizhuUI {
       if (this.navbar) this.navbar.style.display = 'none'
       if (coarse) {
         // 触屏设备：解锁文档 + 加滚动垫层（工具栏收起机制，见 _syncSpacer 注释）。
-        // 桌面保持锁定：没有工具栏问题，锁住还可避免出现页面滚动条
+        // 桌面保持锁定：没有工具栏问题，锁住还可避免出现页面滚动条。
+        // 垫层可能被 setImmersive(false) remove 过（引用未清），必须检查
+        // parentNode 重新挂回——否则二次进全屏垫层缺失，导航栏又收不起了
         document.body.classList.remove('ddz-lock')
-        if (!this._scrollSpacer) {
-          this._scrollSpacer = h('div', 'ddz-scroll-spacer')
-          document.body.appendChild(this._scrollSpacer)
-        }
+        if (!this._scrollSpacer) this._scrollSpacer = h('div', 'ddz-scroll-spacer')
+        if (!this._scrollSpacer.parentNode) document.body.appendChild(this._scrollSpacer)
         this._syncSpacer()
       }
       try {
@@ -350,11 +363,13 @@ export default class DoudizhuUI {
         }
       } catch (e) { /* 不支持则仅使用 CSS 全屏 */ }
     } else {
+      if (!already) return // 幂等：未全屏时退出无操作
       this.root.classList.remove('ddz-full')
       this.root.style.width = ''
       this.root.style.height = ''
       this.root.style.top = ''
       if (this._scrollSpacer && this._scrollSpacer.parentNode) this._scrollSpacer.remove()
+      this._scrollSpacer = null // 置空：下次进全屏重新创建挂载
       document.body.classList.add('ddz-lock') // 回到大厅：恢复文档锁定
       if (this._anchor && this._anchor.parentNode) {
         this._anchor.parentNode.insertBefore(this.root, this._anchor)
