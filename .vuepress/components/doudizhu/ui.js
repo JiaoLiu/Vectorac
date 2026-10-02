@@ -128,6 +128,7 @@ export default class DoudizhuUI {
     // 并重算手牌错位（否则转屏后还用旧宽度算出的负边距，牌会溢出看不见）。
     this.fitViewport = () => {
       if (this.root.classList.contains('ddz-full')) {
+        if (this._syncSpacer) this._syncSpacer()
         if (this.resizeFx) this.resizeFx()
         if (this.fitHandShift) this.fitHandShift()
         return
@@ -138,11 +139,14 @@ export default class DoudizhuUI {
       if (this.resizeFx) this.resizeFx()
       if (this.fitHandShift) this.fitHandShift()
     }
-    // 本页禁止整页滚动（游戏视口精确贴合，滚动只会触发上述漂移）
-    this.bodyPrevOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
+    // 本页禁止整页滚动（游戏视口精确贴合，滚动只会触发上述漂移）。
+    // 用 class 而非 inline style：移动端全屏期间需要临时解除（见 setImmersive），
+    // class 切换即可，不必记录/还原 inline 值
+    document.body.classList.add('ddz-lock')
     window.addEventListener('resize', this.fitViewport)
     window.addEventListener('orientationchange', this.fitViewport)
+    // iOS Safari 工具栏收起/展开有时只触发 visualViewport resize（不触发 window resize）
+    if (window.visualViewport) window.visualViewport.addEventListener('resize', this.fitViewport)
     this.buildDom()
     this.bindGestures()
     // 强制横屏机制（竖屏持机时旋转桌面铺满）。与 mahjong 对齐：
@@ -302,8 +306,22 @@ export default class DoudizhuUI {
   // ---------- 全屏 / 强制横屏 ----------
   // 沉浸全屏：root 移入 document.body（portal，fixed 包含块即视口）+ 隐藏站点
   // navbar；触屏设备再对 root 请求原生全屏（Android 生效；iOS 不支持则仅 CSS）。
+  // 滚动垫层：iOS Safari 工具栏收起的先决条件是「文档可滚动」。
+  // 全屏 root 是 fixed（不占文档流），portal 走后页面内容塌缩，
+  // scrollHeight≈0 文档滚不动 → 上滑手势无法被识别为页面滚动 →
+  // 工具栏永远收不起。垫一块 innerHeight+120px 的隐形层保证文档
+  // 永远可滚；fixed 游戏不随文档滚动，工具栏收起后 resize 触发
+  // inset:0 自动长高铺满（麻将等页面背后天然有长内容，无需此层）
+  _syncSpacer() {
+    if (!this._scrollSpacer) return
+    this._scrollSpacer.style.height = (window.innerHeight + 120) + 'px'
+  }
+
   setImmersive(on) {
     if (this._destroyed) return
+    const coarse = (() => {
+      try { return window.matchMedia('(pointer: coarse)').matches } catch (e) { return false }
+    })()
     if (on) {
       this._anchor = document.createComment('ddz-root-anchor')
       if (this.root.parentNode) this.root.parentNode.insertBefore(this._anchor, this.root)
@@ -311,8 +329,17 @@ export default class DoudizhuUI {
       this.root.classList.add('ddz-full')
       this.root.style.height = '' // 清掉非全屏时的贴合高度，改由 CSS inset:0
       if (this.navbar) this.navbar.style.display = 'none'
+      if (coarse) {
+        // 触屏设备：解锁文档 + 加滚动垫层（工具栏收起机制，见 _syncSpacer 注释）。
+        // 桌面保持锁定：没有工具栏问题，锁住还可避免出现页面滚动条
+        document.body.classList.remove('ddz-lock')
+        if (!this._scrollSpacer) {
+          this._scrollSpacer = h('div', 'ddz-scroll-spacer')
+          document.body.appendChild(this._scrollSpacer)
+        }
+        this._syncSpacer()
+      }
       try {
-        const coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches
         if (coarse && !document.fullscreenElement && !document.webkitFullscreenElement) {
           const req = this.root.requestFullscreen || this.root.webkitRequestFullscreen
           if (req) {
@@ -326,6 +353,8 @@ export default class DoudizhuUI {
       this.root.style.width = ''
       this.root.style.height = ''
       this.root.style.top = ''
+      if (this._scrollSpacer && this._scrollSpacer.parentNode) this._scrollSpacer.remove()
+      document.body.classList.add('ddz-lock') // 回到大厅：恢复文档锁定
       if (this._anchor && this._anchor.parentNode) {
         this._anchor.parentNode.insertBefore(this.root, this._anchor)
         this._anchor.remove()
@@ -1096,12 +1125,15 @@ export default class DoudizhuUI {
     window.removeEventListener('resize', this.fitViewport)
     window.removeEventListener('orientationchange', this.fitViewport)
     window.removeEventListener('load', this.fitViewport)
+    if (window.visualViewport) window.visualViewport.removeEventListener('resize', this.fitViewport)
     if (this.fitTimers) this.fitTimers.forEach(clearTimeout)
     if (this.fxRaf) cancelAnimationFrame(this.fxRaf)
     this.rocketEl = null
     if (this.cwFab) this.cwFab.style.display = this.cwFabPrevDisplay || ''
     if (this.navbar) this.navbar.style.display = ''
-    document.body.style.overflow = this.bodyPrevOverflow || ''
+    document.body.classList.remove('ddz-lock')
+    if (this._scrollSpacer && this._scrollSpacer.parentNode) this._scrollSpacer.remove()
+    this._scrollSpacer = null
     // 全屏 portal 状态移回文档流原位，并清掉强制横屏残留
     this.root.classList.remove('ddz-full')
     this.root.classList.remove('ddz-fls')

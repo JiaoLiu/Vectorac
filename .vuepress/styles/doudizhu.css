@@ -47,15 +47,27 @@
    1. height:auto 必须显式声明——基础类的 height:calc(100dvh-3.6rem)
       （非全屏避开 navbar 用）若不覆盖，fixed+top:0+显式高度会让
       bottom:0 失效，底部永远留白 3.6rem；
-   2. overflow-y:auto：iOS Safari 地址栏收展手势需要可滚动容器配合 */
+   2. overflow:hidden——root 不做滚动容器，上滑手势才能穿透到
+      文档（配合 body 解锁 + 垫层，iOS Safari 才会收起底部工具栏；
+      若 root 为 overflow:auto，手势被 root 吃掉，工具栏永远收不起） */
 .ddz-root.ddz-full {
   position: fixed;
   inset: 0;
   height: auto;
   z-index: 1000;
   min-height: 0;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
+  overflow: hidden;
+}
+/* 大厅/桌面端全屏：锁文档滚动（防微溢漂移 / 防桌面滚动条）。
+   移动端全屏期间 JS 会移除 ddz-lock 并加滚动垫层——文档可滚动
+   是 iOS Safari 上滑收起工具栏的先决条件（fixed 游戏不动，
+   工具栏收起后 resize 触发 inset:0 自动长高铺满） */
+body.ddz-lock { overflow: hidden; }
+.ddz-scroll-spacer {
+  position: static;
+  width: 1px;
+  visibility: hidden;
+  pointer-events: none;
 }
 /* 强制横屏：竖屏持机时把整桌旋转 90° 铺满竖屏（用户看到横屏画面）。
    JS 按虚拟视口（宽高互换）重写媒体查询，并以内联精确尺寸覆盖这里的
