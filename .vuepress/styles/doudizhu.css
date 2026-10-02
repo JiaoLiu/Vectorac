@@ -41,16 +41,13 @@
   overflow: hidden;
 }
 
-/* ⛶ 全屏沉浸模式：脱离文档流覆盖整屏。
-   注意：祖先 .theme-reco-content 带 transform，fixed 包含块会变成该祖先，
-   inset:0 会随祖先高度塌陷为 0，必须显式用 vw/dvh 视口单位定尺寸 */
+/* ⛶ 全屏沉浸模式：JS 会把 root 移到 document.body 下（portal），
+   fixed 包含块即视口，inset:0 直接铺满，无任何坐标补偿 */
 .ddz-root.ddz-full {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100dvh !important;
+  inset: 0;
   z-index: 1000;
+  height: auto !important;
   min-height: 0;
 }
 /* 桌面/全屏大视口：牌面继续放大（参考小丑牌 108px 手感） */
@@ -140,22 +137,27 @@
   width: var(--card-w);
   height: calc(var(--card-w) * 1.42);
   flex: none;
-  background: linear-gradient(155deg, #fffef8 0%, #faf3e3 55%, #efe6cf 100%);
-  border: 1px solid #c9bc9c;
+  background:
+    radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.9), transparent 55%),
+    linear-gradient(155deg, #fffef9 0%, #f9f2e0 55%, #ede2c8 100%);
+  border: 1px solid #b6a886;
   border-radius: calc(var(--card-w) * 0.09);
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba(255, 255, 255, 0.55);
-  color: var(--ink);
+  box-shadow:
+    0 2px 5px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    inset 0 -1px 2px rgba(120, 96, 50, 0.18);
+  color: #22222a;
   cursor: pointer;
   transition: transform 0.12s ease, box-shadow 0.12s ease;
   box-sizing: border-box;
 }
-.ddz-card.ddz-red { color: #d2303c; }
+.ddz-card.ddz-red { color: #c22834; }
 
 /* 角标：左上 / 右下（倒置） */
 .ddz-corner {
   position: absolute;
-  top: calc(var(--card-w) * 0.06);
-  left: calc(var(--card-w) * 0.07);
+  top: calc(var(--card-w) * 0.055);
+  left: calc(var(--card-w) * 0.065);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -164,46 +166,104 @@
 .ddz-corner-b {
   top: auto;
   left: auto;
-  right: calc(var(--card-w) * 0.07);
-  bottom: calc(var(--card-w) * 0.06);
+  right: calc(var(--card-w) * 0.065);
+  bottom: calc(var(--card-w) * 0.055);
   transform: rotate(180deg);
 }
 .ddz-rank {
-  font-size: calc(var(--card-w) * 0.3);
-  font-weight: 800;
+  font-size: calc(var(--card-w) * 0.29);
+  font-weight: 900;
+  font-family: "Helvetica Neue", "Arial Narrow Bold", Arial, sans-serif;
+  letter-spacing: calc(var(--card-w) * -0.012);
 }
-.ddz-suit { font-size: calc(var(--card-w) * 0.26); }
+.ddz-suit { font-size: calc(var(--card-w) * 0.25); }
 
-/* 中央花色水印 */
+/* 中央花色水印：微浮雕 */
 .ddz-pip {
   position: absolute;
   inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: calc(var(--card-w) * 0.54);
-  opacity: 0.92;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
+  font-size: calc(var(--card-w) * 0.52);
+  opacity: 0.94;
+  text-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.75),
+    0 -1px 1px rgba(0, 0, 0, 0.12);
   pointer-events: none;
 }
 
-/* 王牌面 */
+/* J/Q/K 人物牌面：金框肖像风 */
+.ddz-pip-face {
+  flex-direction: column;
+  gap: calc(var(--card-w) * 0.02);
+}
+.ddz-pip-face::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: calc(var(--card-w) * 0.66);
+  height: calc(var(--card-w) * 0.86);
+  border-radius: calc(var(--card-w) * 0.08);
+  background: linear-gradient(160deg, rgba(245, 197, 66, 0.16), rgba(217, 165, 32, 0.08));
+  border: 1px solid rgba(217, 165, 32, 0.45);
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.35);
+}
+.ddz-face-glyph {
+  position: relative;
+  font-size: calc(var(--card-w) * 0.46);
+  line-height: 1;
+}
+.ddz-face-suit {
+  position: relative;
+  font-size: calc(var(--card-w) * 0.2);
+  line-height: 1;
+}
+
+/* 王牌：整牌彩绘风（大王红金 / 小王墨灰） */
+.ddz-card.ddz-joker {
+  border-color: #8c6a1c;
+}
+.ddz-card.ddz-joker-big {
+  background:
+    radial-gradient(circle at 50% 28%, rgba(255, 226, 138, 0.55), transparent 52%),
+    linear-gradient(165deg, #e0453f 0%, #b02430 52%, #7c1420 100%);
+}
+.ddz-card.ddz-joker-small {
+  background:
+    radial-gradient(circle at 50% 28%, rgba(255, 255, 255, 0.35), transparent 52%),
+    linear-gradient(165deg, #5a5f6e 0%, #3b3f4c 52%, #23262f 100%);
+}
 .ddz-joker-face {
   position: absolute;
-  inset: calc(var(--card-w) * 0.08) 0;
+  inset: calc(var(--card-w) * 0.07);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: calc(var(--card-w) * 0.04);
-  font-weight: 900;
-  font-size: calc(var(--card-w) * 0.26);
-  writing-mode: vertical-lr;
-  letter-spacing: 2px;
+  gap: calc(var(--card-w) * 0.05);
+  border: 1px solid rgba(255, 224, 138, 0.55);
+  border-radius: calc(var(--card-w) * 0.06);
+  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.12);
+  color: #ffe9a8;
 }
-.ddz-joker-face .ddz-joker-icon { font-size: calc(var(--card-w) * 0.4); writing-mode: horizontal-tb; }
-.ddz-joker-big { color: #d2303c; }
-.ddz-joker-small { color: #2b2b2e; }
+.ddz-joker-small .ddz-joker-face { color: #e8e9ee; border-color: rgba(255, 255, 255, 0.35); }
+.ddz-joker-hat { font-size: calc(var(--card-w) * 0.34); filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.35)); }
+.ddz-joker-cn {
+  font-size: calc(var(--card-w) * 0.27);
+  font-weight: 900;
+  writing-mode: vertical-lr;
+  letter-spacing: calc(var(--card-w) * 0.04);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+}
+.ddz-joker-en {
+  font-size: calc(var(--card-w) * 0.11);
+  font-weight: 800;
+  letter-spacing: calc(var(--card-w) * 0.02);
+  opacity: 0.85;
+}
 
 .ddz-card.is-selected {
   transform: translateY(calc(var(--card-w) * -0.26));
@@ -226,8 +286,9 @@
 .ddz-card-mini .ddz-corner-b, .ddz-card-mini .ddz-pip { display: none; }
 .ddz-card-mini .ddz-rank { font-size: calc(var(--mini-w) * 0.38); }
 .ddz-card-mini .ddz-suit { font-size: calc(var(--mini-w) * 0.32); }
-.ddz-card-mini .ddz-joker-face { font-size: calc(var(--mini-w) * 0.28); letter-spacing: 0; }
-.ddz-card-mini .ddz-joker-face .ddz-joker-icon { display: none; }
+.ddz-card-mini .ddz-joker-face { inset: calc(var(--mini-w) * 0.07); gap: 0; }
+.ddz-card-mini .ddz-joker-hat, .ddz-card-mini .ddz-joker-en { display: none; }
+.ddz-card-mini .ddz-joker-cn { font-size: calc(var(--mini-w) * 0.28); letter-spacing: 0; }
 
 /* 牌背：红底金纹（QQ 经典） */
 .ddz-card-back {
@@ -594,6 +655,7 @@
 .ddz-settle-cards { display: flex; flex-wrap: wrap; gap: 2px; }
 .ddz-settle-empty { font-size: 12px; color: #7ee2a0; }
 .ddz-settle-level { margin: 8px 0 12px; font-size: 13px; color: #9fe6b8; }
+.ddz-settle-credit { margin-top: 10px; font-size: 10px; color: rgba(255, 255, 255, 0.38); }
 .ddz-settle-actions { display: flex; justify-content: center; gap: 12px; }
 
 /* ---------- 横屏专用布局 ---------- */

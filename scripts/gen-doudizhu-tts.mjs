@@ -231,6 +231,12 @@ async function main() {
     process.stdout.write(`… ${key} (${text})\n`)
     await writeAudio(file, await synth(text, apiKey, speaker))
   }
+
+  // 刷新语音清单：audio.js 只对清单内条目请求 mp3，其余走浏览器 TTS
+  const files = await fs.readdir(outDir).catch(() => [])
+  const keys = files.filter(f => f.endsWith('.mp3')).map(f => f.replace(/\.mp3$/, '')).sort()
+  await fs.writeFile(path.join(outDir, 'manifest.json'), JSON.stringify(keys, null, 1) + '\n')
+  console.log(`✓ manifest.json（${keys.length} 条）`)
 }
 
 main().catch((e) => {

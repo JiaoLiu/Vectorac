@@ -1,13 +1,18 @@
 // ============================================================
 // 斗地主音频（doudizhu/audio.js）
-// 零资源文件：WebAudio 程序化合成多轨 BGM（旋律/贝斯/和声垫/鼓组，
-// A/B 双段 chord loop）与音效；报牌语音走「预生成 mp3 优先、
-// 浏览器 speechSynthesis 兜底」，播放语音时 BGM 自动闪避（duck）。
+// BGM：真实录制音乐文件（/audio/doudizhu/bgm-kitsune.mp3，
+// Kevin MacLeod《Kawai Kitsune》CC BY 3.0，东方俏皮风），
+// <audio> 循环播放；文件加载失败回退 WebAudio 程序化合成 loop。
+// 音效：WebAudio 程序化合成。报牌语音：预生成 mp3 优先、
+// 浏览器 speechSynthesis 兜底，播放语音时 BGM 自动闪避（duck）。
 // BGM 默认开启，首次手势解锁（iOS 兼容）；音效/语音共用开关。
 // ============================================================
 
 const MUSIC_BASE_GAIN = 0.3
 const MUSIC_DUCK_GAIN = 0.07
+const BGM_URL = '/audio/doudizhu/bgm-kitsune.mp3'
+const BGM_VOLUME = 0.34
+const BGM_DUCK_VOLUME = 0.07
 
 export function createDoudizhuAudio() {
   let ctx = null
@@ -23,6 +28,8 @@ export function createDoudizhuAudio() {
   let voiceEl = null
   let voiceSrc = ''
   let duckDepth = 0
+  let bgmEl = null
+  let bgmFileOk = true // 文件加载失败置 false，回退合成 BGM
 
   function ensureCtx() {
     if (!ctx) {
@@ -47,9 +54,40 @@ export function createDoudizhuAudio() {
     return true
   }
 
-  // ---------- 多轨 BGM ----------
-  // 8 小节循环（每小节 8 个八分音符）：A 段 C-G-Am-F，B 段 F-G-Em-Am
-  // 数字 = 相对 C4 的半音数，-1 = 休止
+  // ---------- BGM：真实音乐文件优先，合成 loop 兜底 ----------
+  function getBgmEl() {
+    if (!bgmEl) {
+      bgmEl = new Audio(BGM_URL)
+      bgmEl.loop = true
+      bgmEl.preload = 'auto'
+      bgmEl.volume = 0
+      bgmEl.addEventListener('error', () => {
+        bgmFileOk = false
+        // 文件缺失时回退程序化 BGM
+        if (musicOn && ensureCtx()) startSynthMusic()
+      })
+    }
+    return bgmEl
+  }
+
+  function startMusic() {
+    if (bgmFileOk) {
+      const el = getBgmEl()
+      el.volume = duckDepth > 0 ? BGM_DUCK_VOLUME : BGM_VOLUME
+      const p = el.play()
+      // 未解锁（无手势）时静默等下一次 unlock；不做其它处理
+      if (p && p.catch) p.catch(() => {})
+      return
+    }
+    if (ensureCtx()) startSynthMusic()
+  }
+
+  function stopMusic() {
+    if (bgmEl) { try { bgmEl.pause() } catch { /* ignore */ } }
+    stopSynthMusic()
+  }
+
+  // ---------- 合成 BGM（兜底）：8 小节 A/B 双段 chord loop ----------
   const MEL = [
     // A 段：轻快五声性主题
     4, 7, 9, 7, 12, 9, 7, 4, // C
@@ -184,7 +222,7 @@ export function createDoudizhuAudio() {
     o.start(t); o.stop(t + dur + 0.05)
   }
 
-  function startMusic() {
+  function startSynthMusic() {
     if (musicTimer || !ctx) return
     step = 0
     nextTime = ctx.currentTime + 0.05
@@ -194,7 +232,7 @@ export function createDoudizhuAudio() {
     }, 120)
   }
 
-  function stopMusic() {
+  function stopSynthMusic() {
     if (musicTimer) { clearInterval(musicTimer); musicTimer = null }
   }
 
@@ -236,10 +274,18 @@ export function createDoudizhuAudio() {
     lose(t) { [392, 330, 262, 196].forEach((f, i) => tone(sfxBus, f, t + i * 0.14, 0.24, 'sine', 0.4)) }
   }
 
-  // ---------- 报牌语音：mp3 优先，浏览器 TTS 兜底 ----------
+  // ---------- 报牌语音：manifest 清单内 mp3 优先，浏览器 TTS 兜底 ----------
+  // manifest.json 由 scripts/gen-doudizhu-tts.mjs 生成（列出已合成的 key）；
+  // 未生成语音时全部走浏览器 TTS，避免逐个 404 的网络噪音。
   // 共享 <audio> 元素（iOS 需在用户手势里解锁一次）；播放期间 BGM duck。
   const SILENT_WAV =
     'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAIlYAAESsAAACABAAZGF0YQAAAAA='
+
+  let voiceManifest = null // null=加载中；Set<string>=就绪
+  fetch('/audio/doudizhu/manifest.json')
+    .then(r => (r.ok ? r.json() : []))
+    .then(list => { voiceManifest = new Set(Array.isArray(list) ? list : []) })
+    .catch(() => { voiceManifest = new Set() })
 
   function getVoiceEl() {
     if (!voiceEl) {
@@ -250,31 +296,38 @@ export function createDoudizhuAudio() {
   }
 
   function applyDuck() {
-    if (!musicBus || !musicOn) return
-    musicBus.gain.value = duckDepth > 0 ? MUSIC_DUCK_GAIN : MUSIC_BASE_GAIN
+    if (!musicOn) return
+    if (bgmEl && bgmFileOk) bgmEl.volume = duckDepth > 0 ? BGM_DUCK_VOLUME : BGM_VOLUME
+    if (musicBus) musicBus.gain.value = duckDepth > 0 ? MUSIC_DUCK_GAIN : MUSIC_BASE_GAIN
   }
 
-  function speakFallback(text) {
+  function speakFallback(text, done) {
+    const finish = () => { if (done) done() }
     try {
-      if (!('speechSynthesis' in window) || !text) return
+      if (!('speechSynthesis' in window) || !text) { finish(); return }
       window.speechSynthesis.cancel()
       const u = new SpeechSynthesisUtterance(text)
       u.lang = 'zh-CN'
       u.rate = 1.15
       u.volume = 0.9
-      u.onended = u.onerror = () => { duckDepth = Math.max(0, duckDepth - 1); applyDuck() }
+      u.onended = u.onerror = finish
       window.speechSynthesis.speak(u)
-    } catch { /* 无 TTS 则静默 */ }
+    } catch { finish() }
   }
 
   function voice(key, text) {
     if (!soundOn) return
-    const el = getVoiceEl()
-    // 上一条未播完直接打断（报牌节奏快，与 QQ 一致）
-    try { el.pause() } catch { /* ignore */ }
     duckDepth++
     applyDuck()
     const done = () => { duckDepth = Math.max(0, duckDepth - 1); applyDuck() }
+    // 清单未就绪或无此条目：直接浏览器 TTS，不请求 mp3
+    if (!voiceManifest || !voiceManifest.has(key)) {
+      speakFallback(text, done)
+      return
+    }
+    const el = getVoiceEl()
+    // 上一条未播完直接打断（报牌节奏快，与 QQ 一致）
+    try { el.pause() } catch { /* ignore */ }
     el.onended = done
     el.onerror = () => { done(); speakFallback(text) }
     const src = `/audio/doudizhu/${key}.mp3`
@@ -293,7 +346,8 @@ export function createDoudizhuAudio() {
 
   return {
     unlock() {
-      if (!ensureCtx()) return
+      // WebAudio（音效/兜底 BGM）与文件 BGM 都需在用户手势里启动
+      ensureCtx()
       if (musicOn) startMusic()
       // iOS：共享 <audio> 必须在用户手势里 play 一次才解锁后续 programmatic play
       const el = getVoiceEl()
@@ -316,7 +370,8 @@ export function createDoudizhuAudio() {
     setMusicOn(on) {
       musicOn = on
       if (musicBus) musicBus.gain.value = on ? (duckDepth > 0 ? MUSIC_DUCK_GAIN : MUSIC_BASE_GAIN) : 0
-      if (ctx) { if (on) startMusic(); else stopMusic() }
+      if (on) startMusic()
+      else stopMusic()
     },
     setSoundOn(on) {
       soundOn = on
@@ -328,6 +383,7 @@ export function createDoudizhuAudio() {
     get soundOn() { return soundOn },
     destroy() {
       stopMusic()
+      if (bgmEl) { try { bgmEl.pause() } catch { /* ignore */ } bgmEl = null }
       if (voiceEl) { try { voiceEl.pause() } catch { /* ignore */ } voiceEl = null }
       if ('speechSynthesis' in window) { try { window.speechSynthesis.cancel() } catch { /* ignore */ } }
       if (ctx) { ctx.close(); ctx = null }

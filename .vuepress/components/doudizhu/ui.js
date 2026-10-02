@@ -16,6 +16,8 @@ import { createDoudizhuAudio } from './audio.js'
 
 const SUIT_SYMBOL = ['♠', '♥', '♣', '♦']
 const SUIT_RED = [false, true, false, true]
+// J/Q/K 人物牌面符号（骑士/王后/国王，unicode  chess 字符渲染稳定）
+const FACE_GLYPH = { 11: '♞', 12: '♛', 13: '♚' }
 const TURN_SECONDS = 20
 const AI_NAMES = ['独孤求败', '常胜将军']
 const AI_AVATARS = ['🗡️', '🎖️']
@@ -65,14 +67,18 @@ function voiceForCombo(combo) {
   }
 }
 
-/** QQ 大牌面扑克：左上/右下（倒置）角标 + 中央花色水印 */
+/** QQ 大牌面扑克：左上/右下（倒置）角标 + 中央花色/人物图案 */
 function cardEl(card, mini) {
   const el = h('div', 'ddz-card' + (mini ? ' ddz-card-mini' : ''))
   const rank = rankOf(card)
   if (rank >= 16) {
     el.classList.add('ddz-joker', rank === 17 ? 'ddz-joker-big' : 'ddz-joker-small')
     const face = h('div', 'ddz-joker-face')
-    face.append(h('span', 'ddz-joker-icon', '🃏'), h('span', '', rank === 17 ? '大王' : '小王'))
+    face.append(
+      h('span', 'ddz-joker-hat', rank === 17 ? '👑' : '🎩'),
+      h('span', 'ddz-joker-cn', rank === 17 ? '大王' : '小王'),
+      h('span', 'ddz-joker-en', 'JOKER')
+    )
     el.append(face)
     return el
   }
@@ -83,7 +89,14 @@ function cardEl(card, mini) {
     c.append(h('span', 'ddz-rank', RANK_LABEL[rank]), h('span', 'ddz-suit', SUIT_SYMBOL[suit]))
     return c
   }
-  el.append(corner('ddz-corner'), h('div', 'ddz-pip', SUIT_SYMBOL[suit]), corner('ddz-corner ddz-corner-b'))
+  if (FACE_GLYPH[rank] && !mini) {
+    // J/Q/K 人物牌：中央人物符号 + 花色
+    const pip = h('div', 'ddz-pip ddz-pip-face')
+    pip.append(h('span', 'ddz-face-glyph', FACE_GLYPH[rank]), h('span', 'ddz-face-suit', SUIT_SYMBOL[suit]))
+    el.append(corner('ddz-corner'), pip, corner('ddz-corner ddz-corner-b'))
+  } else {
+    el.append(corner('ddz-corner'), h('div', 'ddz-pip', SUIT_SYMBOL[suit]), corner('ddz-corner ddz-corner-b'))
+  }
   return el
 }
 
@@ -108,21 +121,13 @@ export default class DoudizhuUI {
     this.navbar = document.querySelector('header.navbar') || document.querySelector('.navbar')
     // 精确贴合视口：根元素顶到屏幕底，规避主题 navbar/页脚高度差异。
     // 内容微溢会让页面可滚动，一旦 scrollY>0 量到的 top 偏小、height 越算越大
-    // （恶性循环），所以测量前强制滚回顶部；全屏模式由 CSS 100dvh 接管。
+    // （恶性循环），所以测量前强制滚回顶部；全屏时 root 已 portal 到 body 下
+    // （fixed 包含块即视口，CSS inset:0 铺满），此处只需重测粒子画布。
     this.fitViewport = () => {
       if (this.root.classList.contains('ddz-full')) {
-        // fixed 包含块是带 transform 的祖先（位于 navbar 下方），top:0 不对齐
-        // 视口；先清补偿量实测位置再重设，幂等且随旋转自校正
-        this.root.style.top = ''
-        this.root.style.left = ''
-        const rect = this.root.getBoundingClientRect()
-        this.root.style.top = `${-rect.top}px`
-        this.root.style.left = `${-rect.left}px`
         if (this.resizeFx) this.resizeFx()
         return
       }
-      this.root.style.top = ''
-      this.root.style.left = ''
       if (window.scrollY > 0) window.scrollTo(0, 0)
       const top = Math.max(0, this.root.getBoundingClientRect().top)
       this.root.style.height = Math.max(320, window.innerHeight - top) + 'px'
@@ -243,11 +248,26 @@ export default class DoudizhuUI {
   }
 
   // ---------- 全屏 ----------
+  // root 移入/移出 document.body（portal）：游戏 root 原本位于带
+  // transform/padding 的主题祖先内，fixed 包含块不可靠（曾因补偿时序
+  // 差异整屏移出视口），挂到 body 下后包含块即视口，inset:0 天然铺满。
   toggleFull() {
     const on = !this.root.classList.contains('ddz-full')
-    this.root.classList.toggle('ddz-full', on)
+    if (on) {
+      this._anchor = document.createComment('ddz-root-anchor')
+      if (this.root.parentNode) this.root.parentNode.insertBefore(this._anchor, this.root)
+      document.body.appendChild(this.root)
+      this.root.classList.add('ddz-full')
+    } else {
+      this.root.classList.remove('ddz-full')
+      if (this._anchor && this._anchor.parentNode) {
+        this._anchor.parentNode.insertBefore(this.root, this._anchor)
+        this._anchor.remove()
+      }
+      this._anchor = null
+    }
     this.btnFull.classList.toggle('is-on', on)
-    // 全屏隐藏站点 navbar（它 z-index 更高，会盖住游戏顶栏导致无法退出全屏）
+    // 全屏隐藏站点 navbar（双保险：portal 后 root z-index 已高于它，隐藏更干净）
     if (this.navbar) this.navbar.style.display = on ? 'none' : ''
     const doc = /** @type {any} */ (document)
     if (on && doc.documentElement.requestFullscreen) {
@@ -255,9 +275,7 @@ export default class DoudizhuUI {
     } else if (!on && doc.fullscreenElement && doc.exitFullscreen) {
       doc.exitFullscreen().catch(() => { /* ignore */ })
     }
-    // fixed 包含块偏移补偿在 fitViewport 全屏分支内幂等处理
-    if (on) this.fitViewport()
-    // 全屏切换后重测视口与粒子画布
+    // 全屏切换后重测粒子画布
     setTimeout(this.fitViewport, 60)
     setTimeout(this.fitViewport, 380)
   }
@@ -669,6 +687,8 @@ export default class DoudizhuUI {
     const row = h('div', 'ddz-settle-actions')
     row.append(again, back)
     box.append(row)
+    // BGM 署名（CC BY 3.0 要求）
+    box.append(h('div', 'ddz-settle-credit', '♪ BGM: Kawai Kitsune — Kevin MacLeod (incompetech.com) · CC BY 3.0'))
     this.overlay.innerHTML = ''
     this.overlay.append(box)
     this.overlay.style.display = 'flex'
@@ -860,7 +880,13 @@ export default class DoudizhuUI {
     if (this.cwFab) this.cwFab.style.display = this.cwFabPrevDisplay || ''
     if (this.navbar) this.navbar.style.display = ''
     document.body.style.overflow = this.bodyPrevOverflow || ''
+    // 全屏 portal 状态移回文档流原位
     this.root.classList.remove('ddz-full')
+    if (this._anchor && this._anchor.parentNode) {
+      this._anchor.parentNode.insertBefore(this.root, this._anchor)
+      this._anchor.remove()
+      this._anchor = null
+    }
     this.root.innerHTML = ''
     this.root.style.height = ''
   }
