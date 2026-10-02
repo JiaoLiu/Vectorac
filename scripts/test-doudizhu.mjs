@@ -65,18 +65,77 @@ test('canBeat: 比较规则', () => {
   assert.ok(!canBeat(classifyCombo(Cs(3, 3, 4, 4, 5, 5)), classifyCombo(Cs(4, 4, 5, 5, 6, 6, 7, 7))), '长度不同不能压')
 })
 
-// ---------------- 叫分流程 ----------------
-test('bidding: 叫 3 分立即成地主并拿底牌', () => {
+// ---------------- 叫分 / 抢地主 / 加倍流程 ----------------
+/** 把抢地主/加倍阶段全部保守表态（不抢/不加倍）推进到 playing */
+function settlePrePlay(s) {
+  while (s.phase === 'robbing') dispatch(s, { type: 'rob', rob: false }, s.robTurn)
+  while (s.phase === 'doubling') dispatch(s, { type: 'double', double: false }, s.dblTurn)
+  return s
+}
+
+test('bidding: 叫 3 分进抢地主，无人抢则叫牌者成地主', () => {
   let s = createGame({ seed: 42 })
   const first = s.bidTurn
   let r = dispatch(s, { type: 'bid', score: 3 }, first)
   assert.ok(r.ok)
+  assert.equal(s.phase, 'robbing', '叫 3 分先进抢地主')
+  assert.equal(s.robTurn, (first + 1) % 3, '从叫牌者下家开始抢')
+  // 无人抢 → 叫牌者地主；随后加倍阶段全员不加倍 → playing
+  settlePrePlay(s)
   assert.equal(s.phase, 'playing')
   assert.equal(s.landlord, first)
   assert.equal(s.calledScore, 3)
   assert.equal(s.hands[first].length, 20)
   assert.equal(s.turn, first)
-  assert.ok(r.events.some(e => e.type === 'landlord' && e.bottom.length === 3))
+  assert.equal(s.multiplier, 1)
+})
+
+test('rob: 每抢一次 ×2，最后抢者当地主', () => {
+  let s = createGame({ seed: 42 })
+  const first = s.bidTurn
+  dispatch(s, { type: 'bid', score: 3 }, first)
+  const r1 = (first + 1) % 3, r2 = (first + 2) % 3
+  assert.ok(dispatch(s, { type: 'rob', rob: true }, r1).ok)
+  assert.equal(s.multiplier, 2)
+  assert.equal(s.phase, 'robbing', '还有一家未表态')
+  assert.ok(dispatch(s, { type: 'rob', rob: true }, r2).ok)
+  assert.equal(s.multiplier, 4)
+  assert.equal(s.phase, 'doubling', '两家表态完进加倍')
+  assert.equal(s.landlord, r2, '最后抢者当地主')
+  // 抢地主阶段已过，再抢非法
+  assert.ok(!dispatch(s, { type: 'rob', rob: true }, r1).ok)
+  settlePrePlay(s)
+  assert.equal(s.phase, 'playing')
+  assert.equal(s.turn, r2)
+})
+
+test('rob: 非轮次 / 加倍阶段不能抢', () => {
+  let s = createGame({ seed: 42 })
+  const first = s.bidTurn
+  dispatch(s, { type: 'bid', score: 3 }, first)
+  assert.ok(!dispatch(s, { type: 'rob', rob: true }, first).ok, '叫牌者自己不能抢')
+  assert.ok(!dispatch(s, { type: 'rob', rob: true }, (first + 2) % 3).ok, '未轮到的不能抢')
+})
+
+test('double: 农民依次加倍、地主超级加倍，各 ×2', () => {
+  let s = createGame({ seed: 42 })
+  const first = s.bidTurn
+  dispatch(s, { type: 'bid', score: 3 }, first)
+  while (s.phase === 'robbing') dispatch(s, { type: 'rob', rob: false }, s.robTurn) // 只结算抢，停在加倍
+  const lord = s.landlord
+  const f1 = (lord + 1) % 3, f2 = (lord + 2) % 3
+  assert.equal(s.phase, 'doubling')
+  assert.equal(s.dblTurn, f1, '农民先表态')
+  assert.ok(!dispatch(s, { type: 'double', double: true }, f2).ok, '未轮到的不能加倍')
+  dispatch(s, { type: 'double', double: true }, f1)
+  assert.equal(s.multiplier, 2)
+  assert.equal(s.dblTurn, f2)
+  dispatch(s, { type: 'double', double: false }, f2)
+  assert.equal(s.dblTurn, lord, '地主最后超级加倍')
+  dispatch(s, { type: 'double', double: true }, lord)
+  assert.equal(s.multiplier, 4)
+  assert.equal(s.phase, 'playing', '三家表态完进入出牌')
+  assert.equal(s.turn, lord)
 })
 
 test('bidding: 最高叫分者成地主；低分不能再叫', () => {
@@ -87,6 +146,8 @@ test('bidding: 最高叫分者成地主；低分不能再叫', () => {
   assert.ok(!dispatch(s, { type: 'bid', score: 1 }, c).ok, '必须叫得更高')
   assert.ok(dispatch(s, { type: 'bid', score: 0 }, c).ok)
   assert.ok(dispatch(s, { type: 'bid', score: 0 }, a).ok)
+  assert.equal(s.phase, 'robbing', '叫分定局进抢地主')
+  settlePrePlay(s)
   assert.equal(s.phase, 'playing')
   assert.equal(s.landlord, b)
   assert.equal(s.calledScore, 2)
@@ -100,6 +161,8 @@ test('bidding: 全部不叫重发，三轮后首家强制 1 分', () => {
       assert.ok(r.ok)
     }
   }
+  assert.equal(s.phase, 'doubling', '强制地主跳过抢、直接加倍')
+  settlePrePlay(s)
   assert.equal(s.phase, 'playing')
   assert.equal(s.calledScore, 1)
   assert.equal(s.redealCount, 3)
@@ -109,7 +172,7 @@ test('bidding: 全部不叫重发，三轮后首家强制 1 分', () => {
 function playingState(seed = 5) {
   const s = createGame({ seed })
   dispatch(s, { type: 'bid', score: 3 }, s.bidTurn)
-  return s
+  return settlePrePlay(s)
 }
 
 test('play: 首出自由，跟牌必须压过或不出，两不出后清圈', () => {
@@ -228,7 +291,7 @@ test('ai: 每个决策都是合法动作（200 局随机 seed 完整打满）', 
     const s = createGame({ seed })
     let guard = 0
     while (s.phase !== 'over' && guard++ < 2000) {
-      const seat = s.phase === 'bidding' ? s.bidTurn : s.turn
+      const seat = s.phase === 'bidding' ? s.bidTurn : s.phase === 'robbing' ? s.robTurn : s.phase === 'doubling' ? s.dblTurn : s.turn
       const view = playerView(s, seat)
       const act = aiDecide(view, seat)
       assert.ok(act, `seed=${seed} AI 必须给出动作`)

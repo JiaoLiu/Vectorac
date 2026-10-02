@@ -318,6 +318,8 @@ body.ddz-lock { overflow: hidden; }
 }
 .ddz-opp-left .ddz-bid-bubble { left: calc(100% + 8px); top: 10px; }
 .ddz-opp-right .ddz-bid-bubble { right: calc(100% + 8px); top: 10px; }
+/* 我的气泡：头像上方（不叫/不抢/不加倍/不要 全家共用） */
+.ddz-me-panel .ddz-bid-bubble { left: 0; top: auto; bottom: calc(100% + 6px); }
 .ddz-bid-bubble.pop { animation: ddzBubble 1.6s ease both; }
 @keyframes ddzBubble {
   0% { opacity: 0; transform: scale(0.5); }

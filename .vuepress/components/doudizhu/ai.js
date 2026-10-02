@@ -239,6 +239,17 @@ export function aiDecide(view, seat) {
     const want = evaluateBid(view.hand)
     return { type: 'bid', score: want > view.highBid ? want : 0 }
   }
+  // 抢地主：自己当地主且倍数翻倍——牌力够「叫 2 分」才抢，弱牌白送倍数不抢
+  if (view.phase === 'robbing') {
+    if (view.robTurn !== seat) return null
+    return { type: 'rob', rob: evaluateBid(view.hand) >= 2 }
+  }
+  // 加倍：农民中强牌加倍；地主已收底牌（20 张）门槛更高才超级加倍
+  if (view.phase === 'doubling') {
+    if (view.dblTurn !== seat) return null
+    const power = evaluateBid(view.hand)
+    return { type: 'double', double: power >= (seat === view.landlord ? 3 : 2) }
+  }
   if (view.phase !== 'playing' || view.turn !== seat) return null
   const hand = view.hand
   if (!view.lastPlay) {

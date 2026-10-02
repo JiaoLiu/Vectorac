@@ -307,6 +307,11 @@ function deal(state, events) {
   state.highBidder = -1
   state.bidPasses = 0
   state.bids = []
+  state.robTurn = -1
+  state.robs = []
+  state.robWinner = -1
+  state.dblTurn = -1
+  state.dbls = []
   state.phase = 'bidding'
   events.push({ type: 'deal', first: state.bidTurn, redeal: state.redealCount })
 }
@@ -319,6 +324,8 @@ export function createGame({ seed = 1 } = {}) {
     bottom: [],
     bidTurn: 0, highBid: 0, highBidder: -1, bidPasses: 0, bids: [], redealCount: 0,
     landlord: -1, calledScore: 0,
+    robTurn: -1, robs: [], robWinner: -1,
+    dblTurn: -1, dbls: [],
     turn: 0, lastPlay: null, passCount: 0,
     multiplier: 1, bombs: 0,
     playCount: [0, 0, 0],
@@ -342,6 +349,16 @@ export function legalActions(state, seat) {
     for (let s = state.highBid + 1; s <= 3; s++) acts.push({ type: 'bid', score: s })
     return acts
   }
+  // 抢地主：其余两家依次各一次机会
+  if (state.phase === 'robbing') {
+    if (seat !== state.robTurn) return []
+    return [{ type: 'rob', rob: false }, { type: 'rob', rob: true }]
+  }
+  // 加倍：农民依次表态，地主最后超级加倍
+  if (state.phase === 'doubling') {
+    if (seat !== state.dblTurn) return []
+    return [{ type: 'double', double: false }, { type: 'double', double: true }]
+  }
   // playing
   if (seat !== state.turn) return []
   const hand = state.hands[seat]
@@ -356,6 +373,10 @@ function isLegal(state, seat, action) {
   if (action.type === 'bid')
     return state.phase === 'bidding' && seat === state.bidTurn && Number.isInteger(action.score) &&
       action.score >= 0 && action.score <= 3 && (action.score === 0 || action.score > state.highBid)
+  if (action.type === 'rob')
+    return state.phase === 'robbing' && seat === state.robTurn
+  if (action.type === 'double')
+    return state.phase === 'doubling' && seat === state.dblTurn
   if (action.type === 'pass') return state.phase === 'playing' && seat === state.turn && !!state.lastPlay
   if (action.type === 'play') {
     if (state.phase !== 'playing' || seat !== state.turn) return false
@@ -389,18 +410,55 @@ export function dispatch(state, action, seat) {
     const done = score === 3 || (state.highBidder >= 0 && state.bidPasses >= 2)
     const allPass = state.highBidder < 0 && state.bids.length >= 3
     if (done) {
-      becomeLandlord(state, events, state.highBidder)
+      // 叫分定局 → 抢地主：其余两家（从叫牌者下家起）依次表态，
+      // 每抢一次倍数 ×2，最后抢者当地主（QQ 经典规则）
+      state.phase = 'robbing'
+      state.robTurn = SEAT_NEXT[state.highBidder]
+      state.robs = []
+      state.robWinner = -1
+      events.push({ type: 'rob-start', bidder: state.highBidder, bid: state.highBid })
     } else if (allPass) {
       state.redealCount++
       events.push({ type: 'redeal' })
       if (state.redealCount >= 3) {
-        // 三轮无人叫：首家强制 1 分当地主，避免死循环
+        // 三轮无人叫：首家强制 1 分当地主（跳过抢地主，避免死循环）
         becomeLandlord(state, events, state.bidTurn)
       } else {
         deal(state, events)
       }
     } else {
       state.bidTurn = SEAT_NEXT[state.bidTurn]
+    }
+    return { ok: true, state, events }
+  }
+
+  if (action.type === 'rob') {
+    const rob = !!action.rob
+    state.robs.push(seat)
+    if (rob) {
+      state.multiplier *= 2
+      state.robWinner = seat
+    }
+    events.push({ type: 'rob', seat, rob, multiplier: state.multiplier })
+    if (state.robs.length >= 2) {
+      becomeLandlord(state, events, state.robWinner >= 0 ? state.robWinner : state.highBidder)
+    } else {
+      state.robTurn = SEAT_NEXT[seat]
+    }
+    return { ok: true, state, events }
+  }
+
+  if (action.type === 'double') {
+    const dbl = !!action.double
+    state.dbls.push(seat)
+    if (dbl) state.multiplier *= 2
+    events.push({ type: 'double', seat, double: dbl, multiplier: state.multiplier, super: seat === state.landlord })
+    if (state.dbls.length >= 3) {
+      state.phase = 'playing'
+      state.dblTurn = -1
+      state.turn = state.landlord
+    } else {
+      state.dblTurn = SEAT_NEXT[seat]
     }
     return { ok: true, state, events }
   }
@@ -452,8 +510,11 @@ function becomeLandlord(state, events, seat) {
   state.calledScore = state.highBid || 1
   state.highBid = state.calledScore
   state.hands[seat] = state.hands[seat].concat(state.bottom).sort(byRankDesc)
-  state.phase = 'playing'
-  state.turn = seat
+  // 地主定局（底牌已亮并收入手牌）→ 加倍环节：
+  // 农民从地主下家起依次表态，地主最后可选超级加倍（QQ 经典）
+  state.phase = 'doubling'
+  state.dblTurn = SEAT_NEXT[seat]
+  state.dbls = []
   state.lastPlay = null
   state.passCount = 0
   events.push({ type: 'landlord', seat, score: state.calledScore, bottom: state.bottom.slice() })
@@ -491,6 +552,7 @@ export function playerView(state, seat) {
     handCounts: state.hands.map((h, i) => (i === seat || state.phase === 'over' ? state.hands[i].slice() : h.length)),
     bottom: state.landlord >= 0 ? state.bottom.slice() : state.bottom.length,
     bidTurn: state.bidTurn, highBid: state.highBid, bids: state.bids.slice(),
+    robTurn: state.robTurn, dblTurn: state.dblTurn,
     landlord: state.landlord, calledScore: state.calledScore,
     turn: state.turn, lastPlay: state.lastPlay,
     trickPasses: state.trickPasses.slice(),

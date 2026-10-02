@@ -51,6 +51,12 @@ def build_entries():
     m['bid-1'] = '一分'
     m['bid-2'] = '两分'
     m['bid-3'] = '三分'
+    # 抢地主 / 加倍阶段表态（QQ 经典环节）
+    m['rob'] = '抢地主'
+    m['no-rob'] = '不抢'
+    m['double'] = '加倍'
+    m['super-double'] = '超级加倍'
+    m['no-double'] = '不加倍'
     return m
 
 

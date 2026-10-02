@@ -526,18 +526,29 @@ export default class DoudizhuUI {
 
   view() { return playerView(this.state, this.seat) }
 
+  /** 当前该谁表态（叫分/抢地主/加倍/出牌四阶段统一入口） */
+  activeSeat() {
+    const s = this.state
+    if (s.phase === 'bidding') return s.bidTurn
+    if (s.phase === 'robbing') return s.robTurn
+    if (s.phase === 'doubling') return s.dblTurn
+    return s.turn
+  }
+
   // 事件泵：处理 createGame/dispatch 产出的事件并推进 AI
   pump(events = []) {
     for (const e of events) this.onEvent(e)
     this.renderAll()
     const s = this.state
     if (s.phase === 'over') { this.showSettlement(); return }
-    const active = s.phase === 'bidding' ? s.bidTurn : s.turn
+    const active = this.activeSeat()
     if (active === this.seat) {
       this.startTimer()
     } else {
       this.clearTimers()
-      this.aiTimer = setTimeout(() => this.aiMove(active), 650 + Math.random() * 750)
+      // 抢/加倍表态节奏快（QQ 同款一闪而过），出牌思考慢
+      const quick = s.phase === 'robbing' || s.phase === 'doubling'
+      this.aiTimer = setTimeout(() => this.aiMove(active), (quick ? 420 : 650) + Math.random() * (quick ? 480 : 750))
     }
   }
 
@@ -554,7 +565,7 @@ export default class DoudizhuUI {
 
   humanAct(action) {
     const s = this.state
-    const active = s.phase === 'bidding' ? s.bidTurn : s.turn
+    const active = this.activeSeat()
     if (active !== this.seat) return
     const r = dispatch(s, action, this.seat)
     if (!r.ok) {
@@ -574,6 +585,18 @@ export default class DoudizhuUI {
         this.showBidBubble(e.seat, e.score)
         this.audio.sfx('bid')
         this.audio.voice(`bid-${e.score}`, BID_SPOKEN[e.score] || '不叫')
+        break
+      case 'rob':
+        this.showBubble(e.seat, e.rob ? '抢地主！' : '不抢')
+        this.audio.sfx('bid')
+        this.audio.voice(e.rob ? 'rob' : 'no-rob', e.rob ? '抢地主' : '不抢')
+        if (e.rob) this.flashFx('×2', `抢地主！倍数 ×${e.multiplier}`)
+        break
+      case 'double':
+        this.showBubble(e.seat, e.double ? (e.super ? '超级加倍！' : '加倍！') : '不加倍')
+        this.audio.sfx('bid')
+        this.audio.voice(e.double ? (e.super ? 'super-double' : 'double') : 'no-double', e.double ? (e.super ? '超级加倍' : '加倍') : '不加倍')
+        if (e.double) this.flashFx('×2', `${e.super ? '超级加倍' : '加倍'}！倍数 ×${e.multiplier}`)
         break
       case 'landlord':
         this.audio.sfx('landlord')
@@ -615,23 +638,30 @@ export default class DoudizhuUI {
     if (e.type === 'pass') {
       this.audio.sfx('pass')
       this.audio.voice('pass', '不要')
+      // 「不要」气泡挂头像旁：不随清圈消失——左家是出牌圈最后表态者，
+      // 双 pass 清圈时出牌区标签与 pass 同一帧被清空，永远看不到
+      this.showBubble(e.seat, '不要')
     }
   }
 
   oppName(seat) { return seat === this.seat ? '你' : AI_NAMES[seat - 1] }
 
-  showBidBubble(seat, score) {
-    const text = score === 0 ? '不叫' : `${score} 分`
-    if (seat === this.seat) {
-      this.status.textContent = `你：${text}`
-      return
-    }
-    const panel = this.oppPanels[seat]
+  /** 通用语音气泡：挂各家头像旁，1.6s 后自动淡出（叫分/抢地主/加倍/不要共用） */
+  showBubble(seat, text) {
+    const panel = seat === this.seat ? this.mePanel : this.oppPanels[seat]
+    if (!panel) return
     const bubble = panel.querySelector('.ddz-bid-bubble')
+    if (!bubble) return
     bubble.textContent = text
     bubble.classList.remove('pop')
     void bubble.offsetWidth
     bubble.classList.add('pop')
+  }
+
+  showBidBubble(seat, score) {
+    const text = score === 0 ? '不叫' : `${score} 分`
+    this.showBubble(seat, text)
+    if (seat === this.seat) this.status.textContent = `你：${text}`
   }
 
   // ---------- 倒计时 ----------
@@ -651,20 +681,22 @@ export default class DoudizhuUI {
 
   renderTimer(left) {
     for (const s of [1, 2]) this.oppPanels[s].querySelector('.ddz-timer').textContent = ''
-    const s = this.state
-    const active = s.phase === 'bidding' ? s.bidTurn : s.turn
+    const active = this.activeSeat()
     if (active === this.seat) {
       this.meTimer.textContent = `${left}`
       this.meTimer.classList.toggle('urgent', left <= 5)
     } else {
-      const el = this.oppPanels[active].querySelector('.ddz-timer')
-      el.textContent = `${left}`
+      const el = this.oppPanels[active] && this.oppPanels[active].querySelector('.ddz-timer')
+      if (el) el.textContent = `${left}`
     }
   }
 
   timeoutAct() {
     const s = this.state
     if (s.phase === 'bidding') return this.humanAct({ type: 'bid', score: 0 })
+    // 抢/加倍超时保守表态：不抢、不加倍
+    if (s.phase === 'robbing') return this.humanAct({ type: 'rob', rob: false })
+    if (s.phase === 'doubling') return this.humanAct({ type: 'double', double: false })
     const view = this.view()
     if (!view.lastPlay) {
       const cards = hintPlay(view, view.hand, null)
@@ -752,10 +784,11 @@ export default class DoudizhuUI {
         role.classList.add(isLord ? 'ddz-role-lord' : 'ddz-role-farmer')
       }
       p.classList.toggle('ddz-alarm', s.phase === 'playing' && count <= 2 && count > 0)
-      const active = (s.phase === 'bidding' ? s.bidTurn : s.turn) === seat && s.phase !== 'over'
+      const active = this.activeSeat() === seat && s.phase !== 'over'
       p.classList.toggle('is-active', active)
       if (!active) p.querySelector('.ddz-timer').textContent = ''
-      if (s.phase !== 'bidding') p.querySelector('.ddz-bid-bubble').textContent = ''
+      // 气板不在这里清空：「不要/抢地主/加倍」等气泡靠 CSS pop 动画
+      // 1.6s 自动淡出（旧实现非叫分阶段每帧清文字，气泡永远闪不出来）
     }
   }
 
@@ -806,8 +839,11 @@ export default class DoudizhuUI {
       role.classList.add(isLord ? 'ddz-role-lord' : 'ddz-role-farmer')
     }
     this.meTimer = h('div', 'ddz-timer')
-    this.mePanel.append(avatar, name, role, this.meTimer)
-    const active = (s.phase === 'bidding' ? s.bidTurn : s.turn) === this.seat && s.phase !== 'over'
+    // 气泡节点持久复用：renderMe 每次 innerHTML 重建会杀掉新气泡的
+    // pop 动画与文字，这里 re-append 同一节点保住状态
+    if (!this.meBubble) this.meBubble = h('div', 'ddz-bid-bubble')
+    this.mePanel.append(avatar, name, role, this.meTimer, this.meBubble)
+    const active = this.activeSeat() === this.seat && s.phase !== 'over'
     this.mePanel.classList.toggle('is-active', active)
   }
 
@@ -854,6 +890,15 @@ export default class DoudizhuUI {
     if (s.phase === 'bidding') {
       const who = s.bidTurn === this.seat ? '轮到你叫分' : `等待 ${this.oppName(s.bidTurn)} 叫分…`
       this.status.textContent = s.highBid ? `${who}（当前最高 ${s.highBid} 分）` : who
+    } else if (s.phase === 'robbing') {
+      this.status.textContent = s.robTurn === this.seat
+        ? `${this.oppName(s.highBidder)} 叫了 ${s.highBid} 分，要抢地主吗？`
+        : `等待 ${this.oppName(s.robTurn)} 抢地主…（倍数 ×${s.multiplier}）`
+    } else if (s.phase === 'doubling') {
+      const lord = s.dblTurn === s.landlord
+      this.status.textContent = s.dblTurn === this.seat
+        ? (lord ? '要超级加倍吗？（倍数再 ×2）' : '要加倍吗？（倍数再 ×2）')
+        : `等待 ${this.oppName(s.dblTurn)} ${lord ? '超级加倍' : '加倍'}…（倍数 ×${s.multiplier}）`
     } else if (s.phase === 'playing') {
       if (s.turn === this.seat) {
         this.status.textContent = s.lastPlay ? `压过 ${this.oppName(s.lastPlay.seat)} 的${COMBO_LABEL[s.lastPlay.combo.type]}，或不出` : '轮到你出牌'
@@ -876,6 +921,23 @@ export default class DoudizhuUI {
         return b
       }
       this.actions.append(mk('不叫', 0), mk('1 分', 1), mk('2 分', 2), mk('3 分', 3, true))
+    } else if (s.phase === 'robbing' && s.robTurn === this.seat) {
+      const mk = (label, rob, primary) => {
+        const b = h('button', 'ddz-btn' + (primary ? ' ddz-btn-primary' : ''), label)
+        b.type = 'button'
+        b.onclick = () => this.humanAct({ type: 'rob', rob })
+        return b
+      }
+      this.actions.append(mk('不 抢', false), mk('抢地主', true, true))
+    } else if (s.phase === 'doubling' && s.dblTurn === this.seat) {
+      const isLord = s.landlord === this.seat
+      const mk = (label, dbl, primary) => {
+        const b = h('button', 'ddz-btn' + (primary ? ' ddz-btn-primary' : ''), label)
+        b.type = 'button'
+        b.onclick = () => this.humanAct({ type: 'double', double: dbl })
+        return b
+      }
+      this.actions.append(mk('不加倍', false), mk(isLord ? '超级加倍' : '加 倍', true, true))
     } else if (s.phase === 'playing' && s.turn === this.seat) {
       this.renderActionButtons()
     }
