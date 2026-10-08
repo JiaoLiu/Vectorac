@@ -738,6 +738,9 @@ export function bindChatDock(dock, { onStartRec, onStopRec, onPhrase } = {}) {
   // 手势区与状态栏，操作时和系统手势打架，必须让开。用 probe 即时读 env()，
   // 横竖屏 insets 不同，转屏后失效重算
   const EDGE = 10 // 安全区之外再留的视觉间距
+  // 顶端系统手势区（下拉通知中心）额外避让：横屏下 env(safe-area-inset-top)
+  // 为 0，仅靠安全区会让按钮贴顶，往下拖时触发系统下拉（用户实测）
+  const MIN_TOP = 44
   let safeCache = null
   const insets = () => {
     if (safeCache) return safeCache
@@ -763,45 +766,41 @@ export function bindChatDock(dock, { onStartRec, onStopRec, onPhrase } = {}) {
   }
   const clampY = y => {
     const s = insets()
-    return Math.max(s.t + EDGE, Math.min(window.innerHeight - dock.offsetHeight - s.b - EDGE, y))
+    const top = Math.max(s.t, MIN_TOP) + EDGE
+    return Math.max(top, Math.min(window.innerHeight - dock.offsetHeight - s.b - EDGE, y))
   }
-  // 挂边坐标：靠左贴左安全区、靠右贴右安全区。转屏/重新落位都按「挂哪边」
-  // 重算，不沿用旧视口的绝对像素（否则竖屏右缘会在横屏落到屏幕中间）
-  const edgeX = left => {
+  // 挂边坐标：固定吸附右缘（面板/录音提示统一在按钮右侧展开，靠左会与
+  // 弹出的语音面板重叠）。转屏/重新落位都按当前视口重算，不沿用旧视口的
+  // 绝对像素（否则竖屏右缘会在横屏落到屏幕中间）
+  const edgeX = () => {
     const s = insets()
-    return left ? s.l + EDGE : Math.max(s.l + EDGE, window.innerWidth - dock.offsetWidth - s.r - EDGE)
+    return Math.max(s.l + EDGE, window.innerWidth - dock.offsetWidth - s.r - EDGE)
   }
   const applyPos = (x, y, save) => {
     dock.style.left = x + 'px'
     dock.style.top = y + 'px'
     dock.style.right = 'auto'
     dock.style.bottom = 'auto'
-    const rect = dock.getBoundingClientRect()
-    dock.classList.toggle('is-left', rect.left + rect.width / 2 < window.innerWidth / 2)
-    if (save) { try { localStorage.setItem(POS_KEY, JSON.stringify({ x: Math.round(x), y: Math.round(y) })) } catch (e) { /* 隐私模式忽略 */ } }
+    // 只记忆纵向：横向固定右缘，x 由视口实时算，无需持久化
+    if (save) { try { localStorage.setItem(POS_KEY, JSON.stringify({ y: Math.round(y) })) } catch (e) { /* 隐私模式忽略 */ } }
   }
   // 恢复记忆位置（clamp 进当前视口与安全区，防换设备/转屏后飘出屏外）
   {
     let p = null
     try { p = JSON.parse(localStorage.getItem(POS_KEY) || 'null') } catch (e) { /* 忽略 */ }
-    if (p && typeof p.x === 'number' && typeof p.y === 'number') {
-      applyPos(clampX(p.x), clampY(p.y), false)
+    if (p && typeof p.y === 'number') {
+      applyPos(edgeX(), clampY(p.y), false)
     }
   }
-  // 视口变化（转屏 / iOS 工具栏收起）后重新吸附到挂边：记忆坐标是旧视口
-  // 的绝对像素，直接 clamp 会让「竖屏右缘 x≈332」在横屏（宽 844）落到中间
-  //（用户报「横屏跑到屏幕中间」的真因）——按挂边语义重算，靠右仍到右缘、
-  // 靠左仍到左缘；y 沿用当前位置 clamp 进新视口。
-  // 默认右下角（无 inline 坐标）由 CSS right/bottom 自适应，不需要处理
+  // 视口变化（转屏 / iOS 工具栏收起）后重新吸附到右缘：记忆坐标是旧视口
+  // 的绝对像素，直接沿用会让「竖屏右缘 x≈332」在横屏（宽 844）落到中间
+  //（用户报「横屏跑到屏幕中间」的真因）——按当前视口重算，y 沿用当前位置
+  // clamp 进新视口。默认右下角（无 inline 坐标）由 CSS right/bottom 自适应
   const onViewportResize = () => {
     safeCache = null // 横竖屏安全区不同，先失效缓存
     if (!dock.style.left && !dock.style.top) return
     const r = dock.getBoundingClientRect()
-    applyPos(
-      edgeX(dock.classList.contains('is-left')),
-      clampY(r.top),
-      true
-    )
+    applyPos(edgeX(), clampY(r.top), true)
   }
   window.addEventListener('resize', onViewportResize)
   window.addEventListener('orientationchange', onViewportResize)
@@ -811,13 +810,12 @@ export function bindChatDock(dock, { onStartRec, onStopRec, onPhrase } = {}) {
     let p = null
     try { p = JSON.parse(localStorage.getItem(POS_KEY) || 'null') } catch (e) { /* 忽略 */ }
     if (p && typeof p.y === 'number') {
-      applyPos(edgeX(dock.classList.contains('is-left')), clampY(p.y), false)
+      applyPos(edgeX(), clampY(p.y), false)
     } else {
       dock.style.left = ''
       dock.style.top = ''
       dock.style.right = ''
       dock.style.bottom = ''
-      dock.classList.remove('is-left')
     }
   }
   let dragStart = null
@@ -853,9 +851,9 @@ export function bindChatDock(dock, { onStartRec, onStopRec, onPhrase } = {}) {
     dragStart = null
     dragged = false
     if (wasDragged) {
-      // 水平吸附到最近的左右边缘（留边距），纵向保持
+      // 松手固定吸附右缘（不再有左吸附，避免与语音面板重叠），纵向保持
       const rect = dock.getBoundingClientRect()
-      applyPos(edgeX(rect.left + rect.width / 2 < window.innerWidth / 2), clampY(rect.top), true)
+      applyPos(edgeX(), clampY(rect.top), true)
       suppressClick = true // 吞掉拖动结束的合成 click，别误开面板
       if (ev && ev.pointerId != null) { try { toggle.releasePointerCapture(ev.pointerId) } catch (e) { /* 忽略 */ } }
     }

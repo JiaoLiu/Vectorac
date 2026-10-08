@@ -292,10 +292,8 @@ meta:
 }
 .gkr-chat-btn span { font-size: 9px; line-height: 11px; }
 .gkr-chat-btn:active { transform: scale(0.94); }
-/* 拖动挂边（bindChatDock）：吸附左缘时面板/录音提示翻到按钮右侧，避免弹出屏外 */
-.gkr-voice-dock.is-left { align-items: flex-start; }
-.gkr-voice-dock.is-left .gkr-chat-panel { left: 0; right: auto; }
-.gkr-voice-dock.is-left .gkr-chat-rectip { left: 52px; right: auto; }
+/* 拖动挂边（bindChatDock）：固定吸附右缘（不再支持左吸附，避免面板重叠），
+   面板/录音提示统一在按钮左侧展开，纵向位置可调、横向由视口实时计算 */
 /* hidden 兜底：dock 会被 portal 到 body（斗地主游戏中，见 _floatVoiceDock），
    脱离 .gh-root 后 `.gh-root [hidden]` 够不着——而 .gkr-chat-panel 的
    display:grid / .gkr-chat-btn 的 display:flex 会压过浏览器默认的
