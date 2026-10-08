@@ -98,6 +98,7 @@ export default class DoudizhuRemote {
       this.$settle.remove()
       this.$settle = null
     }
+    document.body.classList.remove('ddz-ingame')
     exitFullscreen()
     this.root.innerHTML = ''
   }
@@ -340,8 +341,10 @@ export default class DoudizhuRemote {
   _renderWaiting() {
     if (!this.room) return
     // 回等待室：牌桌退出全屏（root portal 回 $host 内，hidden 才能藏住），
-    // 等待室壳的全屏布局（gkr-full）重新接管
+    // 等待室壳的全屏布局（gkr-full）重新接管；ddz-ingame 摘除，
+    // 层级交还 gkr-full 体系
     if (this.game) this.game.setImmersive(false)
+    document.body.classList.remove('ddz-ingame')
     enterFullscreen()
     this.$waiting.hidden = false
     this.$host.hidden = true
@@ -427,8 +430,11 @@ export default class DoudizhuRemote {
   _showGame() {
     // 撤掉等待室壳的全屏（gkr-lock 的 overflow:hidden 会挡死牌桌的
     // 滚动垫层机制——iOS 收起工具栏需要文档可滚）；牌桌用自己的
-    // setImmersive 全屏接管 body
+    // setImmersive 全屏接管 body。
+    // ddz-ingame：拆主题 transform 陷阱 + 抬高语音 dock/气泡/提示到牌桌
+    // 之上（见 gamehall.md 样式），否则游戏中语音按钮被牌桌盖住
     exitFullscreen()
+    document.body.classList.add('ddz-ingame')
     if (!this.game) {
       // 联机直接进全屏牌桌（大厅点击链已给用户手势；原生全屏被拒时
       // setImmersive 自带 CSS 全屏兜底）

@@ -393,7 +393,10 @@ export default class DoudizhuUI {
       this.root.style.top = ''
       if (this._scrollSpacer && this._scrollSpacer.parentNode) this._scrollSpacer.remove()
       this._scrollSpacer = null // 置空：下次进全屏重新创建挂载
-      document.body.classList.add('ddz-lock') // 回到大厅：恢复文档锁定
+      // 单机：回到大厅恢复文档锁定；联机：房间壳自己管滚动（gkr-lock），
+      // 最小化（⛶）后用户要操作房间 UI，锁页面会导致「整个都滚动不来」
+      if (this.online) document.body.classList.remove('ddz-lock')
+      else document.body.classList.add('ddz-lock')
       if (this._anchor && this._anchor.parentNode) {
         this._anchor.parentNode.insertBefore(this.root, this._anchor)
         this._anchor.remove()

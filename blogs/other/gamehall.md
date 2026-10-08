@@ -396,6 +396,14 @@ body.gkr-full #navbar, body.gkr-full .navbar { display: none !important; }
 body.gkr-full .gkr-stage { max-width: 760px; margin: 0 auto; width: 100%; }
 body.gkr-full .gkr-board-wrap,
 body.gkr-full .gk-board-wrap { max-width: min(96vw, calc(100dvh - 240px)) !important; margin-left: auto; margin-right: auto; }
+/* 斗地主联机不走 gkr-full 壳：牌桌 setImmersive(true) 直接 portal 到 body
+   （.ddz-full z-index:1000），游戏期间壳已退出全屏。body.ddz-ingame 与
+   gkr-full 同款拆 transform 陷阱 + 抬高语音/气泡/提示层——否则 fixed 的
+   语音 dock 既被困在主题 transform 层叠上下文里、z-index:30 又低于牌桌，
+   表现为「开始游戏后语音按钮看不见」 */
+body.ddz-ingame .theme-reco-content, body.ddz-ingame .page { transform: none !important; }
+body.ddz-ingame .gkr-voice-dock, body.ddz-ingame .gkr-bubbles { z-index: 15020; }
+body.ddz-ingame .gkr-toast { z-index: 15030; }
 
 /* 提示 */
 .gh-toast, .gkr-toast {
