@@ -608,6 +608,10 @@ body.ddz-lock { overflow: hidden; }
 .ddz-root.ddz-over .ddz-actions,
 .ddz-root.ddz-over .ddz-status,
 .ddz-root.ddz-over .ddz-bottom-cards { display: none; }
+/* 联机结算浮层（remote.js portal 到 body）：脱离 .gh-root 后站内
+   `.gh-root [hidden]` 规则够不着，而 .gkr-settle 的 display:flex 是作者级
+   样式会压过 UA 的 [hidden]——不兜底的话浮层永远藏不住 */
+[data-dzr-settle][hidden] { display: none !important; }
 .ddz-settle {
   position: relative;
   width: min(92vw, 420px);

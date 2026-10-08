@@ -93,6 +93,11 @@ export default class DoudizhuRemote {
       this.game.destroy()
       this.game = null
     }
+    // 结算浮层常驻 body（见 _renderShell），须显式摘除
+    if (this.$settle) {
+      this.$settle.remove()
+      this.$settle = null
+    }
     exitFullscreen()
     this.root.innerHTML = ''
   }
@@ -232,14 +237,25 @@ export default class DoudizhuRemote {
       // 强制横屏旋转）都挂在这个类上，单机页由页面 HTML 提供，联机在这里给
       '  <div data-dzr-host class="ddz-root" hidden></div>' +
       '</div>' +
-      '<div class="gkr-settle gkr-settle-fixed" data-dzr-settle hidden></div>' +
       chatDockHtml() +
       '<div class="gkr-bubbles" data-dzr-bubbles></div>' +
       '<div class="gkr-toast" data-dzr-toast hidden></div>'
 
     this.$waiting = this.root.querySelector('[data-dzr-waiting]')
     this.$host = this.root.querySelector('[data-dzr-host]')
-    this.$settle = this.root.querySelector('[data-dzr-settle]')
+    this.$settle = document.createElement('div')
+    this.$settle.className = 'gkr-settle gkr-settle-fixed'
+    this.$settle.setAttribute('data-dzr-settle', '')
+    this.$settle.hidden = true
+    // 结算浮层必须常驻 body、与牌桌平级：牌桌 setImmersive(true) 会 portal
+    // 到 body（z-index:1000 全屏），浮层若留在房间壳里会被牌桌整个盖住
+    // （壳退出 gkr-full 后不再是 fixed，还困在主题 transform 的层叠上下文里，
+    // 自身的 z-index:15010 出不来——表现为「结算卡不弹」）。
+    // 注意：脱离 .gh-root 后站内 `.gh-root [hidden]` 规则够不着，hidden 由
+    // doudizhu.css 的 [data-dzr-settle][hidden] 兜底；脱离壳后点击也不再
+    // 冒泡到 root，须自带监听
+    document.body.appendChild(this.$settle)
+    this.$settle.addEventListener('click', ev => this._onClick(ev))
     this.$bubbles = this.root.querySelector('[data-dzr-bubbles]')
     this.$toast = this.root.querySelector('[data-dzr-toast]')
 
