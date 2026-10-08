@@ -826,15 +826,24 @@ export function bindChatDock(dock, { onStartRec, onStopRec, onPhrase } = {}) {
   const updatePanelDir = () => {
     dock.classList.remove('is-down')
     panel.style.maxHeight = ''
+    panel.style.overflowY = ''
     if (panel.hidden) return
     const s = insets()
+    const GAP = 8
     const topLimit = Math.max(s.t, MIN_TOP)
-    if (panel.getBoundingClientRect().top < topLimit - 0.5) {
-      dock.classList.add('is-down')
-      // 向下展开时按按钮下方剩余空间动态限高（矮屏横屏里光靠 CSS 常量
-      // 不够：dock 拖到中上部时下方空间更小），超出部分面板内滚动
-      const panelTop = dock.getBoundingClientRect().bottom + 8
-      panel.style.maxHeight = Math.max(120, window.innerHeight - s.b - EDGE - panelTop) + 'px'
+    const bottomLimit = window.innerHeight - s.b - EDGE
+    const dr = dock.getBoundingClientRect()
+    const upSpace = dr.top - GAP - topLimit // 按钮上方可容纳面板的高度
+    const downSpace = bottomLimit - (dr.bottom + GAP) // 按钮下方可容纳的高度
+    const ph = panel.getBoundingClientRect().height // 面板自然高度
+    // 上弹放得下就上弹；放不下则选空间更大的一侧（横屏中部往下弹反而更挤，
+    // 必须选大的一侧）。矮屏下用剩余空间严格限高 + 内部滚动，绝不溢出屏幕
+    const down = upSpace < ph && downSpace > upSpace
+    dock.classList.toggle('is-down', down)
+    const space = down ? downSpace : upSpace
+    if (space < ph) {
+      panel.style.maxHeight = Math.max(0, Math.floor(space)) + 'px'
+      panel.style.overflowY = 'auto'
     }
   }
   let dragStart = null
