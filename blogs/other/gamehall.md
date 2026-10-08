@@ -296,6 +296,9 @@ meta:
 .gkr-voice-dock.is-left { align-items: flex-start; }
 .gkr-voice-dock.is-left .gkr-chat-panel { left: 0; right: auto; }
 .gkr-voice-dock.is-left .gkr-chat-rectip { left: 52px; right: auto; }
+/* portal 到 body 的悬浮态（斗地主游戏中：脱离牌桌横屏旋转树的 transform
+   陷阱，横屏下 fixed 定位回归视口坐标系；压在房间壳 z-index:10000 之上） */
+.gkr-voice-dock.is-floating { z-index: 15020; }
 .gkr-chat-rectip {
   position: absolute; right: 52px; bottom: 0; z-index: 1; pointer-events: none;
   padding: 6px 12px; border-radius: 999px;

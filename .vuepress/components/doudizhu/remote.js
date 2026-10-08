@@ -111,6 +111,8 @@ export default class DoudizhuRemote {
       this.$settle.remove()
       this.$settle = null
     }
+    // 语音按钮同样常驻 body（游戏中 _floatVoiceDock），随壳退出归位
+    this._floatVoiceDock(false)
     document.body.classList.remove('ddz-ingame')
     exitFullscreen()
     this.root.innerHTML = ''
@@ -362,9 +364,11 @@ export default class DoudizhuRemote {
   _renderWaiting() {
     if (!this.room) return
     // 回等待室：牌桌退出全屏（root portal 回 $host 内，hidden 才能藏住），
-    // 等待室壳的全屏布局（gkr-full）重新接管；ddz-ingame 摘除，
-    // 层级交还 gkr-full 体系
+    // 等待室壳的全屏布局（gkr-full）重新接管；语音按钮随壳归位
+    // （is-floating 是游戏时脱离横屏旋转树的临时态，见 _floatVoiceDock）；
+    // ddz-ingame 摘除，层级交还 gkr-full 体系
     if (this.game) this.game.setImmersive(false)
+    this._floatVoiceDock(false)
     document.body.classList.remove('ddz-ingame')
     enterFullscreen()
     this.$waiting.hidden = false
@@ -450,11 +454,60 @@ export default class DoudizhuRemote {
 
   // ---------- 对局（单机 UI 挂载） ----------
 
+  /**
+   * 语音按钮必须脱离牌桌的横屏旋转树：牌桌根容器带 .ddz-fls
+   * （transform: rotate(90deg) 强制横屏），房间壳挂在牌桌宿主的
+   * transform 祖先链里——transform 祖先会把 position:fixed 困进
+   * 旋转后的局部坐标系，竖屏「右下角」的 dock 横屏就飘出屏幕，
+   * 表现是语音按键横屏消失。游戏中 portal 到 body（is-floating 抬到
+   * .gkr-full 房间壳 z-index 10000 之上），回等待室再归位。
+   * 位置走 localStorage（bindChatDock 记的视口坐标），挂边状态跨局不丢。
+   */
+  _floatVoiceDock(on) {
+    const dock = this.root && this.root.querySelector('[data-gkr-voice-dock]')
+    if (!dock) return
+    if (on) {
+      if (dock.parentElement === document.body) return
+      document.body.appendChild(dock)
+      dock.classList.add('is-floating')
+      // portal 换了包含块，按记忆位置重新落位（坐标即视口坐标）；
+      // 无记忆则回到默认右下角，别让旧 inline 坐标飘出去
+      let p = null
+      try { p = JSON.parse(localStorage.getItem('gkr-dock-pos') || 'null') } catch (e) { /* 忽略 */ }
+      if (p && typeof p.x === 'number' && typeof p.y === 'number') {
+        const x = Math.max(8, Math.min(window.innerWidth - dock.offsetWidth - 8, p.x))
+        const y = Math.max(8, Math.min(window.innerHeight - dock.offsetHeight - 8, p.y))
+        dock.style.left = x + 'px'
+        dock.style.top = y + 'px'
+        dock.style.right = 'auto'
+        dock.style.bottom = 'auto'
+        const r = dock.getBoundingClientRect()
+        dock.classList.toggle('is-left', r.left + r.width / 2 < window.innerWidth / 2)
+      } else {
+        dock.style.left = ''
+        dock.style.top = ''
+        dock.style.right = ''
+        dock.style.bottom = ''
+        dock.classList.remove('is-left')
+      }
+    } else {
+      if (dock.parentElement !== document.body) return
+      this.root.appendChild(dock)
+      dock.classList.remove('is-floating')
+      // 回等待室恢复默认右下角（inline 坐标是游戏时的，对壳布局无意义）
+      dock.style.left = ''
+      dock.style.top = ''
+      dock.style.right = ''
+      dock.style.bottom = ''
+      dock.classList.remove('is-left')
+    }
+  }
+
   _showGame() {
     // 撤掉等待室壳的全屏（gkr-lock 的 overflow:hidden 会挡死牌桌的
     // 滚动垫层机制——iOS 收起工具栏需要文档可滚）；牌桌用自己的
     // setImmersive 全屏接管 body。
-    // ddz-ingame：拆主题 transform 陷阱 + 抬高语音 dock/气泡/提示到牌桌
+    // ddz-ingame：拆主题 transform 陷阱 + 抬高语音气泡/提示到牌桌
     // 之上（见 gamehall.md 样式），否则游戏中语音按钮被牌桌盖住
     exitFullscreen()
     document.body.classList.add('ddz-ingame')
@@ -467,6 +520,7 @@ export default class DoudizhuRemote {
     this.$waiting.hidden = true
     this.$host.hidden = false
     if (this.$settle && !this.results) this.$settle.hidden = true
+    this._floatVoiceDock(true)
     this._syncGame()
   }
 
