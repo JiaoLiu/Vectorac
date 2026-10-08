@@ -42,13 +42,18 @@
               <text v-if="!pieceAt(node.id) && (node.kind==='camp'||node.kind==='hq')" class="jq-site-label" text-anchor="middle" y="4" :transform="labelTurn(node.seat)">{{ node.kind==='camp' ? '营' : '本营' }}</text>
               <circle v-if="destinations.includes(node.id)" r="22" fill="#f6db79" opacity=".25"/><circle v-if="destinations.includes(node.id)" r="7" fill="#ffe8a0"/>
               <g v-if="pieceAt(node.id)" :class="['jq-piece', {'is-selected': selected === pieceAt(node.id).id}]" filter="url(#jq-shadow)">
-                <rect x="-23" y="-20" width="46" height="40" rx="6" :fill="pieceType(pieceAt(node.id)) ? 'url(#jq-piece)' : colors[pieceAt(node.id).seat]" :stroke="selected === pieceAt(node.id).id ? '#fff0a0' : colors[pieceAt(node.id).seat]" :stroke-width="selected === pieceAt(node.id).id ? 4 : 2"/>
-                <rect x="-19" y="-16" width="38" height="32" rx="3" fill="none" :stroke="pieceType(pieceAt(node.id)) ? colors[pieceAt(node.id).seat] : '#ffffff55'" stroke-width=".7"/>
-                <text v-if="pieceType(pieceAt(node.id))" text-anchor="middle" y="6" :fill="colors[pieceAt(node.id).seat]" :transform="labelTurn(node.seat)">{{ pieceName(pieceAt(node.id)) }}</text>
-                <!-- 情报角标：吃过我方明棋的敌暗子按交战结果标注推断（司 / 大…） -->
-                <g v-if="pieceBadge(pieceAt(node.id))" class="jq-intel-badge">
-                  <circle cx="14" cy="-11" r="8.5" fill="#d8a521" stroke="#3c2a05" stroke-width="1"/>
-                  <text x="14" y="-7.5" text-anchor="middle" :transform="'rotate(' + (-badgeSpin(node.seat)) + ' 14 -11)'">{{ pieceBadge(pieceAt(node.id)) }}</text>
+                <!-- 棋子本体整体反向补回屏幕正立：抵消阵地旋转 seatTurn 与联机
+                     视角旋转 viewAngle。否则棋子走出本方阵地（或坐在非 1 号位）
+                     时会跟着阵地被旋转 90°，横向长方形被压成窄竖条 -->
+                <g :transform="labelTurn(node.seat)">
+                  <rect x="-23" y="-20" width="46" height="40" rx="6" :fill="pieceType(pieceAt(node.id)) ? 'url(#jq-piece)' : colors[pieceAt(node.id).seat]" :stroke="selected === pieceAt(node.id).id ? '#fff0a0' : colors[pieceAt(node.id).seat]" :stroke-width="selected === pieceAt(node.id).id ? 4 : 2"/>
+                  <rect x="-19" y="-16" width="38" height="32" rx="3" fill="none" :stroke="pieceType(pieceAt(node.id)) ? colors[pieceAt(node.id).seat] : '#ffffff55'" stroke-width=".7"/>
+                  <text v-if="pieceType(pieceAt(node.id))" text-anchor="middle" y="6" :fill="colors[pieceAt(node.id).seat]">{{ pieceName(pieceAt(node.id)) }}</text>
+                  <!-- 情报角标：吃过我方明棋的敌暗子按交战结果标注推断（司 / 大…） -->
+                  <g v-if="pieceBadge(pieceAt(node.id))" class="jq-intel-badge">
+                    <circle cx="14" cy="-11" r="8.5" fill="#d8a521" stroke="#3c2a05" stroke-width="1"/>
+                    <text x="14" y="-7.5" text-anchor="middle">{{ pieceBadge(pieceAt(node.id)) }}</text>
+                  </g>
                 </g>
               </g>
             </g>
@@ -239,8 +244,6 @@ export default {
       const pool = this.online ? p.intel : (this.g.intel && this.g.intel[this.mySeat + ':' + p.id])
       return badgeOf(pool)
     },
-    /** 角标文字转回屏幕正立（jq-site 对侧向战区整体旋转过） */
-    badgeSpin(seat) { const deg = this.viewAngle + (seat === 1 ? 90 : seat === 3 ? -90 : 0); return deg },
     badgeHint(p) {
       const b = this.pieceBadge(p)
       if (!b) return null
