@@ -296,9 +296,14 @@ meta:
 .gkr-voice-dock.is-left { align-items: flex-start; }
 .gkr-voice-dock.is-left .gkr-chat-panel { left: 0; right: auto; }
 .gkr-voice-dock.is-left .gkr-chat-rectip { left: 52px; right: auto; }
-/* portal 到 body 的悬浮态（斗地主游戏中：脱离牌桌横屏旋转树的 transform
-   陷阱，横屏下 fixed 定位回归视口坐标系；压在房间壳 z-index:10000 之上） */
-.gkr-voice-dock.is-floating { z-index: 15020; }
+/* hidden 兜底：dock 会被 portal 到 body（斗地主游戏中，见 _floatVoiceDock），
+   脱离 .gh-root 后 `.gh-root [hidden]` 够不着——而 .gkr-chat-panel 的
+   display:grid / .gkr-chat-btn 的 display:flex 会压过浏览器默认的
+   [hidden]，导致面板一进游戏就常开。这条不依赖任何祖先，dock 内一律生效 */
+.gkr-voice-dock [hidden] { display: none !important; }
+/* portal 到 body 的悬浮态（斗地主游戏中：脱离牌桌与房间壳的层叠/坐标系，
+   横屏下 fixed 定位回归视口；z-index 压过牌桌 1000 与房间壳 10000） */
+.gkr-voice-dock.is-floating { z-index: 15020 !important; }
 .gkr-chat-rectip {
   position: absolute; right: 52px; bottom: 0; z-index: 1; pointer-events: none;
   padding: 6px 12px; border-radius: 999px;

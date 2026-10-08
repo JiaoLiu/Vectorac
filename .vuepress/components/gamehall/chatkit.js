@@ -753,6 +753,21 @@ export function bindChatDock(dock, { onStartRec, onStopRec, onPhrase } = {}) {
       applyPos(Math.max(8, Math.min(maxX, p.x)), clampY(p.y), false)
     }
   }
+  // 视口变化（转屏 / iOS 工具栏收起）后把 dock 拉回视口内：记忆坐标是
+  // 旧视口算的，竖屏拖到屏幕底部再转横屏就会整块出界（表现「横屏语音
+  // 按钮消失」）。默认右下角（无 inline 坐标）由 CSS right/bottom 自适应，
+  // 不需要处理
+  const onViewportResize = () => {
+    if (!dock.style.left && !dock.style.top) return
+    const r = dock.getBoundingClientRect()
+    applyPos(
+      Math.max(8, Math.min(window.innerWidth - dock.offsetWidth - 8, r.left)),
+      clampY(r.top),
+      true
+    )
+  }
+  window.addEventListener('resize', onViewportResize)
+  window.addEventListener('orientationchange', onViewportResize)
   let dragStart = null
   let dragged = false
   let suppressClick = false
@@ -850,6 +865,8 @@ export function bindChatDock(dock, { onStartRec, onStopRec, onPhrase } = {}) {
     },
     destroy() {
       document.removeEventListener('click', onDocClick)
+      window.removeEventListener('resize', onViewportResize)
+      window.removeEventListener('orientationchange', onViewportResize)
     }
   }
 }

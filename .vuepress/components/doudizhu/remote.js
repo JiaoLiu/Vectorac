@@ -281,7 +281,10 @@ export default class DoudizhuRemote {
     this.$toast = this.root.querySelector('[data-dzr-toast]')
 
     this.root.addEventListener('click', ev => this._onClick(ev))
-    this._chat = bindChatDock(this.root.querySelector('[data-gkr-voice-dock]'), {
+    // dock 元素缓存引用：_floatVoiceDock 会把它 portal 到 body，之后
+    // root.querySelector 再也找不到（归位逻辑会静默失效）
+    this.$dock = this.root.querySelector('[data-gkr-voice-dock]')
+    this._chat = bindChatDock(this.$dock, {
       onStartRec: () => this._startRecording(),
       onStopRec: cancel => this._stopRecording(cancel),
       onPhrase: idx => this._sendPhrase(idx)
@@ -464,14 +467,15 @@ export default class DoudizhuRemote {
    * 位置走 localStorage（bindChatDock 记的视口坐标），挂边状态跨局不丢。
    */
   _floatVoiceDock(on) {
-    const dock = this.root && this.root.querySelector('[data-gkr-voice-dock]')
+    const dock = this.$dock
     if (!dock) return
     if (on) {
       if (dock.parentElement === document.body) return
       document.body.appendChild(dock)
       dock.classList.add('is-floating')
-      // portal 换了包含块，按记忆位置重新落位（坐标即视口坐标）；
-      // 无记忆则回到默认右下角，别让旧 inline 坐标飘出去
+      // portal 换了包含块：按记忆位置重新落位并 clamp 进当前视口
+      // （记忆坐标是进房时的视口算的，横竖屏切换后可能出界）；
+      // 无记忆则清空 inline，回到 CSS 默认右下角
       let p = null
       try { p = JSON.parse(localStorage.getItem('gkr-dock-pos') || 'null') } catch (e) { /* 忽略 */ }
       if (p && typeof p.x === 'number' && typeof p.y === 'number') {
