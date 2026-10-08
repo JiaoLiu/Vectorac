@@ -272,7 +272,7 @@ meta:
 .gkr-settle-title.is-loss { color: #ff8a80; }
 .gkr-settle-title.is-draw { color: #f5c542; }
 .gkr-settle-sub { font-size: 12.5px; color: #9aa3b8; margin-bottom: 12px; }
-.gkr-settle-scores { display: flex; flex-direction: column; gap: 4px; font-size: 14px; margin-bottom: 16px; }
+.gkr-settle-scores { display: flex; flex-direction: column; gap: 5px; font-size: 14.5px; font-weight: 600; color: #e8ecf5; margin-bottom: 16px; }
 .gkr-settle-score.is-bust { color: #ff8a80; }
 .gkr-settle-btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
 .gkr-settle-final { font-size: 13px; color: #ff8a80; margin-bottom: 4px; width: 100%; }
