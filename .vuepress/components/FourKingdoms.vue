@@ -177,7 +177,8 @@ export default {
       try { this.savedGame = restoreGame(localStorage.getItem(SAVE)); this.savedFormation = JSON.parse(localStorage.getItem(FORM)) } catch (e) {}
       this.game = createGame()
     }
-    if(window.innerWidth<900){this.zoom=1.8;this.$nextTick(this.focusOwn)}
+    // 默认全局总览（zoom=1）：窄屏不再自动放大——进局先看整盘阵型，
+    // 需要细看时用户自己点「放大棋盘」
     // SVG sizing may settle after Vue's first tick in WebKit. Recenter on the
     // actual viewport layout (also after rotation), not an early zero-size box.
     this.$nextTick(()=>{if(window.ResizeObserver&&this.$refs.boardWindow){this._boardResize=new ResizeObserver(()=>{if(this.zoom>1)this.focusOwn()});this._boardResize.observe(this.$refs.boardWindow)}})
@@ -297,7 +298,7 @@ export default {
       }, 1200)
     },
     rollDice() { this._playDice(rollOpening(this.game), opening => this.startBattle(opening)) },
-    startBattle(opening){startGame(this.game, opening);this.selected=null;this.savedGame=null;this.refresh()},
+    startBattle(opening){startGame(this.game, opening);this.selected=null;this.savedGame=null;this.refresh();if(!this.fullscreen)this.toggleFullscreen()},
     shuffle() { if (this.online) { this.online.tryRandomize(); return } randomizeFormation(this.game); this.selected = null; this.refresh() },
     saveFormation() { this.savedFormation = this.game.pieces.filter(p=>p.seat===0).map(p=>({id:p.id,pos:p.pos})); try { localStorage.setItem(FORM,JSON.stringify(this.savedFormation)); this.toast('阵型已保存到此浏览器') } catch(e) { this.toast('当前浏览器无法保存阵型') } },
     loadFormation() { const saved = this.savedFormation; if (!Array.isArray(saved) || saved.length!==25 || new Set(saved.map(p=>p.pos)).size!==25) return this.toast('保存的阵型无效'); const own = this.game.pieces.filter(p=>p.seat===0); if (!own.every(p=>{const q=saved.find(q=>q.id===p.id);return q&&canDeploy(p.type,BOARD.byId[q.pos],0)})) return this.toast('保存的阵型不符合规则'); own.forEach(p=>{p.pos=saved.find(q=>q.id===p.id).pos}); this.selected=null;this.refresh() },
