@@ -418,7 +418,8 @@ export class Lobby {
       '</div>' +
       this._newRulesBar() +
       '<div class="scmj-lb-actions">' +
-      '<button type="button" class="scmj-btn scmj-btn-primary" data-lb="create">创建房间</button>' +
+      '<button type="button" class="scmj-btn scmj-btn-primary" data-lb="quickstart">⚡ 快速开局</button>' +
+      '<button type="button" class="scmj-btn" data-lb="create">创建房间</button>' +
       '<button type="button" class="scmj-btn" data-lb="refresh">刷新</button>' +
       '</div>' +
       '<div class="scmj-lb-join">' +
@@ -687,6 +688,9 @@ export class Lobby {
       case 'create':
         this._createRoom()
         break
+      case 'quickstart':
+        this._quickStart()
+        break
       case 'join': {
         const input = this.shell.querySelector('[data-lb="code"]')
         this._joinRoom(input ? input.value : '')
@@ -769,11 +773,29 @@ export class Lobby {
     }
   }
 
+  /** 大厅「快速开局」按钮：busy 期间按钮转文案防重复点击，成功直接进牌桌 */
+  async _quickStart() {
+    const btn = this.shell && this.shell.querySelector('[data-lb="quickstart"]')
+    if (btn) {
+      btn.disabled = true
+      btn.dataset.label = btn.textContent
+      btn.textContent = '⚡ 开局中…'
+    }
+    try {
+      await this.quickStart()
+    } finally {
+      if (btn) {
+        btn.disabled = false
+        if (btn.dataset.label) btn.textContent = btn.dataset.label
+      }
+    }
+  }
+
   /**
    * 一步到位「快速开局」：建房 + autoStart（服务端把空位补满 AI 立即开局），
    * WS 连上后房间已是 PLAYING，服务端推 GAME_STATE_CHANGED 自动进牌桌。
-   * 全程不打开大厅界面（入口页直接调）；失败 toast 并留在入口页。
-   * 好友房不走这里——自动补 AI 开局后好友无法再入座，好友房仍走大厅手动流程。
+   * 从大厅「⚡ 快速开局」按钮调用（入口页只进大厅，不再直开）；
+   * 失败 toast 留在大厅。好友房不走这里——自动补 AI 开局后好友无法再入座。
    */
   async quickStart({ rules } = {}) {
     if (this.busy) return
