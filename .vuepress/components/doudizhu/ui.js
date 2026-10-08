@@ -184,10 +184,17 @@ export default class DoudizhuUI {
         this.newGame()
         this.setImmersive(true)
       }
+      // 联机入口：放开始游戏下面（顶栏图标太挤且不显眼）
+      const btnOnline = h('button', 'ddz-btn ddz-lobby-online', '🌐 联机对战')
+      btnOnline.type = 'button'
+      btnOnline.onclick = () => {
+        window.location.href = '/blogs/other/gamehall.html?game=doudizhu'
+      }
       this.lobbyEl.append(
         h('div', 'ddz-lobby-title', '🃏 斗地主'),
         h('div', 'ddz-lobby-sub', '经典三人 · 叫分抢地主 · 炸弹翻倍'),
         btn,
+        btnOnline,
         h('div', 'ddz-lobby-tip', '进入后为全屏牌桌 · 竖屏持机会自动转为横屏画面')
       )
       this.table.append(this.lobbyEl)
@@ -231,17 +238,11 @@ export default class DoudizhuUI {
       btnExit.href = '/blogs/other/games.html'
       btnExit.title = '返回游戏列表'
     }
-    // 单机页联机入口：跳联机大厅预选斗地主（对齐军棋单机页）
-    const btnOnline = this.online ? null : h('a', 'ddz-icon-btn ddz-icon-online', '🌐')
-    if (btnOnline) {
-      btnOnline.href = '/blogs/other/gamehall.html?game=doudizhu'
-      btnOnline.title = '联机对战'
-    }
     this.topbar.append(
       h('span', 'ddz-logo', '斗地主'),
       this.elBase, this.elMult,
       h('span', 'ddz-topbar-gap'),
-      this.elLevel, btnMusic, btnSound, this.btnFull, ...(btnOnline ? [btnOnline] : []), btnExit
+      this.elLevel, btnMusic, btnSound, this.btnFull, btnExit
     )
     // 桌面
     this.table = h('div', 'ddz-table')

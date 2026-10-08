@@ -576,6 +576,13 @@ body.ddz-lock { overflow: hidden; }
 }
 .ddz-lobby-sub { font-size: 13px; color: rgba(255, 255, 255, 0.8); }
 .ddz-lobby-start { font-size: 17px; padding: 12px 46px; border-radius: 999px; }
+.ddz-lobby-online {
+  font-size: 14px;
+  padding: 9px 34px;
+  border-radius: 999px;
+  background: rgba(20, 56, 36, 0.9);
+  border: 1px solid rgba(245, 197, 66, 0.55);
+}
 .ddz-lobby-tip { font-size: 11px; color: rgba(255, 255, 255, 0.55); }
 
 /* ---------- 结算 ---------- */

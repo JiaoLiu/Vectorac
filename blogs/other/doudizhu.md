@@ -38,8 +38,32 @@ export default {
         console.error('[斗地主] 初始化失败：', error)
       }
     })
+    // iOS bfcache 防御：跳去联机大厅后返回时页面从缓存恢复，脚本不重跑；
+    // 音频上下文 / 定时器若已失效（Safari 会杀掉 bfcache 页的音频），
+    // DOM 可能残留半销毁状态——恢复时校验 UI 实例，坏了就重建
+    this._onPageshow = e => {
+      if (!e.persisted) return
+      const root = this.$el && this.$el.querySelector ? this.$el.querySelector('#ddzGame') : null
+      if (!root) return
+      const ui = window.__doudizhuUI
+      if (ui && !ui._destroyed && root.contains(ui.topbar)) return // 实例健康
+      if (ui) { try { ui.destroy() } catch (err) { /* ignore */ } }
+      window.__doudizhuUI = null
+      import('../../.vuepress/components/doudizhu/ui.js')
+        .then(({ default: DoudizhuUI }) => {
+          if (this._isDestroyed || !root.isConnected) return
+          this._ddz = new DoudizhuUI(root)
+          window.__doudizhuUI = this._ddz
+        })
+        .catch(() => {})
+    }
+    window.addEventListener('pageshow', this._onPageshow)
   },
   beforeDestroy() {
+    if (this._onPageshow) {
+      window.removeEventListener('pageshow', this._onPageshow)
+      this._onPageshow = null
+    }
     if (this._ddz) {
       try { this._ddz.destroy() } catch (e) { /* ignore */ }
       this._ddz = null

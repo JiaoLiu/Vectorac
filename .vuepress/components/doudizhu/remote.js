@@ -228,7 +228,9 @@ export default class DoudizhuRemote {
       '</div>' +
       '<div class="gkr-stage" data-dzr-stage>' +
       '  <div data-dzr-waiting></div>' +
-      '  <div data-dzr-host hidden></div>' +
+      // ddz-root 类必须带上：DoudizhuUI 的全套样式（fixed 全屏/桌面布局/
+      // 强制横屏旋转）都挂在这个类上，单机页由页面 HTML 提供，联机在这里给
+      '  <div data-dzr-host class="ddz-root" hidden></div>' +
       '</div>' +
       '<div class="gkr-settle gkr-settle-fixed" data-dzr-settle hidden></div>' +
       chatDockHtml() +
@@ -321,6 +323,10 @@ export default class DoudizhuRemote {
 
   _renderWaiting() {
     if (!this.room) return
+    // 回等待室：牌桌退出全屏（root portal 回 $host 内，hidden 才能藏住），
+    // 等待室壳的全屏布局（gkr-full）重新接管
+    if (this.game) this.game.setImmersive(false)
+    enterFullscreen()
     this.$waiting.hidden = false
     this.$host.hidden = true
     if (this.$settle) this.$settle.hidden = true
@@ -403,6 +409,10 @@ export default class DoudizhuRemote {
   // ---------- 对局（单机 UI 挂载） ----------
 
   _showGame() {
+    // 撤掉等待室壳的全屏（gkr-lock 的 overflow:hidden 会挡死牌桌的
+    // 滚动垫层机制——iOS 收起工具栏需要文档可滚）；牌桌用自己的
+    // setImmersive 全屏接管 body
+    exitFullscreen()
     if (!this.game) {
       // 联机直接进全屏牌桌（大厅点击链已给用户手势；原生全屏被拒时
       // setImmersive 自带 CSS 全屏兜底）
