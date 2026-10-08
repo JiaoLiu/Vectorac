@@ -44,7 +44,7 @@
               <g v-if="pieceAt(node.id)" :class="['jq-piece', {'is-selected': selected === pieceAt(node.id).id}]" filter="url(#jq-shadow)">
                 <rect x="-23" y="-20" width="46" height="40" rx="6" :fill="pieceType(pieceAt(node.id)) ? 'url(#jq-piece)' : colors[pieceAt(node.id).seat]" :stroke="selected === pieceAt(node.id).id ? '#fff0a0' : colors[pieceAt(node.id).seat]" :stroke-width="selected === pieceAt(node.id).id ? 4 : 2"/>
                 <rect x="-19" y="-16" width="38" height="32" rx="3" fill="none" :stroke="pieceType(pieceAt(node.id)) ? colors[pieceAt(node.id).seat] : '#ffffff55'" stroke-width=".7"/>
-                <text v-if="pieceType(pieceAt(node.id))" text-anchor="middle" y="6" :fill="colors[pieceAt(node.id).seat]" :transform="pieceTurn(node.seat)">{{ pieceName(pieceAt(node.id)) }}</text>
+                <text v-if="pieceType(pieceAt(node.id))" text-anchor="middle" y="6" :fill="colors[pieceAt(node.id).seat]" :transform="labelTurn(node.seat)">{{ pieceName(pieceAt(node.id)) }}</text>
                 <!-- 情报角标：吃过我方明棋的敌暗子按交战结果标注推断（司 / 大…） -->
                 <g v-if="pieceBadge(pieceAt(node.id))" class="jq-intel-badge">
                   <circle cx="14" cy="-11" r="8.5" fill="#d8a521" stroke="#3c2a05" stroke-width="1"/>
@@ -274,10 +274,11 @@ export default {
     confirmBegin() { if (this.online) this.online.tryConfirm(); else this.rollDice() },
     // 左右两侧战区是下方战区旋转 90° 的同一套阵型，棋子长边与铁路方向垂直。
     seatTurn(seat) { return seat === 1 ? ' rotate(90)' : seat === 3 ? ' rotate(-90)' : '' },
-    // 行营/大本营文字反向补回屏幕正立（含联机视角旋转量）。
+    // 文字一律反向补回屏幕正立（行营/大本营与棋子共用）：补偿阵地旋转
+    // seatTurn 与联机视角旋转 viewAngle，四家棋子只靠颜色区分，朝向一致。
+    // 早前棋子文字按所在阵地 seat 决定朝向，棋子走出本方阵地后文字会跟着
+    // 变竖/变倒（联机换座后更乱），故统一为朝向观察者。
     labelTurn(seat) { const deg = this.viewAngle + (seat === 1 ? 90 : seat === 3 ? -90 : 0); return deg ? 'rotate(' + (-deg) + ')' : '' },
-    // 竖向阵地（我与对家）的棋子文字同样补到屏幕正立；侧向阵地保持朝向主人。
-    pieceTurn(seat) { if ((seat - this.mySeat + 4) % 2 !== 0) return ''; const deg = this.viewAngle + (seat === 1 ? 90 : seat === 3 ? -90 : 0); return deg ? 'rotate(' + (-deg) + ')' : '' },
     diePips(value) { return PIPS[value] || [] },
     // 决胜轮还在跳动时显示随机点数，之前的轮次已经作数，直接展示真实点数。
     dieFaces(index, row) { return this.dice.settled || index < this.dice.rounds.length - 1 ? row.dice : this.dice.faces[row.seat] },
