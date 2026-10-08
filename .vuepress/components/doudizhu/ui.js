@@ -1102,10 +1102,19 @@ export default class DoudizhuUI {
     if (!s) return
     // 局终：隐藏桌面 chrome（对手面板等），结算画面干净（CSS .ddz-over）
     this.root.classList.add('ddz-over')
-    if (!this.online) {
-      this.points = Math.max(0, this.points + s.scores[this.seat])
-      localStorage.setItem('ddz-points', String(this.points))
+    if (this.online) {
+      // 联机：结算 UI 由 remote 浮层统一负责（含房间积分与「准备下一局」按钮）。
+      // AI 秒准备会让新局 GAME_STATE_CHANGED 早于真人看清结算到达，本地若也
+      // 渲染一张结算卡，两层叠加且旧卡可能卡着「等待房间结算」不消失——
+      // 这里只做胜负反馈（音效/特效）+ 桌面收起，不渲染卡片
+      const win = s.scores[this.seat] > 0
+      this.audio.sfx(win ? 'win' : 'lose')
+      if (s.spring) { this.flashFx('🌸', '春天！'); this.petals() }
+      if (win) this.coins()
+      return
     }
+    this.points = Math.max(0, this.points + s.scores[this.seat])
+    localStorage.setItem('ddz-points', String(this.points))
     const win = s.scores[this.seat] > 0
     const box = h('div', 'ddz-settle')
     box.append(h('div', 'ddz-settle-stamp ' + (win ? 'win' : 'lose'), win ? '胜 利' : '失 败'))
@@ -1119,7 +1128,7 @@ export default class DoudizhuUI {
       h('div', 'ddz-settle-row ddz-mult', `总倍数 ×${s.multiplier}`)
     )
     box.append(detail)
-    // 三家积分与余牌（联机显示玩家名，单机显示 AI 名）
+    // 三家积分与余牌（单机）
     for (const seat of [0, 1, 2]) {
       const row = h('div', 'ddz-settle-player')
       const sc = s.scores[seat]
@@ -1133,23 +1142,15 @@ export default class DoudizhuUI {
       row.append(cards)
       box.append(row)
     }
-    if (this.online) {
-      // 联机：积分入账与「准备下一局 / 退出房间」按钮由 remote 结算浮层负责
-      const roomScores = s.meta && s.meta.scores
-      box.append(h('div', 'ddz-settle-level', roomScores
-        ? `房间积分：${[0, 1, 2].map(i => this.oppName(i) + ' ' + roomScores[i]).join(' · ')}`
-        : '等待房间结算…'))
-    } else {
-      box.append(h('div', 'ddz-settle-level', `当前积分 ${this.points} · ${levelOf(this.points)}`))
-      const again = h('button', 'ddz-btn ddz-btn-primary', '再来一局')
-      again.type = 'button'
-      again.onclick = () => this.newGame()
-      const back = h('a', 'ddz-btn', '返回游戏列表')
-      back.href = '/blogs/other/games.html'
-      const row = h('div', 'ddz-settle-actions')
-      row.append(again, back)
-      box.append(row)
-    }
+    box.append(h('div', 'ddz-settle-level', `当前积分 ${this.points} · ${levelOf(this.points)}`))
+    const again = h('button', 'ddz-btn ddz-btn-primary', '再来一局')
+    again.type = 'button'
+    again.onclick = () => this.newGame()
+    const back = h('a', 'ddz-btn', '返回游戏列表')
+    back.href = '/blogs/other/games.html'
+    const row = h('div', 'ddz-settle-actions')
+    row.append(again, back)
+    box.append(row)
     // BGM 署名（CC BY 3.0 要求）
     box.append(h('div', 'ddz-settle-credit', '♪ BGM: Shenyang — Kevin MacLeod (incompetech.com) · CC BY 3.0'))
     this.overlay.innerHTML = ''
