@@ -318,6 +318,14 @@ meta:
   box-shadow: 0 6px 22px rgba(0, 0, 0, 0.5);
   width: 228px; max-width: calc(100vw - 24px); box-sizing: border-box;
 }
+/* 展开方向自适应（bindChatDock.updatePanelDir）：dock 被拖到接近顶部时，
+   默认向上弹的面板会顶出屏幕上方，改加 .is-down 以 dock 底为基准向下展开；
+   限高可滚动，避免矮屏横屏时反向溢出底部。横屏面板本就向左展开
+   （见下方 media query），此规则只改纵向锚点，横向仍是左展开 */
+.gkr-voice-dock.is-down .gkr-chat-panel {
+  top: calc(100% + 8px); bottom: auto;
+  max-height: calc(100dvh - 112px); overflow-y: auto;
+}
 /* 面板顶部全宽「按住说话」：最常用的语音入口放第一位，短语退居其次 */
 .gkr-chat-micbtn {
   grid-column: 1 / -1; padding: 12px 10px; border-radius: 10px;

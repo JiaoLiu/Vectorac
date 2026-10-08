@@ -706,6 +706,7 @@ export function bindChatDock(dock, { onStartRec, onStopRec, onPhrase } = {}) {
     const opening = panel.hidden
     panel.hidden = !panel.hidden
     toggle.setAttribute('aria-expanded', String(!panel.hidden))
+    updatePanelDir()
     if (opening) {
       // 点开面板预请求麦克风授权——仅非 iOS。iOS 是单捕获会话（见
       // _bindMicWarm 注释）：面板 prime + 长按开录两场 getUserMedia 会
@@ -801,6 +802,7 @@ export function bindChatDock(dock, { onStartRec, onStopRec, onPhrase } = {}) {
     if (!dock.style.left && !dock.style.top) return
     const r = dock.getBoundingClientRect()
     applyPos(edgeX(), clampY(r.top), true)
+    updatePanelDir() // 转屏后面板高度/空间变化，重判展开方向
   }
   window.addEventListener('resize', onViewportResize)
   window.addEventListener('orientationchange', onViewportResize)
@@ -816,6 +818,23 @@ export function bindChatDock(dock, { onStartRec, onStopRec, onPhrase } = {}) {
       dock.style.top = ''
       dock.style.right = ''
       dock.style.bottom = ''
+    }
+  }
+  // 面板展开方向自适应：默认向上弹（CSS bottom 锚定）；dock 被拖到接近顶部时
+  // 上弹会顶出屏幕（用户报「拖到上面展开溢出」），改加 .is-down 向下展开
+  //（横屏面板本就向左展开，此规则只改纵向锚点，横向仍是左展开）
+  const updatePanelDir = () => {
+    dock.classList.remove('is-down')
+    panel.style.maxHeight = ''
+    if (panel.hidden) return
+    const s = insets()
+    const topLimit = Math.max(s.t, MIN_TOP)
+    if (panel.getBoundingClientRect().top < topLimit - 0.5) {
+      dock.classList.add('is-down')
+      // 向下展开时按按钮下方剩余空间动态限高（矮屏横屏里光靠 CSS 常量
+      // 不够：dock 拖到中上部时下方空间更小），超出部分面板内滚动
+      const panelTop = dock.getBoundingClientRect().bottom + 8
+      panel.style.maxHeight = Math.max(120, window.innerHeight - s.b - EDGE - panelTop) + 'px'
     }
   }
   let dragStart = null
