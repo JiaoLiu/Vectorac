@@ -397,6 +397,44 @@ export class Room {
     })
   }
 
+  /**
+   * 换座位（等待阶段，非管理员命令）：真人移到任一空位。
+   * 用途：军棋等按座次分队/分阵营的游戏，加入顺序不该锁死座位——
+   * 点空位即可和任意人换到想要的位置（如坐对家）。
+   * 管理员身份跟着人走（adminSeat 随迁）；换座后 ready 清零，需重新准备。
+   */
+  async moveSeat(actorPlayerId, toSeatIndex) {
+    this._guardAlive()
+    return this.queue.push(() => {
+      const from = seatOfPlayer(this.seats, actorPlayerId)
+      if (!from) fail(ERR.INVALID_ACTION, '你不在此房间内')
+      this._requireWaiting()
+      const to = this._seatAt(toSeatIndex)
+      if (to.seatIndex === from.seatIndex) return { seatIndex: to.seatIndex }
+      if (to.occupantType !== OCCUPANT.EMPTY) fail(ERR.INVALID_ACTION, '目标座位已有人')
+      const wasAdmin = this.adminSeat === from.seatIndex
+      const displayName = from.displayName
+      const connected = from.connected
+      const joinedAt = from.joinedAt
+      clearSeat(from)
+      setHuman(to, { playerId: actorPlayerId, displayName })
+      to.connected = connected
+      to.joinedAt = joinedAt // joinedAt 保序：不影响「顶掉最后添加的 AI」的次序
+      // 换座视为重新表态：ready 清零（避免换座瞬间因旧 ready 意外凑齐开局）
+      to.ready = false
+      if (wasAdmin) this.adminSeat = to.seatIndex
+      this.touch()
+      this.bumpVersion()
+      this.hub.broadcast(this, 'SEAT_CHANGED', {
+        playerId: actorPlayerId, // 移动者标识：各客户端据此更新自己的 seatIndex
+        seatIndex: to.seatIndex,
+        seats: this.seatSnapshots(),
+        adminSeat: this.adminSeat
+      })
+      return { seatIndex: to.seatIndex }
+    })
+  }
+
   async updateRules(actorPlayerId, rules, turnTimeoutSeconds) {
     this._guardAlive()
     return this.queue.push(() => {

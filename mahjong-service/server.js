@@ -230,6 +230,9 @@ export function createServer({ logger } = {}) {
       case 'TOGGLE_READY':
         return handleReady(ws, msg)
 
+      case 'MOVE_SEAT':
+        return handleMoveSeat(ws, msg)
+
       case 'LEAVE_ROOM':
         return handleLeave(ws, msg)
 
@@ -419,6 +422,30 @@ export function createServer({ logger } = {}) {
         ...hub.envelope(room, 'ERROR', {}),
         requestId: msg.requestId || null,
         command: 'TOGGLE_READY',
+        errorCode: payload.errorCode,
+        message: payload.message
+      })
+    }
+  }
+
+  // ---- 换座位（等待阶段，非管理员命令）----
+  async function handleMoveSeat(ws, msg) {
+    const { playerId, room } = requireBound(ws)
+    try {
+      const r = await room.moveSeat(playerId, msg.toSeatIndex)
+      // ws.seatIndex 用于语音/短语转发的座位归因，换座后跟着走
+      if (r && typeof r.seatIndex === 'number') ws.seatIndex = r.seatIndex
+    } catch (err) {
+      const payload = toErrorPayload(err)
+      log('move-seat-rejected', {
+        roomId: room.roomId,
+        seatIndex: ws.seatIndex,
+        errorCode: payload.errorCode
+      }, 'warn')
+      safeSend(ws, {
+        ...hub.envelope(room, 'ERROR', {}),
+        requestId: msg.requestId || null,
+        command: 'MOVE_SEAT',
         errorCode: payload.errorCode,
         message: payload.message
       })

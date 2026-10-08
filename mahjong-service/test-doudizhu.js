@@ -191,7 +191,7 @@ await test('暗牌隐私：playerView 不泄露他家手牌与未亮底牌', () 
   assert(Array.isArray(vEnd.handCounts[1]) && vEnd.handCounts[1].length <= 20, 'over 阶段他家全亮')
 })
 
-await test('结算：引擎局分展示 + 房间入账地主±20/农民±10', () => {
+await test('结算：房间入账与引擎局分同源（叫分×倍数，地主×2）', () => {
   const st = adapter.createState({}, { seed: 2026, rules: {} })
   let guard = 0
   while (st.s.phase !== 'over' && guard++ < 400) {
@@ -203,11 +203,12 @@ await test('结算：引擎局分展示 + 房间入账地主±20/农民±10', ()
   }
   const res = adapter.settlementOf(st)
   assert(res, 'over 后应有结算')
-  const landlordWin = st.s.winSide === 'landlord'
+  const engScores = st.s.scores
   for (const p of res.perSeat) {
-    const expected = p.seat === st.s.landlord ? (landlordWin ? 20 : -20) : (landlordWin ? -10 : 10)
-    eq(p.delta, expected, 'seat' + p.seat + ' 入账')
+    eq(p.delta, engScores[p.seat], 'seat' + p.seat + ' 入账与引擎局分一致')
   }
+  // 零和校验：三家 delta 之和为 0
+  eq(res.perSeat.reduce((a, p) => a + p.delta, 0), 0, '零和')
   eq(res.winner, st.s.winner)
   eq(res.scores.length, 3)
   assert(res.hands.every(h => Array.isArray(h)), '终局手牌全亮')
@@ -270,6 +271,36 @@ await withServer(async s => {
     assert(listed && listed.gameType === 'doudizhu', '大厅列表应带 gameType')
   })
 
+  await test('换座位：真人移空位成功（adminSeat 随迁、ready 清零）', async () => {
+    const { room, player: p0 } = m.createRoom({ displayName: '房主', gameType: 'doudizhu' })
+    const { player: p1 } = await m.joinRoom({ roomCode: room.roomCode, displayName: '老二' })
+    eq(room.adminSeat, 0)
+    await room.setReady(p0.playerId, true)
+    // 移到空位 2
+    const r = await room.moveSeat(p1.playerId, 2)
+    eq(r.seatIndex, 2)
+    eq(room.seats[1].occupantType, 'EMPTY')
+    eq(room.seats[2].humanPlayerId, p1.playerId)
+    eq(room.seats[2].ready, false, '换座后 ready 清零')
+    // 房主换座 → adminSeat 随迁
+    const r0 = await room.moveSeat(p0.playerId, 1)
+    eq(r0.seatIndex, 1)
+    eq(room.adminSeat, 1, 'adminSeat 随房主迁移')
+    // 非法：目标有人；幂等：目标是自己的当前座位原样返回
+    let code = null
+    try { await room.moveSeat(p1.playerId, 1) } catch (e) { code = e.code }
+    eq(code, ERR.INVALID_ACTION, '目标有人应拒')
+    const same = await room.moveSeat(p1.playerId, 2)
+    eq(same.seatIndex, 2, '目标是自己的当前座位幂等返回')
+    // 开局后锁房：空位 0 补 AI，房主开局（首局不自动开，见 setReady 注释）
+    await room.addAi(p0.playerId, 0)
+    await room.startGame(p0.playerId)
+    eq(room.status, ROOM_STATUS.PLAYING)
+    code = null
+    try { await room.moveSeat(p1.playerId, 0) } catch (e) { code = e.code }
+    eq(code, ERR.ROOM_LOCKED, '对局中换座应拒')
+  })
+
   await test('完整一局：3 人坐满 → 叫抢加倍出牌 → 终局入账 → 就绪开下局', async () => {
     const { room, player: p0 } = m.createRoom({ displayName: '房主', gameType: 'doudizhu' })
     const { player: p1 } = await m.joinRoom({ roomCode: room.roomCode, displayName: '老二' })
@@ -303,12 +334,10 @@ await withServer(async s => {
     }
     assert(gs.finished, '应打完终局')
     eq(room.status, ROOM_STATUS.WAITING)
-    // 入账：地主 ±20 / 农民 ±10
+    // 入账：与引擎局分同源（叫分×倍数，地主×2），零和
     const res = room.lastResults
-    const landlordWin = st.s.winSide === 'landlord'
     for (const p of res.perSeat) {
-      const expected = p.seat === st.s.landlord ? (landlordWin ? 20 : -20) : (landlordWin ? -10 : 10)
-      eq(p.delta, expected, 'seat' + p.seat + ' 入账')
+      eq(p.delta, st.s.scores[p.seat], 'seat' + p.seat + ' 入账与引擎局分一致')
     }
     const sum = room.scores.reduce((a, b) => a + b, 0)
     eq(sum, 300, '零和：三家积分和应恒为 300')

@@ -9,8 +9,9 @@
 //     version/actionIds 幂等（与 junqi 同款 wrapper state）；
 //   · 窗口映射：叫分/抢地主/加倍/出牌四阶段每步一窗
 //     （identity 用 wrapper version 单调递增，redeal 重发也不回退）；
-//   · 积分换算：引擎局分（calledScore×multiplier，地主可 ±384）
-//     换成房间节奏分——地主 ±20 / 农民各 ±10（100 分起始破产制）。
+//   · 积分口径：QQ 经典规则——底分 = 叫分（1/2/3），炸弹/火箭每出一次
+//     翻倍、春天再翻倍；地主胜负 ±底分×倍数×2，农民各 ±底分×倍数
+//     （与引擎 settlementOf 同源，100 分起始破产制）。
 //
 // 暗牌隐私由引擎 playerView 保证：只发自家手牌 + 他家张数 +
 // 未亮底牌只发长度。AI 托管复用 doudizhu/ai.js（aiDecide 吃
@@ -30,10 +31,6 @@ import { ERR, fail } from '../../errors.js'
 import { WINDOW_TYPE } from '../action-window.js'
 
 const PHASE_OVER = 'over'
-
-/** 房间积分口径：地主 ±20 / 农民各 ±10（引擎局分只作展示，不作入账） */
-const LANDLORD_DELTA = 20
-const FARMER_DELTA = 10
 
 const DEFAULT_RULES = {}
 
@@ -187,11 +184,11 @@ function settlementOf(state) {
   const s = state.s
   if (s.phase !== PHASE_OVER) return null
   const eng = engineSettlement(s)
-  // 引擎局分只作展示；房间入账用地主 ±20 / 农民 ±10（破产节奏可控）
-  const sign = s.winSide === 'landlord' ? 1 : -1
+  // 房间入账与引擎局分同源：底分 = 叫分 × 倍数（炸弹/火箭/春天翻倍），
+  // 地主 ±底分×2、农民各 ±底分（QQ 经典口径，100 分起始破产制）
   const perSeat = [0, 1, 2].map(seat => ({
     seat,
-    delta: seat === s.landlord ? sign * LANDLORD_DELTA : -sign * FARMER_DELTA
+    delta: (eng.scores && eng.scores[seat]) || 0
   }))
   return { ...eng, perSeat }
 }

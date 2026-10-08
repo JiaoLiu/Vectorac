@@ -120,7 +120,12 @@ export default class JunqiRemote {
       case 'READY_CHANGED':
       case 'PLAYER_CONNECTED':
       case 'PLAYER_DISCONNECTED':
+      case 'SEAT_CHANGED':
         if (p.seats && this.room) this.room.seats = p.seats
+        // 只有移动者本人更新自己的 seatIndex（广播是全员的）
+        if (p.seatIndex != null && this.room && p.playerId && p.playerId === this.player.playerId) {
+          this.player.seatIndex = p.seatIndex
+        }
         if (p.adminSeat != null && this.room) this.room.adminSeat = p.adminSeat
         // 对局中座位状态（断线 / 托管）实时进棋盘徽标
         if (p.seats && this.view && this.view.meta && Array.isArray(this.view.meta.seats)) {
@@ -290,6 +295,9 @@ export default class JunqiRemote {
       case 'add-ai':
         this.net.sendAdmin('ADD_AI', { seatIndex: Number(t.getAttribute('data-seat')) })
         break
+      case 'sit':
+        this.net.sendMoveSeat(Number(t.getAttribute('data-seat')))
+        break
       case 'remove-ai':
         this.net.sendAdmin('REMOVE_AI', { seatIndex: Number(t.getAttribute('data-seat')) })
         break
@@ -382,7 +390,9 @@ export default class JunqiRemote {
           '<div class="gkr-seat-name gkr-empty">' + army + '空位</div>' +
           (admin
             ? '<button type="button" class="gkr-btn gkr-btn-mini" data-gkr="add-ai" data-seat="' + s.seatIndex + '">+ 添加 AI</button>'
-            : '<div class="gkr-seat-sub">分享房号邀好友，或等房主补 AI</div>')
+            : '<div class="gkr-seat-sub">分享房号邀好友，或等房主补 AI</div>') +
+          // 换座位：点空位即搬过去（想坐对家/队友位不用靠加入顺序了）
+          '<button type="button" class="gkr-btn gkr-btn-mini" data-gkr="sit" data-seat="' + s.seatIndex + '">🪑 坐这里</button>'
       }
       seatHtml += '<div class="gkr-seat' + (isMe ? ' is-me' : '') + '">' + body + '</div>'
     }

@@ -393,6 +393,11 @@ export class NetClient {
     return this._sendRaw({ type, requestId: randomId(), ...payload })
   }
 
+  /** 换座位（等待阶段）：移到指定空位，服务端 SEAT_CHANGED 广播全员 */
+  sendMoveSeat(toSeatIndex) {
+    return this._sendRaw({ type: 'MOVE_SEAT', requestId: randomId(), toSeatIndex })
+  }
+
   /**
    * 房间交流：语音消息（按住录音 → base64）。
    * 服务端纯转发不存储；payload 形如 { mime, data, duration }。

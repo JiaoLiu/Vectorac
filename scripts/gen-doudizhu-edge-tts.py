@@ -60,8 +60,27 @@ def build_entries():
     return m
 
 
-async def gen_one(key, text, voice, rate, force):
-    out = OUT_DIR / f'{key}.mp3'
+# 斗地主联机快捷语（与 doudizhu/remote.js 的 DDZ_PHRASES 顺序严格对齐，
+# 序号即服务端白名单 0-7）。产物写 /audio/gamehall/ddz/phrase-N.mp3，
+# 与棋类共享的 /audio/gamehall/phrase-N.mp3（「好棋」等）分开。
+DDZ_CHAT_PHRASES = [
+    '快点吧，我等到花儿都谢了',
+    '不要走，决战到天亮',
+    '你的牌打得太好了',
+    '炸得好！',
+    '别吵，我在想牌',
+    '大家好，很高兴见到各位',
+    '你的手气太好了',
+    '不服，再来！',
+]
+
+
+def build_phrase_entries():
+    return {f'phrase-{i}': t for i, t in enumerate(DDZ_CHAT_PHRASES)}
+
+
+async def gen_one(key, text, voice, rate, force, out_dir=None):
+    out = (out_dir or OUT_DIR) / f'{key}.mp3'
     if out.exists() and not force:
         return 'skip'
     communicate = edge_tts.Communicate(text, voice=voice, rate=rate)
@@ -77,7 +96,11 @@ async def main():
     args = ap.parse_args()
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
+    # 快捷语输出目录：联机聊天面板的斗地主专属语音（与棋类共享目录分开）
+    phrase_dir = ROOT / '.vuepress' / 'public' / 'audio' / 'gamehall' / 'ddz'
+    phrase_dir.mkdir(parents=True, exist_ok=True)
     entries = build_entries()
+    phrase_entries = build_phrase_entries()
     ok = skip = 0
     for key, text in entries.items():
         try:
@@ -88,6 +111,17 @@ async def main():
         if r == 'ok':
             ok += 1
             print(f'[ok] {key}: {text}')
+        else:
+            skip += 1
+    for key, text in phrase_entries.items():
+        try:
+            r = await gen_one(key, text, args.voice, '+0%', args.force, out_dir=phrase_dir)
+        except Exception as e:
+            print(f'[fail] ddz/{key} {text}: {e}', file=sys.stderr)
+            continue
+        if r == 'ok':
+            ok += 1
+            print(f'[ok] ddz/{key}: {text}')
         else:
             skip += 1
     # manifest 以磁盘实际产物为准：只列真实存在的 mp3，浏览器零 404

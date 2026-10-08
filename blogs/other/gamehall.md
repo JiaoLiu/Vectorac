@@ -292,6 +292,10 @@ meta:
 }
 .gkr-chat-btn span { font-size: 9px; line-height: 11px; }
 .gkr-chat-btn:active { transform: scale(0.94); }
+/* 拖动挂边（bindChatDock）：吸附左缘时面板/录音提示翻到按钮右侧，避免弹出屏外 */
+.gkr-voice-dock.is-left { align-items: flex-start; }
+.gkr-voice-dock.is-left .gkr-chat-panel { left: 0; right: auto; }
+.gkr-voice-dock.is-left .gkr-chat-rectip { left: 52px; right: auto; }
 .gkr-chat-rectip {
   position: absolute; right: 52px; bottom: 0; z-index: 1; pointer-events: none;
   padding: 6px 12px; border-radius: 999px;

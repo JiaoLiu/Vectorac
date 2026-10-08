@@ -5,7 +5,7 @@
 //   对局区直接挂单机 DoudizhuUI（QQ 风桌面 / 叫抢加倍 / 炸弹特效 /
 //   TTS 报牌全部与单机一致）；本类只负责：等待室（3 座 / AI / 思考
 //   时长）→ 视图适配（服务端权威，本地只发意图 bid/rob/double/
-//   pass/play）→ 结算（地主 ±20 / 农民 ±10 入账、多局累计、破产）
+//   pass/play）→ 结算（叫分×倍数入账、多局累计、破产）
 //   → 全员准备自动开下一局。
 // 暗牌隐私由服务端视图保证：他家只发张数，底牌未亮只发长度。
 // 事件流（音效/气泡/特效）由引擎 acts 公开日志 diff 还原（见 ui.js
@@ -26,7 +26,6 @@ import {
   handleCtlClick
 } from '../gamehall/controls.js'
 import {
-  CHAT_PHRASES,
   enterFullscreen,
   exitFullscreen,
   speakPhrase,
@@ -36,6 +35,20 @@ import {
   enqueueVoice
 } from '../gamehall/chatkit.js'
 import DoudizhuUI from './ui.js'
+
+// 斗地主专属快捷语（≤8 条，序号即服务端白名单 0-7；棋类的「好棋」等不适用）。
+// mp3 预生成在 /audio/gamehall/ddz/phrase-N.mp3（scripts/gen-doudizhu-edge-tts.py），
+// 加载失败回退浏览器 TTS。
+const DDZ_PHRASES = [
+  '快点吧，我等到花儿都谢了',
+  '不要走，决战到天亮',
+  '你的牌打得太好了',
+  '炸得好！',
+  '别吵，我在想牌',
+  '大家好，很高兴见到各位',
+  '你的手气太好了',
+  '不服，再来！'
+]
 
 function esc(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({
@@ -121,7 +134,12 @@ export default class DoudizhuRemote {
       case 'READY_CHANGED':
       case 'PLAYER_CONNECTED':
       case 'PLAYER_DISCONNECTED':
+      case 'SEAT_CHANGED':
         if (p.seats && this.room) this.room.seats = p.seats
+        // 只有移动者本人更新自己的 seatIndex（广播是全员的）
+        if (p.seatIndex != null && this.room && p.playerId && p.playerId === this.player.playerId) {
+          this.player.seatIndex = p.seatIndex
+        }
         if (p.adminSeat != null && this.room) this.room.adminSeat = p.adminSeat
         if (p.seats && this.view && this.view.meta && Array.isArray(this.view.meta.seats)) {
           this.view.meta.seats = this.view.meta.seats.map((m, i) => {
@@ -238,7 +256,7 @@ export default class DoudizhuRemote {
       // 强制横屏旋转）都挂在这个类上，单机页由页面 HTML 提供，联机在这里给
       '  <div data-dzr-host class="ddz-root" hidden></div>' +
       '</div>' +
-      chatDockHtml() +
+      chatDockHtml(DDZ_PHRASES) +
       '<div class="gkr-bubbles" data-dzr-bubbles></div>' +
       '<div class="gkr-toast" data-dzr-toast hidden></div>'
 
@@ -290,6 +308,9 @@ export default class DoudizhuRemote {
         break
       case 'add-ai':
         this.net.sendAdmin('ADD_AI', { seatIndex: Number(t.getAttribute('data-seat')) })
+        break
+      case 'sit':
+        this.net.sendMoveSeat(Number(t.getAttribute('data-seat')))
         break
       case 'remove-ai':
         this.net.sendAdmin('REMOVE_AI', { seatIndex: Number(t.getAttribute('data-seat')) })
@@ -376,7 +397,9 @@ export default class DoudizhuRemote {
           '<div class="gkr-seat-name gkr-empty">空位</div>' +
           (admin
             ? '<button type="button" class="gkr-btn gkr-btn-mini" data-dzr="add-ai" data-seat="' + s.seatIndex + '">+ 添加 AI</button>'
-            : '<div class="gkr-seat-sub">分享房号邀牌友，或等房主补 AI</div>')
+            : '<div class="gkr-seat-sub">分享房号邀牌友，或等房主补 AI</div>') +
+          // 换座位：点空位即搬过去（等待阶段，加入顺序不再锁死座位）
+          '<button type="button" class="gkr-btn gkr-btn-mini" data-dzr="sit" data-seat="' + s.seatIndex + '">🪑 坐这里</button>'
       }
       seatHtml += '<div class="gkr-seat' + (isMe ? ' is-me' : '') + '">' + body + '</div>'
     }
@@ -401,7 +424,7 @@ export default class DoudizhuRemote {
       '  <div class="gkr-seats">' + seatHtml + '</div>' +
       '  <div class="gkr-rules-row">' +
       '    <span class="gh-field">思考时长 ' + stepperHtml('turnTimeoutSeconds', TIMEOUT_VALUES, room.turnTimeoutSeconds || 20, fmtTimeout, !admin) + '</span>' +
-      '    <span class="gh-field gkr-fixed-rule">积分：地主 ±20 / 农民 ±10 · 100 分破产制</span>' +
+      '    <span class="gh-field gkr-fixed-rule">积分：叫分 × 倍数（炸弹翻倍）· 100 分破产制</span>' +
       '  </div>' +
       '  <div class="gkr-waiting-actions">' + actionHtml + '</div>' +
       '  <div class="gkr-share-hint">邀请牌友：把房号 <b>' + esc(this._roomCode()) + '</b> 发给对方，或复制邀请链接</div>' +
@@ -570,15 +593,15 @@ export default class DoudizhuRemote {
   }
 
   _sendPhrase(idx) {
-    const text = CHAT_PHRASES[idx]
+    const text = DDZ_PHRASES[idx]
     if (!text) return
     this.net.sendChat({ phrase: idx })
     this._addChatBubble({ phrase: idx, seatIndex: this._mySeat() }, true)
-    speakPhrase(idx, text)
+    speakPhrase(idx, text, 'ddz')
   }
 
   _addChatBubble(p, mine) {
-    const text = CHAT_PHRASES[p.phrase]
+    const text = DDZ_PHRASES[p.phrase]
     if (!text) return
     const who = mine ? '你' : this._seatLabel(p.seatIndex)
     const el = document.createElement('div')
@@ -586,7 +609,7 @@ export default class DoudizhuRemote {
     el.textContent = '💬 ' + who + '：' + text
     this.$bubbles.appendChild(el)
     setTimeout(() => this._fadeBubble(el), 4500)
-    if (!mine) speakPhrase(p.phrase, text)
+    if (!mine) speakPhrase(p.phrase, text, 'ddz')
   }
 
   _playVoice(idx) {

@@ -18,7 +18,8 @@
 //    收发两端本地查表。
 // ============================================================
 
-/** 棋类快捷语（普通话，≤8 条；面板展示前 4 条，对齐麻将 CHAT_PANEL_COUNT） */
+/** 棋类快捷语（普通话，≤8 条；面板展示前 4 条，对齐麻将 CHAT_PANEL_COUNT）。
+    各游戏可传入自己的短语表（如斗地主 DDZ_PHRASES），面板与播报按表渲染 */
 export const CHAT_PHRASES = [
   '快点儿吧，我等不及了',
   '别急，让我想想',
@@ -270,11 +271,15 @@ function _resumeMediaAfterRecord() {
 /**
  * 播报第 idx 条快捷语：入队顺序播（不截断，保证每条完整）。
  * 优先预生成普通话 mp3，确认加载失败回退浏览器 speechSynthesis（zh-CN）。
+ * @param {number} idx 短语序号（服务端白名单 0-7）
+ * @param {string} [text] 短语文案（TTS 回退用；默认查棋类表）
+ * @param {string} [audioDir] 音频子目录（如 'ddz' → /audio/gamehall/ddz/phrase-N.mp3；
+ *                            留空用棋类共享目录）
  */
-export function speakPhrase(idx, text) {
+export function speakPhrase(idx, text, audioDir) {
   _enqueueComm({
     kind: 'phrase',
-    src: `${PHRASE_AUDIO_BASE}/phrase-${idx}.mp3`,
+    src: `${PHRASE_AUDIO_BASE}/${audioDir ? audioDir + '/' : ''}phrase-${idx}.mp3`,
     text: text || CHAT_PHRASES[idx] || '',
     dur: 3
   }, false)
@@ -654,17 +659,18 @@ export class VoiceRecorder {
  * 聊天 dock 的 DOM：与麻将联机同一结构（scmj-chat）——右下角圆形 🎙语音 按钮
  * + 弹出面板（顶部全宽「🎤 按住说话」+ 2 列快捷语）。录音提示胶囊在按钮左侧。
  */
-export function chatDockHtml() {
-  let phrases = ''
-  for (let i = 0; i < PANEL_COUNT; i++) {
-    phrases += '<button type="button" class="gkr-chat-phrase" data-chat="phrase" data-idx="' + i + '">' + CHAT_PHRASES[i] + '</button>'
+export function chatDockHtml(phrases) {
+  const list = phrases || CHAT_PHRASES
+  let phraseBtns = ''
+  for (let i = 0; i < Math.min(PANEL_COUNT, list.length); i++) {
+    phraseBtns += '<button type="button" class="gkr-chat-phrase" data-chat="phrase" data-idx="' + i + '">' + list[i] + '</button>'
   }
   return (
     '<div class="gkr-voice-dock" data-gkr-voice-dock>' +
     '  <div class="gkr-chat-rectip" data-chat-rectip hidden>🎙 正在录音…松开发送</div>' +
     '  <div class="gkr-chat-panel" data-chat-panel hidden>' +
     '    <button type="button" class="gkr-chat-micbtn" data-chat="mic" title="按住说话">🎤 按住说话</button>' +
-    phrases +
+    phraseBtns +
     '  </div>' +
     '  <button type="button" class="gkr-chat-btn" data-chat="toggle" title="语音 / 短语" aria-label="打开或收起语音与短语" aria-expanded="false">🎙<span>语音</span></button>' +
     '</div>'
@@ -722,6 +728,84 @@ export function bindChatDock(dock, { onStartRec, onStopRec, onPhrase } = {}) {
     }
   }
   toggle.addEventListener('click', onToggle)
+
+  // —— 拖动挂边：按住 🎙 拖走（挡住牌/按钮时），松手吸附左右边缘并记忆。
+  // 位移小于阈值仍视为点击（开合面板）；localStorage 记忆位置跨局生效。
+  // 位置用 position:fixed 的视口坐标（left/top）落地，吸附左缘时加
+  // .is-left 把面板/录音提示翻到按钮右侧，避免弹出屏外
+  const POS_KEY = 'gkr-dock-pos'
+  const clampY = y => Math.max(8, Math.min(window.innerHeight - dock.offsetHeight - 8, y))
+  const applyPos = (x, y, save) => {
+    dock.style.left = x + 'px'
+    dock.style.top = y + 'px'
+    dock.style.right = 'auto'
+    dock.style.bottom = 'auto'
+    const rect = dock.getBoundingClientRect()
+    dock.classList.toggle('is-left', rect.left + rect.width / 2 < window.innerWidth / 2)
+    if (save) { try { localStorage.setItem(POS_KEY, JSON.stringify({ x: Math.round(x), y: Math.round(y) })) } catch (e) { /* 隐私模式忽略 */ } }
+  }
+  // 恢复记忆位置（clamp 进当前视口，防换设备/转屏后飘出屏外）
+  {
+    let p = null
+    try { p = JSON.parse(localStorage.getItem(POS_KEY) || 'null') } catch (e) { /* 忽略 */ }
+    if (p && typeof p.x === 'number' && typeof p.y === 'number') {
+      const maxX = window.innerWidth - dock.offsetWidth - 8
+      applyPos(Math.max(8, Math.min(maxX, p.x)), clampY(p.y), false)
+    }
+  }
+  let dragStart = null
+  let dragged = false
+  let suppressClick = false
+  toggle.addEventListener('pointerdown', ev => {
+    if (ev.pointerType === 'mouse' && ev.button !== 0) return
+    const rect = dock.getBoundingClientRect()
+    dragStart = { x: ev.clientX, y: ev.clientY, dl: rect.left, dt: rect.top }
+    dragged = false
+    try { toggle.setPointerCapture(ev.pointerId) } catch (e) { /* 忽略 */ }
+  })
+  toggle.addEventListener('pointermove', ev => {
+    if (!dragStart) return
+    const dx = ev.clientX - dragStart.x
+    const dy = ev.clientY - dragStart.y
+    if (!dragged && Math.hypot(dx, dy) < 8) return
+    if (!dragged) {
+      dragged = true
+      panel.hidden = true
+      toggle.setAttribute('aria-expanded', 'false')
+    }
+    ev.preventDefault()
+    const maxX = window.innerWidth - dock.offsetWidth - 8
+    applyPos(
+      Math.max(8, Math.min(maxX, dragStart.dl + dx)),
+      clampY(dragStart.dt + dy),
+      false
+    )
+  })
+  const endDrag = ev => {
+    if (!dragStart) return
+    const wasDragged = dragged
+    dragStart = null
+    dragged = false
+    if (wasDragged) {
+      // 水平吸附到最近的左右边缘（留边距），纵向保持
+      const rect = dock.getBoundingClientRect()
+      const targetX = rect.left + rect.width / 2 < window.innerWidth / 2
+        ? 10
+        : window.innerWidth - dock.offsetWidth - 10
+      applyPos(targetX, clampY(rect.top), true)
+      suppressClick = true // 吞掉拖动结束的合成 click，别误开面板
+      if (ev && ev.pointerId != null) { try { toggle.releasePointerCapture(ev.pointerId) } catch (e) { /* 忽略 */ } }
+    }
+  }
+  toggle.addEventListener('pointerup', endDrag)
+  toggle.addEventListener('pointercancel', endDrag)
+  toggle.addEventListener('click', ev => {
+    if (suppressClick) {
+      suppressClick = false
+      ev.stopImmediatePropagation()
+      ev.preventDefault()
+    }
+  }, true) // 捕获阶段先于 onToggle 执行
 
   const onPhraseClick = ev => {
     const btn = ev.target.closest('[data-chat="phrase"]')
