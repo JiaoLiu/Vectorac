@@ -469,42 +469,17 @@ export default class DoudizhuRemote {
   _floatVoiceDock(on) {
     const dock = this.$dock
     if (!dock) return
-    if (on) {
-      if (dock.parentElement === document.body) return
+    const inBody = dock.parentElement === document.body
+    if (on && !inBody) {
       document.body.appendChild(dock)
       dock.classList.add('is-floating')
-      // portal 换了包含块：按「挂哪边」语义重新落位（不沿用记忆里的绝对
-      // 像素——竖屏右缘的 x 在横屏会落到屏幕中间），y clamp 进当前视口；
-      // 无记忆则清空 inline，回到 CSS 默认右下角
-      let p = null
-      try { p = JSON.parse(localStorage.getItem('gkr-dock-pos') || 'null') } catch (e) { /* 忽略 */ }
-      if (p && typeof p.y === 'number') {
-        const stickLeft = dock.classList.contains('is-left')
-        const x = stickLeft ? 10 : Math.max(10, window.innerWidth - dock.offsetWidth - 10)
-        const y = Math.max(8, Math.min(window.innerHeight - dock.offsetHeight - 8, p.y))
-        dock.style.left = x + 'px'
-        dock.style.top = y + 'px'
-        dock.style.right = 'auto'
-        dock.style.bottom = 'auto'
-        dock.classList.toggle('is-left', stickLeft)
-      } else {
-        dock.style.left = ''
-        dock.style.top = ''
-        dock.style.right = ''
-        dock.style.bottom = ''
-        dock.classList.remove('is-left')
-      }
-    } else {
-      if (dock.parentElement !== document.body) return
+    } else if (!on && inBody) {
       this.root.appendChild(dock)
       dock.classList.remove('is-floating')
-      // 回等待室恢复默认右下角（inline 坐标是游戏时的，对壳布局无意义）
-      dock.style.left = ''
-      dock.style.top = ''
-      dock.style.right = ''
-      dock.style.bottom = ''
-      dock.classList.remove('is-left')
     }
+    // 换包含块后按记忆 + 安全区重算落位（无记忆则清空 inline，交回
+    // CSS 默认右下角）；挂边坐标由 bindChatDock 统一维护，避免两处重复实现
+    if (this._chat && this._chat.restick) this._chat.restick()
   }
 
   _showGame() {

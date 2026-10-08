@@ -734,10 +734,43 @@ export function bindChatDock(dock, { onStartRec, onStopRec, onPhrase } = {}) {
   // 位置用 position:fixed 的视口坐标（left/top）落地，吸附左缘时加
   // .is-left 把面板/录音提示翻到按钮右侧，避免弹出屏外
   const POS_KEY = 'gkr-dock-pos'
-  const clampY = y => Math.max(8, Math.min(window.innerHeight - dock.offsetHeight - 8, y))
-  // 挂边坐标：靠左统一 10px，靠右 = 视口宽 - 按钮宽 - 10。转屏/重新落位都
-  // 按「挂哪边」重算，不沿用旧视口的绝对像素（否则竖屏右缘会在横屏落到中间）
-  const edgeX = left => (left ? 10 : Math.max(10, window.innerWidth - dock.offsetWidth - 10))
+  // 屏幕安全区（刘海 / 圆角 / home indicator）：拖到最上、最底会贴住系统
+  // 手势区与状态栏，操作时和系统手势打架，必须让开。用 probe 即时读 env()，
+  // 横竖屏 insets 不同，转屏后失效重算
+  const EDGE = 10 // 安全区之外再留的视觉间距
+  let safeCache = null
+  const insets = () => {
+    if (safeCache) return safeCache
+    const probe = document.createElement('div')
+    probe.className = 'gkr-safe-probe'
+    probe.style.cssText = 'position:fixed;top:0;left:0;width:0;height:0;' +
+      'padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) ' +
+      'env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px);'
+    document.body.appendChild(probe)
+    const cs = getComputedStyle(probe)
+    safeCache = {
+      t: parseFloat(cs.paddingTop) || 0,
+      r: parseFloat(cs.paddingRight) || 0,
+      b: parseFloat(cs.paddingBottom) || 0,
+      l: parseFloat(cs.paddingLeft) || 0
+    }
+    probe.remove()
+    return safeCache
+  }
+  const clampX = x => {
+    const s = insets()
+    return Math.max(s.l + EDGE, Math.min(window.innerWidth - dock.offsetWidth - s.r - EDGE, x))
+  }
+  const clampY = y => {
+    const s = insets()
+    return Math.max(s.t + EDGE, Math.min(window.innerHeight - dock.offsetHeight - s.b - EDGE, y))
+  }
+  // 挂边坐标：靠左贴左安全区、靠右贴右安全区。转屏/重新落位都按「挂哪边」
+  // 重算，不沿用旧视口的绝对像素（否则竖屏右缘会在横屏落到屏幕中间）
+  const edgeX = left => {
+    const s = insets()
+    return left ? s.l + EDGE : Math.max(s.l + EDGE, window.innerWidth - dock.offsetWidth - s.r - EDGE)
+  }
   const applyPos = (x, y, save) => {
     dock.style.left = x + 'px'
     dock.style.top = y + 'px'
@@ -747,13 +780,12 @@ export function bindChatDock(dock, { onStartRec, onStopRec, onPhrase } = {}) {
     dock.classList.toggle('is-left', rect.left + rect.width / 2 < window.innerWidth / 2)
     if (save) { try { localStorage.setItem(POS_KEY, JSON.stringify({ x: Math.round(x), y: Math.round(y) })) } catch (e) { /* 隐私模式忽略 */ } }
   }
-  // 恢复记忆位置（clamp 进当前视口，防换设备/转屏后飘出屏外）
+  // 恢复记忆位置（clamp 进当前视口与安全区，防换设备/转屏后飘出屏外）
   {
     let p = null
     try { p = JSON.parse(localStorage.getItem(POS_KEY) || 'null') } catch (e) { /* 忽略 */ }
     if (p && typeof p.x === 'number' && typeof p.y === 'number') {
-      const maxX = window.innerWidth - dock.offsetWidth - 8
-      applyPos(Math.max(8, Math.min(maxX, p.x)), clampY(p.y), false)
+      applyPos(clampX(p.x), clampY(p.y), false)
     }
   }
   // 视口变化（转屏 / iOS 工具栏收起）后重新吸附到挂边：记忆坐标是旧视口
@@ -762,6 +794,7 @@ export function bindChatDock(dock, { onStartRec, onStopRec, onPhrase } = {}) {
   // 靠左仍到左缘；y 沿用当前位置 clamp 进新视口。
   // 默认右下角（无 inline 坐标）由 CSS right/bottom 自适应，不需要处理
   const onViewportResize = () => {
+    safeCache = null // 横竖屏安全区不同，先失效缓存
     if (!dock.style.left && !dock.style.top) return
     const r = dock.getBoundingClientRect()
     applyPos(
@@ -772,6 +805,21 @@ export function bindChatDock(dock, { onStartRec, onStopRec, onPhrase } = {}) {
   }
   window.addEventListener('resize', onViewportResize)
   window.addEventListener('orientationchange', onViewportResize)
+  // portal 换包含块（斗地主游戏中 dock 会挂到 body）后按记忆重算落位；
+  // 无记忆则清空 inline，交回 CSS 默认右下角（含 env(safe-area) 边距）
+  const restick = () => {
+    let p = null
+    try { p = JSON.parse(localStorage.getItem(POS_KEY) || 'null') } catch (e) { /* 忽略 */ }
+    if (p && typeof p.y === 'number') {
+      applyPos(edgeX(dock.classList.contains('is-left')), clampY(p.y), false)
+    } else {
+      dock.style.left = ''
+      dock.style.top = ''
+      dock.style.right = ''
+      dock.style.bottom = ''
+      dock.classList.remove('is-left')
+    }
+  }
   let dragStart = null
   let dragged = false
   let suppressClick = false
@@ -793,9 +841,8 @@ export function bindChatDock(dock, { onStartRec, onStopRec, onPhrase } = {}) {
       toggle.setAttribute('aria-expanded', 'false')
     }
     ev.preventDefault()
-    const maxX = window.innerWidth - dock.offsetWidth - 8
     applyPos(
-      Math.max(8, Math.min(maxX, dragStart.dl + dx)),
+      clampX(dragStart.dl + dx),
       clampY(dragStart.dt + dy),
       false
     )
@@ -855,6 +902,8 @@ export function bindChatDock(dock, { onStartRec, onStopRec, onPhrase } = {}) {
   document.addEventListener('click', onDocClick)
 
   return {
+    /** 换包含块（dock portal 到 body）或需要重算位置时调用 */
+    restick,
     setRecUI(on) {
       micBtn.classList.toggle('gkr-chat-mic-on', !!on)
       toggle.classList.toggle('gkr-chat-mic-on', !!on)
