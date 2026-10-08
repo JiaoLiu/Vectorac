@@ -265,10 +265,17 @@ function playerViewFor(state, seat) {
     alive: s.alive.slice(),
     flags: s.flags.slice(),
     opening: state.opening,
-    // 隐私核心：visibleType 过的子发真实 id 与棋种，其余只发匿名 ref
+    // 隐私核心：visibleType 过的子发真实 id 与棋种，其余只发匿名 ref。
+    // 敌暗子附 intel 假设池（只含 viewer 自己交战可推断的范围），供前端
+    // 渲染情报角标（吃军长存活 → 必是司令）；不含任何服务端私有信息。
     pieces: s.pieces.map(p => {
       const type = visibleType(s, p, seat)
-      return { id: type ? p.id : p.ref, seat: p.seat, pos: p.pos, type, moved: !!p.moved }
+      const item = { id: type ? p.id : p.ref, seat: p.seat, pos: p.pos, type, moved: !!p.moved }
+      if (!type && team(p.seat) !== team(seat)) {
+        const pool = s.intel && s.intel[seat + ':' + p.id]
+        if (pool && pool.length) item.intel = pool
+      }
+      return item
     }),
     logs: s.logs.slice(0, 30),
     lastMove: s.lastMove,

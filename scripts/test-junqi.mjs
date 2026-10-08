@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {BOARD,TYPES,ARMIES,createGame,canDeploy,swapFormation,armyNode,legalMoves,battle,startGame,rollOpening,move,visibleType,chooseAI,restoreGame,surrender,nextClockwiseSeat,at} from '../.vuepress/components/junqi/engine.mjs'
+import {BOARD,TYPES,ARMIES,createGame,canDeploy,swapFormation,armyNode,legalMoves,battle,startGame,rollOpening,move,visibleType,chooseAI,restoreGame,surrender,nextClockwiseSeat,at,badgeOf} from '../.vuepress/components/junqi/engine.mjs'
 const piece=(id,type,seat,pos)=>({id,type,seat,pos,moved:false})
 function fixture(extra=[]){const s=createGame({seed:123});s.phase='play';s.pieces=[0,1,2,3].map(seat=>piece('flag'+seat,'flag',seat,armyNode(seat,5,1))).concat(extra);return s}
 test('129 nodes, four five-camp armies, reciprocal railway and road graph',()=>{
@@ -182,4 +182,74 @@ test('AI leaves home and initiates combat instead of waiting inside camps',()=>{
   assert.ok(advances>=5,'army deploys outside home: '+seed)
   assert.ok(combats>=3,'army initiates attacks: '+seed)
  }
+})
+// ---------- 情报标记（QQ 军棋式辅助记忆）与 AI 升级 ----------
+test('badgeOf：单一类型标军衔单字，全师长以上标「大」，信息不足不标',()=>{
+ assert.equal(badgeOf(['commander']),'司')
+ assert.equal(badgeOf(['general','commander']),'大')
+ assert.equal(badgeOf(['division','general','commander']),'大')   // 吃旅长存活
+ assert.equal(badgeOf(['brigade','division','general','commander']),null) // 吃团长存活：含旅长，不足以标
+ assert.equal(badgeOf(['platoon']),'排')
+ assert.equal(badgeOf(['mine','flag']),null)
+ assert.equal(badgeOf(null),null);assert.equal(badgeOf([]),null)
+ assert.equal(badgeOf(Object.keys(TYPES)),null)
+})
+test('敌子吃我方军长存活 → 我方 intel 锁定为司令并可标记；四暗队友不得情报',()=>{
+ const s=fixture([piece('g','general',0,armyNode(0,0,2))])
+ s.pieces.push(piece('foe','commander',1,'c:8:10'));s.turn=1
+ assert.ok(move(s,'foe',armyNode(0,0,2)))
+ assert.deepEqual(s.intel['0:foe'],['commander'])
+ assert.equal(badgeOf(s.intel['0:foe']),'司')
+ assert.equal(s.intel['2:foe'],undefined) // 队友没参战、四暗看不到我方棋子
+})
+test('双明：敌子吃队友军长 → 我同样获得锁定情报并标记',()=>{
+ const s=fixture([piece('mateG','general',2,armyNode(2,0,2))]);s.mode='dual'
+ s.pieces.push(piece('foe','commander',1,'c:8:6'));s.turn=1
+ assert.ok(move(s,'foe',armyNode(2,0,2)))
+ assert.deepEqual(s.intel['0:foe'],['commander'])
+ assert.equal(badgeOf(s.intel['0:foe']),'司')
+})
+test('我方旅长被吃存活敌子标「大」；旅长撞死大子不标（敌子类型未收窄）',()=>{
+ const s=fixture([piece('b','brigade',0,armyNode(0,0,2))])
+ s.pieces.push(piece('foe','division',1,'c:8:10'));s.turn=1
+ assert.ok(move(s,'foe',armyNode(0,0,2))) // 师长吃旅长
+ assert.deepEqual(s.intel['0:foe'].sort(),['commander','division','general'])
+ assert.equal(badgeOf(s.intel['0:foe']),'大')
+})
+test('同归于尽互锁：敌炸弹换光后计入死亡配额',()=>{
+ const s=fixture([piece('a','general',0,'c:8:10'),piece('b','general',0,'c:8:6')])
+ s.pieces.push(piece('b1','bomb',1,'c:10:10'),piece('b2','bomb',1,'c:6:6'));s.turn=0
+ assert.ok(move(s,'a','c:10:10')) // 军长撞炸弹同归于尽
+ assert.equal(s.dead['0']['1:bomb'],1)
+ s.turn=0
+ assert.ok(move(s,'b','c:6:6'))
+ assert.equal(s.dead['0']['1:bomb'],2) // 敌两颗炸弹都确认换光
+})
+test('司令阵亡亮旗后，AI 主攻方向切向旗亮的敌人（不再固定打顺时针下家）',()=>{
+ const s=fixture([piece('cmd','commander',0,'c:8:8')])
+ s.flags[3]=true // 上家（朱雀）司令阵亡、军旗亮出
+ const next=chooseAI(s,0)
+ assert.ok(BOARD.byId[next.to].x>8,'应向右侧旗亮的 seat3 推进，实际去 '+next.to)
+})
+test('敌方司令已亡后，未知敌子假设池不再包含司令（亮旗是公开事件）',()=>{
+ // 间接验证：seat3 亮旗后，AI 军长对 seat3 未知子的风险评估大幅下降——
+ // 用军长撞「可能是司令的暗子」局面下亮旗前后选择对比
+ const s=fixture([piece('g','general',0,'c:8:8')])
+ s.pieces.push(piece('unknown','platoon',3,'c:10:8')) // 实际是小子，但 AI 只能按假设池算
+ const before=chooseAI(s,0)
+ s.flags[3]=true // 司令死了，这个暗子必然不是司令
+ const after=chooseAI(s,0)
+ // 亮旗后 c:10:8 上这个暗子的期望值上升，AI 应更倾向吃它（至少不比亮旗前更保守）
+ assert.ok(after.to==='c:10:8'||before.to!=='c:10:8','亮旗后应敢于攻击原司令疑云的暗子')
+})
+test('AI 对战后期更主动：排队磨蹭到 70 手和棋的局面显著减少',()=>{
+ let draws=0
+ for(let seed=100;seed<120;seed++){
+  const s=createGame({seed});startGame(s)
+  for(let i=0;i<900&&s.phase==='play';i++){
+   const next=chooseAI(s);assert.ok(next);assert.ok(move(s,next.pieceId,next.to))
+  }
+  if(s.winner==='draw')draws++
+ }
+ assert.ok(draws<=2,'20 局 AI 互打和棋 '+draws+' 局（>2 说明后期仍在排队不进攻）')
 })

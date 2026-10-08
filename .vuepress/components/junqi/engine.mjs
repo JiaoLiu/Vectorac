@@ -149,6 +149,22 @@ export function battle(a, b) {
   if (b === 'mine') return a === 'engineer' ? 'win' : 'lose'
   return TYPES[a].rank === TYPES[b].rank ? 'both' : TYPES[a].rank > TYPES[b].rank ? 'win' : 'lose'
 }
+// 情报标记缩写：假设池收窄到单一类型 → 军衔单字；全为师长以上 → 「大」
+const SHORT_NAMES = { flag: '旗', mine: '雷', bomb: '炸', engineer: '兵', platoon: '排', company: '连', battalion: '营', regiment: '团', brigade: '旅', division: '师', general: '军', commander: '司' }
+/**
+ * 从假设池生成玩家可读的推断标记（QQ 军棋式辅助记忆）。
+ * 数据源 s.intel[viewer:pieceId] 只在「我方明子亲自参战」时记录——
+ * 队友被吃而没开双明时池不存在，自然不标（玩家无法推断）。
+ * 池只剩一种类型（如吃军长存活必是司令）→ 标军衔；
+ * 池全部 ≥ 师长（如吃旅长存活）→ 标「大」；信息量不足不标。
+ */
+export function badgeOf(pool) {
+  if (!Array.isArray(pool) || !pool.length) return null
+  const ok = pool.filter(t => TYPES[t])
+  if (ok.length === 1) return SHORT_NAMES[ok[0]]
+  if (ok.length && ok.every(t => TYPES[t].rank >= 7)) return '大'
+  return null
+}
 function eliminate(s, seat, reason) { s.alive[seat] = false; s.pieces = s.pieces.filter(p => p.seat !== seat); s.logs.unshift(`${ARMIES[seat]}${reason}，全军退出；队友继续作战。`) }
 function checkWinner(s) {
   for (const t of [0, 1]) if (!s.alive.some((a, i) => a && team(i) === t)) { s.phase = 'finished'; s.winner = 1 - t; return true }
@@ -173,14 +189,32 @@ export function move(s, pieceId, to) {
   if (target) {
     outcome = battle(p.type, target.type)
     // Only combatants learn bounds from their own known piece and the public
-    // result. Other seats do not get either hidden identity.
+    // result. 双明队友看得见参战己方棋子的身份，同样能从公开结果推断，
+    // 一并获得情报；四暗队友看不见队友棋子，不能推断，不记录。
     s.intel = s.intel || {}
-    for (const viewer of [p.seat, target.seat]) {
-      const other = viewer === p.seat ? target : p
-      const known = viewer === p.seat ? p.type : target.type
+    const viewers = [p.seat, target.seat]
+    if (s.mode === 'dual') viewers.push((p.seat + 2) % 4, (target.seat + 2) % 4)
+    const onPside = viewer => viewer === p.seat || (s.mode === 'dual' && team(viewer) === team(p.seat))
+    for (const viewer of viewers) {
+      const onP = onPside(viewer)
+      const other = onP ? target : p
+      const known = onP ? p.type : target.type
       const key = viewer + ':' + other.id
       const prior = s.intel[key] || Object.keys(TYPES)
-      s.intel[key] = prior.filter(t => (viewer === p.seat ? battle(known,t) : battle(t,known)) === outcome)
+      s.intel[key] = prior.filter(t => (onP ? battle(known, t) : battle(t, known)) === outcome)
+    }
+    // 同归于尽互锁：viewer 确认敌方阵亡子的类型（= 自己方参战子类型），
+    // 计入死亡配额。敌方两颗炸弹都换掉后，其未知存活子必非炸弹。
+    if (outcome === 'both') {
+      s.dead = s.dead || {}
+      for (const viewer of viewers) {
+        const onP = onPside(viewer)
+        const foeSeat = onP ? target.seat : p.seat
+        const deadType = onP ? target.type : p.type
+        const m = s.dead[viewer] = s.dead[viewer] || {}
+        const k = foeSeat + ':' + deadType
+        m[k] = (m[k] || 0) + 1
+      }
     }
     const dead = outcome === 'win' ? [target] : outcome === 'lose' ? [p] : [p, target]
     for (const d of dead) if (d.type === 'commander') { s.flags[d.seat] = true; s.logs.unshift(`${ARMIES[d.seat]}司令阵亡，军旗亮出。`) }
@@ -209,23 +243,6 @@ export function visibleType(s, p, viewer = 0) {
 // AI 只读取公开身份，不以未知敌子的真实类型评分；布局随机种子不由 AI 反推。
 export function chooseAI(s, seat = s.turn) {
   const choices = []
-  // Hold a coherent offensive front. Opposite allies naturally pressure opposite
-  // enemies, rather than oscillating between whichever HQ is a square nearer.
-  const targetSeat=s.alive[(seat+1)%4]?(seat+1)%4:(seat+3)%4
-  const enemies = BOARD.nodes.filter(n => n.kind === 'hq' && n.seat===targetSeat)
-  const revealedFlag=s.pieces.find(p=>p.seat===targetSeat&&visibleType(s,p,seat)==='flag')
-  const goals=revealedFlag?[revealedFlag.pos]:enemies.filter(n=>!at(s,n.id)||visibleType(s,at(s,n.id),seat)!=='mine').map(n=>n.id)
-  const distances=new Map(BOARD.nodes.map(n=>[n.id,Infinity])), pending=new Set(BOARD.nodes.map(n=>n.id))
-  for(const goal of goals)distances.set(goal,0)
-  while(pending.size){
-    let nearest=null;for(const id of pending)if(nearest===null||distances.get(id)<distances.get(nearest))nearest=id
-    pending.delete(nearest)
-    for(const e of BOARD.adjacency[nearest]){
-      const cost=distances.get(nearest)+(e.rail?.4:1)
-      if(cost<distances.get(e.to))distances.set(e.to,cost)
-    }
-  }
-  const distance = pos => distances.get(pos)
   const value = t => t === 'flag' ? 180 : t === 'bomb' ? 12 : t === 'engineer' ? 6 : t === 'mine' ? 5 : 3 + TYPES[t].rank * 1.8
   // 动态剩余计数：某阵营已被本方确认存活的某类型棋子，要从该类型可分配权重里扣除
   // （例如队友的司令可见时，敌方未知子仍可能是司令——类型池按阵营独立；
@@ -245,11 +262,57 @@ export function chooseAI(s, seat = s.turn) {
   const hypotheses = p => {
     const known = visibleType(s,p,seat)
     if (known) return [known]
-    return (s.intel && s.intel[seat + ':' + p.id] || Object.keys(TYPES)).filter(t => {
+    const deadOf = (s.dead && s.dead[seat]) || {}
+    const pool = (s.intel && s.intel[seat + ':' + p.id] || Object.keys(TYPES)).filter(t => {
+      // 敌方司令已亡（亮旗是公开事件）：其存活子必非司令，别再当司令怕
+      if (s.flags[p.seat] && t === 'commander') return false
+      // 该类型配额已被「确认存活 + 确认阵亡」占满：未知存活子必非该类型
+      if (typeWeight(t, p.seat) - (deadOf[p.seat + ':' + t] || 0) <= 0) return false
       if (p.moved) return t !== 'flag' && t !== 'mine'
       return canDeploy(t,BOARD.byId[p.pos],p.seat)
     })
+    return pool.length ? pool : [p.moved ? 'platoon' : 'company']
   }
+  // ---------- 主攻方向（动态选择，不再固定打下家）----------
+  // 优先级：旗已亮的敌人（司令阵亡旗位公开，直捣黄龙）＞ 旗位可强推断的敌人
+  //（一个大本营已空且该家未出局 → 旗必在另一个）＞ 残存实力更弱的敌人。
+  const foes = [(seat + 1) % 4, (seat + 3) % 4].filter(e => s.alive[e])
+  const foeStrength = e => {
+    let v = 0, unknown = 0
+    for (const q of s.pieces) if (q.seat === e) {
+      const t = visibleType(s, q, seat)
+      if (t) v += value(t); else unknown++
+    }
+    return v + unknown * 8
+  }
+  const flagLead = e => s.flags[e] ? 100
+    : BOARD.nodes.filter(n => n.kind === 'hq' && n.seat === e && at(s, n.id)).length === 1 ? 40 : 0
+  let targetSeat = foes[0]
+  for (const e of foes) {
+    if (flagLead(e) - foeStrength(e) * .25 > flagLead(targetSeat) - foeStrength(targetSeat) * .25) targetSeat = e
+  }
+  // Hold a coherent offensive front. Opposite allies naturally pressure opposite
+  // enemies, rather than oscillating between whichever HQ is a square nearer.
+  const enemies = BOARD.nodes.filter(n => n.kind === 'hq' && n.seat===targetSeat)
+  const revealedFlag=s.pieces.find(p=>p.seat===targetSeat&&visibleType(s,p,seat)==='flag')
+  // 大本营里的棋子整局不能动：空了说明原驻子已被吃且不是旗（否则该家已
+  // 出局），旗必在另一个大本营——空营不作为推进目标，免得往死路里钻。
+  let goals=revealedFlag?[revealedFlag.pos]:enemies.filter(n=>{
+    const q=at(s,n.id)
+    return q && visibleType(s,q,seat)!=='mine'
+  }).map(n=>n.id)
+  if(!goals.length) goals=enemies.map(n=>n.id) // 两营皆现雷：仍以大本营为方向，工兵挖雷开路
+  const distances=new Map(BOARD.nodes.map(n=>[n.id,Infinity])), pending=new Set(BOARD.nodes.map(n=>n.id))
+  for(const goal of goals)distances.set(goal,0)
+  while(pending.size){
+    let nearest=null;for(const id of pending)if(nearest===null||distances.get(id)<distances.get(nearest))nearest=id
+    pending.delete(nearest)
+    for(const e of BOARD.adjacency[nearest]){
+      const cost=distances.get(nearest)+(e.rail?.4:1)
+      if(cost<distances.get(e.to))distances.set(e.to,cost)
+    }
+  }
+  const distance = pos => distances.get(pos)
   const expectation = (p, target) => {
     const types = hypotheses(target); let total=0, weights=0
     for (const t of types) {
@@ -265,8 +328,9 @@ export function chooseAI(s, seat = s.turn) {
   for (const enemy of s.pieces.filter(p=>team(p.seat)!==team(seat))) {
     const types=hypotheses(enemy)
     const reach=new Set()
-    for (const type of ['commander','engineer']) {
-      if (!types.some(t=>type==='engineer'?t==='engineer':TYPES[t].rank>1||t==='bomb')) continue
+    // 炸弹的威胁也要算：任何假设含炸弹的敌子都可能与大子同归于尽
+    for (const type of ['commander','engineer','bomb']) {
+      if (!types.some(t=>type==='engineer'?t==='engineer':type==='bomb'?t==='bomb':TYPES[t].rank>1||t==='bomb')) continue
       const view=Object.assign({},s,{pieces:s.pieces.map(p=>p===enemy?Object.assign({},p,{type}):team(p.seat)===team(enemy.seat)?Object.assign({},p,{seat}):p)})
       for (const to of legalMoves(view,enemy.id)) reach.add(to)
     }
@@ -287,6 +351,14 @@ export function chooseAI(s, seat = s.turn) {
       }
     }
   }
+  // ---------- 局势激励：优势要压制，僵局要破局 ----------
+  // quiet 持续走高说明双方都在磨蹭，AI 若再不进攻就奔 70 手和棋去了：
+  // 对期望为正的碰撞逐手加码，对原地换位的安全步逐手加重惩罚。
+  const sideValue = t => s.pieces.filter(q => s.alive[q.seat] && team(q.seat) === t)
+    .reduce((sum, q) => sum + (visibleType(s, q, seat) ? value(visibleType(s, q, seat)) : 8), 0)
+  const myVal = sideValue(team(seat)), foeVal = sideValue(1 - team(seat))
+  const dominance = foeVal > 0 ? Math.max(0, (myVal - foeVal) / foeVal) : 1
+  const urgency = s.quiet > 20 ? Math.min(14, (s.quiet - 20) * .35) : 0
   for (const p of s.pieces.filter(p => p.seat === seat)) for (const to of legalMoves(s, p.id)) {
     const target = at(s, to), n = BOARD.byId[to], known = target && visibleType(s, target, seat)
     const progress=distance(p.pos)-distance(to)
@@ -294,15 +366,16 @@ export function chooseAI(s, seat = s.turn) {
     // Initiative matters: an unthreatened army must deploy and contest the
     // opponent's side, not score free points by shuttling between safe camps.
     if(progress>0 && n.seat===targetSeat)score+=1.4
-    if(!target && progress<=0)score-=1.2
+    if(!target && progress<=0)score-=1.2+urgency*.4
     if (n.kind === 'hq') {
       if (n.seat === seat || team(n.seat) === team(seat)) score -= 14 // 进自家/队友大本营：永久失动，纯浪费
       else if (target) score += 6 // 攻敌大本营：军旗必在其中一个大本营，值得搏
       else score -= 10 // 空敌大本营：进去出不来，除非确定旗在此否则不进
     }
     if (target) {
-      score += expectation(p,target)*2 + (known==='flag'?300:4+Math.min(5,s.quiet*.15))
-      if(flagDanger && flagDanger.some(e=>e.id===target.id)) score+=45+expectation(p,target)
+      const exp=expectation(p,target)
+      score += exp*2 + (known==='flag'?300:4+Math.min(6,s.quiet*.15)) + urgency*Math.max(0,exp) + dominance*2.2
+      if(flagDanger && flagDanger.some(e=>e.id===target.id)) score+=45+exp
       // 工兵挖雷开路：敌大本营及其紧邻的未动棋子大概率是护旗雷，
       // 工兵是唯一能安全吃雷的兵种，挖开就是夺旗通路
       if (p.type === 'engineer' && hypotheses(target).includes('mine') &&
@@ -325,8 +398,15 @@ export function chooseAI(s, seat = s.turn) {
       for(const enemy of danger){
         const types=hypotheses(enemy)
         const certainty=visibleType(s,enemy,seat)?1:(s.intel&&s.intel[seat+':'+enemy.id]?.65:.23)
-        const loss=types.reduce((sum,t)=>sum+(battle(t,p.type)!=='lose'?value(p.type):0),0)/Math.max(1,types.length)*certainty
-        risk=Math.max(risk,loss)
+        // 按类型配额加权求损失期望，而不是对假设池简单均摊
+        let wsum=0,lsum=0
+        for(const t of types){
+          const w=typeWeight(t,enemy.seat)
+          if(!w)continue
+          wsum+=w
+          if(battle(t,p.type)!=='lose')lsum+=w*value(p.type)
+        }
+        risk=Math.max(risk,wsum?lsum/wsum*certainty:0)
       }
       score-=risk*1.4
     }
