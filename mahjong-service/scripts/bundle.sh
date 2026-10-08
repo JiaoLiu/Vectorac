@@ -62,11 +62,23 @@ if [ ! -f "$SRC_JUNQI/engine.mjs" ]; then
 fi
 cp "$SRC_JUNQI/engine.mjs" "$WORK/mahjong-service/engine/junqi/engine.js"
 
+# 斗地主：engine + ai 双文件（ai.js import './engine.mjs'，打包后同目录改名要同步改引用）
+SRC_DDZ="$(cd "$HERE/../.vuepress/components/doudizhu" && pwd)"
+mkdir -p "$WORK/mahjong-service/engine/doudizhu"
+if [ ! -f "$SRC_DDZ/engine.mjs" ] || [ ! -f "$SRC_DDZ/ai.js" ]; then
+  echo "✗ 找不到 $SRC_DDZ/engine.mjs 或 ai.js，无法打包" >&2
+  exit 1
+fi
+cp "$SRC_DDZ/engine.mjs" "$WORK/mahjong-service/engine/doudizhu/engine.js"
+cp "$SRC_DDZ/ai.js" "$WORK/mahjong-service/engine/doudizhu/ai.js"
+sed -i '' "s|'./engine.mjs'|'./engine.js'|g" "$WORK/mahjong-service/engine/doudizhu/ai.js"
+
 # 不打包开发期文件
 rm -f "$WORK/mahjong-service/test.js"
 rm -f "$WORK/mahjong-service/test-gomoku.js"
 rm -f "$WORK/mahjong-service/test-xiangqi.js"
 rm -f "$WORK/mahjong-service/test-junqi.js"
+rm -f "$WORK/mahjong-service/test-doudizhu.js"
 rm -rf "$WORK/mahjong-service/dist"
 
 # 复用本目录已装好的 node_modules（express / ws / dotenv 均为纯 JS，无原生模块）

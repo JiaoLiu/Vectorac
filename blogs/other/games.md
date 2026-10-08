@@ -62,7 +62,7 @@
     <div class="game-card-cover"><img src="/img/games/doudizhu-cover.jpg" alt="斗地主：地主与农民的扑克对决" loading="lazy"></div>
     <div class="game-card-body">
       <div class="game-card-title">斗地主</div>
-      <div class="game-card-desc">经典三人 · 叫分抢地主 · 炸弹春天翻倍 · QQ 积分等级</div>
+      <div class="game-card-desc">经典三人 · 叫分抢地主 · 炸弹春天翻倍 · QQ 积分等级 · 支持联机</div>
       <span class="game-card-btn">开始游戏</span>
     </div>
   </a>

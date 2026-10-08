@@ -24,6 +24,7 @@ import {
 import { enterGomokuRoom } from '../gomoku/remote.js'
 import { enterXiangqiRoom } from '../xiangqi/remote.js'
 import { enterJunqiRoom } from '../junqi/remote.js'
+import { enterDoudizhuRoom } from '../doudizhu/remote.js'
 import {
   TIMEOUT_VALUES,
   fmtTimeout,
@@ -37,10 +38,11 @@ const GAMES = {
   mahjong: { name: '四川麻将', icon: '🀄', seats: 4 },
   gomoku: { name: '五子棋', icon: '⚫', seats: 2 },
   xiangqi: { name: '中国象棋', icon: '<span class="gh-ico-xq">♞</span>', seats: 2 },
-  junqi: { name: '四国军棋', icon: '🎖', seats: 4 }
+  junqi: { name: '四国军棋', icon: '🎖', seats: 4 },
+  doudizhu: { name: '斗地主', icon: '🃏', seats: 3 }
 }
 // 就地进房（不跳页）的游戏 → 房间入口
-const ENTER = { gomoku: enterGomokuRoom, xiangqi: enterXiangqiRoom, junqi: enterJunqiRoom }
+const ENTER = { gomoku: enterGomokuRoom, xiangqi: enterXiangqiRoom, junqi: enterJunqiRoom, doudizhu: enterDoudizhuRoom }
 const MAHJONG_PAGE = '/blogs/other/mahjong_game.html'
 // 开关 chips（麻将房规）；封顶番数档位（与麻将页建房表单一致）
 const ON_OFF = [{ value: 'on', label: '开' }, { value: 'off', label: '关' }]
@@ -148,6 +150,7 @@ export default class GameHall {
       '      <button type="button" data-cgame="gomoku" class="active">⚫ 五子棋</button>' +
       '      <button type="button" data-cgame="xiangqi"><span class="gh-ico-xq">♞</span> 中国象棋</button>' +
       '      <button type="button" data-cgame="junqi">🎖 四国军棋</button>' +
+      '      <button type="button" data-cgame="doudizhu">🃏 斗地主</button>' +
       '      <button type="button" data-cgame="mahjong">🀄 四川麻将</button>' +
       '    </div>' +
       '    <div class="gh-create-opts" data-gh-opts-gomoku>' +
@@ -165,6 +168,10 @@ export default class GameHall {
       '    <div class="gh-create-opts" data-gh-opts-junqi hidden>' +
       '      <span class="gh-field">思考时长 ' + stepperHtml('turnTimeoutSeconds', TIMEOUT_VALUES, 20, fmtTimeout) + '</span>' +
       '      <div class="gh-hint">4 人 2v2，对家为队友；只能看到自己的棋子，布阵完成后掷骰定先手</div>' +
+      '    </div>' +
+      '    <div class="gh-create-opts" data-gh-opts-doudizhu hidden>' +
+      '      <span class="gh-field">思考时长 ' + stepperHtml('turnTimeoutSeconds', TIMEOUT_VALUES, 20, fmtTimeout) + '</span>' +
+      '      <div class="gh-hint">3 人对局，叫分定地主 → 抢地主 → 加倍 → 出牌；积分地主 ±20 / 农民 ±10</div>' +
       '    </div>' +
       '    <div class="gh-create-opts" data-gh-opts-mahjong hidden>' +
       '      <span class="gh-field">换三张 ' + segHtml('swapThree', ON_OFF, 'on') + '</span>' +

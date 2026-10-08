@@ -11,12 +11,14 @@ import { adapter as mahjong } from './mahjong.js'
 import { adapter as gomoku } from './gomoku.js'
 import { adapter as xiangqi } from './xiangqi.js'
 import { adapter as junqi } from './junqi.js'
+import { adapter as doudizhu } from './doudizhu.js'
 
 const ADAPTERS = {
   mahjong,
   gomoku,
   xiangqi,
-  junqi
+  junqi,
+  doudizhu
 }
 
 export const GAME_IDS = Object.keys(ADAPTERS)

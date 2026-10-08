@@ -101,10 +101,19 @@ function cardEl(card, mini) {
 }
 
 export default class DoudizhuUI {
-  constructor(root) {
+  /**
+   * @param {HTMLElement} root 挂载点
+   * @param {Object} [opts] online 适配器（联机模式，服务端权威）：
+   *   { tryAction(action), seatName(seat), roomScores(), leave() }
+   *   联机时本地不 createGame / 不跑本地 AI / 不写本地积分，
+   *   状态由 applyOnlineView(view) 注入（remote.js 在每次 GAME_STATE_CHANGED 后调用）。
+   */
+  constructor(root, opts = {}) {
     this.root = root
+    this.online = opts.online || null
+    this._actsLen = 0 // 联机：已消费的 acts 日志长度（diff 事件用）
     this.audio = createDoudizhuAudio()
-    this.seat = 0 // 人类固定 0 号位
+    this.seat = 0 // 单机人类固定 0 号位；联机为服务端分配的绝对座位
     this.selected = new Set()
     this.lastHint = null
     this.points = Number(localStorage.getItem('ddz-points') || 0)
@@ -157,11 +166,12 @@ export default class DoudizhuUI {
     requestAnimationFrame(this.fitViewport)
     window.addEventListener('load', this.fitViewport)
     this.fitTimers = [setTimeout(this.fitViewport, 400), setTimeout(this.fitViewport, 1200)]
-    this.showLobby()
+    if (!this.online) this.showLobby()
   }
 
   /** 开始大厅：点「开始游戏」（用户手势）后才进全屏横屏开打（对齐 mahjong 流程） */
   showLobby() {
+    if (this.online) return // 联机：等待室由 remote.js 渲染，UI 只挂对局桌面
     this.clearTimers()
     this.overlay.style.display = 'none'
     this.root.classList.remove('ddz-over')
@@ -213,13 +223,25 @@ export default class DoudizhuUI {
     this.btnFull.title = '全屏'
     this.btnFull.onclick = () => this.toggleFull()
     const btnExit = h('a', 'ddz-icon-btn', '✕')
-    btnExit.href = '/blogs/other/games.html'
-    btnExit.title = '返回游戏列表'
+    if (this.online) {
+      btnExit.href = 'javascript:void(0)'
+      btnExit.title = '退出房间'
+      btnExit.onclick = () => this.online.leave()
+    } else {
+      btnExit.href = '/blogs/other/games.html'
+      btnExit.title = '返回游戏列表'
+    }
+    // 单机页联机入口：跳联机大厅预选斗地主（对齐军棋单机页）
+    const btnOnline = this.online ? null : h('a', 'ddz-icon-btn ddz-icon-online', '🌐')
+    if (btnOnline) {
+      btnOnline.href = '/blogs/other/gamehall.html?game=doudizhu'
+      btnOnline.title = '联机对战'
+    }
     this.topbar.append(
       h('span', 'ddz-logo', '斗地主'),
       this.elBase, this.elMult,
       h('span', 'ddz-topbar-gap'),
-      this.elLevel, btnMusic, btnSound, this.btnFull, btnExit
+      this.elLevel, btnMusic, btnSound, this.btnFull, ...(btnOnline ? [btnOnline] : []), btnExit
     )
     // 桌面
     this.table = h('div', 'ddz-table')
@@ -512,6 +534,7 @@ export default class DoudizhuUI {
 
   // ---------- 对局控制 ----------
   newGame() {
+    if (this.online) return // 联机：开局由服务端驱动（GAME_STARTED → applyOnlineView）
     this.clearTimers()
     this.overlay.style.display = 'none'
     this.root.classList.remove('ddz-over') // 新一局恢复桌面 chrome
@@ -522,6 +545,70 @@ export default class DoudizhuUI {
     this.renderAll()
     this.audio.sfx('deal')
     this.pump(drainEvents(this.state))
+  }
+
+  // ---------- 联机视图注入（remote.js 在每次 GAME_STATE_CHANGED 后调用） ----------
+  /**
+   * 把服务端玩家视图映射成本地渲染层的 state 同构对象（render 系列零改动）：
+   * 他家手牌用「张数占位数组」（renderOpps 只读 length），over 阶段全亮真实牌；
+   * 底牌未亮时视图只发长度 → 造 null 占位。acts 日志按长度 diff 转成单机同款
+   * 事件喂给 onEvent（音效/气泡/特效全部复用）。
+   */
+  applyOnlineView(view) {
+    if (this._destroyed || !view) return
+    const prevLen = this._actsLen
+    const acts = view.acts || []
+    // 新一局（acts 回退）或本局首帧：清理桌面状态
+    if (acts.length < prevLen || (prevLen === 0 && acts.length === 0 && view.phase === 'bidding' && this.state && this.state.phase === 'over')) {
+      this.clearTimers()
+      this.selected.clear()
+      this.lastHint = null
+      this._playedKeys = {}
+      this._bottomKey = null
+      this.overlay.style.display = 'none'
+      this.root.classList.remove('ddz-over')
+      this.audio.sfx('deal')
+    }
+    this.seat = view.seat
+    const hands = view.handCounts.map((h, i) =>
+      i === view.seat ? view.hand.slice() : (Array.isArray(h) ? h.slice() : Array(h).fill(null)))
+    this.state = {
+      phase: view.phase,
+      hands,
+      bottom: Array.isArray(view.bottom) ? view.bottom : Array(3).fill(null),
+      bidTurn: view.bidTurn, highBid: view.highBid, highBidder: view.highBidder, bids: view.bids || [],
+      robTurn: view.robTurn, robs: view.robs || [], dblTurn: view.dblTurn, dbls: view.dbls || [],
+      landlord: view.landlord, calledScore: view.calledScore,
+      turn: view.turn, lastPlay: view.lastPlay, passCount: 0,
+      history: view.played || [], trickPasses: view.trickPasses || [],
+      multiplier: view.multiplier, bombs: view.bombs,
+      playCount: view.playCount || [0, 0, 0],
+      winner: view.winner, winSide: view.winSide, spring: view.spring,
+      scores: view.scores || [0, 0, 0],
+      meta: view.meta || null
+    }
+    // acts 日志 diff → 单机同款事件（音效/语音气泡/特效）
+    const landlord = view.landlord
+    for (let i = prevLen; i < acts.length; i++) {
+      const a = acts[i]
+      if (a.t === 'bid') this.onEvent({ type: 'bid', seat: a.seat, score: a.score })
+      else if (a.t === 'rob') this.onEvent({ type: 'rob', seat: a.seat, rob: a.rob, multiplier: a.multiplier })
+      else if (a.t === 'double') this.onEvent({ type: 'double', seat: a.seat, double: a.double, super: a.seat === landlord, multiplier: a.multiplier })
+      else if (a.t === 'pass') this.onEvent({ type: 'pass', seat: a.seat })
+      else if (a.t === 'play') {
+        this.onEvent({ type: 'play', seat: a.seat, combo: a.combo, cards: a.cards })
+        if (a.combo && (a.combo.type === 'bomb' || a.combo.type === 'rocket')) {
+          this.onEvent({ type: 'bomb', seat: a.seat, combo: a.combo.type, multiplier: view.multiplier })
+        }
+      } else if (a.t === 'redeal') this.onEvent({ type: 'redeal' })
+      else if (a.t === 'landlord') this.onEvent({ type: 'landlord', seat: a.seat })
+      else if (a.t === 'over') this.onEvent({ type: 'over', scores: a.scores, spring: a.spring })
+    }
+    this._actsLen = acts.length
+    this.renderAll()
+    // 联机不跑本地 AI / 本地计时（服务端窗口权威，倒计时由 remote tick 驱动 renderTimer）
+    this.clearTimers()
+    if (view.phase === 'over') this.showSettlement()
   }
 
   view() { return playerView(this.state, this.seat) }
@@ -535,8 +622,9 @@ export default class DoudizhuUI {
     return s.turn
   }
 
-  // 事件泵：处理 createGame/dispatch 产出的事件并推进 AI
+  // 事件泵：处理 createGame/dispatch 产出的事件并推进 AI（单机专用）
   pump(events = []) {
+    if (this.online) return
     for (const e of events) this.onEvent(e)
     this.renderAll()
     const s = this.state
@@ -567,6 +655,17 @@ export default class DoudizhuUI {
     const s = this.state
     const active = this.activeSeat()
     if (active !== this.seat) return
+    // 联机：只发意图，合法性由服务端窗口裁决；本地做结构校验提前提示
+    if (this.online) {
+      if (action.type === 'play') {
+        if (!this.selected.size) { this.toast('先点选手牌'); return false }
+        if (!classifyCombo(action.cards)) { this.toast('所选牌不构成合法牌型'); this.shakeHand(); return false }
+      }
+      this.selected.clear()
+      this.lastHint = null
+      this.online.tryAction(action)
+      return true
+    }
     const r = dispatch(s, action, this.seat)
     if (!r.ok) {
       this.toast(action.type === 'play' ? '牌型不符或压不过上家' : '现在不能这样操作')
@@ -644,7 +743,14 @@ export default class DoudizhuUI {
     }
   }
 
-  oppName(seat) { return seat === this.seat ? '你' : AI_NAMES[seat - 1] }
+  oppName(seat) {
+    if (seat === this.seat) return '你'
+    if (this.online) {
+      const name = this.online.seatName(seat)
+      if (name) return name
+    }
+    return AI_NAMES[seat - 1]
+  }
 
   /** 通用语音气泡：挂各家头像旁，动画后自动清文字（叫分/抢地主/加倍/不要共用） */
   showBubble(seat, text) {
@@ -696,6 +802,8 @@ export default class DoudizhuUI {
   }
 
   timeoutAct() {
+    // 联机：服务端窗口超时自动托管，本地只提醒（不代打）
+    if (this.online) { this.toast('已超时，即将自动托管'); return }
     const s = this.state
     if (s.phase === 'bidding') return this.humanAct({ type: 'bid', score: 0 })
     // 抢/加倍超时保守表态：不抢、不加倍
@@ -733,7 +841,13 @@ export default class DoudizhuUI {
     const s = this.state
     this.elMult.textContent = `倍数 ×${s.multiplier}`
     this.elBase.textContent = s.calledScore ? `底分 ${s.calledScore}` : '叫分中'
-    this.elLevel.textContent = `${levelOf(this.points)} ${this.points}分`
+    // 单机显示本地积分等级；联机显示服务端房间积分（多局累计）
+    if (this.online) {
+      const roomScores = s.meta && s.meta.scores
+      this.elLevel.textContent = `积分 ${roomScores ? roomScores[this.seat] : '-'}`
+    } else {
+      this.elLevel.textContent = `${levelOf(this.points)} ${this.points}分`
+    }
   }
 
   renderBottom() {
@@ -987,8 +1101,10 @@ export default class DoudizhuUI {
     if (!s) return
     // 局终：隐藏桌面 chrome（对手面板等），结算画面干净（CSS .ddz-over）
     this.root.classList.add('ddz-over')
-    this.points = Math.max(0, this.points + s.scores[this.seat])
-    localStorage.setItem('ddz-points', String(this.points))
+    if (!this.online) {
+      this.points = Math.max(0, this.points + s.scores[this.seat])
+      localStorage.setItem('ddz-points', String(this.points))
+    }
     const win = s.scores[this.seat] > 0
     const box = h('div', 'ddz-settle')
     box.append(h('div', 'ddz-settle-stamp ' + (win ? 'win' : 'lose'), win ? '胜 利' : '失 败'))
@@ -1002,12 +1118,12 @@ export default class DoudizhuUI {
       h('div', 'ddz-settle-row ddz-mult', `总倍数 ×${s.multiplier}`)
     )
     box.append(detail)
-    // 三家积分与余牌
+    // 三家积分与余牌（联机显示玩家名，单机显示 AI 名）
     for (const seat of [0, 1, 2]) {
       const row = h('div', 'ddz-settle-player')
       const sc = s.scores[seat]
       row.append(
-        h('span', 'ddz-settle-name', `${seat === this.seat ? '你' : AI_NAMES[seat - 1]}${seat === s.landlord ? ' 👑' : ''}`),
+        h('span', 'ddz-settle-name', `${this.oppName(seat)}${seat === s.landlord ? ' 👑' : ''}`),
         h('span', 'ddz-settle-score ' + (sc > 0 ? 'plus' : 'minus'), sc > 0 ? `+${sc}` : `${sc}`)
       )
       const cards = h('div', 'ddz-settle-cards')
@@ -1016,15 +1132,23 @@ export default class DoudizhuUI {
       row.append(cards)
       box.append(row)
     }
-    box.append(h('div', 'ddz-settle-level', `当前积分 ${this.points} · ${levelOf(this.points)}`))
-    const again = h('button', 'ddz-btn ddz-btn-primary', '再来一局')
-    again.type = 'button'
-    again.onclick = () => this.newGame()
-    const back = h('a', 'ddz-btn', '返回游戏列表')
-    back.href = '/blogs/other/games.html'
-    const row = h('div', 'ddz-settle-actions')
-    row.append(again, back)
-    box.append(row)
+    if (this.online) {
+      // 联机：积分入账与「准备下一局 / 退出房间」按钮由 remote 结算浮层负责
+      const roomScores = s.meta && s.meta.scores
+      box.append(h('div', 'ddz-settle-level', roomScores
+        ? `房间积分：${[0, 1, 2].map(i => this.oppName(i) + ' ' + roomScores[i]).join(' · ')}`
+        : '等待房间结算…'))
+    } else {
+      box.append(h('div', 'ddz-settle-level', `当前积分 ${this.points} · ${levelOf(this.points)}`))
+      const again = h('button', 'ddz-btn ddz-btn-primary', '再来一局')
+      again.type = 'button'
+      again.onclick = () => this.newGame()
+      const back = h('a', 'ddz-btn', '返回游戏列表')
+      back.href = '/blogs/other/games.html'
+      const row = h('div', 'ddz-settle-actions')
+      row.append(again, back)
+      box.append(row)
+    }
     // BGM 署名（CC BY 3.0 要求）
     box.append(h('div', 'ddz-settle-credit', '♪ BGM: Shenyang — Kevin MacLeod (incompetech.com) · CC BY 3.0'))
     this.overlay.innerHTML = ''

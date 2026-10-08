@@ -332,7 +332,10 @@ export function createGame({ seed = 1 } = {}) {
     trickPasses: [], // 本 trick 已 pass 的座位（供 AI 判断队友形势）
     winner: -1, winSide: '', spring: false,
     scores: [0, 0, 0],
-    history: []
+    history: [],
+    // 公开动作日志（联机 diff 用）：每次表态/出牌/地主定局/终局都追加一条，
+    // 全部是公开信息（谁做了什么），playerView 原样下发，客户端按长度增量消费
+    acts: []
   }
   const events = []
   deal(state, events)
@@ -395,10 +398,12 @@ function isLegal(state, seat, action) {
 export function dispatch(state, action, seat) {
   if (!isLegal(state, seat, action)) return { ok: false, state, events: [] }
   const events = []
+  if (!Array.isArray(state.acts)) state.acts = [] // MC 模拟等手造 state 的兜底
 
   if (action.type === 'bid') {
     const { score } = action
     state.bids.push({ seat, score })
+    state.acts.push({ t: 'bid', seat, score })
     events.push({ type: 'bid', seat, score })
     if (score === 3 || (score > 0 && score > state.highBid)) {
       state.highBid = score
@@ -419,6 +424,7 @@ export function dispatch(state, action, seat) {
       events.push({ type: 'rob-start', bidder: state.highBidder, bid: state.highBid })
     } else if (allPass) {
       state.redealCount++
+      state.acts.push({ t: 'redeal', count: state.redealCount })
       events.push({ type: 'redeal' })
       if (state.redealCount >= 3) {
         // 三轮无人叫：首家强制 1 分当地主（跳过抢地主，避免死循环）
@@ -439,6 +445,7 @@ export function dispatch(state, action, seat) {
       state.multiplier *= 2
       state.robWinner = seat
     }
+    state.acts.push({ t: 'rob', seat, rob, multiplier: state.multiplier })
     events.push({ type: 'rob', seat, rob, multiplier: state.multiplier })
     if (state.robs.length >= 2) {
       becomeLandlord(state, events, state.robWinner >= 0 ? state.robWinner : state.highBidder)
@@ -452,6 +459,7 @@ export function dispatch(state, action, seat) {
     const dbl = !!action.double
     state.dbls.push(seat)
     if (dbl) state.multiplier *= 2
+    state.acts.push({ t: 'double', seat, double: dbl, multiplier: state.multiplier })
     events.push({ type: 'double', seat, double: dbl, multiplier: state.multiplier, super: seat === state.landlord })
     if (state.dbls.length >= 3) {
       state.phase = 'playing'
@@ -466,6 +474,7 @@ export function dispatch(state, action, seat) {
   if (action.type === 'pass') {
     state.passCount++
     state.trickPasses.push(seat)
+    state.acts.push({ t: 'pass', seat })
     events.push({ type: 'pass', seat })
     if (state.passCount >= 2) {
       events.push({ type: 'trick-clear', leader: state.lastPlay.seat })
@@ -489,6 +498,7 @@ export function dispatch(state, action, seat) {
   state.trickPasses = []
   state.playCount[seat]++
   state.history.push({ seat, combo, cards: state.lastPlay.cards })
+  state.acts.push({ t: 'play', seat, combo, cards: state.lastPlay.cards })
   if (combo.type === 'bomb' || combo.type === 'rocket') {
     state.bombs++
     state.multiplier *= 2
@@ -517,6 +527,7 @@ function becomeLandlord(state, events, seat) {
   state.dbls = []
   state.lastPlay = null
   state.passCount = 0
+  state.acts.push({ t: 'landlord', seat, score: state.calledScore })
   events.push({ type: 'landlord', seat, score: state.calledScore, bottom: state.bottom.slice() })
 }
 
@@ -536,6 +547,7 @@ function finish(state, events, winner) {
     const win = isLandlord ? landlordWin : !landlordWin
     state.scores[s] = (win ? 1 : -1) * base * (isLandlord ? 2 : 1)
   }
+  state.acts.push({ t: 'over', winner, winSide: state.winSide, spring: state.spring, scores: state.scores.slice() })
   events.push({
     type: 'over', winner, winSide: state.winSide, spring: state.spring,
     multiplier: state.multiplier, calledScore: state.calledScore,
@@ -551,7 +563,7 @@ export function playerView(state, seat) {
     hand: state.hands[seat].slice(),
     handCounts: state.hands.map((h, i) => (i === seat || state.phase === 'over' ? state.hands[i].slice() : h.length)),
     bottom: state.landlord >= 0 ? state.bottom.slice() : state.bottom.length,
-    bidTurn: state.bidTurn, highBid: state.highBid, bids: state.bids.slice(),
+    bidTurn: state.bidTurn, highBid: state.highBid, highBidder: state.highBidder, bids: state.bids.slice(),
     robTurn: state.robTurn, dblTurn: state.dblTurn,
     // 出牌历史（公开信息）：AI 记牌器与残局蒙特卡洛的数据源
     played: state.history.map(h => ({ seat: h.seat, combo: h.combo, cards: h.cards.slice() })),
@@ -561,7 +573,9 @@ export function playerView(state, seat) {
     multiplier: state.multiplier, bombs: state.bombs,
     playCount: state.playCount.slice(),
     winner: state.winner, winSide: state.winSide, spring: state.spring,
-    scores: state.scores.slice()
+    scores: state.scores.slice(),
+    // 公开动作日志（联机事件 diff：客户端记已消费长度，只处理新增段）
+    acts: state.acts.slice()
   }
 }
 
