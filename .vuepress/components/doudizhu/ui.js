@@ -229,6 +229,10 @@ export default class DoudizhuUI {
     this.btnFull.type = 'button'
     this.btnFull.title = '全屏'
     this.btnFull.onclick = () => this.toggleFull()
+    // 联机不提供最小化（与军棋/象棋联机一致：进房全屏、退房才退出）——
+    // 牌桌最小化会把房间壳露出在牌桌后面，还要处理滚动锁交还，状态机
+    // 平白多一态；单机 ⛶ 用于回游戏列表页前的沉浸切换，保留
+    if (this.online) this.btnFull.style.display = 'none'
     const btnExit = h('a', 'ddz-icon-btn', '✕')
     if (this.online) {
       btnExit.href = 'javascript:void(0)'
