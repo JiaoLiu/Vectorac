@@ -473,20 +473,20 @@ export default class DoudizhuRemote {
       if (dock.parentElement === document.body) return
       document.body.appendChild(dock)
       dock.classList.add('is-floating')
-      // portal 换了包含块：按记忆位置重新落位并 clamp 进当前视口
-      // （记忆坐标是进房时的视口算的，横竖屏切换后可能出界）；
+      // portal 换了包含块：按「挂哪边」语义重新落位（不沿用记忆里的绝对
+      // 像素——竖屏右缘的 x 在横屏会落到屏幕中间），y clamp 进当前视口；
       // 无记忆则清空 inline，回到 CSS 默认右下角
       let p = null
       try { p = JSON.parse(localStorage.getItem('gkr-dock-pos') || 'null') } catch (e) { /* 忽略 */ }
-      if (p && typeof p.x === 'number' && typeof p.y === 'number') {
-        const x = Math.max(8, Math.min(window.innerWidth - dock.offsetWidth - 8, p.x))
+      if (p && typeof p.y === 'number') {
+        const stickLeft = dock.classList.contains('is-left')
+        const x = stickLeft ? 10 : Math.max(10, window.innerWidth - dock.offsetWidth - 10)
         const y = Math.max(8, Math.min(window.innerHeight - dock.offsetHeight - 8, p.y))
         dock.style.left = x + 'px'
         dock.style.top = y + 'px'
         dock.style.right = 'auto'
         dock.style.bottom = 'auto'
-        const r = dock.getBoundingClientRect()
-        dock.classList.toggle('is-left', r.left + r.width / 2 < window.innerWidth / 2)
+        dock.classList.toggle('is-left', stickLeft)
       } else {
         dock.style.left = ''
         dock.style.top = ''

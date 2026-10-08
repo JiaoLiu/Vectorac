@@ -735,6 +735,9 @@ export function bindChatDock(dock, { onStartRec, onStopRec, onPhrase } = {}) {
   // .is-left 把面板/录音提示翻到按钮右侧，避免弹出屏外
   const POS_KEY = 'gkr-dock-pos'
   const clampY = y => Math.max(8, Math.min(window.innerHeight - dock.offsetHeight - 8, y))
+  // 挂边坐标：靠左统一 10px，靠右 = 视口宽 - 按钮宽 - 10。转屏/重新落位都
+  // 按「挂哪边」重算，不沿用旧视口的绝对像素（否则竖屏右缘会在横屏落到中间）
+  const edgeX = left => (left ? 10 : Math.max(10, window.innerWidth - dock.offsetWidth - 10))
   const applyPos = (x, y, save) => {
     dock.style.left = x + 'px'
     dock.style.top = y + 'px'
@@ -753,15 +756,16 @@ export function bindChatDock(dock, { onStartRec, onStopRec, onPhrase } = {}) {
       applyPos(Math.max(8, Math.min(maxX, p.x)), clampY(p.y), false)
     }
   }
-  // 视口变化（转屏 / iOS 工具栏收起）后把 dock 拉回视口内：记忆坐标是
-  // 旧视口算的，竖屏拖到屏幕底部再转横屏就会整块出界（表现「横屏语音
-  // 按钮消失」）。默认右下角（无 inline 坐标）由 CSS right/bottom 自适应，
-  // 不需要处理
+  // 视口变化（转屏 / iOS 工具栏收起）后重新吸附到挂边：记忆坐标是旧视口
+  // 的绝对像素，直接 clamp 会让「竖屏右缘 x≈332」在横屏（宽 844）落到中间
+  //（用户报「横屏跑到屏幕中间」的真因）——按挂边语义重算，靠右仍到右缘、
+  // 靠左仍到左缘；y 沿用当前位置 clamp 进新视口。
+  // 默认右下角（无 inline 坐标）由 CSS right/bottom 自适应，不需要处理
   const onViewportResize = () => {
     if (!dock.style.left && !dock.style.top) return
     const r = dock.getBoundingClientRect()
     applyPos(
-      Math.max(8, Math.min(window.innerWidth - dock.offsetWidth - 8, r.left)),
+      edgeX(dock.classList.contains('is-left')),
       clampY(r.top),
       true
     )
@@ -782,7 +786,7 @@ export function bindChatDock(dock, { onStartRec, onStopRec, onPhrase } = {}) {
     if (!dragStart) return
     const dx = ev.clientX - dragStart.x
     const dy = ev.clientY - dragStart.y
-    if (!dragged && Math.hypot(dx, dy) < 8) return
+    if (!dragged && Math.hypot(dx, dy) < 12) return
     if (!dragged) {
       dragged = true
       panel.hidden = true
@@ -804,10 +808,7 @@ export function bindChatDock(dock, { onStartRec, onStopRec, onPhrase } = {}) {
     if (wasDragged) {
       // 水平吸附到最近的左右边缘（留边距），纵向保持
       const rect = dock.getBoundingClientRect()
-      const targetX = rect.left + rect.width / 2 < window.innerWidth / 2
-        ? 10
-        : window.innerWidth - dock.offsetWidth - 10
-      applyPos(targetX, clampY(rect.top), true)
+      applyPos(edgeX(rect.left + rect.width / 2 < window.innerWidth / 2), clampY(rect.top), true)
       suppressClick = true // 吞掉拖动结束的合成 click，别误开面板
       if (ev && ev.pointerId != null) { try { toggle.releasePointerCapture(ev.pointerId) } catch (e) { /* 忽略 */ } }
     }
