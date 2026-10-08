@@ -593,6 +593,9 @@ export default class DoudizhuUI {
       playCount: view.playCount || [0, 0, 0],
       winner: view.winner, winSide: view.winSide, spring: view.spring,
       scores: view.scores || [0, 0, 0],
+      // playerView（提示按钮 this.view()）会读 state.acts.slice()——
+      // 缺了它点「提示」直接抛 TypeError（表现：点了没反应）
+      acts: acts,
       meta: view.meta || null
     }
     // acts 日志 diff → 单机同款事件（音效/语音气泡/特效）
