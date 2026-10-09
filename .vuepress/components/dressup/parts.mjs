@@ -37,6 +37,9 @@ for(const p of PARTS)if(['face','eyes','brows','lip'].includes(p.category)){p.as
 // Loose long hair needs actual rear strands beneath the new ear contour,
 // not empty background inside its old, wider face extraction window.
 Object.assign(PARTS.find(p=>p.id==='hair-1'),{back:true,backVersion:'v16'})
+// The ponytail is on the right only. Keep its original front and the exposed
+// left ear; fill the old face-window gap underneath the right ear.
+Object.assign(PARTS.find(p=>p.id==='hair-2'),{back:true,backVersion:'v16'})
 // Reuse corrected wearing art across colour editions; catalogue designs stay
 // independent and old purchase/save IDs do not change.
 for(const p of PARTS)if(p.category==='bottom'&&((p.sourceIndex===undefined?p.index:p.sourceIndex)===2||p.index>=12))p.wearVersion='v13'

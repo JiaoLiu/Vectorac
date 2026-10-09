@@ -36,7 +36,12 @@ test('layer failure retains entire previous model; complete layers swap once; st
   const complete=f.renderer.showLayers(DEFAULT_PARTS);f.pending.get(sources.find(x=>x.includes('hair-0'))).onload()
   assert.equal(await complete,'ready');assert.deepEqual(f.draws,['old','assembled'])
   const changed={...DEFAULT_PARTS,hair:'hair-1'},late=f.renderer.showLayers(changed);let release
-  const hair=f.pending.get(layerSources(changed).find(x=>x.includes('hair-1.webp')));hair.decoding=new Promise(r=>release=r);hair.onload()
+  const hairSource=layerSources(changed).find(x=>x.includes('hair-1.webp')),hair=f.pending.get(hairSource)
+  hair.decoding=new Promise(r=>release=r);hair.onload()
+  // Long hair now has a registered rear layer too. Resolve its download while
+  // the FRONT is still decoding; otherwise this fixture never settles at all
+  // and does not actually exercise the stale-composite race below.
+  for(const src of layerSources(changed))if(!sources.includes(src)&&src!==hairSource)f.pending.get(src).onload()
   const outfit=f.renderer.show('new-outfit');f.pending.get('new-outfit').onload();await outfit;release()
   assert.equal(await late,'stale');assert.deepEqual(f.draws,['old','assembled','new-outfit'])
  }finally{if(originalDocument===undefined)delete globalThis.document;else globalThis.document=originalDocument}

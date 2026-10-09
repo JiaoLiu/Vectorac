@@ -67,7 +67,11 @@ test('curtain long hair restores rear strands beneath a changed face without cov
  assert.ok(calls.indexOf(rear)<calls.indexOf(BASE));assert.equal(calls.filter(c=>c===rear).length,2)
  const reset=calls.indexOf('clear:190,25,132,138');assert.equal(calls[reset+1],rear);assert.equal(calls[reset+2],face)
  assert.ok(calls.lastIndexOf(rear)<calls.indexOf(face));assert.ok(calls.indexOf(earrings)>calls.lastIndexOf(partAsset(hair)))
- for(const p of PARTS.filter(p=>p.category==='hair'&&p.id!=='hair-5'&&p.id!=='hair-1'))assert.equal(partBackAsset(p),'','unrelated hairstyles unchanged')
+ for(const p of PARTS.filter(p=>p.category==='hair'&&!['hair-5','hair-1','hair-2'].includes(p.id)))assert.equal(partBackAsset(p),'','unrelated hairstyles unchanged')
+ for(const id of ['hair-1','hair-2']){
+  const p=PARTS.find(p=>p.id===id)
+  assert.ok(partBackAsset(p).includes('/v16/'));assert.ok(partAsset(p).includes('/v7/'),'original registered front stays intact')
+ }
 })
 test('32 editions reuse registered assets, independent product designs and existing fit indices',()=>{
  assert.equal(EDITIONS.length,32);assert.equal(new Set(PARTS.map(p=>p.id)).size,PARTS.length)

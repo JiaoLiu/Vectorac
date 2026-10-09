@@ -64,6 +64,8 @@ try{
   return cleared
  })
  assert.ok(matte>100,'legacy model remnants were not removed')
+ const rear=await sharp('.vuepress/public/img/games/dressup/layers/v16/hair-2-back.webp').ensureAlpha().raw().toBuffer()
+ for(let y=0;y<1024;y++)for(let x=0;x<280;x++)assert.equal(rear[(y*512+x)*4+3],0,'right ponytail may not grow hair behind its exposed left ear')
  await sheet(heads,'presets-by-hair',6);await sheet(hats,'presets-by-hats',13);await sheet(mixed,'mixed-features',4)
  console.log(JSON.stringify({passed:true,exactPixels,hatHairPreset:combinations,makeupMixes,jawWidths,legacyRemnants:matte,screenshots:out}))
 }finally{await browser.close()}
