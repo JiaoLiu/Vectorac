@@ -67,6 +67,15 @@
     </div>
   </a>
 
+  <a href="/blogs/other/sanguo.html" class="game-card">
+    <div class="game-card-cover"><img src="/img/games/sanguo/cover.jpg" alt="三国逐鹿：名将齐聚青铜牌桌，谋划身份对决" loading="lazy"></div>
+    <div class="game-card-body">
+      <div class="game-card-title">三国·逐鹿</div>
+      <div class="game-card-desc">五人身份 · 十二名将技能 · 108 张经典牌 · 单机 AI</div>
+      <span class="game-card-btn">入局逐鹿</span>
+    </div>
+  </a>
+
   <a href="/blogs/other/cardforge.html" class="game-card">
     <div class="game-card-cover"><img src="/img/games/balatro-cover.webp" alt="小丑牌：魔法小丑、扑克牌与筹码" loading="lazy"></div>
     <div class="game-card-body">

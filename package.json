@@ -3,6 +3,8 @@
   "version": "1.0.0",
   "author": "reco_luan",
   "scripts": {
+    "test:sanguo": "node --test scripts/test-sanguo.mjs",
+    "test:sanguo:browser": "node scripts/test-sanguo-browser.mjs",
     "test:dressup": "node --test scripts/test-dressup.mjs scripts/test-dressup-renderer.mjs scripts/test-dressup-audio.mjs scripts/test-dressup-details.mjs",
     "test:dressup:hair-fit": "node scripts/test-dressup-hair-registration.mjs",
     "test:dressup:cap-decoration": "node scripts/test-dressup-cap-decoration.mjs",
