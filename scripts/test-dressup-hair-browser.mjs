@@ -34,6 +34,12 @@ for(const [name,engine] of [['chromium',chromium],['webkit',webkit]]){
     assert.equal(await game.evaluate(e=>JSON.stringify(e.__vue__.state.look)),state)
    }
   }
+  // Reproduce the reported air-bang + pink bow appearance, not only bare hair.
+  await game.evaluate(e=>{e.__vue__.chooseBeauty('morning');for(const id of ['hair-5','hat-none','headpiece-0','earrings-none'])e.__vue__.choosePart(id)})
+  await page.waitForFunction(()=>{const vm=document.querySelector('.fw-game').__vue__,src=document.querySelector('.fw-model').dataset.src||'';return !vm.loading&&src.includes('hair-5')&&src.includes('hat-none')&&src.includes('headpiece-0')})
+  if(!await game.evaluate(e=>e.__vue__.faceZoom))await game.getByRole('button',{name:'查看妆容',exact:true}).click()
+  await page.screenshot({path:join(out,name+'-air-bangs-bow-portrait.png')})
+  await page.setViewportSize({width:844,height:390});await page.screenshot({path:join(out,name+'-air-bangs-bow-landscape.png')});await page.setViewportSize({width:390,height:844})
   await game.evaluate(e=>{for(let i=0;i<12;i++){e.__vue__.choosePart('hair-'+(i%6));e.__vue__.choosePart('face-'+(i%4));e.__vue__.choosePart('hat-'+i)}})
   await page.waitForFunction(()=>{const vm=document.querySelector('.fw-game').__vue__,src=document.querySelector('.fw-model').dataset.src||'';return !vm.loading&&src.includes('hair-5')&&src.includes('face-3')&&src.includes('hat-11')})
   const saved=await game.evaluate(e=>JSON.stringify(e.__vue__.state.look));await page.reload();await page.waitForFunction(()=>{const vm=document.querySelector('.fw-game').__vue__;return !vm.loading&&(document.querySelector('.fw-model').dataset.src||'').includes('hair-5')})

@@ -12,6 +12,7 @@ import {memoryGame,flipMemory,closeMemory,stylingGame,submitStyling,sewingGame,s
 import {faceSampleX} from '../.vuepress/components/dressup/face-fit.mjs'
 import {tucksIntoWaist} from '../.vuepress/components/dressup/waist-fit.mjs'
 import {BEAUTY_PRESETS,BEAUTY_SLOTS,bakedFeature} from '../.vuepress/components/dressup/beauty.mjs'
+import {HEAD_FRAMES,AIR_BANGS_FRONT_FRAME} from '../.vuepress/components/dressup/head-fit.mjs'
 test('waist wearing follows the shirt cut and colour editions, never forces Chinese outer hems under a belt',()=>{
  const tucked=[0,1,4,5,6,7,12,14,15]
  for(const top of PARTS.filter(p=>p.category==='top'))for(const bottom of PARTS.filter(p=>p.category==='bottom'))assert.equal(tucksIntoWaist(top,bottom),!!bottom.frontBand&&tucked.includes(top.index),`${top.id}/${bottom.id}`)
@@ -75,6 +76,8 @@ test('each hairstyle has its own rear layer; body head is excluded before drawin
 })
 test('air bangs use independent cap families in front and rear, keeping other hair and product art',()=>{
  const hair=PARTS.find(p=>p.id==='hair-5')
+ assert.deepEqual(hair.frame,AIR_BANGS_FRONT_FRAME);assert.deepEqual(hair.backFrame,HEAD_FRAMES.back)
+ for(const p of PARTS.filter(p=>p.category==='hair'&&p.id!=='hair-5'))assert.deepEqual(p.frame,HEAD_FRAMES.hair,'unrelated hair registration changed')
  for(const [hatId,name] of [['hat-0','straw'],['hat-4','straw'],['hat-5','straw'],['hat-1','beret'],['hat-6','beret'],['hat-7','beret'],['hat-10','cloche']]){
   const hat=PARTS.find(p=>p.id===hatId);assert.ok(partHairAsset(hair,hat).endsWith('hair-5-'+name+'.webp'));assert.ok(partBackAsset(hair,hat).endsWith('hair-5-'+name+'-back.webp'))
  }

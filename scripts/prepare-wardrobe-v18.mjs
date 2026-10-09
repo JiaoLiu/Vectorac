@@ -1,4 +1,6 @@
 // Fixed-frame registration and alpha matting only; imagegen supplies all artwork.
+// This exports a storage frame, not proof of anatomical alignment. Front art
+// uses AIR_BANGS_FRONT_FRAME at runtime; run test:dressup:hair-fit after export.
 import {createRequire} from 'node:module'
 import {mkdir,readFile,copyFile} from 'node:fs/promises'
 import {existsSync} from 'node:fs'
