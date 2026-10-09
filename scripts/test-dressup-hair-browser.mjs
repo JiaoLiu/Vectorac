@@ -21,7 +21,7 @@ for(const [name,engine] of [['chromium',chromium],['webkit',webkit]]){
    const look={hair:'hair-5',face:face.id,hat:hat.id,headpiece:'headpiece-none',earrings:hat.index%2?'earrings-none':'earrings-8'}
    await game.evaluate((e,p)=>Object.values(p).forEach(id=>e.__vue__.choosePart(id)),look)
    await page.waitForFunction(p=>{const vm=document.querySelector('.fw-game').__vue__,src=document.querySelector('.fw-model').dataset.src||'';return !vm.loading&&Object.values(p).every(id=>src.includes('"'+id+'"'))},look)
-   const channels=await page.locator('.fw-model').evaluate(c=>{const d=c.getContext('2d').getImageData(0,0,512,1024).data;return [218,294].every(x=>{for(let y=145;y<175;y++)if(d[(y*512+x)*4+3]<245)return false;return true})})
+   const channels=await page.locator('.fw-model').evaluate(c=>{const logical=document.createElement('canvas');logical.width=512;logical.height=1024;logical.getContext('2d').drawImage(c,0,0,512,1024);const d=logical.getContext('2d').getImageData(0,0,512,1024).data;return [218,294].every(x=>{for(let y=145;y<175;y++)if(d[(y*512+x)*4+3]<245)return false;return true})})
    assert.ok(channels,`${name}/${face.id}/${hat.id}: live ear gap`);assert.equal(await game.evaluate(e=>e.__vue__.imageError),false);looks++
    if(hat.id==='hat-none'||hat.id==='hat-1'||hat.id==='hat-10'||hat.id==='hat-11'){
     const state=await game.evaluate(e=>JSON.stringify(e.__vue__.state.look))
@@ -38,7 +38,7 @@ for(const [name,engine] of [['chromium',chromium],['webkit',webkit]]){
   await page.waitForFunction(()=>{const vm=document.querySelector('.fw-game').__vue__,src=document.querySelector('.fw-model').dataset.src||'';return !vm.loading&&src.includes('hair-5')&&src.includes('face-3')&&src.includes('hat-11')})
   const saved=await game.evaluate(e=>JSON.stringify(e.__vue__.state.look));await page.reload();await page.waitForFunction(()=>{const vm=document.querySelector('.fw-game').__vue__;return !vm.loading&&(document.querySelector('.fw-model').dataset.src||'').includes('hair-5')})
   assert.equal(await game.evaluate(e=>JSON.stringify(e.__vue__.state.look)),saved)
-  for(const file of ['hair-5','hair-5-back'])assert.ok(requests.has('/img/games/dressup/layers/v15/'+file+'.webp'),name+': stale wearing runtime')
+  for(const file of ['hair-5','hair-5-back'])assert.ok(requests.has('/img/games/dressup/layers/v17/'+file+'.webp'),name+': stale wearing runtime')
   assert.deepEqual(errors,[])
  }finally{await browser.close()}
 }

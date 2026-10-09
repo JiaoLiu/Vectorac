@@ -11,7 +11,7 @@ let clicks=0,rotations=0
 for(const [name,engine] of [['chromium',chromium],['webkit',webkit]]){
  const browser=await engine.launch({headless:true,...(name==='chromium'?{executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'}:{})})
  try{
-  const page=await browser.newPage({viewport:{width:390,height:844},hasTouch:true,isMobile:true}),errors=[]
+  const page=await browser.newPage({viewport:{width:390,height:844},hasTouch:true,isMobile:true,deviceScaleFactor:3}),errors=[]
   page.on('pageerror',e=>errors.push(e.message))
   await page.addInitScript(({key,owned,parts})=>{if(!localStorage.getItem(key))localStorage.setItem(key,JSON.stringify({version:1,coins:1000,owned:['blush'],scenes:['atelier'],ownedParts:owned,look:{mode:'fine',parts}}))},{key,owned:PARTS.filter(p=>p.id!=='top-3').map(p=>p.id),parts:{...DEFAULT_PARTS,top:'top-1',bottom:'bottom-2',hair:'hair-2',hat:'hat-1',earrings:'earrings-0'}})
   await page.route('**/*',r=>/^https?:/.test(r.request().url())&&!r.request().url().startsWith(base)?r.abort():r.continue())
@@ -19,6 +19,7 @@ for(const [name,engine] of [['chromium',chromium],['webkit',webkit]]){
   await page.waitForFunction(()=>{const vm=document.querySelector('.fw-game').__vue__;return !vm.loading&&(document.querySelector('.fw-model').dataset.src||'').startsWith('fine:')})
   const game=page.locator('.fw-game');await game.getByRole('button',{name:'全屏',exact:true}).click();await game.getByRole('button',{name:'装扮',exact:true}).click();await game.locator('.fw-part-groups').getByRole('button',{name:'妆容',exact:true}).click()
   const initial=await game.evaluate(e=>JSON.parse(JSON.stringify(e.__vue__.state)))
+  assert.equal(await page.locator('.fw-model').evaluate(c=>c.width),1536,'retina canvas lost its native backing pixels')
   async function settled(parts){await page.waitForFunction(p=>{const vm=document.querySelector('.fw-game').__vue__,src=document.querySelector('.fw-model').dataset.src||'';return !vm.loading&&Object.entries(p).every(([k,v])=>src.includes('"'+k+'":"'+v+'"'))},parts)}
   for(const preset of BEAUTY_PRESETS){
    await game.getByRole('button',{name:'换上'+preset.name+'妆容',exact:true}).click();await settled(preset.parts);clicks++
@@ -39,6 +40,11 @@ for(const [name,engine] of [['chromium',chromium],['webkit',webkit]]){
   await settled({...BEAUTY_PRESETS[1].parts,top:'top-3'})
   assert.deepEqual(await game.evaluate(e=>JSON.parse(JSON.stringify(e.__vue__.finePreviews))),{top:'top-3'})
   await game.evaluate(e=>{e.__vue__.finePreviews={};e.__vue__.choosePart('eyes-4');e.__vue__.choosePart('brows-3')});await settled({face:'face-1',eyes:'eyes-4',brows:'brows-3',lip:'lip-1',top:'top-1'})
+  for(const hair of ['hair-2','hair-5'])for(const hat of ['hat-none','hat-1']){
+   await game.evaluate((e,p)=>{e.__vue__.choosePart(p.hair);e.__vue__.choosePart(p.hat);e.__vue__.choosePart('headpiece-0')},{hair,hat});await settled({hair,hat})
+   await page.screenshot({path:join(out,name+'-'+hair+'-'+hat+'-makeup.png')})
+   await page.setViewportSize({width:844,height:390});await settled({hair,hat});await page.screenshot({path:join(out,name+'-'+hair+'-'+hat+'-landscape.png')});await page.setViewportSize({width:390,height:844})
+  }
   await game.getByRole('button',{name:'查看全身',exact:true}).click();await settled({face:'face-1',eyes:'eyes-4',brows:'brows-3'})
   await page.screenshot({path:join(out,name+'-fullbody.png')})
   await game.evaluate(e=>{for(let i=0;i<20;i++)e.__vue__.chooseBeauty(['morning','peach','heart','elegant','sakura'][i%5])});await settled(BEAUTY_PRESETS[4].parts)
@@ -47,6 +53,12 @@ for(const [name,engine] of [['chromium',chromium],['webkit',webkit]]){
   await game.evaluate((e,id)=>e.__vue__.restoreLook(id),album);await settled(BEAUTY_PRESETS[4].parts)
   const saved=await game.evaluate(e=>JSON.stringify(e.__vue__.state.look));await page.reload();await settled(BEAUTY_PRESETS[4].parts)
   assert.equal(await game.evaluate(e=>JSON.stringify(e.__vue__.state.look)),saved);assert.deepEqual(errors,[])
+  // A gallery is NOT twelve main-stage retina buffers. Stress a full album
+  // on a DPR=3 phone, then return to the main stage and keep the model intact.
+  await game.evaluate(e=>{const vm=e.__vue__;for(let i=0;i<12;i++){vm.chooseBeauty(['morning','peach','heart','elegant','sakura'][i%5]);vm.choosePart('hair-'+(i%6));vm.saveLook()}vm.chooseTab('album')})
+  await page.waitForFunction(()=>{const cards=Array.from(document.querySelectorAll('.fw-album-model'));return cards.length===12&&cards.every(c=>(c.dataset.src||'').startsWith('fine:'))})
+  assert.ok(await page.locator('.fw-album-model').evaluateAll(cs=>cs.every(c=>c.width===512&&c.height===1024)),'album allocated full-stage retina buffers')
+  await game.evaluate(e=>e.__vue__.chooseTab('fine'));await settled({hair:'hair-5'});assert.equal(await game.evaluate(e=>e.__vue__.imageError),false)
  }finally{await browser.close()}
 }
 await writeFile(join(out,'result.json'),JSON.stringify({base,clicks,rotations,passed:true}))

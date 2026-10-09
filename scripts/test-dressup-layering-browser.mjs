@@ -25,7 +25,7 @@ for(const [name,engine] of [['chromium',chromium],['webkit',webkit]]){
    // browsing the list; waiting for off-screen lazy images would never finish.
    for(const image of await page.locator('.fw-part-preview img').all())await image.scrollIntoViewIfNeeded()
    await page.waitForFunction(()=>Array.from(document.querySelectorAll('.fw-part-preview img')).every(i=>i.complete&&i.naturalWidth>0)&&Array.from(document.querySelectorAll('.fw-design-canvas')).every(c=>c.dataset.ready==='true'))
-   assert.ok(await page.locator('.fw-part-preview img').evaluateAll(es=>es.every(i=>/\/v(?:7|9|10|11|12|16)\/catalog\//.test(i.src))),'all item cards use independent catalogue art')
+   assert.ok(await page.locator('.fw-part-preview img').evaluateAll(es=>es.every(i=>/\/v(?:7|9|10|11|12|16|17)\/catalog\//.test(i.src))),'all item cards use independent catalogue art')
    if(['上衣','下装','帽子','耳环','项链','手饰','鞋子','脸型','眼睛','眉毛'].includes(category))await page.screenshot({path:join(out,`${name}-catalog-${category}.png`)})
   }
   const looks=[
@@ -66,7 +66,7 @@ for(const [name,engine] of [['chromium',chromium],['webkit',webkit]]){
     // Assert the live canvas itself, not merely v14 asset requests (those
     // paths were already present in the previous, incorrectly layered build).
     const seam=await page.locator('.fw-model').evaluate(async(c,p)=>{
-     const actual=c.getContext('2d').getImageData(0,0,512,1024).data
+     const logical=document.createElement('canvas');logical.width=512;logical.height=1024;logical.getContext('2d').drawImage(c,0,0,512,1024);const actual=logical.getContext('2d').getImageData(0,0,512,1024).data
      if(p.id==='top-0')return [201,313].every(x=>actual[(361*512+x)*4+3]<5)
      const image=new Image();image.src=p.src;await image.decode();const ref=document.createElement('canvas');ref.width=512;ref.height=1024;ref.getContext('2d').drawImage(image,0,0)
      const expected=ref.getContext('2d').getImageData(0,0,512,1024).data;let checked=0

@@ -1,16 +1,16 @@
-import {PARTS,partAsset,partBackAsset,fitIndex} from './parts.mjs'
+import {PARTS,partAsset,partBackAsset,partHairAsset,fitIndex} from './parts.mjs'
 import {materialImage} from './materials.mjs'
 import bounds from './layer-bounds.mjs'
 import {HAT_HAIR_CUTS} from './hat-coverage.mjs'
 import {NEW_CAP_CUTS} from './accessory-coverage.mjs'
 import {tucksIntoWaist,clipTuckedTop} from './waist-fit.mjs'
 import {bakedFeature} from './beauty.mjs'
-import {wearingHair} from './legacy-hair.mjs'
+import {BODY_HEAD_START,fullCap,crownCut} from './head-fit.mjs'
 export const BASE='/img/games/dressup/layers/v5/master.webp'
 export function baseSource(){return BASE}
 export const FEET='/img/games/dressup/layers/v5/feet.webp'
 export function underbodySource(parts){const p=PARTS.find(p=>p.id===parts.bottom&&p.category==='bottom');return p&&['v13','v14'].includes(p.wearVersion)?'/img/games/dressup/layers/v13/underbody.webp':p&&p.index>=12?'/img/games/dressup/layers/v11/underbody.webp':`/img/games/dressup/layers/v5/underbody-${p?fitIndex(p):0}.webp`}
-export function layerSources(parts){return [...new Set([BASE,FEET,underbodySource(parts),...Object.values(parts).map(id=>PARTS.find(p=>p.id===id)).filter(Boolean).flatMap(p=>[partAsset(p),partBackAsset(p)]).filter(Boolean)])]}
+export function layerSources(parts){const hat=PARTS.find(p=>p.id===parts.hat);return [...new Set([BASE,FEET,underbodySource(parts),...Object.values(parts).map(id=>PARTS.find(p=>p.id===id)).filter(Boolean).flatMap(p=>[p.category==='hair'?partHairAsset(p,hat):partAsset(p),partBackAsset(p,hat)]).filter(Boolean)])]}
 // Anatomical layers keep the master 512 x 1024 canvas, never independent alpha fits.
 export const REGISTERED_ORDER=['socks','shoes','bottom','top','face','eyes','brows','lip']
 export const SOCK_VISIBLE_END=[955,925,954,880]
@@ -20,16 +20,19 @@ export function paintComposite(ctx,images,parts){
  const tucked=tucksIntoWaist(chosen('top'),chosen('bottom'))
  function registered(category,back=false){const p=chosen(category);if(!p||p.index<0)return
   if(!back&&bakedFeature(chosen('face'),p))return
-  const source=back?partBackAsset(p):partAsset(p);if(!source)return
-  const hat=chosen('hat'),capHair=category==='hair'&&hat&&(hat.cap||fitIndex(hat)>=0&&fitIndex(hat)<2)
+  const hat=chosen('hat'),source=back?partBackAsset(p,hat):category==='hair'?partHairAsset(p,hat):partAsset(p);if(!source)return
+  const capHair=category==='hair'&&fullCap(hat)
   // Follow the cap's actual silhouette, not a horizontal cut through all hair.
   // No hat pixel in a column means no clipping of the side strands there.
-  if(capHair){const cuts=hat.cap?NEW_CAP_CUTS[hat.id]:HAT_HAIR_CUTS[fitIndex(hat)];ctx.save();ctx.beginPath();ctx.moveTo(0,1024);ctx.lineTo(0,cuts[0]);for(let x=1;x<512;x++){ctx.lineTo(x,cuts[x-1]);ctx.lineTo(x,cuts[x])}ctx.lineTo(512,cuts[511]);ctx.lineTo(512,1024);ctx.closePath();ctx.clip()}
+  if(capHair){const cuts=hat.cap?NEW_CAP_CUTS[hat.id]:HAT_HAIR_CUTS[fitIndex(hat)],cut=x=>crownCut(p,cuts[x],back);ctx.save();ctx.beginPath();ctx.moveTo(0,1024);ctx.lineTo(0,cut(0));for(let x=1;x<512;x++){ctx.lineTo(x,cut(x-1));ctx.lineTo(x,cut(x))}ctx.lineTo(512,cut(511));ctx.lineTo(512,1024);ctx.closePath();ctx.clip()}
   if(category==='shoes'){const end=sockEnd(p);ctx.clearRect(185,end,142,1024-end)}
   if(category==='socks'){const shoe=chosen('shoes');ctx.save();ctx.beginPath();ctx.rect(0,0,512,sockEnd(shoe));ctx.clip()}
   if(category==='top'&&tucked){ctx.save();clipTuckedTop(ctx)}
+  if(category==='top'){ctx.save();ctx.beginPath();ctx.rect(0,BODY_HEAD_START,512,1024-BODY_HEAD_START);ctx.clip()}
   const image=materialImage(images.get(source),p)
-  ctx.drawImage(category==='hair'&&!back?wearingHair(image,p,images.get(BASE)):image,0,0,512,1024)
+  const frame=back?p.backFrame:p.frame
+  ctx.drawImage(image,...(frame?[frame.x,frame.y,frame.w,frame.h]:[0,0,512,1024]))
+  if(category==='top')ctx.restore()
   if(category==='top'&&tucked)ctx.restore()
   if(category==='socks')ctx.restore()
   if(capHair)ctx.restore()
@@ -38,17 +41,15 @@ export function paintComposite(ctx,images,parts){
  registered('hair',true)
  registered('hair')
  const wristBack=partBackAsset(chosen('wrist'));if(wristBack)ctx.drawImage(images.get(wristBack),0,0,512,1024)
+ // Old head skin is excluded on the layers that contain it, BEFORE blending
+ // the new head. Never erase a rectangle from already painted rear/side hair.
+ ctx.save();ctx.beginPath();ctx.rect(0,BODY_HEAD_START,512,1024-BODY_HEAD_START);ctx.clip()
  ctx.drawImage(images.get(BASE),0,0,512,1024)
  ctx.drawImage(images.get(underbodySource(parts)),0,0,512,1024)
+ ctx.restore()
  ctx.drawImage(images.get(FEET),0,0,512,1024)
  for(const category of REGISTERED_ORDER){
   if(category==='bottom'&&tucked)continue
-  if(category==='face'){
-   ctx.clearRect(190,25,132,138)
-   // Replacing the face must not erase the hair behind its outer ears.
-   // Restore only the rear hair under the new face, not over skin or eyes.
-   ctx.save();ctx.beginPath();ctx.rect(190,25,132,138);ctx.clip();registered('hair',true);ctx.restore()
-  }
   registered(category)
   // A tucked blouse has no loose side tails. Untucked Chinese jackets keep
   // their whole curved hem over the skirt, even when it covers the band.
@@ -59,7 +60,9 @@ export function paintComposite(ctx,images,parts){
  const anchors={headpiece:[[285,46,43,60],[289,66,38,42],[282,58,45,87],[286,54,40,62]]}
  // Front strands do not contain skin patches. Jewellery is attached after hair
  // so a purchased/trial earring cannot disappear under the entire hair sprite.
- ctx.save();ctx.beginPath();ctx.rect(0,0,512,180);ctx.clip();registered('hair');ctx.restore()
+ // Complete front layers preserve every temple strand and long side lock.
+ // The ponytail is a clean hair-only image, not an old model with skin remnants.
+ registered('hair')
  for(const category of ['earrings']){
   const p=chosen(category);if(!p||p.index<0)continue
   if(p.assetVersion==='v11'){registered(category);continue}

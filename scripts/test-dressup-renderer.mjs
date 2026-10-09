@@ -31,9 +31,10 @@ test('layer failure retains entire previous model; complete layers swap once; st
  try{
   const f=fixture(),old=f.renderer.show('old');f.pending.get('old').onload();await old
   const sources=layerSources(DEFAULT_PARTS),bad=f.renderer.showLayers(DEFAULT_PARTS)
-  for(const src of sources)if(src.includes('hair-0'))f.pending.get(src).onerror();else f.pending.get(src).onload()
+  const failed=sources.find(src=>src.endsWith('/hair-0.webp'))
+  for(const src of sources)if(src===failed)f.pending.get(src).onerror();else f.pending.get(src).onload()
   assert.equal(await bad,'error');assert.deepEqual(f.draws,['old'])
-  const complete=f.renderer.showLayers(DEFAULT_PARTS);f.pending.get(sources.find(x=>x.includes('hair-0'))).onload()
+  const complete=f.renderer.showLayers(DEFAULT_PARTS);f.pending.get(failed).onload()
   assert.equal(await complete,'ready');assert.deepEqual(f.draws,['old','assembled'])
   const changed={...DEFAULT_PARTS,hair:'hair-1'},late=f.renderer.showLayers(changed);let release
   const hairSource=layerSources(changed).find(x=>x.includes('hair-1.webp')),hair=f.pending.get(hairSource)
@@ -45,4 +46,18 @@ test('layer failure retains entire previous model; complete layers swap once; st
   const outfit=f.renderer.show('new-outfit');f.pending.get('new-outfit').onload();await outfit;release()
   assert.equal(await late,'stale');assert.deepEqual(f.draws,['old','assembled','new-outfit'])
  }finally{if(originalDocument===undefined)delete globalThis.document;else globalThis.document=originalDocument}
+})
+test('retina model keeps logical anatomy while using a three-times backing bitmap',async()=>{
+ const originalDocument=globalThis.document,originalWindow=globalThis.window,transforms=[]
+ const ctx=new Proxy({setTransform:(...args)=>transforms.push(args)},{get:(o,k)=>o[k]||(()=>{})})
+ globalThis.window={devicePixelRatio:3};globalThis.document={createElement:()=>({url:'assembled',getContext:()=>ctx})}
+ try{
+  const pending=new Map(),draws=[]
+  class Img{constructor(){this.naturalWidth=512;this.naturalHeight=1024}set src(src){this.url=src;pending.set(src,this)}decode(){return Promise.resolve()}}
+  const canvas={ownerDocument:globalThis.document,width:512,height:1024,dataset:{},getContext:()=>({clearRect(){},drawImage:(...args)=>draws.push(args)})},renderer=createModelRenderer(canvas,Img)
+  const shown=renderer.showLayers(DEFAULT_PARTS);for(const src of layerSources(DEFAULT_PARTS))pending.get(src).onload()
+  assert.equal(await shown,'ready');assert.equal(canvas.width,1536);assert.equal(canvas.height,3072);assert.equal(canvas.dataset.scale,'3')
+  assert.deepEqual(transforms,[[3,0,0,3,0,0]]);assert.deepEqual(draws[0].slice(1),[0,0,1536,3072])
+  renderer.destroy()
+ }finally{if(originalDocument===undefined)delete globalThis.document;else globalThis.document=originalDocument;if(originalWindow===undefined)delete globalThis.window;else globalThis.window=originalWindow}
 })

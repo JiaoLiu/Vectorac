@@ -1,0 +1,203 @@
+{
+  "mode": "built-in imagegen",
+  "aestheticReferences": [
+    "https://design.amorepacific.com/en/work/2026/amorepacific/makeup-life-blending-vol-23-something-new/",
+    "https://int.etude.com/"
+  ],
+  "frames": {
+    "face": {
+      "x": 190,
+      "y": 25,
+      "w": 132,
+      "h": 173
+    },
+    "eyes": {
+      "x": 208,
+      "y": 98,
+      "w": 96,
+      "h": 29
+    },
+    "brows": {
+      "x": 208,
+      "y": 88,
+      "w": 96,
+      "h": 19
+    },
+    "lip": {
+      "x": 236,
+      "y": 134,
+      "w": 40,
+      "h": 22
+    },
+    "hair": {
+      "x": 100,
+      "y": 0,
+      "w": 330,
+      "h": 490
+    },
+    "back": {
+      "x": 100,
+      "y": 40,
+      "w": 330,
+      "h": 190
+    }
+  },
+  "registration": {
+    "face": {
+      "scale": 0.115,
+      "left": 193.9,
+      "top": 38.39
+    },
+    "hair2": {
+      "scale": 0.22094361334867663,
+      "left": 160,
+      "top": 12
+    },
+    "hair5": {
+      "scale": 0.26,
+      "left": 122,
+      "top": 11
+    },
+    "hair2cap": {
+      "scale": 0.22094361334867663,
+      "left": 170,
+      "top": 7.7
+    },
+    "back": {
+      "scale": 0.22094361334867663,
+      "left": 160,
+      "top": 0
+    }
+  },
+  "assets": [
+    {
+      "key": "face0",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-97103796-fb12-42d5-ad06-893ad60ae175.png",
+      "file": "scripts/fixtures/wardrobe-v17-sources/face0.png",
+      "prompt": "Use case: precise-object-edit. Asset type: a complete head-and-neck sprite for a beautiful fashion dress-up game. Image 1 is the edit target and EXACT anatomy/placement template (a front-facing bald adult fashion model). Image 2 is only the original body's neck skin tone/lighting continuity reference. Image 3 is only the desired beautiful, refined semi-realistic fashion illustration style. Redesign the COMPLETE face into a very pretty Korean natural makeup look: gentle small oval face, naturally smooth U-rounded chin (not pointy V, not broad square jaw, no bulging cheeks), harmonious softly shaped brown almond eyes, delicate brown lashes, refined natural brows, a subtly rounded small nose, softly tinted peach-rose lips, warm ivory translucent skin with extremely subtle blush. Prefer attractive realistic human proportions over oversized doll eyes or a chubby baby face. Keep the subject EXACTLY front-on, eye line and gaze symmetrical, skull size, eye spacing, ear attachment and neck positioning like Image 1; keep the entire original portrait canvas and margins, no zoom/crop/shift. Ears must be anatomically clear and sharp. Draw one coherent skin surface including both cheeks, single chin and continuous neck with the same lighting/tone as Image 2: no neck seam, no duplicate chin, no cheek blobs, no rectangular skin patches. Include the full bald scalp and natural ears so independent hairstyles can be worn. No hair, no jewellery, no clothing, no shoulders, no background, no border, no text. Actual transparent background. Keep an uncut long enough neck at the lower edge to allow a gentle body blend.",
+      "references": [
+        "/Users/Jiao/Documents/Vectorac/scripts/fixtures/wardrobe-v17-sources/head-template.png",
+        "/Users/Jiao/Documents/Vectorac/scripts/fixtures/wardrobe-v17-sources/body-neck-reference.png",
+        "/Users/Jiao/Documents/Vectorac/.vuepress/public/img/games/dressup/layers/v7/catalog/hair-0.webp"
+      ]
+    },
+    {
+      "key": "face1",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-cafc4913-cc53-497e-ac76-7d9c671795f1.png",
+      "file": "scripts/fixtures/wardrobe-v17-sources/face1.png",
+      "prompt": "Use case: precise-object-edit. Image 1 is the exact complete head sprite edit target, an adult female fashion model. Keep exact canvas, skull size, eye/ear landmarks, face centre, hairless scalp, the whole coherent neck, skin colour/lighting, and realistic soft painting unchanged. Genuinely transparent background. No hair, hat, jewellery, clothing, shoulders, text or props. Beautiful subtle Korean natural makeup, attractive human proportions, soft clear skin, not chubby, not a doll, no hard V chin, no squared jaw, no bulging cheeks. Keep one continuous face and neck surface, no cheek/neck patches or second chin. Change ONLY the lower cheek/jaw contour into a subtly SOFT OVAL face, with a gently rounded youthful jaw and smoothly rounded chin, merely a touch fuller than the original, absolutely not a fat round or baby face. Preserve the same refined facial features and head width. Slightly soften the lip colour to muted rose, and the eye makeup to soft warm brown.",
+      "references": [
+        "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-97103796-fb12-42d5-ad06-893ad60ae175.png"
+      ]
+    },
+    {
+      "key": "face2",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-3e7ac277-bfd1-45f9-b33a-350ac7c3b3b8.png",
+      "file": "scripts/fixtures/wardrobe-v17-sources/face2.png",
+      "prompt": "Use case: precise-object-edit. Image 1 is the exact complete head sprite edit target, an adult female fashion model. Keep exact canvas, skull size, eye/ear landmarks, face centre, hairless scalp, the whole coherent neck, skin colour/lighting, and realistic soft painting unchanged. Genuinely transparent background. No hair, hat, jewellery, clothing, shoulders, text or props. Beautiful subtle Korean natural makeup, attractive human proportions, soft clear skin, not chubby, not a doll, no hard V chin, no squared jaw, no bulging cheeks. Keep one continuous face and neck surface, no cheek/neck patches or second chin. Change ONLY the lower jaw contour into a delicate SOFT HEART-OVAL face, smooth graceful narrowing with a short naturally rounded chin, not a sharp point. Preserve eye spacing, ears and head width. Keep refined almond eyes and add extremely subtle apricot eye/lip makeup, no bright blush.",
+      "references": [
+        "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-97103796-fb12-42d5-ad06-893ad60ae175.png"
+      ]
+    },
+    {
+      "key": "face3",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-53fd8a0c-0dc1-4bd6-935c-5285d8f24e6b.png",
+      "file": "scripts/fixtures/wardrobe-v17-sources/face3.png",
+      "prompt": "Use case: precise-object-edit. Image 1 is the exact complete head sprite edit target, an adult female fashion model. Keep exact canvas, skull size, eye/ear landmarks, face centre, hairless scalp, the whole coherent neck, skin colour/lighting, and realistic soft painting unchanged. Genuinely transparent background. No hair, hat, jewellery, clothing, shoulders, text or props. Beautiful subtle Korean natural makeup, attractive human proportions, soft clear skin, not chubby, not a doll, no hard V chin, no squared jaw, no bulging cheeks. Keep one continuous face and neck surface, no cheek/neck patches or second chin. Change ONLY the styling into a pretty REFINED OVAL Korean makeup look, luminous but not shiny, gentle elegantly rounded jaw and chin, softly defined brown eyes, tidy natural arched brows and muted rosy-beige lips. This replaces an unattractive square face: do NOT make the jaw square/wide/angular, do NOT inflate cheeks. Facial geometry remains graceful, slim and harmonious, no heavy contours.",
+      "references": [
+        "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-97103796-fb12-42d5-ad06-893ad60ae175.png"
+      ]
+    },
+    {
+      "key": "face4",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-0d23d943-ea41-4fa9-a7cd-27111202eecc.png",
+      "file": "scripts/fixtures/wardrobe-v17-sources/face4.png",
+      "prompt": "Use case: precise-object-edit. Image 1 is the exact complete adult Korean natural-makeup head sprite target. Change ONLY the iris colour to a very subtle natural DARK GREY-BROWN with a hint of cool blue-grey (not neon or bright blue, no pale zombie eyes) and lips to soft rose-pink. Preserve every pixel of face anatomy, oval jaw/chin, eyebrows, eyelids/lashes, ear/scalp position, canvas, head/neck geometry, skin tone, lighting, style and transparency as closely as possible. Eyes should be beautiful, dark and believable, with tiny natural catchlights. Same complete coherent head/neck, no additional face parts, no new nose or mouth, no hair, hat, jewellery, clothing, background or text.",
+      "references": [
+        "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-97103796-fb12-42d5-ad06-893ad60ae175.png"
+      ]
+    },
+    {
+      "key": "hair0back",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-28d00dfc-9b99-49eb-96c2-ea23c1f6c1c2.png",
+      "file": "scripts/fixtures/wardrobe-v17-sources/hair0back.png",
+      "prompt": "Use case: precise-object-edit. Asset type: an actual BACK HAIR layer for a modular dress-up model. Image 1 is the existing hairstyle layout, size, silhouette, colour and positioning reference. Keep its exact full tall canvas and subject placement/size, NO zoom, crop, centre-fit or shift. Create its own matching rear-layer wig: short soft wavy bob, with continuous rear locks behind BOTH ears to the upper neck, like the existing bob. Fill the upper central skull/face opening from 12% to 42% of image height with believable dense continuous hair, because a separately drawn head/ears/neck will be IN FRONT of this back layer. There must be NO head shaped transparent cavity or rectangular hole around the ears/jaw/nape. Do not invent hair beyond this hairstyle's original outer silhouette or overall length. Only natural warm dark brown hair strands, fine high-resolution semi-realistic fashion painting. No bangs crossing the face (this is the BACK layer), no actual head, skin, eyes, ears, nose, lips, face, neck, mannequin, shoulders, stand, clothing, earrings, hats, text or background. True alpha transparency outside the wig; the inner back scalp is filled with HAIR, not a skin-coloured mask.",
+      "references": [
+        "/Users/Jiao/Documents/Vectorac/scripts/fixtures/wardrobe-v17-sources/hair-reference-0.png"
+      ]
+    },
+    {
+      "key": "hair1back",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-f1af7440-bbe2-4dfa-8e70-d1f5021137c0.png",
+      "file": "scripts/fixtures/wardrobe-v17-sources/hair1back.png",
+      "prompt": "Use case: precise-object-edit. Asset type: an actual BACK HAIR layer for a modular dress-up model. Image 1 is the existing hairstyle layout, size, silhouette, colour and positioning reference. Keep its exact full tall canvas and subject placement/size, NO zoom, crop, centre-fit or shift. Create its own matching rear-layer wig: long romantic loose waves, with dense hair continuing behind BOTH ears and the whole nape, not a face shaped ear pocket. Fill the upper central skull/face opening from 12% to 42% of image height with believable dense continuous hair, because a separately drawn head/ears/neck will be IN FRONT of this back layer. There must be NO head shaped transparent cavity or rectangular hole around the ears/jaw/nape. Do not invent hair beyond this hairstyle's original outer silhouette or overall length. Only natural warm dark brown hair strands, fine high-resolution semi-realistic fashion painting. No bangs crossing the face (this is the BACK layer), no actual head, skin, eyes, ears, nose, lips, face, neck, mannequin, shoulders, stand, clothing, earrings, hats, text or background. True alpha transparency outside the wig; the inner back scalp is filled with HAIR, not a skin-coloured mask.",
+      "references": [
+        "/Users/Jiao/Documents/Vectorac/scripts/fixtures/wardrobe-v17-sources/hair-reference-1.png"
+      ]
+    },
+    {
+      "key": "hair2back",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-9fc86895-b121-4fcc-bc5d-996e7571b63f.png",
+      "file": "scripts/fixtures/wardrobe-v17-sources/hair2back.png",
+      "prompt": "Use case: precise-object-edit. Asset type: an actual BACK HAIR layer for a modular dress-up model. Image 1 is the existing hairstyle layout, size, silhouette, colour and positioning reference. Keep its exact full tall canvas and subject placement/size, NO zoom, crop, centre-fit or shift. Create its own matching rear-layer wig: high ponytail flowing to the VIEWER'S RIGHT, with a rounded rear scalp and natural hair coverage behind the right ear/whole nape; left ear remains naturally exposed in front, no giant new left-side long lock. Fill the upper central skull/face opening from 12% to 42% of image height with believable dense continuous hair, because a separately drawn head/ears/neck will be IN FRONT of this back layer. There must be NO head shaped transparent cavity or rectangular hole around the ears/jaw/nape. Do not invent hair beyond this hairstyle's original outer silhouette or overall length. Only natural warm dark brown hair strands, fine high-resolution semi-realistic fashion painting. No bangs crossing the face (this is the BACK layer), no actual head, skin, eyes, ears, nose, lips, face, neck, mannequin, shoulders, stand, clothing, earrings, hats, text or background. True alpha transparency outside the wig; the inner back scalp is filled with HAIR, not a skin-coloured mask.",
+      "references": [
+        "/Users/Jiao/Documents/Vectorac/scripts/fixtures/wardrobe-v17-sources/hair-reference-2.png"
+      ]
+    },
+    {
+      "key": "hair3back",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-13b7b655-e14b-4370-b8cd-58bbb742089f.png",
+      "file": "scripts/fixtures/wardrobe-v17-sources/hair3back.png",
+      "prompt": "Use case: precise-object-edit. Asset type: an actual BACK HAIR layer for a modular dress-up model. Image 1 is the existing hairstyle layout, size, silhouette, colour and positioning reference. Keep its exact full tall canvas and subject placement/size, NO zoom, crop, centre-fit or shift. Create its own matching rear-layer wig: braided updo, rounded rear scalp above the neck, fine neat nape hair, NOT long loose hair or invented side tails. Fill the upper central skull/face opening from 12% to 42% of image height with believable dense continuous hair, because a separately drawn head/ears/neck will be IN FRONT of this back layer. There must be NO head shaped transparent cavity or rectangular hole around the ears/jaw/nape. Do not invent hair beyond this hairstyle's original outer silhouette or overall length. Only natural warm dark brown hair strands, fine high-resolution semi-realistic fashion painting. No bangs crossing the face (this is the BACK layer), no actual head, skin, eyes, ears, nose, lips, face, neck, mannequin, shoulders, stand, clothing, earrings, hats, text or background. True alpha transparency outside the wig; the inner back scalp is filled with HAIR, not a skin-coloured mask.",
+      "references": [
+        "/Users/Jiao/Documents/Vectorac/scripts/fixtures/wardrobe-v17-sources/hair-reference-3.png"
+      ]
+    },
+    {
+      "key": "hair4back",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-8480bb36-1e85-421c-bdbd-7b71b841312e.png",
+      "file": "scripts/fixtures/wardrobe-v17-sources/hair4back.png",
+      "prompt": "Use case: precise-object-edit. Asset type: an actual BACK HAIR layer for a modular dress-up model. Image 1 is the existing hairstyle layout, size, silhouette, colour and positioning reference. Keep its exact full tall canvas and subject placement/size, NO zoom, crop, centre-fit or shift. Create its own matching rear-layer wig: two long soft braids, natural scalp and rear locks continuing behind BOTH ears and nape into the two braids. Fill the upper central skull/face opening from 12% to 42% of image height with believable dense continuous hair, because a separately drawn head/ears/neck will be IN FRONT of this back layer. There must be NO head shaped transparent cavity or rectangular hole around the ears/jaw/nape. Do not invent hair beyond this hairstyle's original outer silhouette or overall length. Only natural warm dark brown hair strands, fine high-resolution semi-realistic fashion painting. No bangs crossing the face (this is the BACK layer), no actual head, skin, eyes, ears, nose, lips, face, neck, mannequin, shoulders, stand, clothing, earrings, hats, text or background. True alpha transparency outside the wig; the inner back scalp is filled with HAIR, not a skin-coloured mask.",
+      "references": [
+        "/Users/Jiao/Documents/Vectorac/scripts/fixtures/wardrobe-v17-sources/hair-reference-4.png"
+      ]
+    },
+    {
+      "key": "hair5back",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-cb8612da-0b0d-4043-bf35-51cd695ce214.png",
+      "file": "scripts/fixtures/wardrobe-v17-sources/hair5back.png",
+      "prompt": "Use case: precise-object-edit. Asset type: an actual BACK HAIR layer for a modular dress-up model. Image 1 is the existing hairstyle layout, size, silhouette, colour and positioning reference. Keep its exact full tall canvas and subject placement/size, NO zoom, crop, centre-fit or shift. Create its own matching rear-layer wig: long silky see-through-bang hairstyle, dense continuous silky brown rear hair behind BOTH ears and ALL the nape, no empty ear pockets. Fill the upper central skull/face opening from 12% to 42% of image height with believable dense continuous hair, because a separately drawn head/ears/neck will be IN FRONT of this back layer. There must be NO head shaped transparent cavity or rectangular hole around the ears/jaw/nape. Do not invent hair beyond this hairstyle's original outer silhouette or overall length. Only natural warm dark brown hair strands, fine high-resolution semi-realistic fashion painting. No bangs crossing the face (this is the BACK layer), no actual head, skin, eyes, ears, nose, lips, face, neck, mannequin, shoulders, stand, clothing, earrings, hats, text or background. True alpha transparency outside the wig; the inner back scalp is filled with HAIR, not a skin-coloured mask.",
+      "references": [
+        "/Users/Jiao/Documents/Vectorac/scripts/fixtures/wardrobe-v17-sources/hair-reference-5.png"
+      ]
+    },
+    {
+      "key": "hair2front-final",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-28691fbf-3ed0-499a-aada-b2ada74c098b.png",
+      "file": "scripts/fixtures/wardrobe-v17-sources/hair2front-final.png",
+      "prompt": "Use case: precise-object-edit. Image 1 is the edit target, a clean front-hair sprite on an EXPANDED canvas. Preserve exactly the whole canvas, the head/crown/temple/face opening and fine fringe, the already painted hair, all its placement, scale and colour. Change ONLY the clipped OUTER HAIR ENDS: continue the cut-off side locks into the available blank side margins, and finish the bottom tips as naturally tapered uncut strands within the bottom margin. Complete the right-side wavy ponytail that is cut at the straight right boundary; no new left-side long tail. Absolutely NO re-centering, zoom, resize, crop, new head or restyling. Only elegant warm brown HAIR with coherent strand directions, no straight clipped edges or rectangles. Actual transparent background and face opening, not ivory background or white matte. No face, skin, ears, scalp, shoulders, torso, jewellery, hat, stand, clothing or text.",
+      "references": [
+        "/Users/Jiao/Documents/Vectorac/scripts/fixtures/wardrobe-v17-sources/hair-expanded-2.png"
+      ]
+    },
+    {
+      "key": "hair5front-final",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-202d6e83-ff26-49c1-9852-9e44d9d232d6.png",
+      "file": "scripts/fixtures/wardrobe-v17-sources/hair5front-final.png",
+      "prompt": "Use case: precise-object-edit. Image 1 is the edit target, a clean front-hair sprite on an EXPANDED canvas. Preserve exactly the whole canvas, the head/crown/temple/face opening and fine fringe, the already painted hair, all its placement, scale and colour. Change ONLY the clipped OUTER HAIR ENDS: continue the cut-off side locks into the available blank side margins, and finish the bottom tips as naturally tapered uncut strands within the bottom margin. Complete both silky long side locks cut at vertical left/right edges and finish their bottom tips. Keep the current fine wispy see-through AIR BANGS exactly unchanged. Absolutely NO re-centering, zoom, resize, crop, new head or restyling. Only elegant warm brown HAIR with coherent strand directions, no straight clipped edges or rectangles. Actual transparent background and face opening, not ivory background or white matte. No face, skin, ears, scalp, shoulders, torso, jewellery, hat, stand, clothing or text.",
+      "references": [
+        "/Users/Jiao/Documents/Vectorac/scripts/fixtures/wardrobe-v17-sources/hair-expanded-5.png"
+      ]
+    },
+    {
+      "key": "hair2cap",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-009548e9-cfb3-4d6b-aa76-33c45e805d6e.png",
+      "file": "scripts/fixtures/wardrobe-v17-sources/hair2cap.png",
+      "prompt": "Use case: precise-object-edit. Asset type: a HAT-READY front-hair variant of the existing ponytail for a modular fashion model. Image 1 is the EXACT existing clean ponytail sprite edit target. Preserve the full tall canvas, overall placement and scale, right-side flowing tail length/shape/texture, the natural temple strands and ear/face opening. Change ONLY the high crown/tie region: lower/flatten the top knot into a believable ponytail tied behind the head so a beret, straw hat or cloche can fit OVER the crown. The crown should be softly rounded and close to the skull, not a towering bump. The flowing ponytail still emerges behind the VIEWER'S RIGHT ear. Keep the side hair continuing naturally from the temple down behind the ears; absolutely no rectangles, chopped side hair or exposed cheek/ear patches. Only warm brown hair, same crisp semi-realistic painting. No head, scalp, skin, face, ears, neck, mannequin, hat itself, clothing, jewellery, text or background. True transparent background and face/neck opening. This is a specific wearable fit variant, not a new hairstyle.",
+      "references": [
+        "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-6d072e70-91fa-41b0-b86f-ab2e471741cb.png"
+      ]
+    }
+  ],
+  "note": "Complete coherent K-beauty heads; original body/top head skin clipped before layering, never clear final hair. Every hairstyle has its own generated rear layer; ponytail has a specific cap-ready front. Cropped high-resolution sprites retain fixed logical anatomical frames, not per-item alpha bounding-box fitting."
+}

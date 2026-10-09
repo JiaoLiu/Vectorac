@@ -58,19 +58,18 @@ test('grouping covers every category exactly once; bracelet rear sits behind bod
  assert.equal(partBackAsset(PARTS.find(p=>p.id==='wrist-none')),'');assert.ok(partBackAsset(PARTS.find(p=>p.id==='wrist-2')).includes('/v13/wrist-2-back.webp'))
  const hat=PARTS.find(p=>p.id==='hat-11');assert.ok(partAsset(hat).includes('/v12/hat-11'));assert.ok(partThumbnail(hat).includes('/v11/catalog/hat-11'))
 })
-test('curtain long hair restores rear strands beneath a changed face without covering features or earrings',()=>{
+test('each hairstyle has its own rear layer; body head is excluded before drawing one face without rectangle erasure',()=>{
  const parts={...DEFAULT_PARTS,hair:'hair-5',earrings:'earrings-8'},hair=PARTS.find(p=>p.id===parts.hair),sources=layerSources(parts),calls=[]
  const rear=partBackAsset(hair),face=partAsset(PARTS.find(p=>p.id===parts.face)),earrings=partAsset(PARTS.find(p=>p.id===parts.earrings))
- assert.ok(sources.includes(rear));assert.ok(rear.includes('/v15/'));assert.ok(partThumbnail(hair).includes('/v11/catalog/'))
+ assert.ok(sources.includes(rear));assert.ok(rear.includes('/v17/'));assert.ok(partThumbnail(hair).includes('/v11/catalog/'))
  const ctx=new Proxy({drawImage:img=>calls.push(img.src),clearRect:(...rect)=>calls.push('clear:'+rect.join(','))},{get:(o,k)=>o[k]||(()=>{})})
  paintComposite(ctx,new Map(sources.map(src=>[src,{src}])),parts)
- assert.ok(calls.indexOf(rear)<calls.indexOf(BASE));assert.equal(calls.filter(c=>c===rear).length,2)
- const reset=calls.indexOf('clear:190,25,132,138');assert.equal(calls[reset+1],rear);assert.equal(calls[reset+2],face)
+ assert.ok(calls.indexOf(rear)<calls.indexOf(BASE));assert.equal(calls.filter(c=>c===rear).length,1)
+ assert.equal(calls.includes('clear:190,25,132,138'),false,'never erase rear hair/old face on the final bitmap')
  assert.ok(calls.lastIndexOf(rear)<calls.indexOf(face));assert.ok(calls.indexOf(earrings)>calls.lastIndexOf(partAsset(hair)))
- for(const p of PARTS.filter(p=>p.category==='hair'&&!['hair-5','hair-1','hair-2'].includes(p.id)))assert.equal(partBackAsset(p),'','unrelated hairstyles unchanged')
- for(const id of ['hair-1','hair-2']){
+ for(const id of ['hair-0','hair-1','hair-2','hair-3','hair-4','hair-5']){
   const p=PARTS.find(p=>p.id===id)
-  assert.ok(partBackAsset(p).includes('/v16/'));assert.ok(partAsset(p).includes('/v7/'),'original registered front stays intact')
+  assert.ok(partBackAsset(p).includes('/v17/'+id+'-back'));assert.ok(partAsset(p).includes('/v17/'))
  }
 })
 test('32 editions reuse registered assets, independent product designs and existing fit indices',()=>{
@@ -150,10 +149,10 @@ test('anatomical layers are drawn in place without per-item bounding-box resizin
  const draws=[],images=new Map(layerSources(DEFAULT_PARTS).map(src=>[src,{src}]))
  const ctx=new Proxy({drawImage:(img,...rect)=>draws.push({src:img.src,rect})},{get:(o,k)=>o[k]||(()=>{})})
  paintComposite(ctx,images,DEFAULT_PARTS)
- for(const call of draws)assert.deepEqual(call.rect,[0,0,512,1024])
+ for(const call of draws){const p=PARTS.find(p=>partAsset(p)===call.src||partBackAsset(p)===call.src),f=p&&(partBackAsset(p)===call.src?p.backFrame:p.frame);assert.deepEqual(call.rect,f?[f.x,f.y,f.w,f.h]:[0,0,512,1024],'fixed logical registration, never auto-fit alpha bounds')}
  const face=PARTS.find(p=>p.id===DEFAULT_PARTS.face)
  const order=REGISTERED_ORDER.map(c=>PARTS.find(p=>p.id===DEFAULT_PARTS[c])).filter(p=>!bakedFeature(face,p)).map(partAsset)
- assert.deepEqual(draws.slice(4,4+order.length).map(d=>d.src),order)
+ const start=draws.findIndex(d=>d.src===order[0]);assert.deepEqual(draws.slice(start,start+order.length).map(d=>d.src),order)
 })
 test('beauty presets atomically replace only makeup and persist without losing clothing, coins or albums',()=>{
  const original=act({...freshState(),coins:456},{type:'album',id:'prior'}).state
@@ -170,7 +169,7 @@ test('complete beauty faces keep matching features baked in; custom eyes never a
  for(const preset of BEAUTY_PRESETS){const parts={...DEFAULT_PARTS,...preset.parts},face=PARTS.find(p=>p.id===parts.face),draws=[]
   paintComposite(new Proxy({drawImage:img=>draws.push(img.src)},{get:(o,k)=>o[k]||(()=>{})}),new Map(layerSources(parts).map(src=>[src,{src}])),parts)
   for(const slot of ['eyes','brows','lip']){const p=PARTS.find(p=>p.id===parts[slot]);assert.equal(draws.includes(partAsset(p)),!bakedFeature(face,p))}
-  for(const slot of BEAUTY_SLOTS)assert.ok(partThumbnail(PARTS.find(p=>p.id===parts[slot])).includes('/v16/catalog/'))
+  for(const slot of BEAUTY_SLOTS)assert.ok(partThumbnail(PARTS.find(p=>p.id===parts[slot])).includes('/v17/catalog/'))
  }
 })
 test('old fine saves and albums gain independent eyes without losing purchased socks, face or clothing',()=>{

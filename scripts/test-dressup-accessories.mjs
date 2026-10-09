@@ -18,7 +18,7 @@ try{
  const page=await browser.newPage()
  await page.route('http://wardrobe.test/**',async r=>{const path=new URL(r.request().url()).pathname;if(path==='/')return r.fulfill({body:'<!doctype html><canvas width="512" height="1024"></canvas>',contentType:'text/html'});try{await r.fulfill({body:await readFile(path.endsWith('.mjs')?'.vuepress/components/dressup'+path:'.vuepress/public'+path),contentType:path.endsWith('.mjs')?'application/javascript':'image/webp'})}catch{await r.fulfill({status:404,body:'missing'})}})
  await page.goto('http://wardrobe.test/')
- async function render(parts,id){const b64=await page.evaluate(async p=>{const {layerSources,paintComposite}=await import('/compositor.mjs');window.fitImages||=new Map();for(const src of layerSources(p))if(!window.fitImages.has(src)){const image=new Image();image.src=src;await image.decode();window.fitImages.set(src,image)}const c=document.querySelector('canvas');paintComposite(c.getContext('2d'),window.fitImages,p);return c.toDataURL().split(',')[1]},parts);const f=join(out,id+'.png');await writeFile(f,Buffer.from(b64,'base64'));return f}
+ async function render(parts,id,fitHat=''){const b64=await page.evaluate(async({p,fitHat})=>{const {layerSources,paintComposite}=await import('/compositor.mjs'),{PARTS,partAsset,partHairAsset,partBackAsset}=await import('/parts.mjs');window.fitImages||=new Map();for(const src of [...layerSources(p),...(fitHat?layerSources({...p,hat:fitHat}):[])])if(!window.fitImages.has(src)){const image=new Image();image.src=src;await image.decode();window.fitImages.set(src,image)}let images=window.fitImages;if(fitHat){const hair=PARTS.find(x=>x.id===p.hair),hat=PARTS.find(x=>x.id===fitHat);images=new Map(images);images.set(partAsset(hair),window.fitImages.get(partHairAsset(hair,hat)));images.set(partBackAsset(hair),window.fitImages.get(partBackAsset(hair,hat)))}const c=document.querySelector('canvas');paintComposite(c.getContext('2d'),images,p);return c.toDataURL().split(',')[1]},{p:parts,fitHat});const f=join(out,id+'.png');await writeFile(f,Buffer.from(b64,'base64'));return f}
  const hats=[],feet=[],waists=[],extras=[]
  // Every hat, including colour editions, against every old/new hairstyle.
  for(const hat of group('hat'))for(const hair of group('hair'))hats.push(await render({...DEFAULT_PARTS,hair:hair.id,hat:hat.id,headpiece:'headpiece-none'},`${hat.id}-${hair.id}`))
@@ -28,8 +28,9 @@ try{
  for(const hair of group('hair'))for(const face of group('face')){
   const look={...DEFAULT_PARTS,hair:hair.id,face:face.id,hat:'hat-none',headpiece:'headpiece-none'},before=await raw(await render(look,`no-cap-${hair.id}-${face.id}`))
   for(const hat of group('hat').filter(p=>p.cap||(p.sourceIndex??p.index)<2)){
+   const reference=hair.capReady?await raw(await render(look,`fitted-${hat.id}-${hair.id}-${face.id}`,hat.id)):before
    const after=await raw(await render({...look,hat:hat.id},`cap-${hat.id}-${hair.id}-${face.id}`)),pixels=await raw('.vuepress/public'+partAsset(hat)),cuts=hat.cap?NEW_CAP_CUTS[hat.id]:HAT_HAIR_CUTS[hat.sourceIndex??hat.index]
-   for(let y=0;y<100;y++)for(let x=170;x<340;x++){const i=(y*512+x)*4;if(y>=cuts[x]+2&&before[i+3]>240&&!pixels[i+3])assert.deepEqual(after.subarray(i,i+4),before.subarray(i,i+4),`${hat.id}/${hair.id}/${face.id} erases side hair ${x},${y}`)}
+   for(let y=0;y<100;y++)for(let x=170;x<340;x++){const i=(y*512+x)*4;if(y>=cuts[x]+2&&reference[i+3]>240&&!pixels[i+3])assert.deepEqual(after.subarray(i,i+4),reference.subarray(i,i+4),`${hat.id}/${hair.id}/${face.id} erases visible fitted side hair ${x},${y}`)}
   }
  }
  // Skin-free crowns may not change a single forehead pixel across any face.

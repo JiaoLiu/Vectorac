@@ -1,7 +1,11 @@
 // Keep one persistent bitmap: changing URLs or viewport size never clears it.
 import {layerSources,paintComposite} from './compositor.mjs'
-export function createModelRenderer(canvas,ImageClass=Image){
+export function createModelRenderer(canvas,ImageClass=Image,options={}){
   let generation=0,disposed=false,last=null
+  // Full-body placement stays in 512x1024 logical coordinates. Native backing
+  // pixels increase for makeup close-ups; cropped HD heads avoid huge textures.
+  const scale=options.bitmapScale!==undefined?options.bitmapScale:canvas.ownerDocument&&typeof window!=='undefined'?Math.min(3,Math.max(2,window.devicePixelRatio||1)):1
+  if(scale>1){canvas.width=512*scale;canvas.height=1024*scale;canvas.dataset.scale=String(scale)}
   const cache=new Map()
   function repaint(){
     if(!last||disposed)return
@@ -34,8 +38,9 @@ export function createModelRenderer(canvas,ImageClass=Image){
     async showLayers(parts){
       const token=++generation,srcs=layerSources(parts),key='fine:'+JSON.stringify(parts)
       try{const decoded=await Promise.all(srcs.map(load));if(disposed||token!==generation)return 'stale'
-        const frame=document.createElement('canvas');frame.width=512;frame.height=1024
-        paintComposite(frame.getContext('2d'),new Map(srcs.map((src,i)=>[src,decoded[i]])),parts)
+        const frame=document.createElement('canvas');frame.width=512*scale;frame.height=1024*scale
+        const ctx=frame.getContext('2d');if(scale>1)ctx.setTransform(scale,0,0,scale,0,0)
+        paintComposite(ctx,new Map(srcs.map((src,i)=>[src,decoded[i]])),parts)
         if(disposed||token!==generation)return 'stale';last=frame;repaint();canvas.dataset.src=key;return 'ready'
       }catch(e){if(disposed||token!==generation)return 'stale';return 'error'}
     },

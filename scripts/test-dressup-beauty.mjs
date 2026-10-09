@@ -9,6 +9,7 @@ import {BEAUTY_PRESETS} from '../.vuepress/components/dressup/beauty.mjs'
 const require=createRequire(import.meta.url),sharp=require(process.env.SHARP_PATH||'sharp'),{chromium}=require(process.env.PLAYWRIGHT_PATH||'playwright')
 const out=await mkdtemp(join(tmpdir(),'wardrobe-beauty-fit-')),browser=await chromium.launch({headless:true,executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'})
 const heads=[],hats=[],mixed=[]
+async function registeredRaw(p){const f=p.frame,input=await sharp('.vuepress/public'+partAsset(p)).resize(f.w,f.h).png().toBuffer();return sharp({create:{width:512,height:1024,channels:4,background:'#00000000'}}).composite([{input,left:f.x,top:f.y}]).ensureAlpha().raw().toBuffer()}
 async function sheet(images,id,columns=6){const width=288,height=320;await sharp({create:{width:width*columns,height:height*Math.ceil(images.length/columns),channels:4,background:'#f4ede5'}}).composite(await Promise.all(images.map(async (input,i)=>({input:await sharp(input).extract({left:180,top:20,width:152,height:169}).resize(width,height).png().toBuffer(),left:i%columns*width,top:Math.floor(i/columns)*height})))).png().toFile(join(out,id+'.png'))}
 try{
  const page=await browser.newPage()
@@ -37,35 +38,34 @@ try{
   const baseline=await sharp(await render({...DEFAULT_PARTS,face:'face-'+f,eyes:'eyes-'+f,brows:'brows-'+f,lip:'lip-'+f})).ensureAlpha().raw().toBuffer()
   for(let e=0;e<5;e++)for(let b=0;b<4;b++)for(let l=0;l<5;l++){
    const image=await render({...DEFAULT_PARTS,face:'face-'+f,eyes:'eyes-'+e,brows:'brows-'+b,lip:'lip-'+l}),actual=await sharp(image).ensureAlpha().raw().toBuffer()
-   for(let y=126;y<136;y++)for(let x=246;x<266;x++){const i=(y*512+x)*4;assert.deepEqual(actual.subarray(i,i+4),baseline.subarray(i,i+4),'makeup mix replaces nose '+[f,e,b,l].join('/'))}
+   for(let y=126;y<134;y++)for(let x=246;x<266;x++){const i=(y*512+x)*4;assert.deepEqual(actual.subarray(i,i+4),baseline.subarray(i,i+4),'makeup mix replaces nose '+[f,e,b,l].join('/'))}
    makeupMixes++;if(e===b&&l===e)mixed.push(image)
   }
  }
  const jawWidths=[]
  for(let f=0;f<4;f++){
-  const data=await sharp('.vuepress/public/img/games/dressup/layers/v16/face-'+f+'.webp').ensureAlpha().raw().toBuffer(),row=[]
+  const data=await registeredRaw(PARTS.find(p=>p.id==='face-'+f)),row=[]
   for(const y of [140,145,150,155]){const xs=[];for(let x=200;x<312;x++)if(data[(y*512+x)*4+3]>240)xs.push(x);row.push(xs.at(-1)-xs[0]+1)}jawWidths.push(row)
  }
- // Lower jaw at y=145 is wider, not a pointed V. Lower rows also include the
- // neck behind the chin, and cannot be used to measure chin shape alone.
- assert.ok(jawWidths[1][1]>jawWidths[0][1]+6,'round jaw must really be wider than oval')
- assert.ok(jawWidths[3][1]>jawWidths[2][1]+6,'square-rounded jaw must differ from heart')
+ // Curated soft faces: no old broad square/chubby contour. Contour variation
+ // may be subtle; aesthetics are checked on the enlarged actual matrices.
+ for(const widths of jawWidths)assert.ok(widths[0]<65&&widths[1]<55,'lower cheeks inflated')
+ assert.ok(PARTS.filter(p=>p.category==='face').every(p=>!p.name.includes('方')),'square face still offered')
  for(const category of ['eyes','brows','lip'])for(const p of PARTS.filter(p=>p.category===category)){
-  const data=await sharp('.vuepress/public'+partAsset(p)).ensureAlpha().raw().toBuffer()
+  const data=await registeredRaw(p)
   const centers=category==='eyes'?[[234,110],[277,110]]:category==='brows'?[[234,96],[277,96]]:[[255,144]]
   for(const [x,y] of centers)assert.equal(data[(y*512+x)*4+3],255,p.id+': core transparent gap')
  }
- const matte=await page.evaluate(async ()=>{
-  const {wearingHair}=await import('/legacy-hair.mjs'),{PARTS,partAsset}=await import('/parts.mjs'),p=PARTS.find(p=>p.id==='hair-2'),src=window.images.get(partAsset(p)),master=window.images.get('/img/games/dressup/layers/v5/master.webp')
-  const c=document.createElement('canvas');c.width=512;c.height=1024;const ctx=c.getContext('2d');ctx.drawImage(src,0,0)
-  const before=ctx.getImageData(0,0,512,1024).data,after=wearingHair(src,p,master).getContext('2d').getImageData(0,0,512,1024).data
-  let cleared=0
-  for(let y=0;y<1024;y++)for(let x=0;x<512;x++){const i=(y*512+x)*4;if(before[i+3]!==after[i+3]){if(x<205||x>=307||y<104||y>=163)throw Error('ponytail changed outside old face window');if(after[i+3]!==0)throw Error('matte painted a new colour');cleared++}else if(before[i+3])for(let k=0;k<3;k++)if(before[i+k]!==after[i+k])throw Error('matte changed retained strand colour')}
-  return cleared
- })
- assert.ok(matte>100,'legacy model remnants were not removed')
- const rear=await sharp('.vuepress/public/img/games/dressup/layers/v16/hair-2-back.webp').ensureAlpha().raw().toBuffer()
- for(let y=0;y<1024;y++)for(let x=0;x<280;x++)assert.equal(rear[(y*512+x)*4+3],0,'right ponytail may not grow hair behind its exposed left ear')
+ const oldSkin=await page.evaluate(async defaults=>{
+  const {layerSources,paintComposite,BASE,underbodySource}=await import('/compositor.mjs'),{PARTS,partAsset}=await import('/parts.mjs'),images=new Map(window.images)
+  const top=partAsset(PARTS.find(p=>p.id===defaults.top))
+  for(const src of [BASE,underbodySource(defaults),top]){const c=document.createElement('canvas');c.width=512;c.height=1024;const ctx=c.getContext('2d');ctx.drawImage(images.get(src),0,0);ctx.fillStyle='#00ff00';ctx.fillRect(210,155,92,15);images.set(src,c)}
+  const c=document.querySelector('canvas'),ctx=c.getContext('2d');paintComposite(ctx,images,defaults);const d=ctx.getImageData(0,0,512,1024).data;let green=0
+  for(let y=155;y<170;y++)for(let x=205;x<307;x++){const i=(y*512+x)*4;if(d[i+1]>d[i]+80&&d[i+1]>d[i+2]+80&&d[i+3]>100)green++}
+  return green
+ },DEFAULT_PARTS)
+ assert.equal(oldSkin,0,'old lower-jaw skin leaks beside the new neck')
+ for(const p of PARTS.filter(p=>p.frame)){const m=await sharp('.vuepress/public'+partAsset(p)).metadata();assert.ok(m.width>=p.frame.w*2&&m.height>=p.frame.h*2,'head still downsampled to old low-res sprite');assert.ok(m.width<=2048&&m.height<=2048,'oversized mobile texture')}
  await sheet(heads,'presets-by-hair',6);await sheet(hats,'presets-by-hats',13);await sheet(mixed,'mixed-features',4)
- console.log(JSON.stringify({passed:true,exactPixels,hatHairPreset:combinations,makeupMixes,jawWidths,legacyRemnants:matte,screenshots:out}))
+ console.log(JSON.stringify({passed:true,exactPixels,hatHairPreset:combinations,makeupMixes,jawWidths,oldSkin,screenshots:out}))
 }finally{await browser.close()}

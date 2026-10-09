@@ -2,6 +2,7 @@ import {EDITIONS} from './collections.mjs'
 import {STYLES} from './styles.mjs'
 import {ACCESSORIES} from './accessories.mjs'
 import {JEWELLERY_FOOTWEAR} from './jewellery-footwear.mjs'
+import {HEAD_FRAMES,fullCap} from './head-fit.mjs'
 export const CATEGORIES = [
   {id:'top',name:'上衣'},{id:'bottom',name:'下装'},{id:'hair',name:'发型'},{id:'headpiece',name:'头饰'},
   {id:'hat',name:'帽子'},{id:'earrings',name:'耳环'},{id:'necklace',name:'项链'},{id:'wrist',name:'手饰'},{id:'socks',name:'袜子'},
@@ -22,7 +23,7 @@ const groups={
   earrings:[['珍珠耳坠',30,'古典'],['星星耳坠',35,'星光'],['玉滴耳坠',50,'国风'],['红心耳钉',30,'甜美']],
   socks:[['奶油花边短袜',0,'甜美'],['海军蓝及膝袜',35,'学院'],['花影薄纱中筒袜',45,'自然'],['夜色及膝袜',40,'古典'],['奶油蕾丝过膝袜',45,'甜美'],['夜色蕾丝过膝袜',45,'古典']],
   shoes:[['蔷薇玛丽珍',0,'甜美'],['学院乐福鞋',60,'学院'],['绣花软鞋',75,'国风'],['金扣短靴',80,'古典']],
-  face:[['自然鹅蛋脸',0,'自然'],['柔和圆脸',0,'甜美'],['柔和心形脸',0,'梦幻'],['方圆轮廓脸',0,'古典']],
+  face:[['自然鹅蛋脸',0,'自然'],['柔和小圆脸',0,'甜美'],['柔和心形脸',0,'梦幻'],['清透鹅蛋脸',0,'古典']],
   eyes:[['暖棕杏眼',0,'自然'],['蜜桃圆眸',0,'甜美'],['琥珀桃花眼',0,'自然'],['清雅长眸',0,'古典'],['自然蓝灰眼',0,'梦幻']],
   brows:[['自然柳叶眉',0,'自然'],['柔弧雾眉',0,'甜美'],['纤细弯月眉',0,'古典'],['清晰眉峰',0,'学院']],
   lip:[['自然唇色',0,'自然'],['玫瑰豆沙',0,'甜美'],['珊瑚橘',0,'清新'],['莓果红',0,'古典'],['樱花粉',0,'梦幻']]
@@ -33,13 +34,10 @@ PARTS.push(...STYLES)
 PARTS.push(...ACCESSORIES)
 PARTS.push(...JEWELLERY_FOOTWEAR)
 // Preserve old save IDs while replacing the old patchwork faces and features.
-for(const p of PARTS)if(['face','eyes','brows','lip'].includes(p.category)){p.assetVersion='v16';p.wearVersion='v16';p.beautyIndex=p.index}
-// Loose long hair needs actual rear strands beneath the new ear contour,
-// not empty background inside its old, wider face extraction window.
-Object.assign(PARTS.find(p=>p.id==='hair-1'),{back:true,backVersion:'v16'})
-// The ponytail is on the right only. Keep its original front and the exposed
-// left ear; fill the old face-window gap underneath the right ear.
-Object.assign(PARTS.find(p=>p.id==='hair-2'),{back:true,backVersion:'v16'})
+for(const p of PARTS)if(['face','eyes','brows','lip'].includes(p.category)){p.assetVersion='v17';p.wearVersion='v17';p.beautyIndex=p.index;p.frame=HEAD_FRAMES[p.category]}
+for(const p of PARTS)if(p.category==='hair'){p.wearVersion='v17';p.backVersion='v17';p.back=true;p.frame=HEAD_FRAMES.hair;p.backFrame=HEAD_FRAMES.back;p.wearFile=p.id}
+Object.assign(PARTS.find(p=>p.id==='hair-2'),{capReady:'hair-2-cap'})
+PARTS.find(p=>p.id==='hair-5').name='轻柔空气刘海长发'
 // Reuse corrected wearing art across colour editions; catalogue designs stay
 // independent and old purchase/save IDs do not change.
 for(const p of PARTS)if(p.category==='bottom'&&((p.sourceIndex===undefined?p.index:p.sourceIndex)===2||p.index>=12))p.wearVersion='v13'
@@ -49,15 +47,15 @@ export const FREE_PARTS=PARTS.filter(p=>p.price===0).map(p=>p.id)
 export const DEFAULT_PARTS={top:'top-0',bottom:'bottom-0',hair:'hair-0',headpiece:'headpiece-none',hat:'hat-none',earrings:'earrings-none',necklace:'necklace-none',wrist:'wrist-none',socks:'socks-0',shoes:'shoes-0',face:'face-0',eyes:'eyes-0',brows:'brows-0',lip:'lip-0'}
 export const REGISTERED_CATEGORIES=['top','bottom','hair','hat','socks','shoes','face','eyes','brows','lip','necklace','wrist']
 export const HEAD_CATEGORIES=['hair','hat','face','eyes','brows','lip']
-// The ponytail keeps its original registered wearable; catalogue redesigns
-// must not substitute a newly illustrated hairstyle on the model.
+// Save IDs and independent hair catalogue illustrations remain unchanged.
 export const fitIndex=p=>p.sourceIndex===undefined?p.index:p.sourceIndex
 export function partAsset(p){
  if(p.index<0)return ''
  const version=p.wearVersion||(p.category==='hat'&&[0,3].includes(fitIndex(p))||p.category==='bottom'&&p.index>=12?'v11':p.assetVersion||(p.category==='brows'&&p.index>=2?'v10':p.category==='face'?'v8':HEAD_CATEGORIES.includes(p.category)?'v7':REGISTERED_CATEGORIES.includes(p.category)?'v5':''))
- return `/img/games/dressup/layers/${version?version+'/':''}${p.category}-${fitIndex(p)}${p.id==='hair-2'?'-restored':''}.webp`
+ return `/img/games/dressup/layers/${version?version+'/':''}${p.wearFile||p.category+'-'+fitIndex(p)+(p.id==='hair-2'?'-restored':'')}.webp`
 }
-export const partBackAsset=p=>p&&p.back&&p.index>=0?`/img/games/dressup/layers/${p.backVersion||p.wearVersion||p.assetVersion}/${p.id}-back.webp`:''
+export const partHairAsset=(p,hat)=>p&&p.capReady&&fullCap(hat)?`/img/games/dressup/layers/${p.wearVersion}/${p.capReady}.webp`:partAsset(p)
+export const partBackAsset=(p,hat)=>p&&p.back&&p.index>=0?`/img/games/dressup/layers/${p.backVersion||p.wearVersion||p.assetVersion}/${p.capReady&&fullCap(hat)?p.capReady:p.id}-back.webp`:''
 // Product/design cards and the registered wearable layers have separate contracts.
 export const partThumbnail=p=>p.index<0?'':`/img/games/dressup/layers/${p.assetVersion|| (p.category==='brows'&&p.index>=2?'v10':'v7')}/catalog/${p.category}-${fitIndex(p)}.webp`
 export function validParts(raw,owned=FREE_PARTS){const result={};for(const c of CATEGORIES){const p=PARTS.find(p=>p.id===(raw||{})[c.id]&&p.category===c.id);result[c.id]=p&&owned.includes(p.id)?p.id:DEFAULT_PARTS[c.id]}return result}
