@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import {selectPreview,displayParts,purchasedPreview,previewItems} from '../.vuepress/components/dressup/preview.mjs'
 import {BASE,baseSource,layerSources,paintComposite,REGISTERED_ORDER,underbodySource} from '../.vuepress/components/dressup/compositor.mjs'
 import {freshState,normalize,act} from '../.vuepress/components/dressup/engine.mjs'
-import {DEFAULT_PARTS,FREE_PARTS,fineTags,PARTS,CATEGORIES,PART_GROUPS,partAsset,partBackAsset,partThumbnail,fitIndex} from '../.vuepress/components/dressup/parts.mjs'
+import {DEFAULT_PARTS,FREE_PARTS,fineTags,PARTS,CATEGORIES,PART_GROUPS,partAsset,partHairAsset,partBackAsset,partThumbnail,fitIndex} from '../.vuepress/components/dressup/parts.mjs'
 import {EDITIONS} from '../.vuepress/components/dressup/collections.mjs'
 import {STYLES} from '../.vuepress/components/dressup/styles.mjs'
 import {ACCESSORIES} from '../.vuepress/components/dressup/accessories.mjs'
@@ -61,7 +61,7 @@ test('grouping covers every category exactly once; bracelet rear sits behind bod
 test('each hairstyle has its own rear layer; body head is excluded before drawing one face without rectangle erasure',()=>{
  const parts={...DEFAULT_PARTS,hair:'hair-5',earrings:'earrings-8'},hair=PARTS.find(p=>p.id===parts.hair),sources=layerSources(parts),calls=[]
  const rear=partBackAsset(hair),face=partAsset(PARTS.find(p=>p.id===parts.face)),earrings=partAsset(PARTS.find(p=>p.id===parts.earrings))
- assert.ok(sources.includes(rear));assert.ok(rear.includes('/v17/'));assert.ok(partThumbnail(hair).includes('/v11/catalog/'))
+ assert.ok(sources.includes(rear));assert.ok(rear.includes('/v18/'));assert.ok(partThumbnail(hair).includes('/v11/catalog/'))
  const ctx=new Proxy({drawImage:img=>calls.push(img.src),clearRect:(...rect)=>calls.push('clear:'+rect.join(','))},{get:(o,k)=>o[k]||(()=>{})})
  paintComposite(ctx,new Map(sources.map(src=>[src,{src}])),parts)
  assert.ok(calls.indexOf(rear)<calls.indexOf(BASE));assert.equal(calls.filter(c=>c===rear).length,1)
@@ -69,8 +69,17 @@ test('each hairstyle has its own rear layer; body head is excluded before drawin
  assert.ok(calls.lastIndexOf(rear)<calls.indexOf(face));assert.ok(calls.indexOf(earrings)>calls.lastIndexOf(partAsset(hair)))
  for(const id of ['hair-0','hair-1','hair-2','hair-3','hair-4','hair-5']){
   const p=PARTS.find(p=>p.id===id)
-  assert.ok(partBackAsset(p).includes('/v17/'+id+'-back'));assert.ok(partAsset(p).includes('/v17/'))
+  const version=id==='hair-5'?'v18':'v17'
+  assert.ok(partBackAsset(p).includes('/'+version+'/'+id+'-back'));assert.ok(partAsset(p).includes('/'+version+'/'))
  }
+})
+test('air bangs use independent cap families in front and rear, keeping other hair and product art',()=>{
+ const hair=PARTS.find(p=>p.id==='hair-5')
+ for(const [hatId,name] of [['hat-0','straw'],['hat-4','straw'],['hat-5','straw'],['hat-1','beret'],['hat-6','beret'],['hat-7','beret'],['hat-10','cloche']]){
+  const hat=PARTS.find(p=>p.id===hatId);assert.ok(partHairAsset(hair,hat).endsWith('hair-5-'+name+'.webp'));assert.ok(partBackAsset(hair,hat).endsWith('hair-5-'+name+'-back.webp'))
+ }
+ for(const id of ['hat-none','hat-3','hat-11'])assert.equal(partHairAsset(hair,PARTS.find(p=>p.id===id)),partAsset(hair))
+ const pony=PARTS.find(p=>p.id==='hair-2');assert.ok(partHairAsset(pony,PARTS.find(p=>p.id==='hat-1')).endsWith('/v17/hair-2-cap.webp'));assert.ok(partThumbnail(hair).includes('/v11/catalog/'))
 })
 test('32 editions reuse registered assets, independent product designs and existing fit indices',()=>{
  assert.equal(EDITIONS.length,32);assert.equal(new Set(PARTS.map(p=>p.id)).size,PARTS.length)

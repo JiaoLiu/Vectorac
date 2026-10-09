@@ -1,0 +1,63 @@
+{
+  "mode": "built-in imagegen",
+  "scope": "Only hair-5 wearable art; catalogue, other hairstyles and makeup art unchanged",
+  "frames": {
+    "hair": {
+      "x": 100,
+      "y": 0,
+      "w": 330,
+      "h": 490
+    },
+    "back": {
+      "x": 100,
+      "y": 40,
+      "w": 330,
+      "h": 190
+    }
+  },
+  "assets": [
+    {
+      "key": "hair-5",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-a127fc18-3862-451f-84fc-463f1523539e.png",
+      "prompt": "Precise-object-edit for a registered 2D dress-up sprite. Edit only the hair in reference 1. Reference 2 is the exact fixed model head alignment and face clearance guide, NOT to be included in the output. Keep the entire 1320x1960 coordinate frame, every landmark position, root at the same position, hair length and lower waves unchanged. This is fine brown Korean soft air-bang long hair. Reduce the excessive upper LEFT crown/temple volume about 18%, producing a sleeker natural outline. Move the inner RIGHT cheek-side locks outward so the model's right eye, cheek and jaw stay uncovered; preserve natural flowing strands rather than a hard rectangular cutout. Keep the delicate airy fringe tips at their existing height ABOVE eyebrows. Preserve colour, strand detail, painterly realistic style and length. No face, skin, ears, scalp patch, body, mannequin, clothing, hat or text. Output ONLY the hair as a precisely registered transparent PNG; face cavity and background are genuinely transparent, never white. No zoom, recentering, crop, head redesign or pose change.",
+      "references": [
+        "/Users/Jiao/Documents/Vectorac/scripts/fixtures/wardrobe-v18-sources/hair-5-reference.png",
+        "/Users/Jiao/Documents/Vectorac/scripts/fixtures/wardrobe-v18-sources/head-reference.png"
+      ],
+      "file": "scripts/fixtures/wardrobe-v18-sources/hair-5.png"
+    },
+    {
+      "key": "hair-5-straw",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-feb29e93-d7a7-4a1d-8535-bd4280f793b1.png",
+      "prompt": "Precise-object-edit of registered dress-up HAIR sprite. Image 1 is the hair edit target, image 2 is the fixed exact straw hat silhouette placement guide and image 3 the fixed face landmarks. OUTPUT ONLY HAIR, with actual transparent background; never draw the hat, head, skin, ears, mannequin, clothes, text or scenery. Keep whole frame and coordinate registration, hair colour and lower long locks unchanged. Create an independently fitted straw hat version: reduce and tuck the upper crown and side volume inward so it sits INSIDE the hat's crown and brim at the exact coordinates of image 2. No hair swelling or sticking beyond upper left or right hat sides, no second crown outside the hat. Keep graceful fine air fringe below brim, tips ABOVE the eyebrows, with temples covered, full soft natural sides and continuous nape. Keep cheek-side locks OUTSIDE face/eyes/jaw silhouette. Do not invent a wider head, do not shift/zoom/crop. Hair must actually look worn under this hat rather than a large wig with hat placed in front. Changes restricted to upper crown/temples; preserve long waves and lower hair detail.",
+      "references": [
+        "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-a127fc18-3862-451f-84fc-463f1523539e.png",
+        "/Users/Jiao/Documents/Vectorac/scripts/fixtures/wardrobe-v18-sources/hat-straw-reference.png",
+        "/Users/Jiao/Documents/Vectorac/scripts/fixtures/wardrobe-v18-sources/head-reference.png"
+      ],
+      "file": "scripts/fixtures/wardrobe-v18-sources/hair-5-straw.png"
+    },
+    {
+      "key": "hair-5-beret",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-723460a7-6506-4aef-86ab-9798f220ff7e.png",
+      "prompt": "Precise-object-edit of registered dress-up HAIR sprite. Image 1 is the hair edit target, image 2 is the fixed exact beret hat silhouette placement guide and image 3 the fixed face landmarks. OUTPUT ONLY HAIR, with actual transparent background; never draw the hat, head, skin, ears, mannequin, clothes, text or scenery. Keep whole frame and coordinate registration, hair colour and lower long locks unchanged. Create an independently fitted beret hat version: reduce and tuck the upper crown and side volume inward so it sits INSIDE the hat's crown and brim at the exact coordinates of image 2. No hair swelling or sticking beyond upper left or right hat sides, no second crown outside the hat. Keep graceful fine air fringe below brim, tips ABOVE the eyebrows, with temples covered, full soft natural sides and continuous nape. Keep cheek-side locks OUTSIDE face/eyes/jaw silhouette. Do not invent a wider head, do not shift/zoom/crop. Hair must actually look worn under this hat rather than a large wig with hat placed in front. Changes restricted to upper crown/temples; preserve long waves and lower hair detail.",
+      "references": [
+        "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-a127fc18-3862-451f-84fc-463f1523539e.png",
+        "/Users/Jiao/Documents/Vectorac/scripts/fixtures/wardrobe-v18-sources/hat-beret-reference.png",
+        "/Users/Jiao/Documents/Vectorac/scripts/fixtures/wardrobe-v18-sources/head-reference.png"
+      ],
+      "file": "scripts/fixtures/wardrobe-v18-sources/hair-5-beret.png"
+    },
+    {
+      "key": "hair-5-cloche",
+      "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-48da8c9a-619d-4b9f-a9bf-bdf94cd2a2d0.png",
+      "prompt": "Precise-object-edit of registered dress-up HAIR sprite. Image 1 is the hair edit target, image 2 is the fixed exact cloche hat silhouette placement guide and image 3 the fixed face landmarks. OUTPUT ONLY HAIR, with actual transparent background; never draw the hat, head, skin, ears, mannequin, clothes, text or scenery. Keep whole frame and coordinate registration, hair colour and lower long locks unchanged. Create an independently fitted cloche hat version: reduce and tuck the upper crown and side volume inward so it sits INSIDE the hat's crown and brim at the exact coordinates of image 2. No hair swelling or sticking beyond upper left or right hat sides, no second crown outside the hat. Keep graceful fine air fringe below brim, tips ABOVE the eyebrows, with temples covered, full soft natural sides and continuous nape. Keep cheek-side locks OUTSIDE face/eyes/jaw silhouette. Do not invent a wider head, do not shift/zoom/crop. Hair must actually look worn under this hat rather than a large wig with hat placed in front. Changes restricted to upper crown/temples; preserve long waves and lower hair detail.",
+      "references": [
+        "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-a127fc18-3862-451f-84fc-463f1523539e.png",
+        "/Users/Jiao/Documents/Vectorac/scripts/fixtures/wardrobe-v18-sources/hat-cloche-reference.png",
+        "/Users/Jiao/Documents/Vectorac/scripts/fixtures/wardrobe-v18-sources/head-reference.png"
+      ],
+      "file": "scripts/fixtures/wardrobe-v18-sources/hair-5-cloche.png"
+    }
+  ]
+}

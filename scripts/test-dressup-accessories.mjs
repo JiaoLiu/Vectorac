@@ -28,7 +28,7 @@ try{
  for(const hair of group('hair'))for(const face of group('face')){
   const look={...DEFAULT_PARTS,hair:hair.id,face:face.id,hat:'hat-none',headpiece:'headpiece-none'},before=await raw(await render(look,`no-cap-${hair.id}-${face.id}`))
   for(const hat of group('hat').filter(p=>p.cap||(p.sourceIndex??p.index)<2)){
-   const reference=hair.capReady?await raw(await render(look,`fitted-${hat.id}-${hair.id}-${face.id}`,hat.id)):before
+   const reference=hair.capReady||hair.capReadyByHat?await raw(await render(look,`fitted-${hat.id}-${hair.id}-${face.id}`,hat.id)):before
    const after=await raw(await render({...look,hat:hat.id},`cap-${hat.id}-${hair.id}-${face.id}`)),pixels=await raw('.vuepress/public'+partAsset(hat)),cuts=hat.cap?NEW_CAP_CUTS[hat.id]:HAT_HAIR_CUTS[hat.sourceIndex??hat.index]
    for(let y=0;y<100;y++)for(let x=170;x<340;x++){const i=(y*512+x)*4;if(y>=cuts[x]+2&&reference[i+3]>240&&!pixels[i+3])assert.deepEqual(after.subarray(i,i+4),reference.subarray(i,i+4),`${hat.id}/${hair.id}/${face.id} erases visible fitted side hair ${x},${y}`)}
   }

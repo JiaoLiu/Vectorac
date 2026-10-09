@@ -21,6 +21,25 @@ for(const [name,engine] of [['chromium',chromium],['webkit',webkit]]){
   const initial=await game.evaluate(e=>JSON.parse(JSON.stringify(e.__vue__.state)))
   assert.equal(await page.locator('.fw-model').evaluate(c=>c.width),1536,'retina canvas lost its native backing pixels')
   async function settled(parts){await page.waitForFunction(p=>{const vm=document.querySelector('.fw-game').__vue__,src=document.querySelector('.fw-model').dataset.src||'';return !vm.loading&&Object.entries(p).every(([k,v])=>src.includes('"'+k+'":"'+v+'"'))},parts)}
+  // Sakura shares the natural face, but is not the same complete makeup.
+  await game.getByRole('button',{name:'换上樱花晴空妆容',exact:true}).click();await settled(BEAUTY_PRESETS[4].parts)
+  const categories=game.locator('.fw-part-categories')
+  await categories.getByRole('button',{name:'脸型',exact:true}).click()
+  assert.equal(await game.locator('.fw-beauty-presets').count(),0,'preset checkmark leaked into single-face choices')
+  const natural=game.locator('.fw-part-grid article').filter({has:page.getByText('自然鹅蛋脸',{exact:true})})
+  assert.equal(await natural.getByRole('button',{name:'当前脸型',exact:true}).count(),1)
+  await natural.getByRole('button',{name:'当前脸型',exact:true}).click();await settled(BEAUTY_PRESETS[4].parts)
+  const shared=await game.evaluate(e=>JSON.parse(JSON.stringify(e.__vue__.state)))
+  assert.equal(shared.look.parts.eyes,'eyes-4');assert.equal(shared.look.parts.lip,'lip-4');assert.equal(shared.look.parts.top,initial.look.parts.top);assert.equal(shared.coins,initial.coins)
+  assert.ok((await game.locator('.fw-makeup-summary').textContent()).includes('整套妆容：樱花晴空'))
+  const round=game.locator('.fw-part-grid article').filter({has:page.getByText('柔和小圆脸',{exact:true})})
+  await round.getByRole('button',{name:'换上',exact:true}).click();await settled({face:'face-1',eyes:'eyes-4',lip:'lip-4'})
+  assert.ok((await game.locator('.fw-makeup-summary').textContent()).includes('单项搭配'))
+  await categories.getByRole('button',{name:'整套妆容',exact:true}).click()
+  assert.equal(await game.locator('.fw-beauty-choices [aria-pressed=true]').count(),0)
+  await game.getByRole('button',{name:'换上樱花晴空妆容',exact:true}).click();await settled(BEAUTY_PRESETS[4].parts)
+  assert.equal(await game.locator('.fw-beauty-choices [aria-pressed=true]').count(),1)
+  assert.notEqual(await game.getByRole('button',{name:'换上晨光自然妆容',exact:true}).getAttribute('aria-pressed'),'true')
   for(const preset of BEAUTY_PRESETS){
    await game.getByRole('button',{name:'换上'+preset.name+'妆容',exact:true}).click();await settled(preset.parts);clicks++
    const state=await game.evaluate(e=>JSON.parse(JSON.stringify(e.__vue__.state)))
