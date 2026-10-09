@@ -9,9 +9,10 @@ await mkdir(root+'/catalog',{recursive:true})
 // These generated rear strands are confined beneath the existing front and
 // the new head; the original v7 long-hair wearable/catalogue are untouched.
 await copyFile('.vuepress/public/img/games/dressup/layers/v15/hair-5-back.webp',root+'/hair-1-back.webp')
-const ponyRear=await sharp(root+'/hair-1-back.webp').ensureAlpha().raw().toBuffer()
-for(let y=0;y<H;y++)for(let x=0;x<280;x++)ponyRear[(y*W+x)*4+3]=0
-await sharp(ponyRear,{raw:{width:W,height:H,channels:4}}).webp({lossless:true}).toFile(root+'/hair-2-back.webp')
+// Register only the right rear lock to the ponytail's slightly wider inner
+// boundary. The existing front is untouched; no strand is painted over skin.
+const ponyRear=await sharp(root+'/hair-1-back.webp').extract({left:280,top:102,width:24,height:113}).resize(28,113).png().toBuffer()
+await sharp({create:{width:W,height:H,channels:4,background:'#00000000'}}).composite([{input:ponyRear,left:280,top:102}]).webp({lossless:true}).toFile(root+'/hair-2-back.webp')
 const manifest=JSON.parse(await readFile('scripts/wardrobe-v16-art.json','utf8'))
 const master=await sharp('.vuepress/public/img/games/dressup/layers/v5/master.webp').ensureAlpha().raw().toBuffer()
 const raw=async path=>sharp(path).ensureAlpha().raw().toBuffer()
