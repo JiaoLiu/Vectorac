@@ -170,6 +170,17 @@ function checkWinner(s) {
   for (const t of [0, 1]) if (!s.alive.some((a, i) => a && team(i) === t)) { s.phase = 'finished'; s.winner = 1 - t; return true }
   return false
 }
+const movable = (s, seat) => s.pieces.some(p => p.seat === seat && legalMoves(s, p.id).length)
+// 无棋可走立即判负，不再等轮行才发现：每次落子后即刻清算所有存活方
+// （棋子被吃完只剩旗/雷，或全被封堵，都当场出局）。出局方棋子离场可能
+// 解除对其他家的封堵，故循环清算至没有新出局为止，避免误杀。
+function sweepImmobile(s) {
+  let again = true
+  while (again) {
+    again = false
+    for (let seat = 0; seat < 4; seat++) if (s.alive[seat] && !movable(s, seat)) { eliminate(s, seat, '无棋可走'); again = true }
+  }
+}
 function settleTurn(s) {
   if (checkWinner(s)) return
   for (let i = 0; i < 4; i++) {
@@ -228,6 +239,7 @@ export function move(s, pieceId, to) {
   s.turns++; s.lastMove = { from, to, seat: p.seat, outcome }
   s.logs.unshift(`${ARMIES[p.seat]}${target ? '进攻' + ARMIES[target.seat] + '：' + ({ win: '攻方胜', lose: '守方胜', both: '同归于尽' })[outcome] : '调动棋子'}。`)
   s.logs = s.logs.slice(0, 60)
+  sweepImmobile(s)
   if (checkWinner(s)) return true
   if (s.quiet >= 70) { s.phase = 'finished'; s.winner = 'draw'; s.logs.unshift('连续 70 手无碰撞，和棋。'); return true }
   s.turn = nextClockwiseSeat(s.turn); settleTurn(s); return true

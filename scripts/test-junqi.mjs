@@ -84,7 +84,7 @@ test('complete combat relations including mine, bomb and flag',()=>{
  for(const type of Object.keys(TYPES)){assert.equal(battle('bomb',type),'both');assert.equal(battle(type,'bomb'),'both')}
 })
 test('commander death reveals only that army flag and hides other ranks',()=>{
- const s=fixture([piece('p','commander',0,armyNode(0,0,0)),piece('b','bomb',1,armyNode(0,0,1)),piece('survivor','general',1,armyNode(1,0,0))]);s.mode='dark'
+ const s=fixture([piece('p','commander',0,armyNode(0,0,0)),piece('b','bomb',1,armyNode(0,0,1)),piece('survivor','general',1,armyNode(1,0,0)),piece('m0','general',0,armyNode(0,0,4)),piece('m2','general',2,armyNode(2,0,0)),piece('m3','general',3,armyNode(3,0,0))]);s.mode='dark'
  assert.equal(move(s,'p',armyNode(0,0,1)),true);assert.equal(s.flags[0],true)
  assert.equal(visibleType(s,s.pieces.find(p=>p.id==='flag0'),1),'flag')
  assert.equal(visibleType(s,s.pieces.find(p=>p.id==='survivor'),0),null)
@@ -118,14 +118,22 @@ test('seeded AI matches remain legal and end without deadlocked active turn',()=
  }
 })
 test('70 quiet plies draw; a collision resets the quiet counter',()=>{
- const p=piece('p','general',0,armyNode(0,0,2)),s=fixture([p]);s.quiet=69
+ const p=piece('p','general',0,armyNode(0,0,2)),s=fixture([p,piece('m1','general',1,armyNode(1,0,0)),piece('m2','general',2,armyNode(2,0,0)),piece('m3','general',3,armyNode(3,0,0))]);s.quiet=69
  assert.ok(move(s,'p','c:8:10'));assert.equal(s.phase,'finished');assert.equal(s.winner,'draw')
- const t=fixture([piece('p','general',0,armyNode(0,0,2)),piece('enemy','platoon',1,'c:8:10'),piece('mobile','general',1,armyNode(1,0,0))]);t.quiet=69
+ const t=fixture([piece('p','general',0,armyNode(0,0,2)),piece('enemy','platoon',1,'c:8:10'),piece('mobile','general',1,armyNode(1,0,0)),piece('m2','general',2,armyNode(2,0,0)),piece('m3','general',3,armyNode(3,0,0))]);t.quiet=69
  assert.ok(move(t,'p','c:8:10'));assert.equal(t.quiet,0);assert.equal(t.phase,'play')
 })
-test('an army with no legal moves is eliminated on its turn, while its teammate continues',()=>{
+test('an army with no legal moves is eliminated immediately, not when its turn comes',()=>{
  const s=fixture([piece('p','general',0,armyNode(0,0,2)),piece('mate','general',2,armyNode(2,0,0)),piece('enemy','general',3,armyNode(3,0,0))])
  assert.ok(move(s,'p','c:8:10'));assert.equal(s.alive[1],false);assert.equal(s.turn,2);assert.equal(s.phase,'play')
+})
+test('an army whose last movable piece is captured is eliminated at once, before others move',()=>{
+ const s=fixture([piece('att','general',0,'c:8:8'),piece('victim','platoon',3,'c:8:10'),piece('m1','general',1,armyNode(1,0,0)),piece('m2','general',2,armyNode(2,0,0))])
+ assert.ok(move(s,'att','c:8:10'))
+ assert.equal(s.alive[3],false,'朱雀只剩军旗，排长被吃后应立即出局，而不是等轮到它')
+ assert.equal(s.pieces.some(p=>p.seat===3),false)
+ assert.equal(s.turn,1,'出局清算完成后照常轮到下家')
+ assert.equal(s.phase,'play')
 })
 test('default is dark; layouts vary and never trap major officers in HQ',()=>{
  const layouts=new Set()
