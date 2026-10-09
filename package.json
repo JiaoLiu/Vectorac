@@ -4,7 +4,8 @@
   "author": "reco_luan",
   "scripts": {
     "test:dressup": "node --test scripts/test-dressup.mjs scripts/test-dressup-renderer.mjs scripts/test-dressup-audio.mjs scripts/test-dressup-details.mjs",
-    "test:junqi": "node --test scripts/test-junqi.mjs scripts/test-junqi-audio.mjs",
+    "test:junqi": "node --test scripts/test-junqi.mjs scripts/test-junqi-audio.mjs scripts/test-junqi-presentation.mjs",
+    "test:junqi:browser": "node scripts/test-junqi-perspective-browser.mjs",
     "test:xiangqi": "node --test scripts/test-xiangqi.mjs",
     "test:doudizhu": "node --test scripts/test-doudizhu.mjs",
     "test:balatro": "node --test scripts/test-balatro.mjs",

@@ -34,26 +34,26 @@
             <g class="jq-roads"><path v-for="(edge,i) in board.edges" :key="i" :d="edgePath(edge)" fill="none" :stroke="edge.rail ? '#8eaa97' : '#648279'" :stroke-width="edge.rail ? 6 : 1.5" :opacity="edge.rail ? .78 : .6"/></g>
             <g class="jq-rail-sleepers"><path v-for="(edge,i) in railEdges" :key="i" :d="edgePath(edge)" fill="none" stroke="#152e2a" stroke-width="2" stroke-dasharray="3 5"/></g>
             <g v-if="g.lastMove" pointer-events="none"><path :d="lastPath" fill="none" stroke="#ffdc83" stroke-width="4" opacity=".6" stroke-dasharray="6 6"/><circle :cx="px(board.byId[g.lastMove.to].x)" :cy="px(board.byId[g.lastMove.to].y)" r="24" fill="none" stroke="#ffdc83" stroke-width="2"/></g>
-            <g v-for="node in board.nodes" :key="node.id" :data-node="node.id" :transform="'translate('+px(node.x)+' '+px(node.y)+')'+seatTurn(node.seat)" class="jq-site" :class="{'is-target': destinations.includes(node.id)}" role="button" :tabindex="node.seat === 0 || destinations.includes(node.id) ? 0 : -1" :aria-label="nodeLabel(node)" @click="clickNode(node)" @keydown.enter.prevent="clickNode(node)" @keydown.space.prevent="clickNode(node)">
+            <g v-for="node in board.nodes" :key="node.id" :data-node="node.id" :transform="'translate('+px(node.x)+' '+px(node.y)+')'+nodeTurn(node.seat)" class="jq-site" :class="{'is-target': destinations.includes(node.id)}" role="button" :tabindex="node.seat === mySeat || destinations.includes(node.id) ? 0 : -1" :aria-label="nodeLabel(node)" @click="clickNode(node)" @keydown.enter.prevent="clickNode(node)" @keydown.space.prevent="clickNode(node)">
               <rect x="-24" y="-23" width="48" height="46" fill="transparent"/>
               <circle v-if="node.kind === 'camp'" r="16" fill="#243f35" stroke="#94af82" stroke-width="2"/>
               <rect v-else-if="node.kind === 'hq'" x="-21" y="-15" width="42" height="30" rx="3" fill="#3b4935" stroke="#c0a86e" stroke-width="2"/>
               <circle v-else :r="node.kind === 'junction' ? 7 : 4" fill="#243c35" stroke="#a4aa87" stroke-width="1.5"/>
-              <text v-if="!pieceAt(node.id) && (node.kind==='camp'||node.kind==='hq')" class="jq-site-label" text-anchor="middle" y="4" :transform="labelTurn(node.seat)">{{ node.kind==='camp' ? '营' : '本营' }}</text>
+              <text v-if="!pieceAt(node.id) && (node.kind==='camp'||node.kind==='hq')" class="jq-site-label" text-anchor="middle" y="4">{{ node.kind==='camp' ? '营' : '本营' }}</text>
               <circle v-if="destinations.includes(node.id)" r="22" fill="#f6db79" opacity=".25"/><circle v-if="destinations.includes(node.id)" r="7" fill="#ffe8a0"/>
               <g v-if="pieceAt(node.id)" :class="['jq-piece', {'is-selected': selected === pieceAt(node.id).id}]" filter="url(#jq-shadow)">
                 <rect x="-23" y="-20" width="46" height="40" rx="6" :fill="pieceType(pieceAt(node.id)) ? 'url(#jq-piece)' : colors[pieceAt(node.id).seat]" :stroke="selected === pieceAt(node.id).id ? '#fff0a0' : colors[pieceAt(node.id).seat]" :stroke-width="selected === pieceAt(node.id).id ? 4 : 2"/>
                 <rect x="-19" y="-16" width="38" height="32" rx="3" fill="none" :stroke="pieceType(pieceAt(node.id)) ? colors[pieceAt(node.id).seat] : '#ffffff55'" stroke-width=".7"/>
-                <text v-if="pieceType(pieceAt(node.id))" text-anchor="middle" y="6" :fill="colors[pieceAt(node.id).seat]" :transform="labelTurn(node.seat)">{{ pieceName(pieceAt(node.id)) }}</text>
+                <text v-if="pieceType(pieceAt(node.id))" class="jq-piece-label" text-anchor="middle" y="6" :fill="colors[pieceAt(node.id).seat]">{{ pieceName(pieceAt(node.id)) }}</text>
                 <!-- 情报角标：吃过我方明棋的敌暗子按交战结果标注推断（司 / 大…） -->
                 <g v-if="pieceBadge(pieceAt(node.id))" class="jq-intel-badge">
                   <circle cx="14" cy="-11" r="8.5" fill="#d8a521" stroke="#3c2a05" stroke-width="1"/>
-                  <text x="14" y="-7.5" text-anchor="middle" :transform="'rotate(' + (-badgeSpin(node.seat)) + ' 14 -11)'">{{ pieceBadge(pieceAt(node.id)) }}</text>
+                  <text x="14" y="-7.5" text-anchor="middle">{{ pieceBadge(pieceAt(node.id)) }}</text>
                 </g>
               </g>
             </g>
             </g>
-            <g v-for="seat in [0,1,2,3]" :key="'badge'+seat" :transform="badgeTransform(seat)">
+            <g v-for="seat in [0,1,2,3]" :key="'badge'+seat" :data-seat="seat" :transform="badgeTransform(seat)">
               <rect :x="online ? -86 : -78" y="-15" :width="online ? 172 : 156" height="30" rx="15" :fill="g.turn===seat&&g.phase==='play' ? colors[seat] : '#0b2321'" :stroke="g.turn===seat&&g.phase==='play' ? '#ffdda1' : '#48635b'"/>
               <text text-anchor="middle" y="5" fill="#f8efd5" font-size="13">{{ badgeText(seat) }}</text>
             </g>
@@ -122,13 +122,14 @@
 <script>
 import { BOARD, TYPES, ARMIES, createGame, at, legalMoves, visibleType, randomizeFormation, swapFormation, startGame, rollOpening, move, chooseAI, surrender, restoreGame, canDeploy, badgeOf } from './junqi/engine.mjs'
 import { createJunqiAudio } from './junqi/audio'
+import { boardViewAngle, nodeLocalAngle } from './junqi/presentation.mjs'
 import { isCommActive, registerBgm, unregisterBgm } from './gamehall/chatkit.js'
 const SAVE = 'vectorac.junqi.game.v1', FORM = 'vectorac.junqi.formation.v1'
 // 骰子点位：3×3 九宫格下标，1~6 点各对应哪些格子。
 const PIPS = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] }
 const die = () => 1 + Math.floor(Math.random() * 6)
 const TEAM_NAMES = ['青龙 × 玄武', '赤虎 × 朱雀']
-// 四家徽标锚点（下 / 左 / 上 / 右），联机按视角旋转后重新定位
+// 四家徽标锚点（玩家视角的下 / 左 / 上 / 右），换座只更换所属阵营。
 const BADGE_ANCHORS = [[680, 792], [173, 235], [221, 106], [727, 663]]
 export default {
   name: 'FourKingdoms',
@@ -147,7 +148,7 @@ export default {
     mySeat() { const g = this.g; return this.online && g ? g.mySeat : 0 },
     myTeam() { return this.mySeat % 2 },
     // 联机视角旋转：自己永远在下方（SVG rotate 顺时针为正）
-    viewAngle() { return (360 - 90 * this.mySeat) % 360 },
+    viewAngle() { return boardViewAngle(this.mySeat) },
     boardTurn() { return this.viewAngle ? 'rotate(' + this.viewAngle + ' 450 450)' : '' },
     commandRight() { const s = this.g; return (s.phase === 'setup' ? '布阵阶段' : '第 ' + s.turns + ' 手') + (this.countdown ? ' · ' + this.countdown : '') },
     confirmNote() { const c = (this.g && this.g.confirmed) || []; const names = c.map((ok, i) => ok ? ARMIES[i] : null).filter(Boolean); return names.length ? '已出征：' + names.join('、') : '四家都在布阵中' },
@@ -224,7 +225,7 @@ export default {
     playMove(){this._audio.play(this.game.phase==='finished'?'finish':this.game.lastMove.outcome)},
     px(n) { return 50 + n * 50 },
     edgePath(e) { const a = BOARD.byId[e.a], b = BOARD.byId[e.b]; if (!e.curve) return `M${this.px(a.x)} ${this.px(a.y)}L${this.px(b.x)} ${this.px(b.y)}`; const turn = BOARD.adjacency[e.a].find(x => x.to === e.b); return `M${this.px(a.x)} ${this.px(a.y)}Q${this.px(a.x + turn.start[0])} ${this.px(a.y + turn.start[1])} ${this.px(b.x)} ${this.px(b.y)}` },
-    badgeTransform(s) { const A = this.viewAngle * Math.PI / 180, c = Math.cos(A), si = Math.sin(A), a = BADGE_ANCHORS[s], dx = a[0] - 450, dy = a[1] - 450; return 'translate(' + (450 + dx * c - dy * si) + ' ' + (450 + dx * si + dy * c) + ')' },
+    badgeTransform(s) { const a = BADGE_ANCHORS[(s - this.mySeat + 4) % 4]; return 'translate(' + a[0] + ' ' + a[1] + ')' },
     badgeText(seat) { const s = this.g; if (!s.alive[seat]) return ARMIES[seat] + ' · 已出局'; if (this.online) return ARMIES[seat] + ' · ' + this.online.seatLabel(seat); return ARMIES[seat] + ' · ' + (seat === 0 ? '你' : seat === 2 ? 'AI 队友' : 'AI 对手') },
     teamName(t) { return TEAM_NAMES[t] },
     pieceAt(pos) { return at(this.g, pos) },
@@ -239,8 +240,6 @@ export default {
       const pool = this.online ? p.intel : (this.g.intel && this.g.intel[this.mySeat + ':' + p.id])
       return badgeOf(pool)
     },
-    /** 角标文字转回屏幕正立（jq-site 对侧向战区整体旋转过） */
-    badgeSpin(seat) { const deg = this.viewAngle + (seat === 1 ? 90 : seat === 3 ? -90 : 0); return deg },
     badgeHint(p) {
       const b = this.pieceBadge(p)
       if (!b) return null
@@ -272,13 +271,9 @@ export default {
     },
     begin() { const locked = this.g.pieces.find(p => p.seat === this.mySeat && p.type && BOARD.byId[p.pos].kind === 'hq' && TYPES[p.type].rank >= 5); if(locked)return this.askConfirm('确认出征','大本营中的'+TYPES[locked.type].name+'整局不能移动，仍要出征吗？',()=>this.confirmBegin());this.confirmBegin() },
     confirmBegin() { if (this.online) this.online.tryConfirm(); else this.rollDice() },
-    // 左右两侧战区是下方战区旋转 90° 的同一套阵型，棋子长边与铁路方向垂直。
-    seatTurn(seat) { return seat === 1 ? ' rotate(90)' : seat === 3 ? ' rotate(-90)' : '' },
-    // 文字一律反向补回屏幕正立（行营/大本营与棋子共用）：补偿阵地旋转
-    // seatTurn 与联机视角旋转 viewAngle，四家棋子只靠颜色区分，朝向一致。
-    // 早前棋子文字按所在阵地 seat 决定朝向，棋子走出本方阵地后文字会跟着
-    // 变竖/变倒（联机换座后更乱），故统一为朝向观察者。
-    labelTurn(seat) { const deg = this.viewAngle + (seat === 1 ? 90 : seat === 3 ? -90 : 0); return deg ? 'rotate(' + (-deg) + ')' : '' },
+    // Compensate the outer board rotation, then rotate the whole tile (including
+    // its printed rank and badge) for its current region in the player's view.
+    nodeTurn(seat) { const angle = nodeLocalAngle(seat, this.mySeat); return angle ? ' rotate(' + angle + ')' : '' },
     diePips(value) { return PIPS[value] || [] },
     // 决胜轮还在跳动时显示随机点数，之前的轮次已经作数，直接展示真实点数。
     dieFaces(index, row) { return this.dice.settled || index < this.dice.rounds.length - 1 ? row.dice : this.dice.faces[row.seat] },
