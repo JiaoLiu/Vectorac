@@ -6,6 +6,7 @@ import {NEW_CAP_CUTS} from './accessory-coverage.mjs'
 import {tucksIntoWaist,clipTuckedTop} from './waist-fit.mjs'
 import {bakedFeature} from './beauty.mjs'
 import {BODY_HEAD_START,fullCap,crownCut} from './head-fit.mjs'
+import {HAIR_PIECE_ANCHORS,capDecoration} from './headpiece-fit.mjs'
 export const BASE='/img/games/dressup/layers/v5/master.webp'
 export function baseSource(){return BASE}
 export const FEET='/img/games/dressup/layers/v5/feet.webp'
@@ -57,7 +58,6 @@ export function paintComposite(ctx,images,parts){
  }
  registered('necklace');registered('wrist')
  // Small accessories retain their established attachment anchors.
- const anchors={headpiece:[[285,46,43,60],[289,66,38,42],[282,58,45,87],[286,54,40,62]]}
  // Front strands do not contain skin patches. Jewellery is attached after hair
  // so a purchased/trial earring cannot disappear under the entire hair sprite.
  // Complete front layers preserve every temple strand and long side lock.
@@ -72,10 +72,15 @@ export function paintComposite(ctx,images,parts){
    else for(const rect of rects)ctx.drawImage(img,...rect)
   }
  }
- const piece=chosen('headpiece');if(piece&&piece.index>=0&&piece.assetVersion==='v11')registered('headpiece')
- else if(piece&&piece.index>=0){const src=partAsset(piece),b=bounds[src],rect=[b.x,b.y,b.w,b.h,...anchors.headpiece[fitIndex(piece)]]
+ const piece=chosen('headpiece'),decoration=capDecoration(piece,chosen('hat'))
+ function paintHeadpiece(){if(!piece||piece.index<0)return
+  if(piece.assetVersion==='v11'&&!decoration){registered('headpiece');return}
+  const src=partAsset(piece),b=bounds[src]||(piece.id==='headpiece-10'?{x:289,y:50,w:40,h:52}:null);if(!b)return
+  const rect=[b.x,b.y,b.w,b.h,...(decoration||HAIR_PIECE_ANCHORS[fitIndex(piece)])]
   if(piece.material)ctx.drawImage(materialImage(images.get(src),piece,false,[rect]),0,0,512,1024)
   else ctx.drawImage(images.get(src),...rect)
  }
+ if(!decoration)paintHeadpiece()
  registered('hat')
+ if(decoration)paintHeadpiece()
 }

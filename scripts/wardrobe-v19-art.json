@@ -1,0 +1,21 @@
+{
+  "mode": "built-in imagegen",
+  "scope": "Only uncovered hair-5 crown; existing air bangs, face cavity and cap fronts preserved",
+  "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-1ea64649-b1c2-408e-9d64-5f6429b62af4.png",
+  "file": "scripts/fixtures/wardrobe-v19-sources/crown.png",
+  "prompt": "Use case: precise-object-edit. Asset: ONLY a local crown patch for an existing dress-up hairstyle. Input image is the EXACT crown crop, 800x400 pixels, whose bottom edge corresponds to the unchanged air bangs. Change ONLY the upper crown silhouette: its highest point is too tall at about y=90. Lower its highest point to about y=145, forming a more naturally rounded low-volume beautiful brown crown, not a towering wig. Keep horizontal alignment, left/right width, brown colour, strand flow and realistic painterly texture unchanged. The bottom 100 pixels, including airy bang tips and their face cavity, MUST remain in exactly the same position, same outline and detail. Keep the canvas and framing unchanged, do not zoom or crop or centre. Only hair, no face, skin, model, hat, jewellery, text or background. Output transparent PNG. Do not change the established air-bang style; reduce only the excessive height at the top, smoothly joining existing lower crown strands.",
+  "references": [
+    "scripts/fixtures/wardrobe-v19-sources/crown-reference.png"
+  ],
+  "patch": {
+    "x": 160,
+    "y": 0,
+    "w": 200,
+    "h": 100
+  },
+  "transition": {
+    "start": 70,
+    "end": 85
+  },
+  "rear": "Mechanical alpha matte to the anatomically registered front outer silhouette"
+}

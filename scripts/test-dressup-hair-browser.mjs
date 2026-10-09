@@ -17,6 +17,7 @@ for(const [name,engine] of [['chromium',chromium],['webkit',webkit]]){
   await page.goto(base+'/blogs/other/flower_wardrobe.html')
   await page.waitForFunction(()=>(document.querySelector('.fw-model').dataset.src||'').startsWith('fine:'))
   const game=page.locator('.fw-game');await game.getByRole('button',{name:'全屏',exact:true}).click();await game.getByRole('button',{name:'装扮',exact:true}).click()
+  async function snapshot(path){await page.evaluate(async()=>{await document.fonts.ready;await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))});await page.screenshot({path})}
   for(const face of PARTS.filter(p=>p.category==='face'))for(const hat of PARTS.filter(p=>p.category==='hat')){
    const look={hair:'hair-5',face:face.id,hat:hat.id,headpiece:'headpiece-none',earrings:hat.index%2?'earrings-none':'earrings-8'}
    await game.evaluate((e,p)=>Object.values(p).forEach(id=>e.__vue__.choosePart(id)),look)
@@ -26,9 +27,9 @@ for(const [name,engine] of [['chromium',chromium],['webkit',webkit]]){
    if(hat.id==='hat-none'||hat.id==='hat-0'||hat.id==='hat-1'||hat.id==='hat-10'||hat.id==='hat-11'){
     const state=await game.evaluate(e=>JSON.stringify(e.__vue__.state.look))
     if(!await game.evaluate(e=>e.__vue__.faceZoom))await game.getByRole('button',{name:'查看妆容',exact:true}).click()
-    if(face.id==='face-0')await page.screenshot({path:join(out,name+'-'+hat.id+'-portrait.png')})
+    if(face.id==='face-0')await snapshot(join(out,name+'-'+hat.id+'-portrait.png'))
     await page.setViewportSize({width:844,height:390});rotations++
-    if(face.id==='face-0'&&hat.id==='hat-1')await page.screenshot({path:join(out,name+'-beret-landscape.png')})
+    if(face.id==='face-0'&&hat.id==='hat-1')await snapshot(join(out,name+'-beret-landscape.png'))
     assert.equal(await game.evaluate(e=>JSON.stringify(e.__vue__.state.look)),state)
     await page.setViewportSize({width:390,height:844});await game.getByRole('button',{name:'查看全身',exact:true}).click()
     assert.equal(await game.evaluate(e=>JSON.stringify(e.__vue__.state.look)),state)
@@ -38,13 +39,20 @@ for(const [name,engine] of [['chromium',chromium],['webkit',webkit]]){
   await game.evaluate(e=>{e.__vue__.chooseBeauty('morning');for(const id of ['hair-5','hat-none','headpiece-0','earrings-none'])e.__vue__.choosePart(id)})
   await page.waitForFunction(()=>{const vm=document.querySelector('.fw-game').__vue__,src=document.querySelector('.fw-model').dataset.src||'';return !vm.loading&&src.includes('hair-5')&&src.includes('hat-none')&&src.includes('headpiece-0')})
   if(!await game.evaluate(e=>e.__vue__.faceZoom))await game.getByRole('button',{name:'查看妆容',exact:true}).click()
-  await page.screenshot({path:join(out,name+'-air-bangs-bow-portrait.png')})
-  await page.setViewportSize({width:844,height:390});await page.screenshot({path:join(out,name+'-air-bangs-bow-landscape.png')});await page.setViewportSize({width:390,height:844})
+  await snapshot(join(out,name+'-air-bangs-bow-portrait.png'))
+  await page.setViewportSize({width:844,height:390});await snapshot(join(out,name+'-air-bangs-bow-landscape.png'));await page.setViewportSize({width:390,height:844})
+  for(const hat of ['hat-0','hat-1','hat-10'])for(const headpiece of ['headpiece-0','headpiece-6']){
+   await game.evaluate((e,p)=>{e.__vue__.choosePart(p.hat);e.__vue__.choosePart(p.headpiece)},{hat,headpiece})
+   await page.waitForFunction(p=>{const vm=document.querySelector('.fw-game').__vue__,src=document.querySelector('.fw-model').dataset.src||'';return !vm.loading&&src.includes(p.hat)&&src.includes(p.headpiece)},{hat,headpiece})
+   assert.equal(await game.evaluate(e=>e.__vue__.imageError),false)
+   await snapshot(join(out,name+'-'+hat+'-'+headpiece+'-portrait.png'))
+   await page.setViewportSize({width:844,height:390});await snapshot(join(out,name+'-'+hat+'-'+headpiece+'-landscape.png'));await page.setViewportSize({width:390,height:844})
+  }
   await game.evaluate(e=>{for(let i=0;i<12;i++){e.__vue__.choosePart('hair-'+(i%6));e.__vue__.choosePart('face-'+(i%4));e.__vue__.choosePart('hat-'+i)}})
   await page.waitForFunction(()=>{const vm=document.querySelector('.fw-game').__vue__,src=document.querySelector('.fw-model').dataset.src||'';return !vm.loading&&src.includes('hair-5')&&src.includes('face-3')&&src.includes('hat-11')})
   const saved=await game.evaluate(e=>JSON.stringify(e.__vue__.state.look));await page.reload();await page.waitForFunction(()=>{const vm=document.querySelector('.fw-game').__vue__;return !vm.loading&&(document.querySelector('.fw-model').dataset.src||'').includes('hair-5')})
   assert.equal(await game.evaluate(e=>JSON.stringify(e.__vue__.state.look)),saved)
-  for(const file of ['hair-5','hair-5-back','hair-5-straw','hair-5-straw-back','hair-5-beret','hair-5-beret-back','hair-5-cloche','hair-5-cloche-back'])assert.ok(requests.has('/img/games/dressup/layers/v18/'+file+'.webp'),name+': stale wearing runtime')
+  for(const [version,files] of [['v19',['hair-5','hair-5-back','hair-5-straw-back','hair-5-beret-back','hair-5-cloche-back']],['v18',['hair-5-straw','hair-5-beret','hair-5-cloche']]])for(const file of files)assert.ok(requests.has('/img/games/dressup/layers/'+version+'/'+file+'.webp'),name+': stale wearing runtime')
   assert.deepEqual(errors,[])
  }finally{await browser.close()}
 }

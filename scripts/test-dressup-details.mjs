@@ -13,6 +13,7 @@ import {faceSampleX} from '../.vuepress/components/dressup/face-fit.mjs'
 import {tucksIntoWaist} from '../.vuepress/components/dressup/waist-fit.mjs'
 import {BEAUTY_PRESETS,BEAUTY_SLOTS,bakedFeature} from '../.vuepress/components/dressup/beauty.mjs'
 import {HEAD_FRAMES,AIR_BANGS_FRONT_FRAME} from '../.vuepress/components/dressup/head-fit.mjs'
+import {capDecoration,HAIR_PIECE_ANCHORS} from '../.vuepress/components/dressup/headpiece-fit.mjs'
 test('waist wearing follows the shirt cut and colour editions, never forces Chinese outer hems under a belt',()=>{
  const tucked=[0,1,4,5,6,7,12,14,15]
  for(const top of PARTS.filter(p=>p.category==='top'))for(const bottom of PARTS.filter(p=>p.category==='bottom'))assert.equal(tucksIntoWaist(top,bottom),!!bottom.frontBand&&tucked.includes(top.index),`${top.id}/${bottom.id}`)
@@ -62,7 +63,7 @@ test('grouping covers every category exactly once; bracelet rear sits behind bod
 test('each hairstyle has its own rear layer; body head is excluded before drawing one face without rectangle erasure',()=>{
  const parts={...DEFAULT_PARTS,hair:'hair-5',earrings:'earrings-8'},hair=PARTS.find(p=>p.id===parts.hair),sources=layerSources(parts),calls=[]
  const rear=partBackAsset(hair),face=partAsset(PARTS.find(p=>p.id===parts.face)),earrings=partAsset(PARTS.find(p=>p.id===parts.earrings))
- assert.ok(sources.includes(rear));assert.ok(rear.includes('/v18/'));assert.ok(partThumbnail(hair).includes('/v11/catalog/'))
+ assert.ok(sources.includes(rear));assert.ok(rear.includes('/v19/'));assert.ok(partThumbnail(hair).includes('/v11/catalog/'))
  const ctx=new Proxy({drawImage:img=>calls.push(img.src),clearRect:(...rect)=>calls.push('clear:'+rect.join(','))},{get:(o,k)=>o[k]||(()=>{})})
  paintComposite(ctx,new Map(sources.map(src=>[src,{src}])),parts)
  assert.ok(calls.indexOf(rear)<calls.indexOf(BASE));assert.equal(calls.filter(c=>c===rear).length,1)
@@ -70,7 +71,7 @@ test('each hairstyle has its own rear layer; body head is excluded before drawin
  assert.ok(calls.lastIndexOf(rear)<calls.indexOf(face));assert.ok(calls.indexOf(earrings)>calls.lastIndexOf(partAsset(hair)))
  for(const id of ['hair-0','hair-1','hair-2','hair-3','hair-4','hair-5']){
   const p=PARTS.find(p=>p.id===id)
-  const version=id==='hair-5'?'v18':'v17'
+  const version=id==='hair-5'?'v19':'v17'
   assert.ok(partBackAsset(p).includes('/'+version+'/'+id+'-back'));assert.ok(partAsset(p).includes('/'+version+'/'))
  }
 })
@@ -83,6 +84,18 @@ test('air bangs use independent cap families in front and rear, keeping other ha
  }
  for(const id of ['hat-none','hat-3','hat-11'])assert.equal(partHairAsset(hair,PARTS.find(p=>p.id===id)),partAsset(hair))
  const pony=PARTS.find(p=>p.id==='hair-2');assert.ok(partHairAsset(pony,PARTS.find(p=>p.id==='hat-1')).endsWith('/v17/hair-2-cap.webp'));assert.ok(partThumbnail(hair).includes('/v11/catalog/'))
+ for(const hatId of ['hat-0','hat-1','hat-10'])assert.ok(partHairAsset(hair,PARTS.find(p=>p.id===hatId)).includes('/v18/'),'fitted cap fronts must remain the approved art')
+})
+test('cap bows and flowers paint outside the cap; hairpins retain original attachment',()=>{
+ for(const hatId of ['hat-0','hat-1','hat-4','hat-7','hat-10'])for(const pieceId of ['headpiece-0','headpiece-1','headpiece-2','headpiece-3','headpiece-4','headpiece-6','headpiece-10','headpiece-11']){
+  const parts={...DEFAULT_PARTS,headpiece:pieceId,hat:hatId},piece=PARTS.find(p=>p.id===pieceId),hat=PARTS.find(p=>p.id===hatId),target=capDecoration(piece,hat),calls=[]
+  const ctx=new Proxy({drawImage:(img,...rect)=>calls.push({src:img.src,rect})},{get:(o,k)=>o[k]||(()=>{})})
+  const plainPiece={...piece,material:undefined},original=piece.material,hatMaterial=hat.material;piece.material=undefined;hat.material=undefined
+  try{paintComposite(ctx,new Map(layerSources(parts).map(src=>[src,{src}])),parts)}finally{piece.material=original;hat.material=hatMaterial}
+  const a=calls.findIndex(c=>c.src===partAsset(plainPiece)),h=calls.findIndex(c=>c.src===partAsset(hat));assert.equal(a>h,!!target)
+  if(target){assert.deepEqual(calls[a].rect.slice(4),target);assert.ok(target[1]+target[3]<110,'decoration may not cover eyes')}
+  else if(piece.assetVersion!=='v11')assert.deepEqual(calls[a].rect.slice(4),HAIR_PIECE_ANCHORS[fitIndex(piece)])
+ }
 })
 test('32 editions reuse registered assets, independent product designs and existing fit indices',()=>{
  assert.equal(EDITIONS.length,32);assert.equal(new Set(PARTS.map(p=>p.id)).size,PARTS.length)

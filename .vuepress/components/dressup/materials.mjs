@@ -44,7 +44,7 @@ function ornament(ctx,kind,x,y,size,ink){
 }
 export function materialImage(image,part,catalog=false,placement=null){
  if(!part.material)return image
- const key=part.id+':'+catalog,hit=cache.find(e=>e.image===image&&e.key===key)
+ const key=part.id+':'+catalog+':'+(placement?JSON.stringify(placement):''),hit=cache.find(e=>e.image===image&&e.key===key)
  if(hit){cache.splice(cache.indexOf(hit),1);cache.push(hit);return hit.canvas}
  const canvas=document.createElement('canvas');canvas.width=placement?512:image.naturalWidth||image.width;canvas.height=placement?1024:image.naturalHeight||image.height
  const ctx=canvas.getContext('2d')

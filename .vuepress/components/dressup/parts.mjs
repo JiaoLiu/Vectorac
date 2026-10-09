@@ -37,7 +37,7 @@ PARTS.push(...JEWELLERY_FOOTWEAR)
 for(const p of PARTS)if(['face','eyes','brows','lip'].includes(p.category)){p.assetVersion='v17';p.wearVersion='v17';p.beautyIndex=p.index;p.frame=HEAD_FRAMES[p.category]}
 for(const p of PARTS)if(p.category==='hair'){p.wearVersion='v17';p.backVersion='v17';p.back=true;p.frame=HEAD_FRAMES.hair;p.backFrame=HEAD_FRAMES.back;p.wearFile=p.id}
 Object.assign(PARTS.find(p=>p.id==='hair-2'),{capReady:'hair-2-cap'})
-Object.assign(PARTS.find(p=>p.id==='hair-5'),{name:'轻柔空气刘海长发',wearVersion:'v18',backVersion:'v18',frame:AIR_BANGS_FRONT_FRAME,capReadyByHat:{0:'hair-5-straw',1:'hair-5-beret',10:'hair-5-cloche'}})
+Object.assign(PARTS.find(p=>p.id==='hair-5'),{name:'轻柔空气刘海长发',wearVersion:'v19',capWearVersion:'v18',backVersion:'v19',frame:AIR_BANGS_FRONT_FRAME,capReadyByHat:{0:'hair-5-straw',1:'hair-5-beret',10:'hair-5-cloche'}})
 // Reuse corrected wearing art across colour editions; catalogue designs stay
 // independent and old purchase/save IDs do not change.
 for(const p of PARTS)if(p.category==='bottom'&&((p.sourceIndex===undefined?p.index:p.sourceIndex)===2||p.index>=12))p.wearVersion='v13'
@@ -55,7 +55,7 @@ export function partAsset(p){
  return `/img/games/dressup/layers/${version?version+'/':''}${p.wearFile||p.category+'-'+fitIndex(p)+(p.id==='hair-2'?'-restored':'')}.webp`
 }
 const capWearName=(p,hat)=>p&&fullCap(hat)?(p.capReadyByHat&&p.capReadyByHat[fitIndex(hat)])||p.capReady:''
-export const partHairAsset=(p,hat)=>capWearName(p,hat)?`/img/games/dressup/layers/${p.wearVersion}/${capWearName(p,hat)}.webp`:partAsset(p)
+export const partHairAsset=(p,hat)=>capWearName(p,hat)?`/img/games/dressup/layers/${p.capWearVersion||p.wearVersion}/${capWearName(p,hat)}.webp`:partAsset(p)
 export const partBackAsset=(p,hat)=>p&&p.back&&p.index>=0?`/img/games/dressup/layers/${p.backVersion||p.wearVersion||p.assetVersion}/${capWearName(p,hat)||p.id}-back.webp`:''
 // Product/design cards and the registered wearable layers have separate contracts.
 export const partThumbnail=p=>p.index<0?'':`/img/games/dressup/layers/${p.assetVersion|| (p.category==='brows'&&p.index>=2?'v10':'v7')}/catalog/${p.category}-${fitIndex(p)}.webp`
