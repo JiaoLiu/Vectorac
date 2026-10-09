@@ -101,6 +101,10 @@ test('renwang blocks black slash; mixed spear slash is colorless and not blocked
   let s=fixture();equipment(s,1,'renwang');const [sha]=hand(s,0,['sha','spade']);s=play(s,sha,1);assert.equal(s.pending,null);assert.equal(s.players[1].hp,s.players[1].maxHp)
   s=fixture();equipment(s,0,'spear');equipment(s,1,'renwang');const cards=hand(s,0,['shan','heart'],['sha','spade']);s=step(s,{type:'play',ids:cards.map(c=>c.id),as:'sha',targets:[1]});assert.equal(s.pending.as,'shan');s=pass(s);assert.equal(s.players[1].hp,s.players[1].maxHp-1)
 })
+test('renwang does not skip preceding tieji and dualsword target-declaration effects',()=>{
+  let s=fixture('machao');equipment(s,1,'renwang');let [sha]=hand(s,0,['sha','spade']);judgeTop(s,'heart',1);s=play(s,sha,1);assert.equal(s.pending.skill,'tieji');s=choose(s,'yes');assert.equal(s.players[1].hp,s.players[1].maxHp);assert.equal(s.pending,null)
+  s=fixture();setHero(s,1,'huangyueying');equipment(s,0,'dualsword');equipment(s,1,'renwang');[sha]=hand(s,0,['sha','spade']);hand(s,1,'tao');s=play(s,sha,1);assert.equal(s.pending.skill,'dualsword');s=choose(s,'yes');s=choose(s,'draw');assert.equal(s.players[0].hand.length,1);assert.equal(s.players[1].hp,s.players[1].maxHp);assert.equal(s.pending,null)
+})
 test('halberd only extends last-hand slash to at most three distinct targets',()=>{
   let s=fixture();equipment(s,0,'halberd');const [sha]=hand(s,0,'sha');assert.ok(legalActions(s,0).some(a=>a.targets?.length===3));s=step(s,{type:'play',ids:[sha.id],as:'sha',targets:[1,2,3]});for(let i=0;i<3;i++)s=pass(s);assert.equal(s.players.slice(1,4).every(p=>p.hp===p.maxHp-1),true)
 })

@@ -227,13 +227,14 @@ function takeCard(s, pending, choice) {
 function attacking(s, event) {
   if(!player(s,event.target).alive||!player(s,event.source).alive)return
   const attacker=player(s,event.source), defender=player(s,event.target)
-  if(!event.ignoreArmor && defender.equip.armor?.type==='renwang' && event.color==='black') {note(s,`${name(s,event.target)}的仁王盾挡下黑色杀`);return}
   if(!event.prepared && attacker.equip.weapon?.type==='dualsword' && hero(attacker).sex!==hero(defender).sex) {
     makePending(s,{kind:'choice',actor:event.source,skill:'dualsword',event,choices:[{value:'yes',label:'发动双股剑'},{value:'no',label:'直接出杀'}]});return
   }
   if(!event.ironChecked && hasSkill(attacker,'tieji')) {
     makePending(s,{kind:'choice',actor:event.source,skill:'tieji',event,choices:[{value:'yes',label:'发动铁骑'},{value:'no',label:'不发动'}]});return
   }
+  // Target-declaration triggers happen before an armor effect stops this Slash.
+  if(!event.ignoreArmor && defender.equip.armor?.type==='renwang' && event.color==='black') {note(s,`${name(s,event.target)}的仁王盾挡下黑色杀`);return}
   if(event.unavoidable) {enqueue(s,{...event,type:'attackDamage'});return}
   makePending(s,{kind:'response',actor:event.target,as:'shan',source:event.source,target:event.target,remaining:hasSkill(attacker,'wushuang')?2:1,event,ignoreArmor:event.ignoreArmor,baguaTried:false})
 }
