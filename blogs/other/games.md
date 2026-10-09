@@ -23,7 +23,7 @@
        `<name>.html` 形式，nginx 对无扩展名路径返回首页兜底；写无扩展名会先加载首页再由
        JS 路由重定向，真机上这次重定向常渲染不出来，且 viewport 又变回「JS 之后才写」。 -->
   <a href="/blogs/other/mahjong_game.html" class="game-card">
-    <div class="game-card-cover"><img src="/img/games/mahjong.png" alt="四川麻将" loading="lazy"></div>
+    <div class="game-card-cover"><img src="/img/games/thumbs/mahjong.webp" alt="四川麻将" loading="lazy"></div>
     <div class="game-card-body">
       <div class="game-card-title">四川麻将</div>
       <div class="game-card-desc">血战到底 · 1 对 3 AI · 换三张 / 定缺 / 碰杠胡</div>
@@ -32,7 +32,7 @@
   </a>
 
   <a href="/blogs/other/gomoku.html" class="game-card">
-    <div class="game-card-cover"><img src="/img/games/gomoku.png" alt="五子棋" loading="lazy"></div>
+    <div class="game-card-cover"><img src="/img/games/thumbs/gomoku.webp" alt="五子棋" loading="lazy"></div>
     <div class="game-card-body">
       <div class="game-card-title">五子棋</div>
       <div class="game-card-desc">人机对战 · 三档难度 AI · 悔棋 / 先后手切换 / 战绩统计</div>
@@ -41,7 +41,7 @@
   </a>
 
   <a href="/blogs/other/xiangqi.html" class="game-card">
-    <div class="game-card-cover"><img src="/img/games/xiangqi-new-cover.webp" alt="中国象棋：卡通统帅与红黑圆形木棋子对阵" loading="lazy"></div>
+    <div class="game-card-cover"><img src="/img/games/thumbs/xiangqi.webp" alt="中国象棋：卡通统帅与红黑圆形木棋子对阵" loading="lazy"></div>
     <div class="game-card-body">
       <div class="game-card-title">中国象棋</div>
       <div class="game-card-desc">执子对弈，决胜楚河汉界</div>
@@ -50,7 +50,7 @@
   </a>
 
   <a href="/blogs/other/junqi.html" class="game-card">
-    <div class="game-card-cover"><img src="/img/games/junqi.webp" alt="四国军棋：四方布阵，对家同盟" loading="lazy"></div>
+    <div class="game-card-cover"><img src="/img/games/thumbs/junqi.webp" alt="四国军棋：四方布阵，对家同盟" loading="lazy"></div>
     <div class="game-card-body">
       <div class="game-card-title">四国军棋</div>
       <div class="game-card-desc">2 对 2 同盟 · AI 队友 · 自由布阵 · 双明 / 四暗 / 全明</div>
@@ -59,7 +59,7 @@
   </a>
 
   <a href="/blogs/other/doudizhu.html" class="game-card">
-    <div class="game-card-cover"><img src="/img/games/doudizhu-cover.jpg" alt="斗地主：地主与农民的扑克对决" loading="lazy"></div>
+    <div class="game-card-cover"><img src="/img/games/thumbs/doudizhu.webp" alt="斗地主：地主与农民的扑克对决" loading="lazy"></div>
     <div class="game-card-body">
       <div class="game-card-title">斗地主</div>
       <div class="game-card-desc">经典三人 · 叫分抢地主 · 炸弹春天翻倍 · QQ 积分等级 · 支持联机</div>
@@ -68,7 +68,7 @@
   </a>
 
   <a href="/blogs/other/sanguo.html" class="game-card">
-    <div class="game-card-cover"><img src="/img/games/sanguo/cover.jpg" alt="三国逐鹿：名将齐聚青铜牌桌，谋划身份对决" loading="lazy"></div>
+    <div class="game-card-cover"><img src="/img/games/thumbs/sanguo.webp" alt="三国逐鹿：名将齐聚青铜牌桌，谋划身份对决" loading="lazy"></div>
     <div class="game-card-body">
       <div class="game-card-title">三国·逐鹿</div>
       <div class="game-card-desc">五人身份 · 十二名将技能 · 108 张经典牌 · 单机 AI</div>
@@ -77,7 +77,7 @@
   </a>
 
   <a href="/blogs/other/cardforge.html" class="game-card">
-    <div class="game-card-cover"><img src="/img/games/balatro-cover.webp" alt="小丑牌：魔法小丑、扑克牌与筹码" loading="lazy"></div>
+    <div class="game-card-cover"><img src="/img/games/thumbs/balatro.webp" alt="小丑牌：魔法小丑、扑克牌与筹码" loading="lazy"></div>
     <div class="game-card-body">
       <div class="game-card-title">小丑牌</div>
       <div class="game-card-desc">扑克 Roguelike · 双面 J/Q/K 人头牌 · 小丑组合 · 盲注挑战</div>
@@ -96,7 +96,7 @@
 <div class="game-grid">
 
   <a href="/blogs/other/keyboard_game.html" class="game-card">
-    <div class="game-card-cover"><img src="/img/games/keyboard.png" alt="键盘学习" loading="lazy"></div>
+    <div class="game-card-cover"><img src="/img/games/thumbs/keyboard.webp" alt="键盘学习" loading="lazy"></div>
     <div class="game-card-body">
       <div class="game-card-title">键盘学习</div>
       <div class="game-card-desc">射落带字母的气球，熟悉键盘布局，支持触屏</div>
@@ -105,7 +105,7 @@
   </a>
 
   <a href="/blogs/other/typing_game.html" class="game-card">
-    <div class="game-card-cover"><img src="/img/games/typing.png" alt="经典打字" loading="lazy"></div>
+    <div class="game-card-cover"><img src="/img/games/thumbs/typing.webp" alt="经典打字" loading="lazy"></div>
     <div class="game-card-body">
       <div class="game-card-title">经典打字</div>
       <div class="game-card-desc">限时竞速，实时统计 WPM / 准确率 / 连击</div>
@@ -124,7 +124,7 @@
 <div class="game-grid">
 
   <a href="/blogs/other/hua_rong_dao.html" class="game-card">
-    <div class="game-card-cover"><img src="/img/games/hrd.png" alt="华容道" loading="lazy"></div>
+    <div class="game-card-cover"><img src="/img/games/thumbs/hrd.webp" alt="华容道" loading="lazy"></div>
     <div class="game-card-body">
       <div class="game-card-title">华容道</div>
       <div class="game-card-desc">经典滑块解谜，5 大 BFS 验证关卡，Q 版三国立绘</div>
@@ -133,7 +133,7 @@
   </a>
 
   <a href="/blogs/other/sudoku.html" class="game-card">
-    <div class="game-card-cover"><img src="/img/games/sudoku.png" alt="数独" loading="lazy"></div>
+    <div class="game-card-cover"><img src="/img/games/thumbs/sudoku.webp" alt="数独" loading="lazy"></div>
     <div class="game-card-body">
       <div class="game-card-title">数独</div>
       <div class="game-card-desc">保证唯一解，三档难度，高亮辅助与计时</div>
@@ -142,7 +142,7 @@
   </a>
 
   <a href="/blogs/other/2048.html" class="game-card">
-    <div class="game-card-cover"><img src="/img/games/2048.png" alt="2048" loading="lazy"></div>
+    <div class="game-card-cover"><img src="/img/games/thumbs/2048.webp" alt="2048" loading="lazy"></div>
     <div class="game-card-body">
       <div class="game-card-title">2048</div>
       <div class="game-card-desc">合并数字方块冲击高分，滑动动画 + 撤销</div>
@@ -161,7 +161,7 @@
 <div class="game-grid">
 
   <a href="/blogs/other/flower_wardrobe.html" class="game-card">
-    <div class="game-card-cover"><img src="/img/games/dressup/cover.webp" alt="花间衣橱：精美蕾丝裙装与温柔的换装时光" loading="lazy"></div>
+    <div class="game-card-cover"><img src="/img/games/thumbs/dressup.webp" alt="花间衣橱：精美蕾丝裙装与温柔的换装时光" loading="lazy"></div>
     <div class="game-card-body">
       <div class="game-card-title">花间衣橱</div>
       <div class="game-card-desc">收集精美裙装，完成主题邀请，留住每一次心动穿搭</div>
@@ -170,7 +170,7 @@
   </a>
 
   <a href="/blogs/other/slime_game.html" class="game-card">
-    <div class="game-card-cover"><img src="/img/games/slime.png" alt="史莱姆" loading="lazy"></div>
+    <div class="game-card-cover"><img src="/img/games/thumbs/slime.webp" alt="史莱姆" loading="lazy"></div>
     <div class="game-card-body">
       <div class="game-card-title">史莱姆模拟</div>
       <div class="game-card-desc">戳一戳、拉一拉电子史莱姆，真实物理超解压</div>

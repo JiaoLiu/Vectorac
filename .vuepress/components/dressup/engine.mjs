@@ -46,6 +46,10 @@ const int = (v,max=1000000) => Number.isSafeInteger(v)&&v>=0 ? Math.min(v,max) :
 export const item = (list,id) => list.find(x=>x.id===id)
 export const asset = (outfit,pose=0) => `/img/games/dressup/${outfit}-${pose}.webp`
 export const sceneAsset=id=>`/img/games/dressup/scenes/${id}.webp`
+// 列表/卡片缩略图：体积小一个量级，只在衣橱列表、场景选择卡、相册封面等小尺寸处使用；
+// 试衣台主画布与拍照导出仍用上面全尺寸 asset/sceneAsset。
+export const thumbAsset = outfit => `/img/games/dressup/thumbs/${outfit}.webp`
+export const sceneThumb=id=>`/img/games/dressup/thumbs/scene-${id}.webp`
 export function freshState(){return {version:1,coins:100,owned:['blush'],scenes:['atelier'],ownedParts:[...FREE_PARTS],look:{outfit:'blush',scene:'atelier',pose:0,mode:'outfit',parts:{...DEFAULT_PARTS}},claimed:[],daily:'',albums:[],atelierWins:0,gameClaims:[]}}
 export function normalize(raw){
   const s=freshState()

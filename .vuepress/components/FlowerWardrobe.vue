@@ -32,13 +32,13 @@
             <div class="fw-style-filters" aria-label="服装风格"><button v-for="s in styleTags" :key="s" :class="{active:styleFilter===s}" @click="styleFilter=s">{{s}}</button></div>
             <p v-if="!filteredDresses.length">这个分类还没有收藏，试试「全部」或「待解锁」。</p>
             <div class="fw-dresses"><article v-for="d in filteredDresses" :key="d.id" class="fw-dress" :class="{selected:displayOutfit===d.id}" :style="{'--dress-color':d.color}">
-              <button class="fw-dress-image" :aria-label="'试穿'+d.name" @click="tryDress(d.id)"><img :src="asset(d.id)" :alt="d.name" loading="lazy"><span>{{state.owned.includes(d.id)?(state.look.outfit===d.id?'已穿上':'已拥有'):'可试穿'}}</span></button>
+              <button class="fw-dress-image" :aria-label="'试穿'+d.name" @click="tryDress(d.id)"><img :src="thumbAsset(d.id)" :alt="d.name" loading="lazy"><span>{{state.owned.includes(d.id)?(state.look.outfit===d.id?'已穿上':'已拥有'):'可试穿'}}</span></button>
               <div class="fw-dress-copy"><strong>{{d.name}}</strong><small>{{d.tags.join(' · ')}}</small><p>{{d.detail}}</p><button v-if="!state.owned.includes(d.id)" @click="askBuy('outfit',d.id)">✦ {{d.price}} 解锁</button><button v-else @click="tryDress(d.id)">{{state.look.outfit===d.id?'正在穿着':'换上这套'}}</button></div>
             </article></div>
           </template>
           <template v-if="tab==='scenes'">
             <div class="fw-section-title"><h2>让心情换个背景</h2><p>场景永久解锁，任意切换。</p></div>
-            <div class="fw-scenes"><button v-for="s in scenes" :key="s.id" class="fw-scene-choice" :class="{active:state.look.scene===s.id}" :style="{backgroundImage:'url('+sceneAsset(s.id)+')'}" @click="chooseScene(s.id)"><strong>{{s.name}}</strong><small>{{state.scenes.includes(s.id)?(state.look.scene===s.id?'使用中':'已拥有'):'✦ '+s.price+' 金币'}}</small></button></div>
+            <div class="fw-scenes"><button v-for="s in scenes" :key="s.id" class="fw-scene-choice" :class="{active:state.look.scene===s.id}" :style="{backgroundImage:'url('+sceneThumb(s.id)+')'}" @click="chooseScene(s.id)"><strong>{{s.name}}</strong><small>{{state.scenes.includes(s.id)?(state.look.scene===s.id?'使用中':'已拥有'):'✦ '+s.price+' 金币'}}</small></button></div>
           </template>
           <template v-if="tab==='quests'">
             <div class="fw-daily"><div><strong>今日花信</strong><p>每天来衣橱，收下 40 金币。</p></div><button :disabled="state.daily===today" @click="perform({type:'daily',day:today})">{{state.daily===today?'已领取':'领取 +40'}}</button></div>
@@ -57,7 +57,7 @@
           <template v-if="tab==='album'">
             <div class="fw-section-title"><h2>穿搭手记</h2><p>{{state.albums.length}} / 12 套收藏 · 点击即可重新穿上</p></div>
             <div v-if="!state.albums.length" class="fw-empty">♡<h3>留住今天的喜欢</h3><p>穿好衣服后，点击试衣台下方「收藏穿搭」。</p></div>
-            <div class="fw-albums"><article v-for="a in state.albums" :key="a.id"><button @click="restoreLook(a.id)" :style="{backgroundImage:'url('+sceneAsset(a.look.scene)+')',backgroundSize:'cover'}"><AlbumLook :look="a.look" /><strong>{{a.look.mode==='fine'?'我的自由搭配':item(outfits,a.look.outfit).name}}</strong></button><button class="fw-album-remove" @click="perform({type:'removeAlbum',id:a.id})" aria-label="移除穿搭收藏">移除收藏</button></article></div>
+            <div class="fw-albums"><article v-for="a in state.albums" :key="a.id"><button @click="restoreLook(a.id)" :style="{backgroundImage:'url('+sceneThumb(a.look.scene)+')',backgroundSize:'cover'}"><AlbumLook :look="a.look" /><strong>{{a.look.mode==='fine'?'我的自由搭配':item(outfits,a.look.outfit).name}}</strong></button><button class="fw-album-remove" @click="perform({type:'removeAlbum',id:a.id})" aria-label="移除穿搭收藏">移除收藏</button></article></div>
           </template>
         </div>
         <footer class="fw-panel-foot">无广告 · 无充值 · 进度保存在这台设备</footer>
@@ -69,7 +69,7 @@
 </template>
 
 <script>
-import {SAVE_KEY,OUTFITS,SCENES,POSES,QUESTS,asset,sceneAsset,item,freshState,normalize,act,localDay,scoreLook,createWorkshop,matchColor,finishWorkshop} from './dressup/engine.mjs'
+import {SAVE_KEY,OUTFITS,SCENES,POSES,QUESTS,asset,sceneAsset,thumbAsset,sceneThumb,item,freshState,normalize,act,localDay,scoreLook,createWorkshop,matchColor,finishWorkshop} from './dressup/engine.mjs'
 import {createModelRenderer} from './dressup/renderer.mjs'
 import {createWardrobeAudio} from './dressup/audio.mjs'
 import {PARTS} from './dressup/parts.mjs'
@@ -108,7 +108,7 @@ export default {
     this._page=this.$el.closest('.theme-reco-content');if(this._page)this._page.classList.add('fw-page-content')
   },
   beforeDestroy(){this.closeModal();if(this.full)this.toggleFull();this._alive=false;this._loadId++;this._renderer.destroy();this._audio.destroy();if(this._resize)this._resize.disconnect();cancelAnimationFrame(this._paintFrame);window.removeEventListener('resize',this._repaint);window.removeEventListener('pageshow',this._repaint);clearTimeout(this._toastTimer);document.removeEventListener('keydown',this._key);document.removeEventListener('visibilitychange',this._visibility);window.removeEventListener('storage',this._storage);if(this._page)this._page.classList.remove('fw-page-content');if(this.photoUrl)URL.revokeObjectURL(this.photoUrl)},
-  methods:{asset,sceneAsset,item,scoreLook,createWorkshop,
+  methods:{asset,sceneAsset,thumbAsset,sceneThumb,item,scoreLook,createWorkshop,
     partItem(id){return item(PARTS,id)},
     chooseTab(id){this.tab=id;if(id==='fine'){this.preview=null;if(this.state.look.mode!=='fine')this.perform({type:'mode',mode:'fine'})}if(this.$refs.panel)this.$refs.panel.scrollTop=0},
     choosePart(id){this.preview=null;this.faceZoom=['face','eyes','brows','lip','hair','hat','headpiece','earrings'].includes(this.partItem(id).category);this.finePreviews=selectPreview(this.finePreviews,id,this.state.ownedParts);if(this.state.ownedParts.includes(id))this.perform({type:'part',id});else this._audio.play('dress')},
