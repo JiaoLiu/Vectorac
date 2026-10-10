@@ -194,8 +194,18 @@ test('complete beauty faces keep matching features baked in; custom eyes never a
  for(const preset of BEAUTY_PRESETS){const parts={...DEFAULT_PARTS,...preset.parts},face=PARTS.find(p=>p.id===parts.face),draws=[]
   paintComposite(new Proxy({drawImage:img=>draws.push(img.src)},{get:(o,k)=>o[k]||(()=>{})}),new Map(layerSources(parts).map(src=>[src,{src}])),parts)
   for(const slot of ['eyes','brows','lip']){const p=PARTS.find(p=>p.id===parts[slot]);assert.equal(draws.includes(partAsset(p)),!bakedFeature(face,p))}
-  for(const slot of BEAUTY_SLOTS)assert.ok(partThumbnail(PARTS.find(p=>p.id===parts[slot])).includes('/v17/catalog/'))
+  for(const slot of BEAUTY_SLOTS)assert.ok(partThumbnail(PARTS.find(p=>p.id===parts[slot])).includes('/'+(preset.assetVersion||'v17')+'/catalog/'))
  }
+})
+test('sweet portrait has a unique native feature key; old blue eyes are not incorrectly baked',()=>{
+ const preset=BEAUTY_PRESETS.find(p=>p.id==='sweet'),face=PARTS.find(p=>p.id===preset.parts.face)
+ for(const id of Object.values(preset.parts)){const p=PARTS.find(p=>p.id===id);assert.equal(p.price,0);assert.equal(p.beautyIndex,5);assert.equal(p.wearVersion,'v20');assert.ok(FREE_PARTS.includes(id))}
+ assert.equal(bakedFeature(face,PARTS.find(p=>p.id==='eyes-4')),false)
+ assert.equal(bakedFeature(PARTS.find(p=>p.id==='face-0'),PARTS.find(p=>p.id==='eyes-5')),false)
+ const original=freshState(),next=act(original,{type:'beauty',id:'sweet'}).state
+ assert.equal(next.look.parts.top,original.look.parts.top);assert.equal(next.look.parts.hair,original.look.parts.hair);assert.equal(next.coins,original.coins)
+ const restored=act(normalize(JSON.parse(JSON.stringify(act(next,{type:'album',id:'sweet-look'}).state))),{type:'restoreAlbum',id:'sweet-look'}).state
+ assert.deepEqual(restored.look.parts,next.look.parts)
 })
 test('old fine saves and albums gain independent eyes without losing purchased socks, face or clothing',()=>{
  const parts={...DEFAULT_PARTS,top:'top-3',socks:'socks-1',face:'face-2'};delete parts.eyes

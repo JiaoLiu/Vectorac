@@ -34,16 +34,16 @@ try{
  // Every face/eye/brow/lip mix leaves the single nose and its surrounding skin
  // untouched; patch opacity and bounded replacement are separately asserted.
  let makeupMixes=0
- for(let f=0;f<4;f++){
+ for(let f=0;f<PARTS.filter(p=>p.category==='face').length;f++){
   const baseline=await sharp(await render({...DEFAULT_PARTS,face:'face-'+f,eyes:'eyes-'+f,brows:'brows-'+f,lip:'lip-'+f})).ensureAlpha().raw().toBuffer()
-  for(let e=0;e<5;e++)for(let b=0;b<4;b++)for(let l=0;l<5;l++){
+  for(let e=0;e<PARTS.filter(p=>p.category==='eyes').length;e++)for(let b=0;b<PARTS.filter(p=>p.category==='brows').length;b++)for(let l=0;l<PARTS.filter(p=>p.category==='lip').length;l++){
    const image=await render({...DEFAULT_PARTS,face:'face-'+f,eyes:'eyes-'+e,brows:'brows-'+b,lip:'lip-'+l}),actual=await sharp(image).ensureAlpha().raw().toBuffer()
    for(let y=126;y<134;y++)for(let x=246;x<266;x++){const i=(y*512+x)*4;assert.deepEqual(actual.subarray(i,i+4),baseline.subarray(i,i+4),'makeup mix replaces nose '+[f,e,b,l].join('/'))}
    makeupMixes++;if(e===b&&l===e)mixed.push(image)
   }
  }
  const jawWidths=[]
- for(let f=0;f<4;f++){
+ for(let f=0;f<PARTS.filter(p=>p.category==='face').length;f++){
   const data=await registeredRaw(PARTS.find(p=>p.id==='face-'+f)),row=[]
   for(const y of [140,145,150,155]){const xs=[];for(let x=200;x<312;x++)if(data[(y*512+x)*4+3]>240)xs.push(x);row.push(xs.at(-1)-xs[0]+1)}jawWidths.push(row)
  }

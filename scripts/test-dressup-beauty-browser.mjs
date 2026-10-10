@@ -53,6 +53,15 @@ for(const [name,engine] of [['chromium',chromium],['webkit',webkit]]){
    await page.screenshot({path:join(out,name+'-'+preset.id+'-landscape.png')})
    await page.setViewportSize({width:390,height:844});await settled(preset.parts)
   }
+  const sweet=BEAUTY_PRESETS.find(p=>p.id==='sweet')
+  await game.evaluate(e=>e.__vue__.choosePart('eyes-4'));await settled({...sweet.parts,eyes:'eyes-4'})
+  assert.ok((await game.locator('.fw-makeup-summary').textContent()).includes('单项搭配'))
+  await game.getByRole('button',{name:'换上甜梨灵眸妆容',exact:true}).click();await settled(sweet.parts)
+  await game.evaluate(e=>e.__vue__.saveLook());const sweetAlbum=await game.evaluate(e=>e.__vue__.state.albums[0].id)
+  await game.evaluate(e=>e.__vue__.chooseBeauty('morning'));await settled(BEAUTY_PRESETS[0].parts)
+  await game.evaluate((e,id)=>e.__vue__.restoreLook(id),sweetAlbum);await settled(sweet.parts)
+  const sweetLook=await game.evaluate(e=>JSON.stringify(e.__vue__.state.look));await page.reload();await settled(sweet.parts)
+  assert.equal(await game.evaluate(e=>JSON.stringify(e.__vue__.state.look)),sweetLook)
   // A beauty choice retains unpurchased garment drafts; it clears only old
   // makeup drafts. Browsing and zooming never restore an earlier outfit.
   await game.evaluate(e=>{e.__vue__.choosePart('top-3');e.__vue__.finePreviews={...e.__vue__.finePreviews,eyes:'eyes-1'};e.__vue__.chooseBeauty('peach')})

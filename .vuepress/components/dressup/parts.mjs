@@ -23,10 +23,10 @@ const groups={
   earrings:[['珍珠耳坠',30,'古典'],['星星耳坠',35,'星光'],['玉滴耳坠',50,'国风'],['红心耳钉',30,'甜美']],
   socks:[['奶油花边短袜',0,'甜美'],['海军蓝及膝袜',35,'学院'],['花影薄纱中筒袜',45,'自然'],['夜色及膝袜',40,'古典'],['奶油蕾丝过膝袜',45,'甜美'],['夜色蕾丝过膝袜',45,'古典']],
   shoes:[['蔷薇玛丽珍',0,'甜美'],['学院乐福鞋',60,'学院'],['绣花软鞋',75,'国风'],['金扣短靴',80,'古典']],
-  face:[['自然鹅蛋脸',0,'自然'],['柔和小圆脸',0,'甜美'],['柔和心形脸',0,'梦幻'],['清透鹅蛋脸',0,'古典']],
-  eyes:[['暖棕杏眼',0,'自然'],['蜜桃圆眸',0,'甜美'],['琥珀桃花眼',0,'自然'],['清雅长眸',0,'古典'],['自然蓝灰眼',0,'梦幻']],
-  brows:[['自然柳叶眉',0,'自然'],['柔弧雾眉',0,'甜美'],['纤细弯月眉',0,'古典'],['清晰眉峰',0,'学院']],
-  lip:[['自然唇色',0,'自然'],['玫瑰豆沙',0,'甜美'],['珊瑚橘',0,'清新'],['莓果红',0,'古典'],['樱花粉',0,'梦幻']]
+  face:[['自然鹅蛋脸',0,'自然'],['柔和小圆脸',0,'甜美'],['柔和心形脸',0,'梦幻'],['清透鹅蛋脸',0,'古典'],['甜梨小圆脸',0,'甜美']],
+  eyes:[['暖棕杏眼',0,'自然'],['蜜桃圆眸',0,'甜美'],['琥珀桃花眼',0,'自然'],['清雅长眸',0,'古典'],['自然蓝灰眼',0,'梦幻'],['灵动鹿眸',0,'甜美']],
+  brows:[['自然柳叶眉',0,'自然'],['柔弧雾眉',0,'甜美'],['纤细弯月眉',0,'古典'],['清晰眉峰',0,'学院'],['轻柔弧眉',0,'甜美']],
+  lip:[['自然唇色',0,'自然'],['玫瑰豆沙',0,'甜美'],['珊瑚橘',0,'清新'],['莓果红',0,'古典'],['樱花粉',0,'梦幻'],['微笑蜜桃',0,'甜美']]
 }
 export const PARTS=Object.entries(groups).flatMap(([category,rows])=>rows.map(([name,price,tag],index)=>({id:`${category}-${index}`,category,index,name,price,tag})))
 PARTS.push(...EDITIONS)
@@ -35,6 +35,9 @@ PARTS.push(...ACCESSORIES)
 PARTS.push(...JEWELLERY_FOOTWEAR)
 // Preserve old save IDs while replacing the old patchwork faces and features.
 for(const p of PARTS)if(['face','eyes','brows','lip'].includes(p.category)){p.assetVersion='v17';p.wearVersion='v17';p.beautyIndex=p.index;p.frame=HEAD_FRAMES[p.category]}
+// Native features of this complete new face share an UNUSED beauty key (5),
+// not face-4's item index: old eyes-4 must still render when chosen separately.
+for(const id of ['face-4','eyes-5','brows-4','lip-5'])Object.assign(PARTS.find(p=>p.id===id),{assetVersion:'v20',wearVersion:'v20',beautyIndex:5})
 for(const p of PARTS)if(p.category==='hair'){p.wearVersion='v17';p.backVersion='v17';p.back=true;p.frame=HEAD_FRAMES.hair;p.backFrame=HEAD_FRAMES.back;p.wearFile=p.id}
 Object.assign(PARTS.find(p=>p.id==='hair-2'),{capReady:'hair-2-cap'})
 Object.assign(PARTS.find(p=>p.id==='hair-5'),{name:'轻柔空气刘海长发',wearVersion:'v19',capWearVersion:'v18',backVersion:'v19',frame:AIR_BANGS_FRONT_FRAME,capReadyByHat:{0:'hair-5-straw',1:'hair-5-beret',10:'hair-5-cloche'}})

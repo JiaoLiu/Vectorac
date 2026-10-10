@@ -1,0 +1,47 @@
+{
+  "mode": "built-in imagegen",
+  "scope": "One optional Tian Xiwei-inspired coherent sweet makeup; existing faces/hair/clothes unchanged",
+  "source": "/Users/Jiao/.codex/generated_images/01a06bd4-83e2-7680-a983-22c87f9788d0/exec-80e6fdbb-b644-4e4d-854d-1778747925a8.png",
+  "file": "scripts/fixtures/wardrobe-v20-sources/sweet-head.png",
+  "prompt": "Use case: precise-object-edit. Asset: a complete coherent bald HEAD AND NECK sprite for an existing beautiful fashion dress-up game. Image 1 is the EXACT registered head template: preserve its entire portrait canvas, skull size, ear positions, eye centres and eye-line, neck alignment, margins, front-on viewpoint and warm ivory neck lighting. Images 2 and 3 are the user's Tian Xiwei facial beauty references ONLY: capture her lovely sweet lively Chinese beauty—large expressive DARK BROWN eyes with natural human lids, delicate gently curved brows, petite refined nose, softly full rosy lips with a subtle closed-mouth smile, gentle small rounded-oval cheeks, softly rounded chin, youthful adult charm. Make facial identity/style clearly inspired by these references rather than the generic sharp-chinned western doll face in Image 1. Human natural proportions: no huge anime eyes, no pointy long V chin, no heavy contour makeup, no swollen cheek blobs. Adjust lower face into a graceful naturally rounded small oval, not a chubby baby face or square jaw. Preserve exact eye spacing/line and head/neck registration from Image 1 so current hairstyles and hats will fit. Very beautiful refined semi-realistic fashion illustration, softly realistic skin but consistent with the polished existing game sprite. Warm, sweet, approachable expression, not stern or heavy glamour. Single seamless skin surface from full bald scalp through ears, cheeks, jaw and neck; sharp clear ears, one nose and one mouth, no patches/seams. No HAIR whatsoever, no wig, no eyebrows outside the face, no earrings, jewellery, clothing, shoulders, collar, background, border, text or watermark. Actual transparent background. DO NOT zoom, shift, tilt, enlarge the head, or change the neck pose. Keep the long neck and transparent margins exactly like Image 1.",
+  "references": [
+    "scripts/fixtures/wardrobe-v20-sources/head-template.png",
+    "User supplied Tian Xiwei reference: codex-clipboard-0af7814a-fd78-4a74-a30b-13ec4dc29710.png",
+    "User supplied Tian Xiwei reference: codex-clipboard-0eaa943d-7300-4a71-9d84-6f1ac1df6a4c.png"
+  ],
+  "registration": {
+    "scale": 0.14,
+    "left": 183.76,
+    "top": 22.76,
+    "eyeCenters": [
+      {
+        "source": [
+          394,
+          616
+        ],
+        "target": [
+          238.92,
+          109
+        ]
+      },
+      {
+        "source": [
+          638,
+          616
+        ],
+        "target": [
+          273.08,
+          109
+        ]
+      }
+    ]
+  },
+  "parts": {
+    "face": "face-4",
+    "eyes": "eyes-5",
+    "brows": "brows-4",
+    "lip": "lip-5"
+  },
+  "beautyIndex": 5,
+  "alpha": "Keep original alpha; zero RGB under alpha zero, remove fringe alpha below 30; neck-only fade y174..184"
+}
