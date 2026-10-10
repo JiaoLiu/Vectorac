@@ -9,7 +9,7 @@ if(release){
  const {HEROES,ALLIANCES}=await import('../.private/fengshen/theme.mjs')
  const {auditCanonicalRoster}=await import('../.private/fengshen/canonical-roster.mjs')
  const issues=auditCanonicalRoster(HEROES,ALLIANCES)
- if(issues.length)console.warn('警告：武将一对一映射尚未核定完成，按用户确认先行发布。'+issues.slice(0,4).join('；'))
+ if(issues.length)throw new Error('发布暂停：完整武将一对一映射检查未通过。'+issues.slice(0,4).join('；'))
 }
 await mkdir(output,{recursive:true})
 const result=await build({entryPoints:[resolve(source,qa?'qa.mjs':'app.js')],...(release?{outdir:output,entryNames:'app-[hash]',metafile:true}:{outfile:resolve(output,qa?'qa.js':'app.js')}),bundle:true,format:'esm',target:['safari15','chrome100'],external:['assets/*'],minify:true,define:{__FENGSHEN_RELEASE__:JSON.stringify(release)}})

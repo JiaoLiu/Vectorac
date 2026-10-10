@@ -67,11 +67,14 @@ const rows=[
  ['yijiang2013','guanyinping','关银屏','artemis','阿尔忒弥斯',3,'female','shu','xueji huxiao wuji','血祭 虎啸 武继'],
  ['yijiang2013','fuhuanghou','伏皇后','qiongxiao','琼霄',3,'female','qun','zhuikong qiuyuan','惴恐 求援'],
 ]
-export const CANONICAL_ROSTER=rows.map(([pack,referenceId,referenceName,id,name,hp,sex,mechanicalFaction,skills,skillNames])=>({pack,referenceId,referenceName,id,name,hp,sex,mechanicalFaction,skills:skills.split(' '),sourceSkillNames:skillNames.split(' '),ruleset:'classic-identity-original',verification:'pending-full-text-review'}))
+// Only the Standard batch has implementation + focused timing + AI/save tests.
+// Expansion references remain disabled until they have the same evidence.
+export const CANONICAL_ROSTER=rows.map(([pack,referenceId,referenceName,id,name,hp,sex,mechanicalFaction,skills,skillNames])=>({pack,referenceId,referenceName,id,name,hp,sex,mechanicalFaction,skills:skills.split(' '),sourceSkillNames:skillNames.split(' '),ruleset:'classic-identity-original',verification:pack==='standard'?'verified':'pending-full-text-review'}))
 export const CANONICAL_BY_ID=Object.fromEntries(CANONICAL_ROSTER.map(h=>[h.id,h]))
 export const PACK_NAMES={standard:'标准',wind:'风',fire:'火',forest:'林',mountain:'山',yijiang2011:'一将成名2011',yijiang2012:'一将成名2012',yijiang2013:'一将成名2013'}
 export function auditCanonicalRoster(heroes,alliances){
  const seen=new Set(),issues=[]
+ for(const c of CANONICAL_ROSTER.filter(c=>c.verification==='verified'))if(!heroes.some(h=>h.id===c.id&&h.playable))issues.push(`${c.name}已核定但不在完整可玩将池中`)
  for(const h of heroes.filter(h=>h.playable)){
   const expected=CANONICAL_BY_ID[h.id]
   if(!expected){issues.push(`${h.name}未绑定完整参考武将`);continue}

@@ -8,7 +8,7 @@ export const THEME_VERSION='fengshen-classic-original-v2'
 const heroes=PLAYABLE_HEROES.map(h=>({...baseline.HERO_BY_ID[h.baseHero],id:h.engineId,name:h.name,hp:h.hp,sex:h.sex,skills:Object.keys(h.skillNames),faction:h.mechanicalFaction}))
 export const catalog={...baseline,theme:THEME_VERSION,HEROES:heroes,HERO_BY_ID:Object.fromEntries(heroes.map(h=>[h.id,h])),CARDS:CARDS_BY_TYPE,
   makeDeck:baseline.makeDeck,deckVersion:1,
-  individualHandChoices:true,trackBattle:true,animatedJudgments:true,automaticSkills:['jizhi','yingzi','jianxiong','tieji','xiaoji','lianying'],
+  individualHandChoices:true,trackBattle:true,animatedJudgments:true,automaticSkills:['jizhi','yingzi','jianxiong','tieji','xiaoji','lianying','tiandu','yiji','biyue'],
   skillNames:Object.assign({},...PLAYABLE_HEROES.map(h=>h.skillNames)),
   skillName,
 }
@@ -20,10 +20,10 @@ export function createGame({heroId='jifa',...options}={}) {
   if(!chosen)throw new Error('该角色尚未接入完整技能，不能进入对局')
   return {...engine.createGame({...options,heroId:chosen.engineId}),theme:THEME_VERSION}
 }
-export function createAssignedGame({roles,heroIds,seed,label}){
+export function createAssignedGame({roles,heroIds,seed,label,sides,firstSeat}){
   const ids=heroIds.map(id=>PLAYABLE_HEROES.find(h=>h.id===id)?.engineId)
   if(ids.some(id=>!id))throw new Error('所选武将的技能尚未接入')
-  return {...engine.createAssignedGame({roles,heroIds:ids,seed,label}),theme:THEME_VERSION}
+  return {...engine.createAssignedGame({roles,heroIds:ids,seed,label,sides,firstSeat}),theme:THEME_VERSION}
 }
 export function restoreGame(raw){
   if(!raw||raw.theme!==THEME_VERSION)return null

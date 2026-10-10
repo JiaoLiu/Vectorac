@@ -15,17 +15,19 @@ const paths={
  music:'<path d="M9 18V5l11-2v13M9 8l11-2"/><ellipse cx="6" cy="18" rx="3" ry="2.5"/><ellipse cx="17" cy="16" rx="3" ry="2.5"/>',
  quietMusic:'<path d="M9 18V5l11-2v13M9 8l11-2"/><ellipse cx="6" cy="18" rx="3" ry="2.5"/><ellipse cx="17" cy="16" rx="3" ry="2.5"/><path class="fs-icon-slash" d="m3 2 19 20"/>',
  screen:'<path d="M9 3H3v6M15 3h6v6M3 15v6h6M21 15v6h-6"/>',
- shrink:'<path d="M3 9h6V3M15 3v6h6M9 21v-6H3M21 15h-6v6"/>'
+ shrink:'<path d="M3 9h6V3M15 3v6h6M9 21v-6H3M21 15h-6v6"/>',
+ bot:'<rect x="4" y="9" width="16" height="10" rx="2.5"/><path d="M12 9V5.5M9 13h.01M15 13h.01M9.5 16h5"/><circle cx="12" cy="4" r="1.2"/>'
 }
 export {paths}
 export function toolButton(action,icon,label,pressed){return `<button type="button" class="fs-tool ${pressed===true?'is-on':pressed===false?'is-off':''}" data-action="${action}" title="${esc(label)}" aria-label="${esc(label)}"${pressed==null?'':` aria-pressed="${pressed}"`}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" data-icon="${icon}">${paths[icon]}</svg></button>`}
 // 牌桌只留一个「菜单」入口（英雄杀式收纳）；大厅/选将保留完整工具栏。
-export function renderToolbar({lobby,setup,paused,voice,music,fullscreen}){
+// 对局始终默认全屏横屏（开局自动 requestFullscreen），不再提供全屏开关。
+export function renderToolbar({lobby,setup,paused,voice,music}){
  if(!lobby&&!setup)return `<nav aria-label="牌桌工具">${toolButton('menu','menu','菜单')}</nav>`
- return `<nav aria-label="牌桌工具">${toolButton('rules','rules','规则')}${toolButton('gallery','gallery','图鉴')}${!lobby&&!setup?toolButton('report','report','战报')+toolButton('pause',paused?'play':'pause',paused?'继续':'暂停',paused)+toolButton('new','new','新局'):setup?toolButton('new','back','返回'):''}${toolButton('voice',voice?'voice':'muted','报牌及音效'+(voice?'开':'关'),voice)}${toolButton('music',music?'music':'quietMusic','背景音乐'+(music?'开':'关'),music)}${toolButton('screen',fullscreen?'shrink':'screen',fullscreen?'退出全屏':'全屏横屏',fullscreen)}</nav>`
+ return `<nav aria-label="牌桌工具">${toolButton('rules','rules','规则')}${toolButton('gallery','gallery','图鉴')}${!lobby&&!setup?toolButton('report','report','战报')+toolButton('pause',paused?'play':'pause',paused?'继续':'暂停',paused)+toolButton('new','new','新局'):setup?toolButton('new','back','返回'):''}${toolButton('voice',voice?'voice':'muted','报牌及音效'+(voice?'开':'关'),voice)}${toolButton('music',music?'music':'quietMusic','背景音乐'+(music?'开':'关'),music)}</nav>`
 }
 // 牌桌菜单面板内容：不常用功能全部收纳，开关项右侧显示当前状态。
-export function renderMenu({inGame,paused,voice,music,hints,pace,fullscreen}){
+export function renderMenu({inGame,paused,voice,music,hints,pace,auto}){
  const item=(action,icon,label,state)=>`<button data-action="${action}" class="fs-menu-item ${state===true?'is-on':state===false?'is-off':''}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-icon="${icon}">${paths[icon]}</svg><span>${label}</span>${state==null?'':`<small>${state===true?'开':state===false?'关':state}</small>`}</button>`
- return `<div class="fs-menu-grid">${item('rules','rules','规则')+item('gallery','gallery','图鉴')+(inGame?item('report','report','战报')+item('pause',paused?'play':'pause',paused?'继续对局':'暂停对局')+item('new','new','新局'):'')+item('voice',voice?'voice':'muted','报牌及音效',voice)+item('music',music?'music':'quietMusic','背景音乐',music)+item('help','help','教学提示',hints)+item('pace','clock','出牌节奏',pace)+item('screen',fullscreen?'shrink':'screen',fullscreen?'退出全屏':'全屏横屏')}</div>`
+ return `<div class="fs-menu-grid">${item('rules','rules','规则')+item('gallery','gallery','图鉴')+(inGame?item('report','report','战报')+item('pause',paused?'play':'pause',paused?'继续对局':'暂停对局')+item('new','new','新局')+item('auto','bot','AI 托管',auto):'')+item('voice',voice?'voice':'muted','报牌及音效',voice)+item('music',music?'music':'quietMusic','背景音乐',music)+item('help','help','教学提示',hints)+item('pace','clock','出牌节奏',pace)}</div>`
 }

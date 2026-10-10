@@ -3,7 +3,14 @@ import assert from 'node:assert/strict'
 import {FENGSHEN_EXPANSION,EXPANSION_CARDS}from '../.private/fengshen/fengshen-expansion.mjs'
 import{PLAYABLE_HEROES,makeExpandedDeck,HERO_BY_THEME_ID}from '../.private/fengshen/theme.mjs'
 import{makeDeck as legacyDeck}from '../.private/fengshen/core/catalog.mjs'
-import{createGame,dispatch,playerView,chooseAI,allCards,restoreGame}from '../.private/fengshen/engine.mjs'
+import {catalog as runtimeCatalog} from '../.private/fengshen/engine.mjs'
+import {createEngine} from '../.private/fengshen/core/engine.mjs'
+import {createAI} from '../.private/fengshen/core/ai.mjs'
+// Expansion mechanics remain regression-tested in isolation, NOT in the shipped Standard deck.
+const experiment={...runtimeCatalog,theme:undefined,CARDS:{...runtimeCatalog.CARDS,...EXPANSION_CARDS},makeDeck:makeExpandedDeck,legacyMakeDeck:legacyDeck,deckVersion:2,animatedJudgments:true}
+const E=createEngine(experiment),chooseAI=createAI(experiment)
+const {dispatch,playerView,allCards,restoreGame}=E
+const createGame=({heroId='jinzha',...opts}={})=>E.createGame({...opts,heroId:HERO_BY_THEME_ID[heroId].engineId})
 import{cuesForAction}from '../.private/fengshen/voice.mjs'
 function fixture(id='jinzha'){
  const s=createGame({heroId:id,role:'lord',seed:17});s.deck=makeExpandedDeck();s.discard=[];s.processing=[];s.harvestPool=[];s.queue=[];s.pending=null;s.phase='play';s.current=0;s.logs=[];s.lastPlayed=null;s.lastResponse=null;s.lastEvent=null
@@ -17,8 +24,8 @@ function equip(s,seat,type,slot){const c=give(s,seat,type);s.players[seat].hand.
 function act(s,a){const r=dispatch(s,{seat:s.pending?.actor??s.current,revision:s.revision,promptId:s.pending?.id,...a});assert.ok(r.ok,r.error);return r.state}
 function passAll(s){let i=0;while(s.pending&&i++<25)s=act(s,{type:s.pending.kind==='reveal'?'ack':'pass'});return s}
 function slash(s,type='sha'){const c=give(s,0,type);return act(s,{type:'play',as:'sha',ids:[c.id],targets:[1]})}
-test('12 new full heroes, two former gallery heroes enabled, 7 new card types, legacy IDs stable',()=>{
- assert.equal(FENGSHEN_EXPANSION.length,12);assert.equal(PLAYABLE_HEROES.length,43);assert.equal(Object.keys(EXPANSION_CARDS).length,7)
+test('draft expansion definitions stay isolated; shipped Standard profiles and legacy physical IDs stable',()=>{
+ assert.equal(FENGSHEN_EXPANSION.length,12);assert.equal(PLAYABLE_HEROES.length,25);assert.equal(Object.keys(EXPANSION_CARDS).length,7)
  assert.ok(HERO_BY_THEME_ID.zhaogongming.playable);assert.ok(HERO_BY_THEME_ID.duobao.playable)
  assert.deepEqual(makeExpandedDeck().slice(0,108),legacyDeck());assert.equal(makeExpandedDeck().length,121)
 })
@@ -29,16 +36,16 @@ test('Qixi actually converts black equipment into a counterable dismantle and ca
  const choice=playerView(s,0).legal.find(a=>a.hidden);assert.ok(!choice.card);s=act(s,choice);assert.equal(s.players[1].hand.length,1);assert.ok(s.discard.some(x=>x.id===c.id));assert.ok(restoreGame(s))
 })
 test('Qingguo uses black hand cards as Dodge, never black equipped cards',()=>{
- let s=fixture('dengchanyu');s.current=1;const c=give(s,1,'sha');const black=give(s,0,'duel',x=>x.suit==='spade');equip(s,0,'qinggang','weapon')
+ let s=fixture('shiji');s.current=1;const c=give(s,1,'sha');const black=give(s,0,'duel',x=>x.suit==='spade');equip(s,0,'qinggang','weapon')
  s=act(s,{seat:1,type:'play',as:'sha',ids:[c.id],targets:[0]});const v=playerView(s,0);assert.ok(v.legal.some(a=>a.type==='respond'&&a.ids[0]===black.id));assert.ok(!v.legal.some(a=>a.ids?.includes(s.players[0].equip.weapon.id)))
- const before=s,hp=s.players[0].hp,a=v.legal.find(a=>a.ids?.[0]===black.id);s=act(s,a);assert.equal(s.players[0].hp,hp);assert.ok(cuesForAction(before,a,s).some(c=>c.key==='skill-dengchanyu-qingguo'))
+ const before=s,hp=s.players[0].hp,a=v.legal.find(a=>a.ids?.[0]===black.id);s=act(s,a);assert.equal(s.players[0].hp,hp);assert.ok(cuesForAction(before,a,s).some(c=>c.key==='skill-qingguo'))
 })
 test('Keji preserves excess hand cards without Slash, but a Slash used in play requires normal discard',()=>{
  let s=fixture('duobao');for(let i=0;i<8;i++)give(s,0,'shan');s=act(s,{type:'end'});assert.equal(s.players[0].hand.length,8);assert.ok(s.logs.some(l=>l.text.includes('自动发动藏宝')))
  s=fixture('duobao');for(let i=0;i<8;i++)give(s,0,'shan');s=passAll(slash(s));s=act(s,{type:'end'});assert.equal(s.pending.kind,'discard');assert.equal(s.pending.actor,0)
 })
 test('Keji also counts a Slash responded in a Duel during own play phase',()=>{
- let s=fixture('lijing');const c=give(s,0,'duel');give(s,0,'sha');give(s,1,'sha');for(let i=0;i<8;i++)give(s,0,'shan')
+ let s=fixture('duobao');const c=give(s,0,'duel');give(s,0,'sha');give(s,1,'sha');for(let i=0;i<8;i++)give(s,0,'shan')
  s=act(s,{type:'play',as:'duel',ids:[c.id],targets:[1]});s=act(s,playerView(s,1).legal.find(a=>a.type==='respond'));s=act(s,playerView(s,0).legal.find(a=>a.type==='respond'));s=passAll(s);assert.equal(s.players[0].marks.shaInPlay,true);s=act(s,{type:'end'});assert.equal(s.pending.kind,'discard')
 })
 test('empty-hand bonus sword and drunk Slash damage stack, then wine is consumed',()=>{
@@ -72,5 +79,5 @@ test('new saves enforce 121 canonical cards, legacy saves stay 108 without injec
  const restored=restoreGame(old);assert.ok(restored);assert.equal(allCards(restored).length,108);const r=dispatch(restored,{type:'end',seat:restored.current});assert.ok(r.ok);assert.equal(allCards(r.state).length,108)
 })
 test('150 seeded expanded AI games terminate without cheating or losing canonical cards',()=>{
- for(let seed=0;seed<150;seed++){let s=createGame({heroId:FENGSHEN_EXPANSION[seed%12].id,seed:seed+700});let n=0;while(!s.winner&&n++<6000){const seat=s.pending?.actor??s.current,v=playerView(s,seat);for(const p of v.players)if(p.seat!==seat)assert.equal(p.hand.length,0);s=act(s,chooseAI(v));if(n%100===0)assert.ok(restoreGame(s),`restore seed ${seed}`)}assert.ok(s.winner,`seed ${seed}`);assert.equal(allCards(s).length,121)}
+ for(let seed=0;seed<150;seed++){let s=createGame({heroId:PLAYABLE_HEROES[seed%PLAYABLE_HEROES.length].id,seed:seed+700});let n=0;while(!s.winner&&n++<6000){const seat=s.pending?.actor??s.current,v=playerView(s,seat);for(const p of v.players)if(p.seat!==seat)assert.equal(p.hand.length,0);s=act(s,chooseAI(v));if(n%100===0)assert.ok(restoreGame(s),`restore seed ${seed}`)}assert.ok(s.winner,`seed ${seed}`);assert.equal(allCards(s).length,121)}
 })

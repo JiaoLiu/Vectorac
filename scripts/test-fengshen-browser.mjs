@@ -6,7 +6,7 @@ import {HERO_BY_THEME_ID,CARDS_BY_TYPE} from '../.private/fengshen/theme.mjs'
 import {hand,equipment} from './fixtures/sanguo.mjs'
 const browser=await openBrowser({name:'fengshen',baseUrl:process.env.FENGSHEN_TEST_URL||'http://127.0.0.1:4178',route:'/'})
 const {evaluate,tap,viewport,screenshot}=browser
-const ready=async()=>{await browser.navigate();await browser.waitFor('!!window.__fengshenUI');await evaluate('localStorage.removeItem("vectorac.fengshen.internal.save.v1");true');await browser.navigate();await browser.waitFor('!!document.querySelector(".fs-entry")')}
+const ready=async()=>{await browser.navigate();await browser.waitFor('!!window.__fengshenUI');await evaluate('localStorage.removeItem("vectorac.fengshen.classic-original.save.v2");true');await browser.navigate();await browser.waitFor('!!document.querySelector(".fs-entry")')}
 const startDraft=async()=>{
   await tap('[data-action="start"]');await browser.waitFor('!!window.__fengshenUI.setup')
   const role=await evaluate('window.__fengshenUI.setup.roles[0]')
@@ -32,8 +32,9 @@ try{
     assert.ok(await evaluate('document.documentElement.scrollWidth<=innerWidth+1'))
     await screenshot(`${size[0]}-lobby`)
     await tap('[data-action="heroes"]');assert.equal(await evaluate('document.querySelectorAll(".fs-collection-grid>button").length'),Object.keys(HERO_BY_THEME_ID).length)
-    await tap('.fs-collection-grid [data-id="jiangziya"]');await browser.waitFor('!!document.querySelector(".fs-modal")');assert.ok(await evaluate('document.querySelector(".fs-modal-body").textContent.includes("尚未接入")'))
-    await tap('[data-action="close"]')
+    // 并行 canonical 流会持续把武将接入为可玩，断言目标动态取第一个未接入者。
+    const unplayable=Object.values(HERO_BY_THEME_ID).find(h=>!h.playable)?.id
+    if(unplayable){await tap(`.fs-collection-grid [data-id="${unplayable}"]`);await browser.waitFor('!!document.querySelector(".fs-modal")');assert.ok(await evaluate('document.querySelector(".fs-modal-body").textContent.includes("尚未接入")'));await tap('[data-action="close"]')}
     await startDraft()
     await evaluate('window.__fengshenUI.paused=true;window.__fengshenUI.render();true')
     let g=await geometry();assert.ok(g.scroll<=size[0]+1,JSON.stringify(g));assert.ok(g.appBottom<=size[1]+1)
@@ -80,5 +81,5 @@ try{
   // A reload can cancel an intercepted image before CDP's continue arrives.
   // Ignore only that exact transport race, not application exceptions.
   assert.deepEqual(browser.errors.filter(e=>e!==JSON.stringify({code:-32602,message:'Invalid InterceptionId.'})),[])
-  console.log('PASS: 5 viewports, touch/rotation/response/restore, 52 local assets, complete UI-timer match. Screenshots:',browser.output)
+  console.log('PASS: 5 viewports, touch/rotation/response/restore, 54 hero and 32 card artwork assets, complete UI-timer match. Screenshots:',browser.output)
 }catch(error){console.error('Failure screenshot:',await screenshot('failure'));throw error}finally{await browser.close()}

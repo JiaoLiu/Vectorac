@@ -15,4 +15,35 @@
 @media(max-height:559px) and (orientation:landscape){.fs-entry{padding:13px 27px;align-items:center}.fs-entry-copy{padding:0;width:100%}.fs-entry-copy h1{font-size:39px;letter-spacing:5px;margin:8px 0}.fs-entry-copy>small:first-child{font-size:7px;letter-spacing:2px}.fs-entry-copy>p{font-size:12px;letter-spacing:2px}.fs-entry-copy ol{gap:7px;margin:12px 0;font-size:10px}.fs-entry-copy li>b{font-size:8px;padding:3px 5px}.fs-entry-actions{width:350px}.fs-entry-actions>.fs-primary{min-height:36px;font-size:10px}.fs-entry-actions>.fs-secondary{min-height:36px;font-size:10px}.fs-entry-catalog{min-height:24px;padding:4px 0;margin:5px 0 2px;font-size:9px}.fs-entry-note{font-size:6px}.fs-mode-row{gap:5px;margin-bottom:10px;flex-wrap:nowrap}.fs-mode-chip{padding:4px 8px;min-height:32px;gap:2px;flex:1}.fs-mode-chip>b{font-size:10px}.fs-mode-chip>small{font-size:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}.fs-setup{padding:6px 12px;gap:6px}.fs-setup-steps{padding-bottom:5px;gap:10px;justify-content:flex-start}.fs-setup-steps li{font-size:8px;gap:4px}.fs-setup-steps b{width:16px;height:16px;font-size:8px}.fs-draft-identity{padding:5px 8px;gap:8px}.fs-draft-identity>.fs-identity{font-size:12px;min-height:25px;min-width:36px}.fs-draft-identity strong{font-size:9px}.fs-draft-identity p{font-size:7px;margin-top:1px}.fs-draft-identity>span:last-child{font-size:7px}.fs-draft-status h2{font-size:17px;margin-top:2px;letter-spacing:1px}.fs-draft-status small{font-size:7px}.fs-draft-lord{padding:2px 5px;gap:5px}.fs-draft-lord>.fs-portrait{width:19px;height:27px}.fs-draft-lord b{font-size:10px}.fs-draft-lord small{font-size:6px}.fs-draft-count{font-size:9px;gap:9px}.fs-draft-count small{font-size:6px}.fs-draft-options{gap:5px}.fs-draft-grid{gap:8px;padding:3px;align-items:flex-start}.fs-draft-option{flex:0 0 min(85px,18%);min-width:65px}.fs-draft-pick{aspect-ratio:.85}.fs-draft-pick strong{font-size:13px;letter-spacing:0}.fs-draft-pick small,.fs-draft-pick i{font-size:6px}.fs-draft-pick>span{padding:17px 2px 5px;gap:3px}.fs-draft-details{min-height:22px;font-size:7px}.fs-lord-type{font-size:6px;padding:2px 3px;top:3px;left:3px}.fs-draft-footer{min-height:37px;padding-top:6px;gap:10px}.fs-draft-footer>p{font-size:8px;max-height:30px}.fs-draft-footer>p>b{font-size:9px}.fs-draft-footer>.fs-primary{min-height:35px;min-width:166px;font-size:10px;padding:5px 10px}.fs-draft-seats{gap:6px;padding:1px 0}.fs-draft-seats>div{padding:3px 5px;min-width:74px;gap:5px}.fs-draft-seats .fs-portrait,.fs-draft-hidden{width:18px;height:25px}.fs-draft-seats>div>div{gap:3px}.fs-draft-seats small{font-size:6px}.fs-draft-seats strong{font-size:8px}.fs-role-reveal-panel{gap:8px;flex-direction:row}.fs-role-card{width:94px;height:121px;gap:9px}.fs-role-card strong{font-size:25px;letter-spacing:4px}.fs-role-card>span{font-size:7px}.fs-role-card small{display:none}.fs-role-reveal-panel>p{font-size:8px}.fs-draft-wait{padding:7px;gap:6px}.fs-draft-wait>b{font-size:17px}.fs-draft-wait p{font-size:8px;line-height:1.5}.fs-draft-waiting-label{font-size:8px}}
 @media(max-height:559px) and (orientation:landscape){.fs-draft-seats{display:none}}
 .faction-olympus{--faction:#c4ac71}.faction-asgard{--faction:#9ab6cb}.faction-nile{--faction:#64bdb4}.faction-takamagahara{--faction:#d09baf}
+/* 对抗局：友/敌徽章与开局掷骰面板 */
+.fs-identity.role-ally{background:#274b45;border-color:#88c6ad;color:#b8e8ce}
+.fs-identity.role-enemy{background:#612f30;border-color:#d78775;color:#ffd0bd}
+.fs-role-card.role-ally{background:linear-gradient(120deg,#36564a,#143537);color:#b5d8b4}
+.fs-role-card.role-enemy{background:linear-gradient(120deg,#4e3333,#301c25);color:#efad9c}
+/* 掷骰定先手：选将完成后在舞台中央播一次滚动动画，点数最高者高亮。 */
+.fs-dice-stage{flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;min-height:0;padding:18px 12px;background:radial-gradient(circle at 50% 20%,#14313dcc,#08161dcc);border:1px solid #c9b77f33;border-radius:10px}
+.fs-dice-stage>small{font-size:11px;color:#c9b585;letter-spacing:2px}
+.fs-dice-row{display:flex;gap:clamp(12px,4vw,26px);flex-wrap:wrap;justify-content:center;align-items:center}
+.fs-die{position:relative;width:clamp(46px,11vmin,64px);aspect-ratio:1;border-radius:12px;background:linear-gradient(150deg,#f4ecd6,#cbbf9c);border:1px solid #8f8158;box-shadow:0 4px 12px #04131b88,inset 0 0 0 2px #ffffff55;display:grid;place-items:center;color:#2b2a20;perspective:200px}
+.fs-die-cube{position:absolute;inset:0;display:grid;place-items:center;animation:dieTumble .85s cubic-bezier(.2,.8,.3,1) both}
+.fs-die-cube b{grid-area:1/1;font:700 clamp(22px,5.5vmin,30px) Georgia,serif;line-height:1;opacity:0;animation:dieFlash .85s linear both}
+.fs-die-cube b:nth-child(1){animation-delay:0s}
+.fs-die-cube b:nth-child(2){animation-delay:.11s}
+.fs-die-cube b:nth-child(3){animation-delay:.22s}
+.fs-die-cube b:nth-child(4){animation-delay:.33s}
+.fs-die-cube b:nth-child(5){animation-delay:.44s}
+.fs-die-cube b:nth-child(6){animation-delay:.55s}
+.fs-die-num{font:700 clamp(24px,6vmin,32px) Georgia,serif;line-height:1;opacity:0;animation:dieNum .34s .78s cubic-bezier(.2,1.4,.4,1) both}
+.fs-die>small{position:absolute;bottom:-16px;left:50%;transform:translateX(-50%);font-size:9px;color:#9fb0a2;letter-spacing:.5px;white-space:nowrap}
+.fs-die.is-first{border-color:#f0d39a;background:linear-gradient(150deg,#fff6da,#e6cf95);box-shadow:0 0 0 2px #e2c37a88,0 6px 18px #02131b88;animation:dieFirstPulse 1.6s .9s ease-in-out infinite}
+.fs-die.is-first .fs-die-num{color:#7a4d16}
+.fs-die.is-first>small{color:#f0d39a;font-weight:700}
+.fs-dice-result{font-size:12px;color:#f1dca7;letter-spacing:1px;opacity:0;animation:dieNum .4s 1.05s ease-out both}
+@keyframes dieTumble{0%{transform:rotate(-16deg) scale(.55)}45%{transform:rotate(13deg) scale(1.12)}75%{transform:rotate(-5deg) scale(1)}100%{transform:rotate(0) scale(1)}}
+@keyframes dieFlash{0%{opacity:0}8%{opacity:1}24%{opacity:0}100%{opacity:0}}
+@keyframes dieNum{from{opacity:0;transform:scale(.45)}to{opacity:1;transform:scale(1)}}
+@keyframes dieFirstPulse{0%,100%{box-shadow:0 0 0 2px #e2c37a88,0 6px 18px #02131b88}50%{box-shadow:0 0 0 4px #f0d39a55,0 8px 22px #02131bcc}}
+@media(max-width:699px) and (orientation:portrait){.fs-dice-stage{gap:10px;padding:12px 8px}.fs-die>small{bottom:-14px;font-size:8px}}
+@media(max-height:559px) and (orientation:landscape){.fs-dice-stage{gap:10px;padding:8px 12px}.fs-dice-row{gap:clamp(10px,3.5vw,22px)}.fs-dice-result{font-size:11px}}
+@media(prefers-reduced-motion:reduce){.fs-die-cube{animation:none;display:none}.fs-die-num,.fs-dice-result{animation-duration:.01s;animation-delay:0s}.fs-die.is-first{animation:none}}
 @media(max-width:359px){.fs-entry-copy h1{font-size:36px;letter-spacing:4px}}

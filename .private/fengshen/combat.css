@@ -109,7 +109,7 @@
 .fs-own-delays>b{background:#8e3d36ec;color:#fff0d7;font-size:10px;padding:3px 0;text-align:center;line-height:1.1}
 .fs-player-delays{position:absolute;left:3px;top:25px;display:flex;gap:2px;z-index:4}
 .fs-player-delays>b{font-size:10px;background:#973d34;color:#ffefdc;border:1px solid #f0b281;border-radius:3px;line-height:15px;padding:0 3px}
-.fs-round .fs-clock{margin-left:auto;font-size:11px;color:#f1d195;border:1px solid #e4c47044;border-radius:4px;padding:0 6px;white-space:nowrap}
+.fs-round .fs-timer{margin-left:auto;font-size:11px;color:#f1d195;border:1px solid #e4c47044;border-radius:4px;padding:0 6px;white-space:nowrap}
 .fs-playing .fs-round{gap:7px}.fs-playing .fs-header nav{min-width:0}.fs-playing .fs-header nav button{flex:none}
 .fs-judgment-reveal{position:absolute;inset:8px 12px;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:#14313af0;border:1px solid #d6c08b;border-radius:9px;box-shadow:0 8px 30px #0008;text-align:center;padding:12px}
 .fs-judgment-reveal header{font-size:15px;color:#f1d9a4;font-weight:700}
@@ -122,11 +122,11 @@
 @keyframes fs-transfer{0%{transform:translate(var(--from-x),var(--from-y)) scale(.85);opacity:0}15%{opacity:1}80%{transform:translate(var(--to-x),var(--to-y)) scale(1);opacity:1}100%{transform:translate(var(--to-x),var(--to-y)) scale(.7);opacity:0}}
 @media(max-width:699px) and (orientation:portrait){
  .fs-playing .fs-player{--portrait-height:112px;--equip-offset:16px}.fs-playing .fs-opponent-equipment .fs-equip{min-height:16px;height:16px;font-size:8px}.fs-playing .fs-opponent-equipment .fs-equip small{font-size:7px}.fs-playing .fs-no-equip{height:19px}
- .fs-playing .fs-hand-heading>span{font-size:9px}.fs-playing .fs-round{gap:5px}.fs-round .fs-clock{font-size:10px}.fs-playing .fs-round button[data-action=pace]{padding:0 3px;font-size:8px}
+ .fs-playing .fs-hand-heading>span{font-size:9px}.fs-playing .fs-round{gap:5px}.fs-round .fs-timer{font-size:10px}.fs-playing .fs-round button[data-action=pace]{padding:0 3px;font-size:8px}
  .fs-playing .fs-header nav button{padding:3px 6px}
 }
 @media(max-height:700px) and (orientation:portrait){.fs-judgment-reveal{gap:5px;padding:7px}.fs-flip-card{width:60px;height:87px}.fs-judgment-reveal header,.fs-judgment-reveal>strong{font-size:11px}.fs-judgment-reveal>small{font-size:8px}.fs-playing .fs-arena{min-height:145px}}
-@media(max-width:359px) and (orientation:portrait){.fs-playing .fs-player{--portrait-height:91px;--equip-offset:13px}.fs-playing .fs-opponent-equipment .fs-equip{font-size:7px;height:14px;min-height:14px}.fs-playing .fs-opponent-equipment .fs-equip img{display:none}.fs-playing .fs-header nav button{padding:2px 4px;font-size:8px}.fs-round .fs-clock{font-size:9px;padding:0 4px}}
+@media(max-width:359px) and (orientation:portrait){.fs-playing .fs-player{--portrait-height:91px;--equip-offset:13px}.fs-playing .fs-opponent-equipment .fs-equip{font-size:7px;height:14px;min-height:14px}.fs-playing .fs-opponent-equipment .fs-equip img{display:none}.fs-playing .fs-header nav button{padding:2px 4px;font-size:8px}.fs-round .fs-timer{font-size:9px;padding:0 4px}}
 @media(max-height:559px) and (orientation:landscape){
  .fs-playing .fs-arena{min-height:108px}.fs-playing .fs-player{--portrait-height:84px;--equip-offset:16px}.fs-playing .fs-opponent-equipment .fs-equip{height:16px;min-height:16px;font-size:8px}.fs-playing .fs-no-equip{height:17px}
  .fs-playing .fs-hand{padding-top:24px}.fs-playing .fs-hand-row .fs-clean-card>strong{font-size:10px;left:17px;height:26px;top:3px}.fs-playing .fs-hand-row .fs-basic-card>strong{font-size:21px}

@@ -8,6 +8,10 @@ export const ROLES = {
 }
 export const FACTIONS = { shu: '蜀', wei: '魏', wu: '吴', qun: '群' }
 export const SKILLS = {
+  guanxing:['观星','准备阶段观看牌堆顶X张牌，X为存活人数且至多五；可按任意顺序将它们放回牌堆顶或底。','trigger'],
+  guose:['国色','方块手牌或装备可以当乐不思蜀使用；不能与已经存在的同类延时牌重复。','convert'],
+  liuli:['流离','成为杀的目标时，可弃一张手牌或装备，将杀转给弃牌后仍在自己攻击范围内的其他角色，不能转回杀的使用者。','trigger'],
+  lijian:['离间','出牌阶段限一次，弃一张手牌或装备，让一名其他男性对另一名男性决斗。顺序决定谁先响应；经典原版不能用无懈抵消。','active'],
   guicai:['鬼才','一张判定牌生效前，可以用一张手牌替换它；原判定牌弃置。','trigger'],
   fankui:['反馈','受伤后，可取得伤害来源的一张手牌或装备；不包括判定区。','trigger'],
   tiandu:['天妒','自己的最终判定牌生效后，可以获得这张牌；被替换掉的旧牌不能获得。','trigger'],
@@ -46,6 +50,9 @@ export const SKILLS = {
   wushuang: ['无双', '你的杀需两张闪抵消；与你决斗，对方每轮需打两张杀。', 'locked']
 }
 export const HEROES = [
+  {id:'zhugeliang',name:'诸葛亮',title:'卧龙',faction:'shu',hp:3,sex:'male',skills:['guanxing','kongcheng'],emblem:'星'},
+  {id:'daqiao',name:'大乔',title:'国色',faction:'wu',hp:3,sex:'female',skills:['guose','liuli'],emblem:'移'},
+  {id:'diaochan',name:'貂蝉',title:'绝世舞姬',faction:'qun',hp:3,sex:'female',skills:['lijian','biyue'],emblem:'月'},
   {id:'simayi',name:'司马懿',title:'狼顾之鬼',faction:'wei',hp:3,sex:'male',skills:['fankui','guicai'],emblem:'判'},
   {id:'guojia',name:'郭嘉',title:'早终先知',faction:'wei',hp:3,sex:'male',skills:['tiandu','yiji'],emblem:'计'},
   {id:'zhenji',name:'甄姬',title:'洛神',faction:'wei',hp:3,sex:'female',skills:['luoshen','qingguo'],emblem:'洛'},

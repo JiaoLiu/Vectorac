@@ -6,6 +6,7 @@ import {createEngine} from '../.private/fengshen/core/engine.mjs'
 import {targetLinks,judgmentMark,publicPicks,tutorialEnabled,responsePrompt} from '../.private/fengshen/table-visuals.mjs'
 import {renderCenter,renderBattle,delayIcons} from '../.private/fengshen/table.mjs'
 import {hand} from './fixtures/sanguo.mjs'
+import {readFile} from 'node:fs/promises'
 function fixture(){const s=createGame({heroId:'yangjian',role:'lord',seed:17});s.deck=catalog.makeDeck();s.discard=[];s.processing=[];s.harvestPool=[];s.queue=[];s.pending=null;s.phase='play';s.current=0;s.logs=[];s.lastPlayed=null;s.lastEvent=null;for(const p of s.players){p.hand=[];p.equip={weapon:null,armor:null,offenseHorse:null,defenseHorse:null};p.judgment=[];p.marks={sha:0,rende:0};p.hp=p.maxHp;p.alive=true}return s}
 const step=(s,a)=>{const r=dispatch(s,{seat:s.pending?.actor??s.current,...a});assert.ok(r.ok,r.error);return r.state}
 const ui=(s,hints=true)=>({state:s,hints,paused:false,selected:[],targets:[],skill:null,choiceIndex:null,pace:650,header:()=>'',targetable:()=>[],matching:()=>[],currentAs:()=>null,equipment:()=>'',skills:()=>'',won:()=>false,pendingText:()=>''})
@@ -34,4 +35,14 @@ test('classic harvest view/logs remain unchanged',()=>{
 })
 test('area attack draws every public living target, not only the current responder',()=>{
  let s=fixture(),[c]=hand(s,0,'arrows');hand(s,1,'shan');s=step(s,{type:'play',as:'arrows',ids:[c.id],targets:[]});const v=playerView(s,0),links=targetLinks(v);assert.equal(links.length,4);assert.ok(links.every(l=>l.source===0&&l.target!==0));assert.equal(new Set(links.map(l=>l.target)).size,4)
+})
+test('recipient prompts do not intercept taps; interactive card-selection panels remain separate',async()=>{
+ const s=fixture(),model=ui(s),v=playerView(s,0)
+ for(const kind of ['yiji','liuli','tuxi']){v.pending={id:1,actor:0,kind};assert.ok(renderCenter(model,v).includes('fs-skill-prompt'))}
+ const css=await readFile(new URL('../.private/fengshen/arena-table.css',import.meta.url),'utf8');assert.match(css,/\.fs-center-choice\.fs-skill-prompt\{pointer-events:none/)
+})
+test('skill virtual Duel is illustrated without forged suit or rank; opponent cannot see Guanxing pool',()=>{
+ const s=fixture(),model=ui(s),v=playerView(s,0);v.lastPlayed={id:1,source:0,targets:[1,2],as:'duel',cards:[],virtualType:'duel',label:'魅惑'}
+ const html=renderCenter(model,v);assert.ok(html.includes('data-type="duel"'));assert.ok(html.includes('无实体花色点数'));assert.ok(html.includes('class="fs-rank"><i></i>'))
+ v.pending={id:2,actor:1,kind:'guanxing'};v.legal=[];const concealed=renderCenter(model,v);assert.ok(concealed.includes('不能查看'));assert.equal(concealed.includes('data-type='),false)
 })

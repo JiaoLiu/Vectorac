@@ -64,7 +64,7 @@ for(const word of [...HEROES.map(h=>h.name),...Object.values(CARDS_BY_TYPE).map(
 const displayPattern=new RegExp([...replacements.keys()].sort((a,b)=>b.length-a.length).join('|'),'g')
 export function displayText(text) {
   const result=String(text??'').replace(displayPattern,word=>replacements.get(word))
-  return result.replace(/其他蜀将/g,'其他周势力角色').replace(/其他魏将/g,'其他商势力角色').replace(/其他吴将/g,'其他阐教角色')
+  return result.replace(/其他蜀将/g,'其他青盟角色').replace(/其他魏将/g,'其他赤盟角色').replace(/其他吴将/g,'其他金盟角色')
 }
 export function skillName(heroId,skill){return heroForBase(heroId)?.skillNames[skill]||SKILLS[skill]?.[0]||skill}
 export function skillHelp(h,skill){

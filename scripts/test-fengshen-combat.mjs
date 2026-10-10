@@ -19,7 +19,7 @@ function fixture(current=0,heroId='yangjian'){
  if(s.players[1].heroId==='machao'){const other=s.players.slice(2).find(p=>p.heroId!=='machao');[s.players[1].heroId,other.heroId]=[other.heroId,s.players[1].heroId]}
  return s
 }
-const step=(s,a)=>{const r=dispatch(s,{seat:s.pending?.actor??s.current,...a});assert.ok(r.ok,r.error);assert.equal(allCards(r.state).length,121);return r.state}
+const step=(s,a)=>{const r=dispatch(s,{seat:s.pending?.actor??s.current,...a});assert.ok(r.ok,r.error);assert.equal(allCards(r.state).length,108);return r.state}
 test('resolved draw trick emits one actual two-card cue and highlights only local new cards',()=>{
  let s=fixture(),[c]=hand(s,0,'draw');const before=s;s=step(s,{type:'play',as:'draw',ids:[c.id],targets:[]})
  assert.equal(s.players[0].hand.length,2);const effects=drawEffects(before,s);assert.equal(effects.length,1);assert.equal(effects[0].count,2);assert.equal(effects[0].target,0);assert.deepEqual(effects[0].ownIds,s.players[0].hand.map(c=>c.id))

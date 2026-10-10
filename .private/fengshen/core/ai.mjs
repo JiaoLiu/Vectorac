@@ -7,6 +7,11 @@ const {CARDS,HERO_BY_ID,isRed}=catalog
 function hostility(view, target) {
   const self=view.players[view.seat],p=view.players[target]
   if(target===view.seat)return -5
+  // 对抗局：敌友公开，按阵营直接判定，不做身份推断。
+  if(view.teamMode){
+    const mine=view.sides[view.seat],theirs=view.sides[target]
+    return mine===theirs?-4:4
+  }
   const role=self.role,known=p.role,remaining=view.players.filter(p=>p.alive).length
   const rebelTotal=view.publicRoleCounts?.rebel||(view.players.length===8?4:view.players.length===5?2:null)
   const rebelsGone=rebelTotal!=null&&view.players.filter(p=>!p.alive&&p.role==='rebel').length===rebelTotal
@@ -60,6 +65,30 @@ function response(view,HERO_BY_ID,isRed) {
   if(pending.kind==='discard')return {type:'discard',ids:orderByValue(view).slice(0,pending.count).map(c=>c.id)}
   if(pending.kind==='guess')return opts[(view.revision*7+view.seat)%opts.length]
   if(pending.kind==='tuxi')return opts.slice().sort((a,b)=>(b.targets||[]).reduce((n,t)=>n+hostility(view,t),0)-(a.targets||[]).reduce((n,t)=>n+hostility(view,t),0))[0]
+  if(pending.kind==='guanxing'){
+    const cards=opts.find(a=>a.type==='arrange').pool.slice(),top=[],own=view.players[view.seat]
+    for(const delayed of own.judgment.slice().reverse()){
+      const i=cards.findIndex(c=>delayed.type==='indulgence'?c.suit==='heart':!(c.suit==='spade'&&c.rank>=2&&c.rank<=9));if(i>=0)top.push(cards.splice(i,1)[0].id)
+    }
+    cards.sort((a,b)=>cardValue(b,view)-cardValue(a,view));top.push(...cards.slice(0,2).map(c=>c.id))
+    return {type:'arrange',top,bottom:cards.slice(2).map(c=>c.id)}
+  }
+  if(pending.kind==='liuli'){
+    const candidates=opts.filter(a=>a.type==='redirect'&&hostility(view,a.target)>0).sort((a,b)=>hostility(view,b.target)-hostility(view,a.target)||cost(view,a.ids)-cost(view,b.ids))
+    return candidates[0]||opts.find(a=>a.type==='pass')
+  }
+  if(pending.kind==='judge-replace'){
+    const card=view.judgmentCard,relation=hostility(view,pending.target),pool=view.players[view.seat].hand
+    // Only the public judgment and our own hand inform replacement decisions.
+    const good=c=>view.judgmentKind==='indulgence'?c.suit==='heart':view.judgmentKind==='lightning'?!(c.suit==='spade'&&c.rank>=2&&c.rank<=9):view.judgmentKind==='luoshen'?!isRed(c):view.judgmentKind==='ganglie'?c.suit!=='heart':isRed(c)
+    const replacement=opts.filter(a=>a.type==='respond').sort((a,b)=>cost(view,a.ids)-cost(view,b.ids)).find(a=>{const c=pool.find(c=>c.id===a.ids[0]);return relation<0&&good(c)&&!good(card)||relation>0&&!good(c)&&good(card)})
+    return replacement||opts.find(a=>a.type==='pass')
+  }
+  if(pending.kind==='yiji'){
+    const ally=view.players.filter(p=>p.alive&&p.seat!==view.seat&&hostility(view,p.seat)<0).sort((a,b)=>a.hp-b.hp)[0]
+    if(ally){const gift=opts.filter(a=>a.type==='give'&&a.target===ally.seat).sort((a,b)=>b.ids.length-a.ids.length)[0];if(gift)return gift}
+    return opts.find(a=>a.type==='choose')
+  }
   if(pending.kind==='pick')return opts.slice().sort((a,b)=>cardValue(b.card,view)-cardValue(a.card,view))[0]
   if(pending.kind==='take') {
     const enemy=hostility(view,pending.target)>0
@@ -70,6 +99,7 @@ function response(view,HERO_BY_ID,isRed) {
     let choice='yes'
     if(pending.skill==='luoyi')choice=view.players[view.seat].hand.some(c=>c.type==='sha'||c.type==='duel')?'yes':'no'
     if(pending.skill==='fan')choice=view.players[pending.target]?.equip.armor?.type==='vine'?'yes':'no'
+    if(['ganglie','fankui'].includes(pending.skill))choice=hostility(view,pending.source)>0?'yes':'no'
     if(pending.skill==='dualTarget')choice=orderByValue(view).length&&cardValue(orderByValue(view)[0],view)<5?'discard':'draw'
     if(pending.skill==='ice')choice=view.players[pending.target]?.hp>1&&view.players[pending.target]?.handCount>1?'yes':'no'
     if(pending.skill==='bow')choice=opts.find(o=>o.value!=='no'&&o.type==='choose')?.value||'no'
@@ -138,6 +168,10 @@ const chooseAI=function chooseAI(view) {
           const target=view.players.filter(p=>p.alive&&p.seat!==view.seat&&HERO_BY_ID[p.heroId].sex==='male'&&p.hp<p.maxHp&&hostility(view,p.seat)<0).sort((a,b)=>a.hp-b.hp)[0]
           const cards=orderByValue(view).slice(0,2);candidate={...action,target:target?.seat,ids:cards.map(c=>c.id)}
           score=target&&cards.length===2&&self.role!=='renegade'?(self.hp<self.maxHp?14:7)-cost(view,candidate.ids)*.3:-3
+        } else if(action.skill==='lijian'){
+          const males=view.players.filter(p=>p.alive&&p.seat!==view.seat&&HERO_BY_ID[p.heroId].sex==='male'),pairs=[]
+          for(const source of males)for(const victim of males)if(source.seat!==victim.seat&&!(HERO_BY_ID[victim.heroId].skills.includes('kongcheng')&&!victim.handCount))pairs.push({source:source.seat,target:victim.seat,score:hostility(view,source.seat)+hostility(view,victim.seat)*2})
+          const pair=pairs.sort((a,b)=>b.score-a.score)[0],cheap=ownCards(view).slice().sort((a,b)=>cardValue(a,view)-cardValue(b,view))[0];candidate={...action,ids:cheap?[cheap.id]:[],targets:pair?[pair.source,pair.target]:[]};score=pair&&cheap?pair.score*2-cost(view,candidate.ids)*.3:-3
         } else if(action.skill==='qingnang'){
           const target=view.players.filter(p=>p.alive&&p.hp<p.maxHp&&hostility(view,p.seat)<0).sort((a,b)=>a.hp-b.hp)[0],cards=orderByValue(view).slice(0,1)
           candidate={...action,target:target?.seat,ids:cards.map(c=>c.id)};score=target&&cards.length?target.seat===view.seat?14:8:-3

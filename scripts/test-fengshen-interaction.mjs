@@ -15,7 +15,7 @@ function fixture(heroId='yangjian',role='lord',current=0){
   for(const p of s.players){p.hand=[];p.equip={weapon:null,armor:null,offenseHorse:null,defenseHorse:null};p.judgment=[];p.marks={sha:0,rende:0};p.hp=p.maxHp;p.alive=true}
   return s
 }
-const step=(s,a)=>{const r=dispatch(s,{seat:s.pending?.actor??s.current,...a});assert.ok(r.ok,r.error);assert.equal(allCards(r.state).length,121);assert.equal(new Set(allCards(r.state).map(c=>c.id)).size,121);return r.state}
+const step=(s,a)=>{const r=dispatch(s,{seat:s.pending?.actor??s.current,...a});assert.ok(r.ok,r.error);assert.equal(allCards(r.state).length,108);assert.equal(new Set(allCards(r.state).map(c=>c.id)).size,108);return r.state}
 const play=(s,c,target)=>step(s,{type:'play',as:c.type,ids:[c.id],targets:target==null?[]:[target]})
 const ui=s=>({state:s,paused:false,selected:[],targets:[],skill:null,choiceIndex:null,choiceZone:'hand',pace:650,voice:{enabled:true},header:()=>'<header></header>',targetable:()=>[],matching:()=>[],currentAs:()=>null,equipment:()=>'',skills:()=>'',won:()=>false,pendingText:()=>''})
 
@@ -68,11 +68,11 @@ test('Jizhi and Yingzi draw automatically; Luoyi keeps its real tradeoff prompt'
 })
 test('Jianxiong and Tieji are automatic in this theme, without changing classic defaults',()=>{
   let s=fixture('dixin','loyal',1);const [attack]=hand(s,1,'sha');s=play(s,attack,0);s=step(s,{type:'pass'});assert.ok(s.players[0].hand.some(c=>c.id===attack.id));assert.notEqual(s.pending?.skill,'jianxiong')
-  s=fixture('leizhenzi');const [slash]=hand(s,0,'sha');judgeTop(s,'heart',4);const hp=s.players[1].hp;s=play(s,slash,1);assert.equal(s.players[1].hp,hp-1);assert.notEqual(s.pending?.skill,'tieji')
+  s=fixture('leizhenzi');const [slash]=hand(s,0,'sha');judgeTop(s,'heart',4);const hp=s.players[1].hp;s=play(s,slash,1);assert.equal(s.pending.kind,'reveal');s=step(s,{type:'ack'});assert.equal(s.players[1].hp,hp-1);assert.notEqual(s.pending?.skill,'tieji')
 })
 test('old optional Jizhi save restores, auto-confirms, and retains all physical cards',()=>{
   const legacy=createEngine({...catalog,automaticSkills:[]});let s=fixture('jinling');const [draw]=hand(s,0,'draw');const r=legacy.dispatch(s,{seat:0,type:'play',as:'draw',ids:[draw.id],targets:[]});assert.ok(r.ok)
-  assert.equal(r.state.pending.skill,'jizhi');const restored=restoreGame(r.state);assert.ok(restored);assert.equal(restored.players[0].hand.length,3);assert.equal(restored.pending,null);assert.equal(restored.theme,THEME_VERSION);assert.equal(allCards(restored).length,121)
+  assert.equal(r.state.pending.skill,'jizhi');const restored=restoreGame(r.state);assert.ok(restored);assert.equal(restored.players[0].hand.length,3);assert.equal(restored.pending,null);assert.equal(restored.theme,THEME_VERSION);assert.equal(allCards(restored).length,108)
 })
 test('dead identities are revealed and own identity persists through death and endgame',()=>{
   let s=fixture('yangjian','loyal');const dead=s.players[1];dead.alive=false;dead.hp=0
@@ -103,7 +103,7 @@ test('blocked autoplay and disabling audio do not spin or block gameplay',async(
   voice.setEnabled(false);assert.equal(voice.speak('card-shan','female'),false);voice.destroy()
 })
 test('all generated MP3s are present and decodable, with verified male/female voices',async()=>{
-  const manifest=JSON.parse(await readFile(new URL('../.private/fengshen/assets/audio/manifest.json',import.meta.url),'utf8'));assert.deepEqual(manifest.voices,VOICES);assert.equal(manifest.files.length,AUDIO_ENTRIES.length*2);assert.equal(manifest.files.length,234)
+  const manifest=JSON.parse(await readFile(new URL('../.private/fengshen/assets/audio/manifest.json',import.meta.url),'utf8'));assert.deepEqual(manifest.voices,VOICES);assert.equal(manifest.files.length,AUDIO_ENTRIES.length*2);assert.equal(manifest.entries.length,AUDIO_ENTRIES.length)
   for(const file of manifest.files){
     const path=new URL('../.private/fengshen/assets/audio/'+file,import.meta.url);assert.ok((await stat(path)).size>1000)
     const result=spawnSync('/opt/homebrew/bin/ffprobe',['-v','error','-show_entries','format=duration','-of','default=noprint_wrappers=1:nokey=1',path.pathname],{encoding:'utf8'});assert.equal(result.status,0,file)
