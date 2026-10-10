@@ -1,0 +1,110 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.8",
+  "base_commit_sha": "36430b3208da0459ce6aa789599bbbc82bbeb20d",
+  "prompts": {
+    "5058ed3dc1a97a8c": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6ac848ce090dc5dc9234c7bc",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 29,
+      "overriden_lines": 0
+    }
+  },
+  "commit_stats": {
+    "git_diff_added_lines": 99,
+    "git_diff_deleted_lines": 14,
+    "ai_additions": 0,
+    "ai_accepted": 0,
+    "BYMC": 99,
+    "mixed_additions": 0,
+    "BYAC": 0,
+    "BYRC": 0,
+    "per_file": {
+      ".private/fengshen/README.md": {
+        "BYMC": [
+          "29-32"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      ".private/fengshen/app.js": {
+        "BYMC": [
+          "20",
+          "26",
+          "195",
+          "212-225",
+          "273-274",
+          "278",
+          "298"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      ".private/fengshen/arena-layout.mjs": {
+        "BYMC": [
+          "11-12",
+          "31-32",
+          "39-42"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      ".private/fengshen/arena-table.css": {
+        "BYMC": [
+          "35-39",
+          "45-46",
+          "80-93"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      ".private/fengshen/presentation.mjs": {
+        "BYMC": [
+          "13-14"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      ".private/fengshen/qa.mjs": {
+        "BYMC": [
+          "23-26",
+          "126",
+          "138"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      ".private/fengshen/target-selection.mjs": {
+        "BYMC": [
+          "1-13"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "package.json": {
+        "BYMC": [
+          "6"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-target-layout.mjs": {
+        "BYMC": [
+          "1-23"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      }
+    }
+  },
+  "commit_timestamp": 1791651772,
+  "requirement_id": ""
+}
