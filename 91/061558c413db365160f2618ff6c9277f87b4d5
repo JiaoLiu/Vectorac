@@ -1,0 +1,58 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.8",
+  "base_commit_sha": "91061558c413db365160f2618ff6c9277f87b4d5",
+  "prompts": {
+    "5058ed3dc1a97a8c": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6ac848ce090dc5dc9234c7bc",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 29,
+      "overriden_lines": 0
+    }
+  },
+  "commit_stats": {
+    "git_diff_added_lines": 5,
+    "git_diff_deleted_lines": 2,
+    "ai_additions": 0,
+    "ai_accepted": 0,
+    "BYMC": 5,
+    "mixed_additions": 0,
+    "BYAC": 0,
+    "BYRC": 0,
+    "per_file": {
+      ".private/fengshen/arena-layout.mjs": {
+        "BYMC": [
+          "33",
+          "44"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      ".private/fengshen/qa.mjs": {
+        "BYMC": [
+          "35"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-sunwukong.mjs": {
+        "BYMC": [
+          "7",
+          "43"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      }
+    }
+  },
+  "commit_timestamp": 1791657303,
+  "requirement_id": ""
+}
