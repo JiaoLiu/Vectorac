@@ -20,6 +20,13 @@ function card(s,seat,type){const i=s.deck.findIndex(c=>c.type===type);if(i<0)thr
 function equip(s,seat,type,slot){const c=card(s,seat,type);s.players[seat].hand.pop();s.players[seat].equip[slot]=c;return c}
 function step(s,a){const r=dispatch(s,{seat:s.pending?.actor??s.current,...a});if(!r.ok)throw Error(r.error);return r.state}
 function scenario(name){
+  if(name==='layout-eight'){
+    const s=createAssignedGame({roles:['lord','loyal','loyal','rebel','rebel','rebel','rebel','renegade'],heroIds:['yangjian','jifa','nezha','wenzhong','jinling','yuding','yunxiao','shiji'],seed:29})
+    s.deck=catalog.makeDeck();s.discard=[];s.processing=[];s.harvestPool=[];s.queue=[];s.pending=null;s.phase='play';s.current=0;s.logs=[]
+    for(const p of s.players){p.hand=[];p.equip={weapon:null,armor:null,offenseHorse:null,defenseHorse:null};p.judgment=[];p.marks={sha:0};p.hp=p.maxHp}
+    for(const [seat,types]of [[0,['qinggang','bagua','chitu','jueying']],[1,['blade','bagua','dayuan','dilu']],[6,['halberd','renwang','zixing','zhuahuang']]])for(const type of types)equip(s,seat,type,catalog.CARDS[type].slot)
+    s.players[0].hand.push(...s.deck.splice(0,12));return s
+  }
   if(['classic-stars','classic-liuli','classic-yiji','classic-lijian'].includes(name)){
     const ids=name==='classic-stars'?['jiangziya','jifa','nezha','yangjian','jinling']:name==='classic-liuli'?['yunxiao','jifa','nezha','yangjian','jinling']:name==='classic-yiji'?['yuding','jifa','nezha','yangjian','jinling']:['daji','jifa','nezha','yangjian','jinling']
     const s=createAssignedGame({roles:['lord','loyal','rebel','rebel','renegade'],heroIds:ids,seed:19})
@@ -109,11 +116,14 @@ for(const [value,label]of [['classic-isis','伊西斯：标准孙尚香完整技
 for(const o of [...tools.querySelector('select').options])if(['gods','gods-female','gods-male','expansion-qixi','expansion-fan'].includes(o.value))o.remove()
 const normalRender=ui.render.bind(ui);ui.render=()=>{normalRender();const v=ui.state&&playerView(ui.state,0);stateProof.dataset.qaState=JSON.stringify(v?{pending:v.pending,revision:v.revision,hp:v.players.map(p=>p.hp),hand:v.players[0].hand.map(c=>c.id),handCounts:v.players.map(p=>p.handCount),draws:ui.draws,selected:ui.selected,targets:ui.targets,damage:v.logs.filter(l=>l.cue?.kind==='damage').map(l=>l.cue),auto:ui.auto,clockDuration:ui.clock.duration}:{})}
 tools.querySelector('[data-qa-load]').onclick=()=>{
-  clearInterval(humanTimer);clearTimeout(ui.timer);ui.clearEffects();ui.voice.stop();ui.voice.history=[];ui.music.pause();ui.modal=null;ui.lobby=false;ui.paused=false;ui.auto=false;ui.reset();const name=tools.querySelector('select').value,sample=scenario(name);ui.clock=new DecisionClock({duration:name==='clock-short'?2000:60000});ui.setup=sample.setup||null;ui.state=sample.setup?null:sample;ui.draftHero=null;ui.schedule=sample.setup||['borrow-self','clock-short'].includes(name)?normalSchedule:name.startsWith('judge-')?()=>{if(ui.state.pending?.kind==='reveal')normalSchedule()}:()=>{};ui.pace=sample.setup?120:650;ui.save();ui.render();tools.hidden=true;tools.style.display='none';ui.voice.unlock();ui.music.unlock()
+  clearInterval(humanTimer);clearTimeout(ui.timer);ui.clearEffects();ui.voice.stop();ui.voice.history=[];ui.music.pause();ui.modal=null;ui.lobby=false;ui.paused=false;ui.auto=false;ui.reset();const name=tools.querySelector('select').value,sample=scenario(name);ui.clock=new DecisionClock({duration:name==='clock-short'?2000:name==='layout-eight'||name==='classic-stars'?600000:60000});ui.setup=sample.setup||null;ui.state=sample.setup?null:sample;ui.draftHero=null;ui.schedule=sample.setup||['borrow-self','clock-short'].includes(name)?normalSchedule:name.startsWith('judge-')?()=>{if(ui.state.pending?.kind==='reveal')normalSchedule()}:()=>{};ui.pace=sample.setup?120:650;ui.save();ui.render();tools.hidden=true;tools.style.display='none';ui.voice.unlock();ui.music.unlock()
   if(name==='ai'){
     ui.voice.setEnabled(false);ui.pace=1;ui.schedule=normalSchedule;ui.render()
     humanTimer=setInterval(()=>{if(ui.destroyed||ui.state.winner){clearInterval(humanTimer);return}if((ui.state.pending?.actor??ui.state.current)===0){const action=chooseAI(playerView(ui.state,0));if(action&&!ui.act(action)){clearInterval(humanTimer);throw Error('Human AI fixture failed')}}},5)
   }
 }
 document.body.append(tools)
+const safeStyle=document.createElement('style');safeStyle.textContent='@media(orientation:landscape){#app.fs-qa-safe{--fs-safe-left:59px;--fs-safe-right:59px;--fs-safe-bottom:21px}}@media(orientation:portrait){#app.fs-qa-safe{--fs-safe-top:47px;--fs-safe-bottom:34px}}';document.head.append(safeStyle)
+const safe=document.createElement('input');safe.type='checkbox';safe.setAttribute('aria-label','模拟iPhone安全区');safe.onchange=()=>{ui.root.classList.toggle('fs-qa-safe',safe.checked);ui.onViewport()};tools.append(safe)
+const eight=document.createElement('option');eight.value='layout-eight';eight.textContent='八人布局：三人四件装备与12手牌';tools.querySelector('select').append(eight)
 document.addEventListener('click',event=>{if(event.target.closest('[data-action="resume"],[data-action="start"]')){tools.hidden=true;tools.style.display='none'}})

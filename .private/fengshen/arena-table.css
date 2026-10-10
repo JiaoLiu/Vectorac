@@ -1,124 +1,106 @@
-/* 牌桌布局唯一权威（本文件最后加载，覆盖 table/mobile/combat 的历史硬编码）。
-   设计原则（参考英雄杀）：
-   - 顶栏只留「菜单」浮空按钮；回合/牌堆合并成一枚左上角浮空芯片，不再独占一行。
-   - 其他玩家卡放在一个「可视牌桌区」（.fs-players）里，按百分比贴边排布，
-     卡片尺寸随视口等比缩放，因此任何机型都不会互相遮挡，也不会压到手牌区。
-   - 思考倒计时是自己出牌的计时，浮在自己的牌区里。
-   - .fs-app 已用 padding 吃掉 safe-area，这里不再重复叠加 env()。 */
-.fs-playing{--dock-size:214px;
-  /* 人物卡尺寸 = min(可视牌桌高度的比例, 按座位数分到的宽度)。
-     高度项保证上下不溢出，宽度项保证多人局顶排不重叠；两者取小即任何机型都放得下。 */
-  --pcw:clamp(56px, min(calc((100dvh - var(--dock-size)) * .34), calc(100vw / 5.4)), 132px);
-  --players-top:0px;--top-pct:.06;
-  display:grid;grid-template-rows:45px minmax(0,1fr);
-  background:linear-gradient(#102c3440,#102b3555),url('assets/heavenly-arena.jpg') center/cover no-repeat}
-.fs-playing .fs-header{grid-row:1}
-.fs-playing .fs-arena{grid-row:2;height:100%;min-height:0;background:none;box-shadow:none;overflow:visible;
-  /* --pch 在 .fs-arena 上重算，才能跟随本元素对 --pcw 的座位数覆盖。 */
-  --pch:calc(var(--pcw)*1.46);
-  /* 侧墙人物占用的水平宽度：中央出牌区据此避让，任何机型都不会被两侧人物遮挡。 */
-  --wall:calc(1% + var(--pcw) + 10px);
-  /* 顶排人物底边：中央出牌区据此下移，多人局也不会压到顶排人物。
-     顶排卡 top 取各座位排布的最大值（6%），据此换算其底边，再留 12px 间隙。 */
-  --rowtop:calc(var(--players-top) + (100% - var(--dock-size) - var(--players-top)) * var(--top-pct) + var(--pch) + 12px)}
-.fs-playing .fs-dock{position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:min(1240px,100%);height:var(--dock-size);z-index:6;background:linear-gradient(#142b3320,#122b32b0);border-top:0;box-shadow:none}
-
-/* 浮空信息芯片：回合 + 牌堆，贴左上角，不占行、不遮挡人物（英雄杀式）。 */
-.fs-playing .fs-hud{position:absolute;top:6px;left:8px;z-index:11;display:flex;align-items:center;gap:6px;pointer-events:none}
-.fs-playing .fs-hud>*{pointer-events:auto;display:flex;flex-direction:row;align-items:center;gap:4px;min-height:22px;padding:1px 8px;border:1px solid #b8b48a55;border-radius:5px;background:#10222a99;color:#e8ddba;font-size:10px;text-shadow:0 1px 3px #000}
-.fs-playing .fs-hud .fs-deck-stack{position:static;left:auto;right:auto;top:auto;bottom:auto;width:auto;min-width:42px;height:auto;transform:none;background:#10222a99}
-.fs-playing .fs-hud .fs-deck-stack>b{font-size:8px;font-weight:500;line-height:1}
-.fs-playing .fs-hud .fs-deck-stack>span{font-size:11px;line-height:1}
-.fs-playing .fs-hud .fs-deck-stack:before,.fs-playing .fs-hud .fs-deck-stack:after{display:none}
-
-/* 自己的牌区：倒计时浮在牌区左上角。 */
-.fs-playing .fs-own-panel{position:relative}
-.fs-playing .fs-own-panel .fs-timer{position:absolute;top:-2px;left:0;z-index:3;display:inline-flex;align-items:center;min-height:20px;padding:0 7px;border:1px solid #e4c47044;border-radius:4px;background:#10222a99;color:#f1d195;font-size:11px;white-space:nowrap;text-shadow:0 1px 3px #000}
-
-/* 可视牌桌区：从牌桌顶部到牌堆底边，人物卡在这块区域内按比例贴边排布。 */
-.fs-playing .fs-players{position:absolute;inset:0 0 var(--dock-size) 0;display:block;pointer-events:none;z-index:3}
-.fs-playing .fs-player{pointer-events:auto}
-/* A skill's instructions must never intercept taps on its recipient portraits. */
-.fs-playing .fs-center-choice.fs-skill-prompt{pointer-events:none;height:auto;max-height:95px;overflow:hidden;background:#142b32cc;padding:8px 12px;top:63%;border-radius:6px}
+/* Final board layout. Geometry comes from arena-layout.mjs, measured inside
+   the horizontal safe area. Equipment never participates in portrait height. */
+.fs-playing{display:block;background:linear-gradient(#102c3428,#102b3538),url('assets/heavenly-arena.jpg') center/cover no-repeat;touch-action:pan-x pan-y}
+.fs-playing .fs-arena{position:absolute;inset:0 var(--fs-safe-right) 0 var(--fs-safe-left);width:auto;height:auto;min-height:0;max-width:none;margin:0;padding:0;overflow:visible;background:none;box-shadow:none;border-radius:0}
+.fs-playing .fs-arena:before{display:none}
+.fs-playing .fs-header{position:absolute;top:0;left:var(--fs-safe-left);right:var(--fs-safe-right);height:26px;z-index:12;padding:1px 4px;pointer-events:none;background:none;border:0}
+.fs-playing .fs-header>.fs-brand{display:none}
+.fs-playing .fs-header nav{margin-left:auto;pointer-events:auto}
+.fs-playing .fs-header nav button{min-height:24px;padding:1px 5px;background:#10222a99}
+.fs-playing .fs-hud{position:absolute;top:2px;left:4px;z-index:11;display:flex;gap:4px;pointer-events:none}
+.fs-playing .fs-hud>*{display:flex;align-items:center;gap:4px;padding:2px 5px;min-height:20px;border:1px solid #b8b48a44;border-radius:4px;background:#10222a99;font-size:9px;color:#e8ddba}
+.fs-playing .fs-deck-stack{position:static;width:auto;height:auto;min-width:40px;transform:none}
+.fs-playing .fs-deck-stack:before,.fs-playing .fs-deck-stack:after{display:none}
+.fs-playing .fs-deck-stack>b{font-size:8px;font-weight:400}
+.fs-playing .fs-deck-stack>span{font-size:10px}
+.fs-playing .fs-players{position:absolute;inset:0;display:block;z-index:3;pointer-events:none}
+.fs-playing .fs-player{pointer-events:auto;width:var(--hero-width)!important;height:var(--hero-height)!important;border-radius:5px;overflow:hidden}
+.fs-playing .fs-player-main{width:100%;height:100%!important;min-height:0!important;padding:0}
+.fs-playing .fs-player-info{left:5px;right:3px;bottom:3px;gap:2px}
+.fs-playing .fs-player-info>strong{font-size:clamp(11px,calc(var(--hero-width)*.18),20px);letter-spacing:0;line-height:1.15}
+.fs-playing .fs-player-info>span:last-child{font-size:9px}
+.fs-playing .fs-seat{font-size:7px;top:4px;left:30px;right:2px}
+.fs-playing .fs-player-main .fs-hp{font-size:8px}
+.fs-playing .fs-player-main .fs-hp b{font-size:8px}
+/* Four short overlapping equipment tiles sit INSIDE the portrait. Tapping opens details. */
+.fs-playing .fs-opponent-equipment,.fs-playing .fs-own-equipment{position:absolute;left:3px;right:3px;bottom:43px;height:28px;min-height:0;max-height:28px;display:flex;flex-direction:row;flex-wrap:nowrap;gap:1px;padding:0;overflow:hidden;z-index:5}
+.fs-playing .fs-player[data-equip-count="0"] .fs-opponent-equipment{display:none}
+.fs-playing :is(.fs-opponent-equipment,.fs-own-equipment) .fs-equip{position:relative;flex:1;min-width:0;height:28px;min-height:0!important;padding:1px;overflow:hidden;border-radius:2px;background:#e0d5b6ee;color:#15262a}
+.fs-playing :is(.fs-opponent-equipment,.fs-own-equipment) .fs-equip img{display:block!important;position:absolute;inset:0;width:100%;height:100%;opacity:.3;object-fit:cover}
+.fs-playing :is(.fs-opponent-equipment,.fs-own-equipment) .fs-equip span{position:relative;width:100%;font-size:9px;line-height:1.2;text-overflow:ellipsis;overflow:hidden;white-space:nowrap}
+.fs-playing :is(.fs-opponent-equipment,.fs-own-equipment) .fs-equip small{position:absolute;bottom:0;right:1px;font-size:8px;color:#473e26}
+.fs-playing .fs-no-equip{display:none}
+.fs-playing .fs-table-center,.fs-playing .fs-judgment-reveal{top:var(--center-top);bottom:var(--center-bottom);left:var(--center-side);right:var(--center-side);overflow:visible;min-height:0;gap:3px;flex-direction:column}
+.fs-playing .fs-table-center{left:var(--center-side);right:var(--center-side)}
+.fs-playing .fs-card-play>.fs-clean-card,.fs-playing .fs-played>.fs-clean-card{height:clamp(60px,calc(var(--fs-height)*.25),132px);width:clamp(42px,calc(var(--fs-height)*.174),92px)}
+.fs-playing .fs-table-caption>b{font-size:10px;letter-spacing:0}
+.fs-playing .fs-exchange{flex-wrap:wrap;justify-content:center;gap:4px}
+.fs-playing .fs-judgment-reveal{justify-content:center}
+.fs-playing .fs-judgment-reveal .fs-flip-card{width:66px;height:95px;flex:none}
+.fs-playing .fs-judgment-reveal header{font-size:11px}
+.fs-playing .fs-judgment-reveal>strong{font-size:11px}
+.fs-playing .fs-status{bottom:calc(var(--dock-size) + 2px);font-size:10px;max-width:70%;line-height:1.2}
+.fs-playing .fs-teaching-hint{max-height:24px;overflow:hidden;font-size:9px}
+.fs-playing .fs-dock{position:absolute;bottom:0;left:var(--fs-safe-left);right:var(--fs-safe-right);transform:none;width:auto;max-width:none;height:var(--dock-size);min-height:0;max-height:none;margin:0;padding:0;z-index:6;display:grid;grid-template-columns:var(--hero-width) minmax(0,1fr);gap:var(--seat-gap);background:linear-gradient(#142b3300,#122b3250);border:0;box-shadow:none;overflow:visible}
+.fs-playing .fs-hand-area{display:grid;grid-template-columns:minmax(0,1fr) var(--action-width);grid-template-rows:22px minmax(0,1fr);gap:0 8px;min-height:0}
+.fs-playing .fs-hand-heading{grid-column:1;grid-row:1;height:22px;min-width:0;gap:7px;font-size:10px}
+.fs-playing .fs-hand-heading>span{display:none}
+.fs-playing .fs-hand-heading button{font-size:9px;min-height:22px}
+.fs-playing .fs-hand-heading>.fs-timer{position:static;display:inline-flex;min-height:18px;padding:1px 5px;border-radius:3px;background:#172b32b0;color:#f1d195;white-space:nowrap;font-size:11px}
+.fs-playing .fs-hand{grid-column:1;grid-row:2;height:100%;min-height:0;padding:22px 1px 2px;touch-action:pan-x;overflow-x:auto;overflow-y:hidden}
+.fs-playing .fs-actions{grid-column:2;grid-row:1/3;align-self:stretch;display:flex;align-items:center;padding:0 3px var(--fs-safe-bottom)}
+.fs-playing .fs-action-row{width:100%;max-height:100%;flex-direction:column;align-items:stretch;justify-content:center;gap:4px;min-height:0;overflow:auto;touch-action:pan-y}
+.fs-playing .fs-action-row .fs-primary,.fs-playing .fs-action-row .fs-secondary,.fs-playing .fs-action-row .fs-clear{min-height:32px;padding:4px 5px;width:100%;max-width:none;font-size:11px;white-space:normal;flex:none;margin:0}
+.fs-playing .fs-own-panel{position:relative;display:block;align-self:end;height:var(--hero-height);min-height:0;overflow:visible}
+.fs-playing .fs-own-hero{position:absolute;inset:0;display:block;overflow:hidden;border:1px solid #c9ab7060;border-radius:5px;background:#172c2c}
+.fs-playing .fs-own-hero>button{position:absolute;inset:0;width:100%;height:100%;margin:0;border:0;border-radius:0}
+.fs-playing .fs-own-hero>div{position:absolute;bottom:32px;left:4px;right:3px;pointer-events:none;text-shadow:0 1px 3px #000;z-index:5}
+.fs-playing .fs-own-hero>div>small{display:none}
+.fs-playing .fs-own-hero strong{font-size:clamp(12px,calc(var(--hero-width)*.19),20px);margin:0;line-height:1.1;letter-spacing:0}
+.fs-playing .fs-own-hero .fs-hp{font-size:8px;margin-top:3px}
+.fs-playing .fs-own-role-button{position:absolute;bottom:calc(var(--hero-height) - 62px);left:0;padding:0;min-height:20px;pointer-events:auto}
+.fs-playing .fs-own-role-button>span:last-child{display:none}
+.fs-playing .fs-own-role-button .fs-identity{min-width:22px;min-height:20px;font-size:10px;padding:2px}
+.fs-playing .fs-own-skills{position:absolute;left:2px;right:2px;bottom:1px;display:flex;gap:2px;max-width:none;z-index:6;overflow:auto}
+.fs-playing .fs-own-skills .fs-skill{min-width:0;flex:1;min-height:28px;padding:1px 2px;gap:1px}
+.fs-playing .fs-skill b{font-size:10px;white-space:nowrap}
+.fs-playing .fs-skill small{font-size:7px}
+.fs-playing .fs-own-equipment{bottom:65px}
+/* Choice panels use their own card-sized rows; never flex-shrink card height. */
+.fs-playing .fs-center-choice{left:8px;right:8px;width:auto;top:50%;bottom:auto;height:min(310px,calc(100% - 32px));max-height:calc(100% - 32px);transform:translateY(-50%);padding:8px;gap:6px;overflow:auto}
+.fs-playing .fs-center-choice .fs-choice-card{flex-shrink:0;min-height:0}
+.fs-playing .fs-center-choice.fs-skill-prompt{pointer-events:none;height:auto;max-height:95px;overflow:hidden;top:55%;background:#142b32dd}
 .fs-playing .fs-skill-prompt p{margin:3px 0;font-size:11px}
-.fs-playing .fs-player{width:var(--pcw)!important;border-radius:6px}
-.fs-playing .fs-player-main{height:var(--pch)!important}
-.fs-playing .fs-arena[data-seats="6"]{--pcw:clamp(50px, min(calc((100dvh - var(--dock-size)) * .30), calc(100vw / 3.9)), 116px)}
-.fs-playing .fs-arena[data-seats="8"]{--pcw:clamp(44px, min(calc((100dvh - var(--dock-size)) * .26), calc(100vw / 5.6)), 104px)}
-
-/* 座位排布：顶排 + 两侧墙，全部落在可视区内，不会压到手牌区。
-   百分比相对 .fs-players（已扣掉牌堆高度），故横竖屏与任意机型都成立。 */
-.fs-playing .fs-players .fs-player[data-player="1"],
-.fs-playing .fs-players .fs-player[data-player="2"],
-.fs-playing .fs-players .fs-player[data-player="3"],
-.fs-playing .fs-players .fs-player[data-player="4"],
-.fs-playing .fs-players .fs-player[data-player="5"],
-.fs-playing .fs-players .fs-player[data-player="6"],
-.fs-playing .fs-players .fs-player[data-player="7"]{bottom:auto}
-/* 1v1：唯一对手坐上首中央 */
-.fs-playing .fs-players[data-seats="2"] .fs-player[data-player="1"]{left:50%;right:auto;top:6%;transform:translateX(-50%)}
-/* 2v2：上首 + 左右墙 */
-.fs-playing .fs-players[data-seats="4"] .fs-player[data-player="1"]{left:1%;right:auto;top:50%;transform:translateY(-50%)}
-.fs-playing .fs-players[data-seats="4"] .fs-player[data-player="2"]{left:50%;right:auto;top:6%;transform:translateX(-50%)}
-.fs-playing .fs-players[data-seats="4"] .fs-player[data-player="3"]{left:auto;right:1%;top:50%;transform:translateY(-50%)}
-/* 3v3：上首三张 + 左右墙 */
-.fs-playing .fs-players[data-seats="6"] .fs-player[data-player="1"]{left:1%;right:auto;top:50%;transform:translateY(-50%)}
-.fs-playing .fs-players[data-seats="6"] .fs-player[data-player="2"]{left:25%;right:auto;top:5%;transform:translateX(-50%)}
-.fs-playing .fs-players[data-seats="6"] .fs-player[data-player="3"]{left:50%;right:auto;top:5%;transform:translateX(-50%)}
-.fs-playing .fs-players[data-seats="6"] .fs-player[data-player="4"]{left:75%;right:auto;top:5%;transform:translateX(-50%)}
-.fs-playing .fs-players[data-seats="6"] .fs-player[data-player="5"]{left:auto;right:1%;top:50%;transform:translateY(-50%)}
-/* 8 人局：上首五张 + 左右墙 */
-.fs-playing .fs-players[data-seats="8"] .fs-player[data-player="1"]{left:1%;right:auto;top:50%;transform:translateY(-50%)}
-.fs-playing .fs-players[data-seats="8"] .fs-player[data-player="2"]{left:13%;right:auto;top:5%;transform:translateX(-50%)}
-.fs-playing .fs-players[data-seats="8"] .fs-player[data-player="3"]{left:31%;right:auto;top:5%;transform:translateX(-50%)}
-.fs-playing .fs-players[data-seats="8"] .fs-player[data-player="4"]{left:50%;right:auto;top:5%;transform:translateX(-50%)}
-.fs-playing .fs-players[data-seats="8"] .fs-player[data-player="5"]{left:69%;right:auto;top:5%;transform:translateX(-50%)}
-.fs-playing .fs-players[data-seats="8"] .fs-player[data-player="6"]{left:87%;right:auto;top:5%;transform:translateX(-50%)}
-.fs-playing .fs-players[data-seats="8"] .fs-player[data-player="7"]{left:auto;right:1%;top:50%;transform:translateY(-50%)}
-/* 五人身份局（默认 4 名对手）：左右墙 + 上首两张 */
-.fs-playing .fs-players:not([data-seats="2"]):not([data-seats="4"]):not([data-seats="6"]):not([data-seats="8"]) .fs-player[data-player="1"]{left:1%;right:auto;top:50%;transform:translateY(-50%)}
-.fs-playing .fs-players:not([data-seats="2"]):not([data-seats="4"]):not([data-seats="6"]):not([data-seats="8"]) .fs-player[data-player="2"]{left:30%;right:auto;top:5%;transform:translateX(-50%)}
-.fs-playing .fs-players:not([data-seats="2"]):not([data-seats="4"]):not([data-seats="6"]):not([data-seats="8"]) .fs-player[data-player="3"]{left:auto;right:30%;top:5%;transform:translateX(50%)}
-.fs-playing .fs-players:not([data-seats="2"]):not([data-seats="4"]):not([data-seats="6"]):not([data-seats="8"]) .fs-player[data-player="4"]{left:auto;right:1%;top:50%;transform:translateY(-50%)}
-
-/* 中央出牌区与判定区：左右避开侧墙人物（--wall），顶部让开顶排人物（--rowtop），
-   底部让开牌堆。任何机型、任何座位数都不会遮挡出牌。 */
-.fs-playing .fs-table-center{top:var(--rowtop);bottom:calc(var(--dock-size) + 8px);left:calc(var(--wall) + 4px);right:calc(var(--wall) + 4px);flex-direction:column;overflow:visible}
-.fs-playing .fs-center-choice{top:calc((100% - var(--dock-size))/2);height:min(310px,calc(100% - var(--dock-size) - 10px))}
-.fs-playing .fs-judgment-reveal{top:var(--rowtop);bottom:calc(var(--dock-size) + 5px)}
-
-/* 横屏：顶栏浮空（品牌隐藏，只留右侧菜单），牌桌纵向空间全部让给牌面。 */
-@media(orientation:landscape){
- /* 单行网格：顶栏绝对定位浮在牌桌上，牌桌吃满整个视口高度。 */
- .fs-playing{grid-template-rows:minmax(0,1fr);--players-top:30px}
- .fs-playing .fs-arena{grid-row:1}
- .fs-playing .fs-header{position:absolute;top:0;left:0;right:0;z-index:12;height:28px;padding:2px calc(env(safe-area-inset-right,0px) + 8px) 2px calc(env(safe-area-inset-left,0px) + 8px);background:none;border:0;pointer-events:none}
- .fs-playing .fs-header>.fs-brand{display:none}
- .fs-playing .fs-header nav{margin-left:auto;pointer-events:auto}
- .fs-playing .fs-header nav button{min-height:24px;padding:1px 7px;background:#10222a99}
- /* 芯片占用浮空顶栏左侧空白（品牌已隐藏），人物区整体下移让开。 */
- .fs-playing .fs-hud{top:2px;left:calc(env(safe-area-inset-left,0px) + 8px)}
- .fs-playing .fs-players{inset:var(--players-top) 0 var(--dock-size) 0}
- .fs-playing .fs-exchange{flex-wrap:wrap;justify-content:center;align-content:center;row-gap:3px}
-}
-
-/* 横屏矮屏：牌堆收窄。--pcw 由基准公式随 100dvh 自动收敛。 */
-@media(max-height:559px) and (orientation:landscape){
- .fs-playing{--dock-size:160px}
- .fs-playing .fs-arena[data-seats="6"]{--pcw:min(calc((100dvh - var(--dock-size)) * .30), calc(100vw / 4.4))}
- .fs-playing .fs-arena[data-seats="8"]{--pcw:min(calc((100dvh - var(--dock-size)) * .26), calc(100vw / 6.2))}
-}
-@media(min-height:381px) and (max-height:559px) and (orientation:landscape){.fs-playing{--dock-size:166px}}
-
-/* 竖屏手机：牌堆更高，人物卡在上半区排布。 */
-@media(max-width:699px) and (orientation:portrait){
- .fs-playing{grid-template-rows:42px minmax(0,1fr);--dock-size:296px}
- .fs-playing .fs-arena[data-seats="6"]{--pcw:clamp(46px, min(calc((100dvh - var(--dock-size)) * .30), calc(100vw / 4.4)), 96px)}
- .fs-playing .fs-arena[data-seats="8"]{--pcw:clamp(40px, min(calc((100dvh - var(--dock-size)) * .26), calc(100vw / 6)), 86px)}
-}
-@media(max-height:700px) and (orientation:portrait){
- .fs-playing{grid-template-rows:38px minmax(0,1fr);--dock-size:268px}
-}
-@media(min-width:430px) and (max-width:699px) and (max-height:700px) and (orientation:portrait){
- .fs-playing .fs-arena{--pcw:clamp(56px, min(calc((100dvh - var(--dock-size)) * .34), calc(100vw / 5)), 120px)}
-}
+.fs-playing .fs-star-choice{z-index:10;height:auto;max-height:calc(100% - 32px);display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto;overflow:hidden}
+.fs-playing .fs-star-choice>header{grid-column:1;grid-row:1}
+.fs-playing .fs-star-choice>.fs-star-rows{grid-column:1;grid-row:2}
+.fs-playing .fs-star-choice>footer{display:block;grid-column:1;grid-row:3}
+.fs-star-rows{min-height:0;overflow:auto;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.fs-star-zone{min-width:0;border:1px solid #b49b6155;border-radius:4px;padding:5px;display:flex;flex-direction:column;gap:4px}
+.fs-star-zone h4{margin:0;font-size:11px;color:#e7d095}
+.fs-star-zone .fs-center-card-list{flex:none;min-height:calc(var(--star-card-height) + 8px);height:calc(var(--star-card-height) + 8px);align-items:center;justify-content:flex-start;overflow-x:auto;overflow-y:hidden;gap:6px;padding:4px 2px;touch-action:pan-x}
+.fs-star-zone .fs-choice-card{height:var(--star-card-height);width:calc(var(--star-card-height)/1.44);flex-basis:calc(var(--star-card-height)/1.44);touch-action:none;cursor:grab}
+.fs-star-card.is-dragging{opacity:.4}
+.fs-star-card.is-drop-target{outline:2px solid #ffe08b}
+.fs-star-choice{--star-card-height:clamp(85px,calc(var(--fs-height)*.32),130px)}
+.fs-star-choice footer{font-size:10px;line-height:1.35}
+.fs-star-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:5px}
+.fs-star-actions button{min-height:34px;padding:4px 10px;font-size:11px}
+.fs-star-ghost{position:absolute;pointer-events:none;z-index:50;width:70px;height:101px;opacity:.88;transform:translate(-50%,-50%)}
+.fs-playing[data-layout=portrait] .fs-dock{grid-template-columns:1fr;grid-template-rows:76px minmax(0,1fr);padding:3px 8px var(--fs-safe-bottom);gap:5px}
+.fs-playing[data-layout=portrait] .fs-own-panel{height:76px;display:grid;grid-template-columns:150px minmax(0,1fr);grid-template-rows:1fr}
+.fs-playing[data-layout=portrait] .fs-own-hero{width:146px;height:76px;overflow:visible;border:0;background:none}
+.fs-playing[data-layout=portrait] .fs-own-hero>button{width:50px;height:76px;border:1px solid #b69a67;border-radius:4px}
+.fs-playing[data-layout=portrait] .fs-own-hero>div{left:58px;right:0;bottom:0;top:0;display:flex;flex-direction:column;justify-content:center}
+.fs-playing[data-layout=portrait] .fs-own-hero strong{font-size:17px}
+.fs-playing[data-layout=portrait] .fs-own-role-button{position:static;margin:2px 0}
+.fs-playing[data-layout=portrait] .fs-own-skills{position:static;grid-column:2;align-self:center}
+.fs-playing[data-layout=portrait] .fs-own-equipment{left:0;right:auto;width:50px;bottom:0;height:21px}
+.fs-playing[data-layout=portrait] .fs-hand-area{grid-template-columns:1fr;grid-template-rows:22px minmax(0,1fr) 38px;gap:3px}
+.fs-playing[data-layout=portrait] .fs-hand{padding-top:9px}
+.fs-playing[data-layout=portrait] .fs-actions{grid-column:1;grid-row:3;padding:0;align-items:stretch}
+.fs-playing[data-layout=portrait] .fs-action-row{flex-direction:row;align-items:stretch}
+.fs-playing[data-layout=portrait] .fs-action-row .fs-primary,.fs-playing[data-layout=portrait] .fs-action-row .fs-secondary{width:auto;flex:1;min-width:0}
+.fs-playing[data-layout=portrait] .fs-action-row .fs-clear{width:40px}
+.fs-playing[data-layout=portrait] .fs-star-rows{grid-template-columns:1fr}
+.fs-playing[data-layout=portrait] .fs-header{top:var(--fs-safe-top)}

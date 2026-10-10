@@ -11,8 +11,10 @@ export function handLayout({count,width,height,landscape=false}){
 export function layoutHand(root){
   const hand=root.querySelector('.fs-hand');if(!hand)return
   const buttons=[...hand.querySelectorAll('.fs-hand-card')];if(!buttons.length)return
-  const width=hand.clientWidth,height=window.visualViewport?.height||innerHeight
-  const l=handLayout({count:buttons.length,width,height,landscape:innerWidth>innerHeight})
+  const width=hand.clientWidth,height=root.clientHeight
+  const landscape=root.dataset.layout==='landscape',budget=hand.clientHeight-26
+  const l=handLayout({count:buttons.length,width,height,landscape})
+  if(landscape){l.cardHeight=Math.max(48,Math.min(146,budget));l.cardWidth=Math.round(l.cardHeight/1.44);l.step=Math.min(l.cardWidth+7,Math.max(Math.round(l.cardWidth*.72),(width-l.cardWidth)/Math.max(1,buttons.length-1)));l.span=l.cardWidth+l.step*(buttons.length-1);l.scroll=l.span>width}
   const key=`${buttons.length}:${width}:${height}:${innerWidth>innerHeight}`
   // 模板直接输出 hand-row（renderBattle），morph 按位对齐保留按钮元素；
   // 这里只更新布局变量与行宽。无 row 属异常结构（如旧存档 DOM），兜底重建一次。

@@ -20,6 +20,9 @@ import {renderBattle,renderOpponent,renderControls} from './table.mjs'
 import {esc,display,portrait,hp,cardFace,scaleCards} from './presentation.mjs'
 import {combatContext,damageCues,collateralSelection} from './combat.mjs'
 import {layoutHand} from './hand.mjs'
+import {layoutArena,revealHandCard} from './arena-layout.mjs'
+import {bindGameViewport} from './viewport.mjs'
+import {bindStarDrag} from './star-drag.mjs'
 import {advanceUnavailable,DecisionClock} from './flow.mjs'
 import {BackgroundMusic} from './music.mjs'
 import {drawEffects} from './draw-effects.mjs'
@@ -30,10 +33,6 @@ const RELEASE=typeof __FENGSHEN_RELEASE__!=='undefined'&&__FENGSHEN_RELEASE__
 // 预热牌桌小图：每次操作都会整体重渲染，提前解码并常驻引用，避免 iOS 丢弃解码缓存导致整桌图片重绘闪烁。
 const prewarmed=[]
 const prewarmTableArt=()=>{if(prewarmed.length||typeof Image==='undefined')return;for(const src of [...HEROES.map(h=>h.thumbnail),...Object.values(CARDS_BY_TYPE).map(c=>c.thumb||c.image),'assets/heavenly-arena.jpg']){const img=new Image();img.decoding='async';img.src=src;prewarmed.push(img)}}
-// iOS Safari 横屏：工具栏收起的前提是「文档可滚动」（同斗地主方案）。游戏根节点 fixed 不占文档流，
-// 触屏设备上补一块隐形垫层让文档永远可滚；用户上滑即可把导航栏推上去，收起后 visualViewport 触发重测铺满。
-let scrollSpacer=null
-const syncScrollSpacer=()=>{try{if(!matchMedia('(pointer: coarse)').matches)return}catch{return}document.documentElement.classList.add('fs-scrollable');document.body.classList.add('fs-scrollable');if(!scrollSpacer){scrollSpacer=document.createElement('div');scrollSpacer.className='fs-scroll-spacer';scrollSpacer.setAttribute('aria-hidden','true');document.body.append(scrollSpacer)}scrollSpacer.style.height=(innerHeight+120)+'px'}
 // 增量修补（morph）：按位对齐新旧子树，只更新变化的节点与属性，保留未变化
 // 节点的元素身份——img 不销毁重解码、滚动位置与 CSS 动画不中断。此前每次
 // 操作都 innerHTML 整体替换，iOS 上整棵子树销毁后分帧重绘，表现为一选牌全桌闪。
@@ -54,9 +53,11 @@ export class FengshenUI {
     this.resumeSession=restoreSession(load(SAVE,null));this.resumeState=this.resumeSession?.kind==='game'?this.resumeSession.game:null;this.legacySave=load('vectorac.fengshen.internal.save.v1',null)!=null;root.className='fs-app'
     this.onClick=e=>this.click(e);this.onKey=e=>this.key(e)
     this.onVisibility=()=>{clearTimeout(this.timer);if(document.hidden){this.voice.stop();this.music.pause()}else{if(!this.lobby)this.music.unlock();this.schedule()}this.syncClock()}
-    this.onViewport=()=>{const v=window.visualViewport;root.style.setProperty('--fs-height',`${v?.height||innerHeight}px`);root.style.setProperty('--fs-top',`${v?.offsetTop||0}px`);syncScrollSpacer();layoutHand(root);root.querySelector('.fs-hand-card.selected .fs-card-face')?.scrollIntoView({block:'nearest',inline:'nearest'});this.decorateBattle();scaleCards(root)}
+    this.onViewport=()=>{layoutArena(root);layoutHand(root);if(this.selected[0])revealHandCard(root,this.selected[0]);this.decorateBattle();scaleCards(root)}
+    this.viewport=bindGameViewport(root,this.onViewport)
+    this.starGesture=bindStarDrag(root,{getState:()=>this.state?.pending?.kind==='guanxing'?this.star:null,onMove:state=>{this.star=state;this.render()},onInteraction:active=>{this.draggingStars=active;this.syncClock()}})
     this.onScreen=()=>{if(!document.fullscreenElement)screen.orientation?.unlock?.();this.onViewport();this.render()};document.addEventListener('fullscreenchange',this.onScreen)
-    root.addEventListener('click',this.onClick);root.addEventListener('keydown',this.onKey);document.addEventListener('visibilitychange',this.onVisibility);window.addEventListener('resize',this.onViewport);window.visualViewport?.addEventListener('resize',this.onViewport);window.visualViewport?.addEventListener('scroll',this.onViewport)
+    root.addEventListener('click',this.onClick);root.addEventListener('keydown',this.onKey);document.addEventListener('visibilitychange',this.onVisibility);
     this.clockTimer=setInterval(()=>this.tickClock(),250);this.onViewport();this.render();prewarmTableArt()
   }
   reset(){this.selected=[];this.targets=[];this.skill=null;this.as=null;this.choiceIndex=null;this.choiceZone='hand';this.star=null}
@@ -92,7 +93,7 @@ export class FengshenUI {
   syncClock(){
     const s=this.state,human=!this.lobby&&!this.setup&&s&&!s.winner&&(s.pending?.actor??s.current)===0&&s.pending?.kind!=='reveal'&&s.players[0].alive
     const key=human?`${s.revision}:${s.pending?.id||s.phase}`:null
-    this.clock.sync(key,!!human&&!this.auto&&!this.paused&&!document.hidden&&!this.transfer&&!this.draws.length)
+    this.clock.sync(key,!!human&&!this.draggingStars&&!this.auto&&!this.paused&&!document.hidden&&!this.transfer&&!this.draws.length)
   }
   tickClock(){
     if(this.destroyed)return
@@ -127,7 +128,7 @@ export class FengshenUI {
     }
     this.root.querySelectorAll('.fs-draw-flight,.fs-draw-count').forEach(e=>e.remove())
     this.root.querySelectorAll('.fs-draw-receiver').forEach(e=>e.classList.remove('fs-draw-receiver'))
-    const deck=this.root.querySelector('.fs-deck-stack')?.getBoundingClientRect(),bounds=this.root.getBoundingClientRect()
+    const deck=this.root.querySelector('.fs-deck-stack')?.getBoundingClientRect(),bounds=this.root.getBoundingClientRect(),factor=bounds.width/this.root.clientWidth||1
     for(const d of this.draws){
       const receiver=anchor(d.target),to=(d.target===0?this.root.querySelector('.fs-hand'):receiver?.querySelector('.fs-player-info>span:last-child')||receiver)?.getBoundingClientRect()
       if(receiver){receiver.classList.add('fs-draw-receiver');const badge=document.createElement('span');badge.className='fs-draw-count';badge.textContent=`摸牌 +${d.count}`;receiver.append(badge)}
@@ -135,8 +136,8 @@ export class FengshenUI {
       for(let i=0;i<d.count;i++){
         const e=document.createElement('div');e.className='fs-draw-flight';e.dataset.drawTarget=d.target;e.dataset.drawIndex=i+1
         e.innerHTML=`<span class="fs-card-back"><i>封</i><b>暗手牌</b><small>摸牌 ${i+1}/${d.count}</small></span>`
-        const x=to.x+to.width/2-bounds.x-20+i*12,y=to.y+to.height/2-bounds.y-28
-        e.style.setProperty('--from-x',`${deck.x-bounds.x+i*4}px`);e.style.setProperty('--from-y',`${deck.y-bounds.y}px`);e.style.setProperty('--to-x',`${x}px`);e.style.setProperty('--to-y',`${y}px`);e.style.setProperty('--mid-x',`${(deck.x-bounds.x+x)/2}px`);e.style.setProperty('--mid-y',`${(deck.y-bounds.y+y)/2-25}px`);e.style.setProperty('--draw-delay',`${i*140-Math.max(0,Date.now()-(d.started??Date.now()))}ms`);this.root.append(e)
+        const x=(to.x+to.width/2-bounds.x)/factor-20+i*12,y=(to.y+to.height/2-bounds.y)/factor-28
+        e.style.setProperty('--from-x',`${(deck.x-bounds.x)/factor+i*4}px`);e.style.setProperty('--from-y',`${(deck.y-bounds.y)/factor}px`);e.style.setProperty('--to-x',`${x}px`);e.style.setProperty('--to-y',`${y}px`);e.style.setProperty('--mid-x',`${((deck.x-bounds.x)/factor+x)/2}px`);e.style.setProperty('--mid-y',`${((deck.y-bounds.y)/factor+y)/2-25}px`);e.style.setProperty('--draw-delay',`${i*140-Math.max(0,Date.now()-(d.started??Date.now()))}ms`);this.root.append(e)
       }
     }
   }
@@ -325,18 +326,18 @@ export class FengshenUI {
     }
     // 大厅主视觉与详情大图在渲染时直接出原图（见 renderHome/modalContent 的 full=true）。
     if(RELEASE){const label=this.root.querySelector('.fs-brand>small');if(label)label.textContent=label.textContent.replace('内部原型','单机试玩');if(this.modal?.kind==='rules'){const body=this.root.querySelector('.fs-modal-body');if(body)body.innerHTML=body.innerHTML.replace('此为本机内部原型，不代表商业发行或完成原创性审核。','当前为免费单机试玩版，部分人物技能仍在开发；名称、主题与玩法仍需在商业发行前另行审核。')}}
-    layoutHand(this.root)
+    layoutArena(this.root);layoutHand(this.root)
     for(const [key,v]of Object.entries(scrolls)){const e=this.root.querySelector(`[data-scroll="${key}"]`);if(e){e.scrollLeft=v.left;e.scrollTop=v.top}}
-    this.root.querySelector('.fs-hand-card.selected .fs-card-face')?.scrollIntoView({block:'nearest',inline:'nearest'});this.decorateBattle()
+    if(this.selected[0])revealHandCard(this.root,this.selected[0]);this.decorateBattle()
     const ownIds=this.draws.flatMap(d=>d.ownIds)
     for(const id of ownIds)this.root.querySelector(`.fs-hand-card[data-id="${id}"]`)?.classList.add('fs-newly-drawn')
-    if(ownIds.length)this.root.querySelector(`.fs-hand-card[data-id="${ownIds.at(-1)}"] .fs-card-face`)?.scrollIntoView({block:'nearest',inline:'nearest'})
+    if(ownIds.length)revealHandCard(this.root,ownIds.at(-1))
     if(this.transfer||this.draws.length||this.state?.pending?.kind==='reveal')this.root.querySelector('.fs-dock')?.setAttribute('inert','')
     if(this.modal){this.root.querySelectorAll('.fs-header,.fs-lobby,.fs-entry,.fs-setup,.fs-hud,.fs-arena,.fs-status,.fs-dock').forEach(e=>e.inert=true);this.root.querySelector('[data-action="close"]')?.focus()}
     else if(wasModal&&this.returnFocus?.action){const s=`[data-action="${this.returnFocus.action}"]${this.returnFocus.id?`[data-id="${this.returnFocus.id}"]`:''}`;this.root.querySelector(s)?.focus()}
     scaleCards(this.root);this.schedule()
   }
-  destroy(){this.destroyed=true;this.voice.destroy();this.music.destroy();this.clearEffects();clearInterval(this.clockTimer);clearTimeout(this.timer);clearTimeout(this.toastTimer);this.root.removeEventListener('click',this.onClick);this.root.removeEventListener('keydown',this.onKey);document.removeEventListener('fullscreenchange',this.onScreen);document.removeEventListener('visibilitychange',this.onVisibility);window.removeEventListener('resize',this.onViewport);window.visualViewport?.removeEventListener('resize',this.onViewport);window.visualViewport?.removeEventListener('scroll',this.onViewport)}
+  destroy(){this.destroyed=true;this.voice.destroy();this.music.destroy();this.clearEffects();clearInterval(this.clockTimer);clearTimeout(this.timer);clearTimeout(this.toastTimer);this.root.removeEventListener('click',this.onClick);this.root.removeEventListener('keydown',this.onKey);document.removeEventListener('fullscreenchange',this.onScreen);document.removeEventListener('visibilitychange',this.onVisibility);this.viewport.destroy();this.starGesture.destroy()}
 }
 window.__fengshenUI=new FengshenUI(document.getElementById('app'))
 window.__fengshenTheme={version:THEME_VERSION,heroes:HEROES,cards:CARDS_BY_TYPE}
