@@ -8,7 +8,8 @@ function hostility(view, target) {
   const self=view.players[view.seat],p=view.players[target]
   if(target===view.seat)return -5
   const role=self.role,known=p.role,remaining=view.players.filter(p=>p.alive).length
-  const rebelsGone=view.players.filter(p=>!p.alive&&p.role==='rebel').length===2
+  const rebelTotal=view.publicRoleCounts?.rebel||(view.players.length===8?4:view.players.length===5?2:null)
+  const rebelsGone=rebelTotal!=null&&view.players.filter(p=>!p.alive&&p.role==='rebel').length===rebelTotal
   if(role==='lord'||role==='loyal') {
     if(known==='lord'||known==='loyal')return -4
     if(known==='rebel'||known==='renegade')return 4
@@ -58,6 +59,7 @@ function response(view,HERO_BY_ID,isRed) {
   const answers=opts.filter(o=>o.type==='respond').sort((a,b)=>cost(view,a.ids)-cost(view,b.ids))
   if(pending.kind==='discard')return {type:'discard',ids:orderByValue(view).slice(0,pending.count).map(c=>c.id)}
   if(pending.kind==='guess')return opts[(view.revision*7+view.seat)%opts.length]
+  if(pending.kind==='tuxi')return opts.slice().sort((a,b)=>(b.targets||[]).reduce((n,t)=>n+hostility(view,t),0)-(a.targets||[]).reduce((n,t)=>n+hostility(view,t),0))[0]
   if(pending.kind==='pick')return opts.slice().sort((a,b)=>cardValue(b.card,view)-cardValue(a.card,view))[0]
   if(pending.kind==='take') {
     const enemy=hostility(view,pending.target)>0
@@ -101,7 +103,7 @@ const chooseAI=function chooseAI(view) {
         const target=action.targets[0],rel=target==null?0:hostility(view,target)
         if(action.as==='tao')score=18
         else if(action.as==='wine')score=self.marks.wine||!view.legal.some(a=>a.type==='play'&&a.as==='sha'&&a.targets.some(t=>hostility(view,t)>0))?-3:12
-        else if(action.as==='draw')score=15
+        else if(action.as==='draw')score=self.hand.length>self.hp+3?4:15
         else if(CARDS[action.as].category==='equip') {
           const slot=CARDS[action.as].slot,old=self.equip[slot]
           score=!old?9:slot==='weapon'&&(CARDS[action.as].range>CARDS[old.type].range||action.as==='crossbow'&&self.hand.filter(c=>c.type==='sha').length>1)?7:-4
@@ -132,6 +134,13 @@ const chooseAI=function chooseAI(view) {
         } else if(action.skill==='fanjian') {
           const enemy=view.players.filter(p=>p.alive&&p.seat!==view.seat).sort((a,b)=>hostility(view,b.seat)-hostility(view,a.seat))[0]
           candidate={...action,target:enemy.seat};score=hostility(view,enemy.seat)>0&&self.hand.length?6:-3
+        } else if(action.skill==='jieyin'){
+          const target=view.players.filter(p=>p.alive&&p.seat!==view.seat&&HERO_BY_ID[p.heroId].sex==='male'&&p.hp<p.maxHp&&hostility(view,p.seat)<0).sort((a,b)=>a.hp-b.hp)[0]
+          const cards=orderByValue(view).slice(0,2);candidate={...action,target:target?.seat,ids:cards.map(c=>c.id)}
+          score=target&&cards.length===2&&self.role!=='renegade'?(self.hp<self.maxHp?14:7)-cost(view,candidate.ids)*.3:-3
+        } else if(action.skill==='qingnang'){
+          const target=view.players.filter(p=>p.alive&&p.hp<p.maxHp&&hostility(view,p.seat)<0).sort((a,b)=>a.hp-b.hp)[0],cards=orderByValue(view).slice(0,1)
+          candidate={...action,target:target?.seat,ids:cards.map(c=>c.id)};score=target&&cards.length?target.seat===view.seat?14:8:-3
         } else if(action.skill==='jijiang')score=self.marks.jijiangTried?-3:hostility(view,action.target)*2+1
       }
       // Stable tie variation depends only on the public revision and our seat.

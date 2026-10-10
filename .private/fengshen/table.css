@@ -21,6 +21,58 @@
 .fs-playing .fs-player[data-player="2"]{left:28%;top:15px;transform:translateX(-50%)}
 .fs-playing .fs-player[data-player="3"]{right:28%;top:15px;transform:translateX(50%)}
 .fs-playing .fs-player[data-player="4"]{right:16px;bottom:15%}
+/* 多人局座位：按入场人数(.fs-players[data-seats])百分比排布，自适应横竖屏与桌面；
+   作用域选择器优先级高于上方五人局默认规则与各媒体块覆盖，不影响原五人局。 */
+/* 1v1 单骑：唯一对手居中坐上首 */
+.fs-playing .fs-players[data-seats="2"] .fs-player[data-player="1"]{left:50%;right:auto;top:15px;bottom:auto;transform:translateX(-50%)}
+/* 2v2：左右中对峙 */
+.fs-playing .fs-players[data-seats="4"] .fs-player[data-player="1"]{left:16px;right:auto;top:36%;bottom:auto;transform:none}
+.fs-playing .fs-players[data-seats="4"] .fs-player[data-player="2"]{left:50%;right:auto;top:15px;bottom:auto;transform:translateX(-50%)}
+.fs-playing .fs-players[data-seats="4"] .fs-player[data-player="3"]{left:auto;right:16px;top:36%;bottom:auto;transform:none}
+/* 3v3：左右各二、上首居中 */
+.fs-playing .fs-players[data-seats="6"] .fs-player[data-player="1"]{left:16px;right:auto;top:auto;bottom:15%;transform:none}
+.fs-playing .fs-players[data-seats="6"] .fs-player[data-player="2"]{left:16px;right:auto;top:15px;bottom:auto;transform:none}
+.fs-playing .fs-players[data-seats="6"] .fs-player[data-player="3"]{left:50%;right:auto;top:15px;bottom:auto;transform:translateX(-50%)}
+.fs-playing .fs-players[data-seats="6"] .fs-player[data-player="4"]{left:auto;right:16px;top:15px;bottom:auto;transform:none}
+.fs-playing .fs-players[data-seats="6"] .fs-player[data-player="5"]{left:auto;right:16px;top:auto;bottom:15%;transform:none}
+/* 八人局：上首三位、左右各二，将卡整体收窄 */
+.fs-playing .fs-players[data-seats="8"] .fs-player{width:88px}
+.fs-playing .fs-players[data-seats="8"] .fs-player-main{height:128px}
+.fs-playing .fs-players[data-seats="8"] .fs-player[data-player="1"]{left:10px;right:auto;top:auto;bottom:12%;transform:none}
+.fs-playing .fs-players[data-seats="8"] .fs-player[data-player="2"]{left:10px;right:auto;top:15px;bottom:auto;transform:none}
+.fs-playing .fs-players[data-seats="8"] .fs-player[data-player="3"]{left:23%;right:auto;top:15px;bottom:auto;transform:translateX(-50%)}
+.fs-playing .fs-players[data-seats="8"] .fs-player[data-player="4"]{left:50%;right:auto;top:15px;bottom:auto;transform:translateX(-50%)}
+.fs-playing .fs-players[data-seats="8"] .fs-player[data-player="5"]{left:auto;right:23%;top:15px;bottom:auto;transform:translateX(50%)}
+.fs-playing .fs-players[data-seats="8"] .fs-player[data-player="6"]{left:auto;right:10px;top:15px;bottom:auto;transform:none}
+.fs-playing .fs-players[data-seats="8"] .fs-player[data-player="7"]{left:auto;right:10px;top:auto;bottom:12%;transform:none}
+/* 横屏手机：上首牌避开顶栏通栏（牌堆/回合/托管），整体下移；八人局进一步收窄 */
+@media(max-height:559px) and (orientation:landscape){
+  .fs-playing .fs-players[data-seats="4"] .fs-player[data-player="2"],
+  .fs-playing .fs-players[data-seats="6"] .fs-player[data-player="2"],
+  .fs-playing .fs-players[data-seats="6"] .fs-player[data-player="3"],
+  .fs-playing .fs-players[data-seats="6"] .fs-player[data-player="4"],
+  .fs-playing .fs-players[data-seats="8"] .fs-player[data-player="2"],
+  .fs-playing .fs-players[data-seats="8"] .fs-player[data-player="3"],
+  .fs-playing .fs-players[data-seats="8"] .fs-player[data-player="4"],
+  .fs-playing .fs-players[data-seats="8"] .fs-player[data-player="5"],
+  .fs-playing .fs-players[data-seats="8"] .fs-player[data-player="6"]{top:26px}
+  .fs-playing .fs-players[data-seats="4"] .fs-player[data-player="1"],
+  .fs-playing .fs-players[data-seats="4"] .fs-player[data-player="3"]{top:42%}
+  .fs-playing .fs-players[data-seats="8"] .fs-player{width:70px}
+  .fs-playing .fs-players[data-seats="8"] .fs-player-main{height:92px}
+  .fs-playing .fs-players[data-seats="8"] .fs-player[data-player="3"]{left:24%}
+  .fs-playing .fs-players[data-seats="8"] .fs-player[data-player="5"]{right:24%}
+}
+/* 竖屏手机：八人局将卡收窄，两侧上方位移到上首排之下避免重叠 */
+@media(max-width:699px) and (orientation:portrait){
+  .fs-playing .fs-players[data-seats="8"] .fs-player{width:64px}
+  .fs-playing .fs-players[data-seats="8"] .fs-player-main{height:84px}
+  .fs-playing .fs-players[data-seats="8"] .fs-player[data-player="3"]{left:26%}
+  .fs-playing .fs-players[data-seats="8"] .fs-player[data-player="5"]{right:26%}
+  .fs-playing .fs-players[data-seats="8"] .fs-player[data-player="2"],
+  .fs-playing .fs-players[data-seats="8"] .fs-player[data-player="6"]{top:112px}
+  .fs-playing .fs-players[data-seats="6"] .fs-player[data-player="3"]{top:9px}
+}
 .fs-playing .fs-player-main{height:156px;min-height:0;display:block;position:relative;overflow:hidden;border-radius:5px 5px 0 0;padding:0;width:100%}
 .fs-playing .fs-player-main>.fs-portrait{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 14%;border:0;border-radius:0}
 .fs-portrait-shade{position:absolute;inset:0;background:linear-gradient(0deg,#0b2125fa 0%,#0b2125d0 24%,transparent 68%);pointer-events:none}

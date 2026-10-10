@@ -2,6 +2,7 @@
 import { HERO_BY_ID, CARDS, SKILLS, makeDeck } from './core/catalog.mjs'
 import {GODS,GOD_FACTIONS,GOD_ALLIANCES} from './gods.mjs'
 import {FENGSHEN_EXPANSION,EXPANSION_CARDS,expandedDeck} from './fengshen-expansion.mjs'
+import {CANONICAL_BY_ID}from './canonical-roster.mjs'
 
 export const FACTIONS = { zhou:'周', shang:'商', chan:'阐', jie:'截',...GOD_FACTIONS }
 export const ALLIANCES = { zhou:'shu', shang:'wei', chan:'wu', jie:'qun',...GOD_ALLIANCES }
@@ -27,11 +28,25 @@ const rows = [
   ['jinling','金灵圣母','斗府尊神','jie','huangyueying',3,'female',{jizhi:'仙机',qicai:'通法'},'adult regal female immortal, dark turquoise-gold robe and celestial armor, gilded dragon-tiger jade scepter, star map, confident face'],
   ['duobao','多宝道人','万宝归藏','jie','lvmeng',4,'male',{keji:'藏宝'},'solemn adult Taoist with swept-back black hair, saffron and dark violet robes, luminous treasure pagoda and small floating bronze bells'],
 ]
-export const HEROES = rows.map(([id,name,title,faction,baseHero,hp,sex,skillNames,artDirection])=>({
+const draftHeroes = rows.map(([id,name,title,faction,baseHero,hp,sex,skillNames,artDirection])=>({
   id,name,title,faction,baseHero,engineId:baseHero,hp,sex,skillNames,artDirection,
   playable:!!HERO_BY_ID[baseHero], missingSkills:HERO_BY_ID[baseHero]?[]:Object.keys(skillNames),
   image:`assets/heroes/${id}.jpg`, thumbnail:`assets/heroes/${id}-thumb.jpg`,
-})).concat(GODS,FENGSHEN_EXPANSION)
+})).concat(GODS,FENGSHEN_EXPANSION,[
+ {id:'tuxingsun',name:'土行孙',title:'地行神通',faction:'zhou',skillNames:{tuxi:'地行'},artDirection:'adult stocky short-statured earth-travelling Taoist warrior, ochre bronze armor, gold binding rope, cave and earth mist',image:'assets/heroes/tuxingsun.jpg',thumbnail:'assets/heroes/tuxingsun-thumb.jpg'},
+ {id:'shiji',name:'石矶娘娘',title:'白骨洞仙',faction:'jie',skillNames:{luoshen:'石魄',qingguo:'磐影'},artDirection:'dignified adult female stone immortal, slate-grey violet robes, jade headdress and stone talisman, moonlit sacred pillars',image:'assets/heroes/shiji.jpg',thumbnail:'assets/heroes/shiji-thumb.jpg'},
+])
+const newSkillNames={jieyin:'生命之契',xiaoji:'圣翼',kurou:'吐气',jushou:'镇塔',qianxun:'五色护体',lianying:'明光',ganglie:'反震',liegong:'射日',kuanggu:'摄魂',shensu:'疾行',buqu:'护道',bazhen:'卢恩护阵',huoji:'神焰',kanpo:'万智',lianhuan:'月链',niepan:'月生',quhu:'驱兽',jieming:'传卦',qiangxi:'雷锤',tianyi:'天剑',mengjin:'钉魂',shuangxiong:'双魄',huoshou:'海御',zaiqi:'潮生',juxiang:'五光',lieren:'飞石',songwei:'尊道',haoshi:'神赐',dimeng:'神盟',yinghun:'日魂',wansha:'禁生',luanwu:'幻乱',weimu:'诡幕',huashen:'七十二变',xinsheng:'再化',beige:'碧曲',duanchang:'绝曲',ganlu:'补天',buyi:'护生',luoying:'晨辉',jiushi:'醇光',jueqing:'灵刃',shangshi:'夜巡',zhenlie:'圣守',miji:'神谋',anxu:'日恩',zhuiyi:'神恩',xueji:'月矢',huxiao:'狩月',wuji:'破界',zhuikong:'云惧',qiuyuan:'云援'}
+// A source general is indivisible: art factions never determine mechanical aid.
+// Incomplete source profiles remain a gallery entry, not a replacement combo.
+export const HEROES=draftHeroes.map(h=>{
+ const c=CANONICAL_BY_ID[h.id],base=HERO_BY_ID[c.referenceId]
+ const complete=!!base&&base.skills.slice().sort().join('|')===c.skills.slice().sort().join('|')
+ return {...h,baseHero:c.referenceId,engineId:c.referenceId,referenceId:c.referenceId,referenceName:c.referenceName,ruleset:c.ruleset,sourcePack:c.pack,mechanicalFaction:c.mechanicalFaction,hp:c.hp,sex:c.sex,
+   skillNames:Object.fromEntries(c.skills.map((s,i)=>[s,h.skillNames[s]||newSkillNames[s]||c.sourceSkillNames[i]])),
+   playable:complete,missingSkills:complete?[]:c.skills.filter(s=>!SKILLS[s]),
+ }
+})
 export const HERO_BY_THEME_ID=Object.fromEntries(HEROES.map(h=>[h.id,h]))
 export const PLAYABLE_HEROES=HEROES.filter(h=>h.playable)
 export const SECOND_BATCH=[['huangfeihu','黄飞虎','lvbu'],['shiji','石矶娘娘','zhenji'],['tuxingsun','土行孙','zhangliao'],['jinzha','金吒','guanyu'],['muzha','木吒','huangzhong']]
@@ -39,8 +54,7 @@ export const SECOND_BATCH=[['huangfeihu','黄飞虎','lvbu'],['shiji','石矶娘
 // All baseline physical cards retain their IDs, quantities, suit, rank and stats.
 const cardNames={sha:'杀',shan:'闪',tao:'仙桃',duel:'斗法',dismantle:'破阵',snatch:'摄宝',draw:'天机显化',savage:'万妖袭营',arrows:'飞剑齐发',garden:'瑶池仙宴',harvest:'仙山采宝',collateral:'借宝诛敌',nullify:'破法',indulgence:'迷魂阵',lightning:'天雷劫',crossbow:'火尖枪',dualsword:'阴阳双剑',qinggang:'斩仙飞刀',blade:'打神鞭',spear:'混天绫',axe:'番天印',halberd:'金蛟剪',bow:'五色神光',ice:'乾坤圈',bagua:'戊己杏黄旗',renwang:'紫绶仙衣',chitu:'风火轮',dayuan:'金睛兽',zixing:'墨麒麟',jueying:'五色神牛',dilu:'青鸾',zhuahuang:'白鹤'}
 export const CARDS_BY_TYPE=Object.fromEntries(Object.entries(CARDS).map(([type,base])=>[type,{...base,type,baseName:base.name,name:cardNames[type],image:`assets/cards/${type}.jpg`,thumb:`assets/cards/${type}-thumb.webp`,help:base.help}]))
-for(const [type,base]of Object.entries(EXPANSION_CARDS))CARDS_BY_TYPE[type]={...base,type,image:`assets/cards/${type}.jpg`,thumb:`assets/cards/${type}-thumb.webp`}
-export const PLANNED_EQUIPMENT=[]
+export const PLANNED_EQUIPMENT=Object.entries(EXPANSION_CARDS).map(([type,c])=>({type,...c}))
 export const makeExpandedDeck=()=>expandedDeck(makeDeck)
 export function heroForBase(id){return PLAYABLE_HEROES.find(h=>h.engineId===id)||null}
 const aliases=[...PLAYABLE_HEROES.filter(h=>h.baseHero).map(h=>[HERO_BY_ID[h.baseHero].name,h.name]),...Object.values(CARDS_BY_TYPE).map(c=>[c.baseName,c.name]),...HEROES.filter(h=>h.baseHero).flatMap(h=>Object.entries(h.skillNames).filter(([id])=>SKILLS[id]).map(([id,n])=>[SKILLS[id][0],n])),['八卦','杏黄旗'],['青龙刀','打神鞭']]
@@ -61,4 +75,4 @@ export function skillHelp(h,skill){
  return text+(h?.playable&&['jizhi','yingzi','jianxiong','tieji'].includes(skill)?' 有效条件满足时自动发动。':'')
 }
 export const ALLIANCE_NAMES={shu:'青盟',wei:'赤盟',wu:'金盟',qun:'玄盟'}
-export function manifest(){return {codeName:'众神斗法',visibility:'free-demo',rules:'classic-identity-5',heroes:HEROES,cards:CARDS_BY_TYPE,plannedEquipment:PLANNED_EQUIPMENT,deckSize:makeExpandedDeck().length}}
+export function manifest(){return {codeName:'众神斗法',visibility:'free-demo',rules:'classic-identity-original',heroes:HEROES,cards:CARDS_BY_TYPE,plannedEquipment:PLANNED_EQUIPMENT,deckSize:makeDeck().length}}

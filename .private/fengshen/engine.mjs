@@ -2,13 +2,13 @@ import * as baseline from './core/catalog.mjs'
 import { createEngine } from './core/engine.mjs'
 import {createAI} from './core/ai.mjs'
 import { ALLIANCES, PLAYABLE_HEROES, CARDS_BY_TYPE, skillName,makeExpandedDeck } from './theme.mjs'
-export const THEME_VERSION='fengshen-internal-v1'
+export const THEME_VERSION='fengshen-classic-original-v2'
 // Mechanical factions are an explicit alliance adapter, never the old hero's
 // hard-coded nationality. Public base IDs stay intact for the existing local AI.
-const heroes=PLAYABLE_HEROES.map(h=>({...baseline.HERO_BY_ID[h.baseHero],id:h.engineId,name:h.name,hp:h.hp,sex:h.sex,skills:Object.keys(h.skillNames),faction:ALLIANCES[h.faction]}))
+const heroes=PLAYABLE_HEROES.map(h=>({...baseline.HERO_BY_ID[h.baseHero],id:h.engineId,name:h.name,hp:h.hp,sex:h.sex,skills:Object.keys(h.skillNames),faction:h.mechanicalFaction}))
 export const catalog={...baseline,theme:THEME_VERSION,HEROES:heroes,HERO_BY_ID:Object.fromEntries(heroes.map(h=>[h.id,h])),CARDS:CARDS_BY_TYPE,
-  makeDeck:makeExpandedDeck,deckVersion:2,legacyMakeDeck:baseline.makeDeck,
-  individualHandChoices:true,trackBattle:true,animatedJudgments:true,automaticSkills:['jizhi','yingzi','jianxiong','tieji'],
+  makeDeck:baseline.makeDeck,deckVersion:1,
+  individualHandChoices:true,trackBattle:true,animatedJudgments:true,automaticSkills:['jizhi','yingzi','jianxiong','tieji','xiaoji','lianying'],
   skillNames:Object.assign({},...PLAYABLE_HEROES.map(h=>h.skillNames)),
   skillName,
 }
@@ -20,10 +20,10 @@ export function createGame({heroId='jifa',...options}={}) {
   if(!chosen)throw new Error('该角色尚未接入完整技能，不能进入对局')
   return {...engine.createGame({...options,heroId:chosen.engineId}),theme:THEME_VERSION}
 }
-export function createAssignedGame({roles,heroIds,seed}){
+export function createAssignedGame({roles,heroIds,seed,label}){
   const ids=heroIds.map(id=>PLAYABLE_HEROES.find(h=>h.id===id)?.engineId)
   if(ids.some(id=>!id))throw new Error('所选武将的技能尚未接入')
-  return {...engine.createAssignedGame({roles,heroIds:ids,seed}),theme:THEME_VERSION}
+  return {...engine.createAssignedGame({roles,heroIds:ids,seed,label}),theme:THEME_VERSION}
 }
 export function restoreGame(raw){
   if(!raw||raw.theme!==THEME_VERSION)return null

@@ -8,6 +8,21 @@ export const ROLES = {
 }
 export const FACTIONS = { shu: '蜀', wei: '魏', wu: '吴', qun: '群' }
 export const SKILLS = {
+  guicai:['鬼才','一张判定牌生效前，可以用一张手牌替换它；原判定牌弃置。','trigger'],
+  fankui:['反馈','受伤后，可取得伤害来源的一张手牌或装备；不包括判定区。','trigger'],
+  tiandu:['天妒','自己的最终判定牌生效后，可以获得这张牌；被替换掉的旧牌不能获得。','trigger'],
+  yiji:['遗计','每受到一点伤害后，可以摸两张牌，再将其中任意张交给其他角色；不能赠出原有手牌。','trigger'],
+  luoshen:['洛神','准备阶段可以判定；黑色判定牌归自己，并可继续判定，红色则结束。','trigger'],
+  ganglie:['刚烈','受伤后可以判定；不是红桃时，伤害来源弃两张手牌或受到一点伤害。','trigger'],
+  tuxi:['突袭','摸牌阶段，可以不摸牌，改为获得至多两名其他角色的各一张手牌。只选一人也不再摸牌。','trigger'],
+  kongcheng:['空城','没有手牌时，不能成为杀或决斗的目标。','locked'],
+  biyue:['闭月','结束阶段可以摸一张牌。','trigger'],
+  qianxun:['谦逊','不能成为顺手牵羊或乐不思蜀的目标；其他拆牌、伤害和技能仍按正常规则处理。','locked'],
+  lianying:['连营','失去最后一张手牌时，可以摸一张。只有装备被移走不触发；死亡清空手牌也不触发。','trigger'],
+  qingnang:['青囊','出牌阶段限一次，弃一张手牌，让一名角色回复一点体力；可以治疗自己。','active'],
+  jijiu:['急救','只在你的回合外，红色手牌或装备可以当桃使用；自己的回合内不能这样转化。','convert'],
+  jieyin:['结姻','出牌阶段限一次，弃两张手牌，令自己与一名受伤的其他男性各回复一点体力。','active'],
+  xiaoji:['枭姬','每失去一张装备区里的牌，可以摸两张；转交、被取走、被弃置或替换均属于失去。','trigger'],
   qixi: ['奇袭','可以将一张黑色手牌或装备当作过河拆桥使用。','convert'],
   qingguo: ['倾国','可以将一张黑色手牌当作闪使用或打出；装备不能这样转化。','convert'],
   keji: ['克己','本回合出牌阶段没有使用或打出杀时，自动跳过弃牌阶段。','locked'],
@@ -31,6 +46,14 @@ export const SKILLS = {
   wushuang: ['无双', '你的杀需两张闪抵消；与你决斗，对方每轮需打两张杀。', 'locked']
 }
 export const HEROES = [
+  {id:'simayi',name:'司马懿',title:'狼顾之鬼',faction:'wei',hp:3,sex:'male',skills:['fankui','guicai'],emblem:'判'},
+  {id:'guojia',name:'郭嘉',title:'早终先知',faction:'wei',hp:3,sex:'male',skills:['tiandu','yiji'],emblem:'计'},
+  {id:'zhenji',name:'甄姬',title:'洛神',faction:'wei',hp:3,sex:'female',skills:['luoshen','qingguo'],emblem:'洛'},
+  {id:'xiahoudun',name:'夏侯惇',title:'独眼罗刹',faction:'wei',hp:4,sex:'male',skills:['ganglie'],emblem:'烈'},
+  {id:'zhangliao',name:'张辽',title:'前将军',faction:'wei',hp:4,sex:'male',skills:['tuxi'],emblem:'袭',source:'https://www.sanguosha.com/hero/18'},
+  {id:'luxun',name:'陆逊',title:'儒生雄才',faction:'wu',hp:3,sex:'male',skills:['qianxun','lianying'],emblem:'营',source:'https://www.sanguosha.com/hero/14'},
+  {id:'huatuo',name:'华佗',title:'神医',faction:'qun',hp:3,sex:'male',skills:['qingnang','jijiu'],emblem:'医',source:'https://www.sanguosha.com/hero/22'},
+  {id:'sunshangxiang',name:'孙尚香',title:'弓腰姬',faction:'wu',hp:3,sex:'female',skills:['jieyin','xiaoji'],emblem:'姻',source:'https://www.sanguosha.com/hero/25'},
   {id:'ganning',name:'甘宁',title:'锦帆游侠',faction:'wu',hp:4,sex:'male',skills:['qixi'],emblem:'袭'},
   {id:'lvmeng',name:'吕蒙',title:'白衣渡江',faction:'wu',hp:4,sex:'male',skills:['keji'],emblem:'藏'},
   { id: 'liubei', name: '刘备', title: '仁德之君', faction: 'shu', hp: 4, sex: 'male', skills: ['rende', 'jijiang'], emblem: '仁', source: 'https://www.sanguosha.com/hero/1' },

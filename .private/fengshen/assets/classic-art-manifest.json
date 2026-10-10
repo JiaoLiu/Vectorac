@@ -1,0 +1,17 @@
+{
+  "provider": "built-in image_gen",
+  "entries": [
+    {
+      "id": "tuxingsun",
+      "prompt": "Use case: stylized-concept. Asset type: original individual Chinese mythology hero portrait for 众神斗法. Subject: 土行孙, an adult short-statured male earth-travelling Taoist warrior, muscular stocky build, mature mischievous face, tied dark hair, bronze and ochre practical armor, a thin glowing gold binding rope in one hand, emerging from a shadowy rocky cave with swirling earth dust. Single character, waist-up, whole head clearly visible in upper 65 percent, large distinct readable face. Premium hand-painted dark fantasy, refined realistic skin and tactile bronze, jade and fabric, dramatic golden rim light, subordinate ink-mist background. Portrait 2:3, lower 15 percent quiet for code-rendered labels. No text, letters, logos, borders or watermark; original design, do not imitate film or commercial game characters.",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-318e5a28-ec00-4329-a8a4-ff591f1310db.png",
+      "saved": ".private/fengshen/assets/heroes/tuxingsun.jpg"
+    },
+    {
+      "id": "shiji",
+      "prompt": "Use case: stylized-concept. Asset type: original individual Chinese mythology hero portrait for 众神斗法. Subject: 石矶娘娘, a dignified adult female stone immortal, austere beautiful face, long dark hair with an ancient jade headdress, elegant modest slate-grey and deep violet layered robes, one faceted bronze-jade talisman near her hand, weathered sacred stone pillars and a pale moon in subordinate mist. Single character, waist-up, whole head clearly visible in upper 65 percent, large distinct readable face. Premium hand-painted dark fantasy, refined realistic skin and tactile bronze, jade and fabric, dramatic cool silver rim light, subordinate ink-mist background. Portrait 2:3, lower 15 percent quiet for code-rendered labels. No text, letters, logos, borders or watermark; original design, do not imitate film or commercial game characters.",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-a556dedb-dd7c-4577-90fb-f47efec5d18d.png",
+      "saved": ".private/fengshen/assets/heroes/shiji.jpg"
+    }
+  ]
+}

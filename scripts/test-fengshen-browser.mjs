@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
 import {openBrowser} from './browser-cdp.mjs'
-import {createGame,dispatch,playerView,allCards} from '../.private/fengshen/engine.mjs'
+import {createGame,dispatch,playerView,allCards,catalog} from '../.private/fengshen/engine.mjs'
 import {chooseAI} from '../.private/fengshen/engine.mjs'
-import {makeDeck} from '../.private/fengshen/core/catalog.mjs'
+import {HERO_BY_THEME_ID,CARDS_BY_TYPE} from '../.private/fengshen/theme.mjs'
 import {hand,equipment} from './fixtures/sanguo.mjs'
 const browser=await openBrowser({name:'fengshen',baseUrl:process.env.FENGSHEN_TEST_URL||'http://127.0.0.1:4178',route:'/'})
 const {evaluate,tap,viewport,screenshot}=browser
@@ -12,7 +12,7 @@ const startDraft=async()=>{
   const role=await evaluate('window.__fengshenUI.setup.roles[0]')
   if(await evaluate('!!document.querySelector("[data-action=setup-next]")'))await tap('[data-action="setup-next"]')
   await browser.waitFor('!!document.querySelector(".fs-draft-pick")')
-  assert.equal(await evaluate('document.querySelectorAll(".fs-draft-pick").length'),role==='lord'?5:2)
+  assert.equal(await evaluate('document.querySelectorAll(".fs-draft-pick").length'),role==='lord'?5:await evaluate('window.__fengshenUI.setup.candidateCount'))
   await screenshot('draft-'+role)
   await tap('.fs-draft-pick');await tap('[data-action="draft-pick"]')
   await browser.waitFor('!!document.querySelector(".fs-hand")')
@@ -20,7 +20,7 @@ const startDraft=async()=>{
 }
 const geometry=()=>evaluate(`(()=>{const app=document.querySelector('.fs-app').getBoundingClientRect();return {w:innerWidth,h:innerHeight,scroll:document.documentElement.scrollWidth,appBottom:app.bottom,buttons:[...document.querySelectorAll('.fs-action-row button')].map(b=>{const r=b.getBoundingClientRect();return {name:b.textContent,top:r.top,bottom:r.bottom,height:r.height}}),players:[...document.querySelectorAll('.fs-player')].map(b=>{const r=b.getBoundingClientRect();return {top:r.top,bottom:r.bottom}}),dockTop:document.querySelector('.fs-dock')?.getBoundingClientRect().top}})()`)
 function fixture(heroId='yangjian'){
-  const s=createGame({heroId,role:'lord',seed:17});s.deck=makeDeck();s.discard=[];s.processing=[];s.harvestPool=[];s.queue=[];s.pending=null;s.phase='play';s.current=0;s.logs=[];s.lastPlayed=null;s.lastEvent=null
+  const s=createGame({heroId,role:'lord',seed:17});s.deck=catalog.makeDeck();s.discard=[];s.processing=[];s.harvestPool=[];s.queue=[];s.pending=null;s.phase='play';s.current=0;s.logs=[];s.lastPlayed=null;s.lastEvent=null
   for(const p of s.players){p.hand=[];p.equip={weapon:null,armor:null,offenseHorse:null,defenseHorse:null};p.judgment=[];p.marks={sha:0,rende:0};p.hp=p.maxHp;p.alive=true}
   return s
 }
@@ -31,7 +31,7 @@ try{
     assert.equal(await evaluate('document.querySelectorAll("[data-action=role],[data-action=hero]").length'),0,'no role/free-hero preselection')
     assert.ok(await evaluate('document.documentElement.scrollWidth<=innerWidth+1'))
     await screenshot(`${size[0]}-lobby`)
-    await tap('[data-action="heroes"]');assert.equal(await evaluate('document.querySelectorAll(".fs-collection-grid>button").length'),20)
+    await tap('[data-action="heroes"]');assert.equal(await evaluate('document.querySelectorAll(".fs-collection-grid>button").length'),Object.keys(HERO_BY_THEME_ID).length)
     await tap('.fs-collection-grid [data-id="jiangziya"]');await browser.waitFor('!!document.querySelector(".fs-modal")');assert.ok(await evaluate('document.querySelector(".fs-modal-body").textContent.includes("尚未接入")'))
     await tap('[data-action="close"]')
     await startDraft()
@@ -40,7 +40,7 @@ try{
     for(const b of g.buttons)assert.ok(b.top>=0&&b.bottom<=size[1]+1,`${size} button ${JSON.stringify(b)}`)
     for(const p of g.players)assert.ok(p.top>=0&&p.bottom<=g.dockTop+1,`${size} opponent ${JSON.stringify(p)} / dock ${g.dockTop}`)
     await screenshot(`${size[0]}-table`)
-    const s=fixture(),[attack,dodge]=hand(s,0,'sha','shan');await inject(s)
+    const s=fixture(),[attack,dodge]=hand(s,0,'sha','shan');hand(s,1,'shan');await inject(s)
     await tap(`[data-action="card"][data-id="${dodge.id}"]`)
     assert.ok(await evaluate('!!document.querySelector(".fs-conversions [data-value=sha]")'),'九转 conversion is explicit')
     await tap('[data-action="clear"]');await tap(`[data-action="card"][data-id="${attack.id}"]`);await tap('[data-player="1"] [data-action="target"]');await tap('[data-action="confirm"]')
@@ -50,7 +50,7 @@ try{
     const revision=await evaluate('window.__fengshenUI.state.revision')
     await viewport(size[1],size[0]);assert.equal(await evaluate('window.__fengshenUI.state.revision'),revision)
     await viewport(...size)
-    await tap('[data-action="rules"]');const before=await evaluate('window.__fengshenUI.state.revision');await new Promise(r=>setTimeout(r,700));assert.equal(await evaluate('window.__fengshenUI.state.revision'),before,'modal pauses AI')
+    await tap('[data-action="menu"]');await tap('.fs-modal [data-action="rules"]');const before=await evaluate('window.__fengshenUI.state.revision');await new Promise(r=>setTimeout(r,700));assert.equal(await evaluate('window.__fengshenUI.state.revision'),before,'modal pauses AI')
     assert.ok(await evaluate('(()=>{const r=document.querySelector(".fs-modal").getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight+1})()'))
     await browser.send('Input.dispatchKeyEvent',{type:'keyDown',key:'Tab',code:'Tab',modifiers:8});await browser.send('Input.dispatchKeyEvent',{type:'keyUp',key:'Tab',code:'Tab',modifiers:8});assert.ok(await evaluate('document.querySelector(".fs-modal").contains(document.activeElement)'))
     await screenshot(`${size[0]}-rules`);await browser.send('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape'});await browser.send('Input.dispatchKeyEvent',{type:'keyUp',key:'Escape',code:'Escape'});assert.equal(await evaluate('!!document.querySelector(".fs-modal")'),false)
@@ -65,18 +65,18 @@ try{
     await tap(`[data-action="card"][data-id="${peach.id}"]`);await tap('[data-action="confirm"]');assert.ok(await evaluate('window.__fengshenUI.state.players[0].hp>0'))
   }
   await viewport(390,844);await ready();await tap('[data-action="gallery"]')
-  assert.equal(await evaluate('document.querySelectorAll(".fs-gallery>button").length'),39)
+  assert.equal(await evaluate('document.querySelectorAll(".fs-gallery>button").length'),Object.keys(CARDS_BY_TYPE).length)
   await evaluate('[...document.images].forEach(i=>i.loading="eager");true')
   await browser.waitFor('[...document.images].every(i=>i.complete&&i.naturalWidth>0)')
   await screenshot('390-gallery')
   await tap('.fs-gallery [data-id="crossbow"]');assert.equal(await evaluate('document.querySelector("#fs-dialog-title").textContent'),'火尖枪')
   await tap('[data-action="close"]');await startDraft()
-  await evaluate('window.__fengshenUI.voice.setEnabled(false);window.__fengshenUI.pace=1;window.__fengshenUI.render();true')
+  await evaluate('delete window.__fengshenUI.schedule;window.__fengshenUI.voice.setEnabled(false);window.__fengshenUI.pace=1;window.__fengshenUI.render();window.__fengshenUI.schedule();true')
   // Run an entire match through UI timers. Only choose the human seat action.
   let steps=0
-  while(steps++<4000){const s=await evaluate('window.__fengshenUI.state');if(s.winner)break;if((s.pending?.actor??s.current)===0){const a=chooseAI(playerView(s,0));assert.ok(a);assert.ok(await evaluate(`window.__fengshenUI.act(${JSON.stringify(a)})`))}else await new Promise(r=>setTimeout(r,3))}
-  const finished=await evaluate('window.__fengshenUI.state');assert.ok(finished.winner);assert.equal(allCards(finished).length,121)
-  await tap('[data-action="report"]');assert.equal(await evaluate('document.querySelectorAll(".fs-role-reveal>span").length'),5);await screenshot('390-result')
+  while(steps++<15000){const s=await evaluate('window.__fengshenUI.state');if(s.winner)break;if((s.pending?.actor??s.current)===0){const a=chooseAI(playerView(s,0));assert.ok(a);assert.ok(await evaluate(`window.__fengshenUI.act(${JSON.stringify(a)})`))}else if(s.pending?.kind==='reveal')assert.ok(await evaluate(`window.__fengshenUI.act(${JSON.stringify({type:'ack',seat:s.pending.actor})})`));else await new Promise(r=>setTimeout(r,3))}
+  const finished=await evaluate('window.__fengshenUI.state');assert.ok(finished.winner);assert.equal(allCards(finished).length,catalog.makeDeck().length)
+  await tap('[data-action="menu"]');await tap('.fs-modal [data-action="report"]');assert.equal(await evaluate('document.querySelectorAll(".fs-role-reveal>span").length'),5);await screenshot('390-result')
   // A reload can cancel an intercepted image before CDP's continue arrives.
   // Ignore only that exact transport race, not application exceptions.
   assert.deepEqual(browser.errors.filter(e=>e!==JSON.stringify({code:-32602,message:'Invalid InterceptionId.'})),[])

@@ -21,8 +21,8 @@ const labelSkill = (s,seat,skill,fallback) => catalog.skillName?.(player(s,seat)
 const announceSkill = (s,seat,skill) => note(s,`${name(s,seat)}自动发动${catalog.skillName?.(player(s,seat).heroId,skill)||catalog.skillNames?.[skill]||skill}`,{kind:'skill',seat,skill})
 function random(s) { s.seed = (Math.imul(s.seed, 1664525) + 1013904223) >>> 0; return s.seed / 4294967296 }
 function shuffle(s, cards) { const out = cards.slice(); for (let i = out.length - 1; i > 0; i--) { const j = Math.floor(random(s) * (i + 1)); [out[i],out[j]] = [out[j],out[i]] } return out }
-function orderFrom(s, start) { return Array.from({ length: 5 }, (_, i) => (start + i) % 5).filter(seat => player(s, seat).alive) }
-function nextAlive(s, seat) { return orderFrom(s, (seat + 1) % 5)[0] }
+function orderFrom(s, start) { return Array.from({ length: s.players.length }, (_, i) => (start + i) % s.players.length).filter(seat => player(s, seat).alive) }
+function nextAlive(s, seat) { return orderFrom(s, (seat + 1) % s.players.length)[0] }
 function topCard(s) {
   if (!s.deck.length && s.discard.length) { s.deck = shuffle(s, s.discard); s.discard = []; note(s, '弃牌堆洗回牌堆') }
   return s.deck.shift() || null
@@ -35,14 +35,16 @@ function draw(s, seat, count, cause=null) {
 }
 function heal(s, seat, amount) { const p = player(s, seat); p.hp = Math.min(p.maxHp, p.hp + amount); note(s, `${name(s, seat)}回复 ${amount} 点体力`) }
 function ownedCards(p) { return p.hand.concat(slots.map(slot => p.equip[slot]).filter(Boolean)) }
+function handEmptied(s,p){if(p.alive&&!p.hand.length&&hasSkill(p,'lianying'))enqueue(s,{type:'equipmentDraw',seat:p.seat,count:1,skill:'lianying'})}
 function unequip(s,p,slot){
  const card=p.equip[slot];p.equip[slot]=null
  if(card?.type==='silverlion'&&p.alive&&p.hp>0&&p.hp<p.maxHp)heal(s,p.seat,1)
+ if(card&&p.alive&&hasSkill(p,'xiaoji'))enqueue(s,{type:'equipmentDraw',seat:p.seat,count:2,skill:'xiaoji'})
  return card
 }
 function removeOwned(p, id, s) {
   const index = p.hand.findIndex(c => c.id === id)
-  if (index >= 0) return p.hand.splice(index, 1)[0]
+  if (index >= 0) {const c=p.hand.splice(index, 1)[0];handEmptied(s,p);return c}
   const slot = slots.find(slot => p.equip[slot]?.id === id)
   if (slot) return unequip(s,p,slot)
   throw new Error('请选择自己的牌')
@@ -78,12 +80,13 @@ function attackRange(s, seat, excluded = []) {
   return w && !excluded.includes(w.id) ? CARDS[w.type].range : 1
 }
 function unlimited(p, ids = []) { return hasSkill(p, 'paoxiao') || p.equip.weapon?.type === 'crossbow' && !ids.includes(p.equip.weapon.id) }
-function canConvert(p, cards, as) {
+function canConvert(p, cards, as, s) {
   if (cards.length === 1 && p.hand.some(c => c.id === cards[0].id) && cards[0].type === as) return true
   if (cards.length === 1 && as === 'sha' && hasSkill(p,'wusheng') && isRed(cards[0])) return true
   if(cards.length===1&&as==='sha'&&p.hand.some(c=>c.id===cards[0].id)&&slashCard(cards[0]))return true
   if(cards.length===1&&as==='dismantle'&&hasSkill(p,'qixi')&&!isRed(cards[0]))return true
   if(cards.length===1&&as==='shan'&&hasSkill(p,'qingguo')&&!isRed(cards[0])&&p.hand.some(c=>c.id===cards[0].id))return true
+  if(cards.length===1&&as==='tao'&&hasSkill(p,'jijiu')&&isRed(cards[0])&&s&&s.current!==p.seat)return true
   if (cards.length === 1 && hasSkill(p,'longdan') && p.hand.some(c => c.id === cards[0].id)
     && (as === 'sha' && cards[0].type === 'shan' || as === 'shan' && slashCard(cards[0]))) return true
   return as === 'sha' && cards.length === 2 && p.equip.weapon?.type === 'spear' && cards.every(card => p.hand.some(c => c.id === card.id))
@@ -97,11 +100,11 @@ function selectedCards(s, seat, ids) {
 function targetCardCount(p) { return ownedCards(p).length + p.judgment.length }
 function targetsFor(s, seat, as, ids = []) {
   const p = player(s, seat), others = aliveSeats(s).filter(t => t !== seat)
-  if (as === 'sha') return others.filter(t => distance(s, seat, t, ids) <= attackRange(s, seat, ids))
-  if (as === 'snatch') return others.filter(t => targetCardCount(player(s,t)) && (hasSkill(p,'qicai') || distance(s,seat,t,ids) <= 1))
+  if (as === 'sha') return others.filter(t => !(hasSkill(player(s,t),'kongcheng')&&!player(s,t).hand.length)&&distance(s, seat, t, ids) <= attackRange(s, seat, ids))
+  if (as === 'snatch') return others.filter(t => !hasSkill(player(s,t),'qianxun')&&targetCardCount(player(s,t)) && (hasSkill(p,'qicai') || distance(s,seat,t,ids) <= 1))
   if (as === 'dismantle') return others.filter(t => targetCardCount(player(s,t)))
-  if (as === 'duel') return others
-  if (as === 'indulgence') return others.filter(t => !player(s,t).judgment.some(c => c.type === as))
+  if (as === 'duel') return others.filter(t=>!(hasSkill(player(s,t),'kongcheng')&&!player(s,t).hand.length))
+  if (as === 'indulgence') return others.filter(t => !hasSkill(player(s,t),'qianxun')&&!player(s,t).judgment.some(c => c.type === as))
   if (as === 'collateral') return others.filter(t => player(s,t).equip.weapon && aliveSeats(s).some(v => v !== t && distance(s,t,v) <= attackRange(s,t)))
   return []
 }
@@ -114,8 +117,8 @@ function combinations(items, min, max = min) {
   const walk = (at, chosen) => { if (chosen.length >= min) out.push(chosen.slice()); if (chosen.length === max) return; for (let i = at; i < items.length; i++) { chosen.push(items[i]); walk(i+1,chosen); chosen.pop() } }
   walk(0,[]); return out
 }
-function conversions(p, as) {
-  const out = ownedCards(p).filter(c => canConvert(p,[c],as)).map(c => ({ ids: [c.id], as }))
+function conversions(p, as, s) {
+  const out = ownedCards(p).filter(c => canConvert(p,[c],as,s)).map(c => ({ ids: [c.id], as }))
   if (as === 'sha' && p.equip.weapon?.type === 'spear') out.push(...combinations(p.hand.map(c => c.id),2).map(ids => ({ids,as})))
   return out
 }
@@ -126,14 +129,20 @@ function supportCandidates(s, seat, as) {
 }
 function responseOptions(s, pending) {
   const p = player(s,pending.actor), opts = []
+  if(pending.kind==='tuxi'){
+    const targets=s.players.filter(t=>t.alive&&t.seat!==pending.actor&&t.hand.length).map(t=>t.seat)
+    return [{type:'choose',value:'normal',label:'正常摸两张'},...combinations(targets,1,2).map(targets=>({type:'choose',value:targets.join(','),targets,label:'获取'+targets.map(t=>name(s,t)).join('、')+'各一张手牌'}))]
+  }
+  if(pending.kind==='judge-replace')return p.hand.map(c=>({type:'respond',ids:[c.id],as:'judgment'})).concat({type:'pass'})
+  if(pending.kind==='yiji')return [{type:'choose',value:'keep',label:'保留剩余的牌'},...combinations(pending.ids.filter(id=>p.hand.some(c=>c.id===id)),1,2).flatMap(ids=>aliveSeats(s).filter(t=>t!==pending.actor).map(target=>({type:'give',ids,target})))]
   if(pending.kind==='reveal')return [{type:'ack'}]
   if (pending.kind === 'response' || pending.kind === 'support' || pending.kind === 'rescue' || pending.kind === 'counter' || pending.kind === 'blade') {
     const as = pending.as
-    opts.push(...conversions(p,as).map(c => ({ ...c, type: 'respond' })))
+    opts.push(...conversions(p,as,s).map(c => ({ ...c, type: 'respond' })))
     if(pending.kind==='rescue'&&pending.actor===pending.target&&CARDS.wine)opts.push(...p.hand.filter(c=>c.type==='wine').map(c=>({type:'respond',as:'wine',ids:[c.id]})))
     if (as === 'shan' && p.equip.armor?.type === 'bagua' && !pending.ignoreArmor && !pending.baguaTried) opts.push({ type:'bagua' })
     if (pending.kind === 'response' && !pending.supportTried && supportCandidates(s,pending.actor,as).length) opts.push({ type:'support' })
-  } else if (pending.kind === 'discard') opts.push({ type:'discard', count:pending.count })
+  } else if (pending.kind === 'discard') {if(p.hand.length>=pending.count)opts.push({ type:'discard', count:pending.count });if(pending.canPass)opts.push({type:'pass'})}
   else if (pending.kind === 'choice') opts.push(...pending.choices.map(choice => ({ type:'choose', value:choice.value, label:choice.label })))
   else if (pending.kind === 'guess') opts.push(...Object.keys({spade:1,heart:1,club:1,diamond:1}).map(value => ({type:'choose',value})))
   else if (pending.kind === 'pick') opts.push(...pending.pool.map(c => ({type:'choose',value:c.id,card:clone(c)})))
@@ -141,8 +150,8 @@ function responseOptions(s, pending) {
     const target = player(s,pending.target)
     if (catalog.individualHandChoices) opts.push(...target.hand.map((_,index)=>({type:'choose',value:`hand:${index}`,label:`手牌 ${index+1}`,zone:'hand',hidden:true})))
     else if (target.hand.length) opts.push({type:'choose',value:'hand',label:`随机手牌（${target.hand.length} 张）`})
-    for (const slot of slots) if (target.equip[slot]) opts.push({type:'choose',value:target.equip[slot].id,card:clone(target.equip[slot]),zone:'equipment'})
-    if (!pending.equipmentOnly) opts.push(...target.judgment.map(c=>({type:'choose',value:c.id,card:clone(c),zone:'judgment'})))
+    if(!pending.handOnly)for (const slot of slots) if (target.equip[slot]) opts.push({type:'choose',value:target.equip[slot].id,card:clone(target.equip[slot]),zone:'equipment'})
+    if (!pending.equipmentOnly&&!pending.handOnly) opts.push(...target.judgment.map(c=>({type:'choose',value:c.id,card:clone(c),zone:'judgment'})))
   } else if (pending.kind === 'axe') {
     opts.push(...combinations(ownedCards(p).filter(c=>c.id !== p.equip.weapon?.id).map(c=>c.id),2).map(ids=>({type:'respond',ids,as:'axe'})))
   }
@@ -169,6 +178,8 @@ function legalActions(s, seat) {
     } else actions.push({type:'play',...use,targets:[]})
   }
   for (const skill of ['rende','zhiheng','kurou','fanjian']) if (hasSkill(p,skill) && !(['zhiheng','fanjian'].includes(skill) && p.marks[skill]) && (skill !== 'fanjian' && skill !== 'rende' || p.hand.length)) actions.push({type:'skill',skill})
+  if(hasSkill(p,'jieyin')&&!p.marks.jieyin&&p.hand.length>=2&&s.players.some(t=>t.alive&&t.seat!==seat&&hero(t).sex==='male'&&t.hp<t.maxHp))actions.push({type:'skill',skill:'jieyin'})
+  if(hasSkill(p,'qingnang')&&!p.marks.qingnang&&p.hand.length&&s.players.some(t=>t.alive&&t.hp<t.maxHp))actions.push({type:'skill',skill:'qingnang'})
   if (supportCandidates(s,seat,'sha').length && (p.marks.sha<1 || unlimited(p))) for (const target of targetsFor(s,seat,'sha')) actions.push({type:'skill',skill:'jijiang',target})
   actions.push({type:'end'}); return actions
 }
@@ -186,16 +197,16 @@ function createGame({ heroId = HEROES[0].id, role = 'random', seed = Date.now() 
 }
 // The ready-room performs identity assignment and draft first. Initial dealing
 // must preserve those choices, not randomize them a second time.
-function createAssignedGame({roles,heroIds,seed=Date.now()>>>0}) {
-  const counts={lord:1,loyal:1,rebel:2,renegade:1}
-  if(!Array.isArray(roles)||roles.length!==5||Object.entries(counts).some(([r,n])=>roles.filter(x=>x===r).length!==n))throw new Error('身份配置无效')
-  if(!Array.isArray(heroIds)||heroIds.length!==5||new Set(heroIds).size!==5||heroIds.some(id=>!HERO_BY_ID[id]))throw new Error('武将配置无效或重复')
+function createAssignedGame({roles,heroIds,seed=Date.now()>>>0,label='五人身份局'}) {
+  const ROLE_SET=['lord','loyal','rebel','renegade']
+  if(!Array.isArray(roles)||roles.length<2||roles.length>8||roles.some(r=>!ROLE_SET.includes(r))||roles.filter(r=>r==='lord').length!==1||!roles.includes('rebel')||roles.filter(r=>r==='renegade').length>1)throw new Error('身份配置无效')
+  if(!Array.isArray(heroIds)||heroIds.length!==roles.length||new Set(heroIds).size!==roles.length||heroIds.some(id=>!HERO_BY_ID[id]))throw new Error('武将配置无效或重复')
   const assigned=roles.slice(),heroes=heroIds.map(id=>HERO_BY_ID[id])
-  const s = { version:VERSION, seed:seed>>>0, revision:0, phase:'resolve', current:0, turns:0, players:[], deck:[], discard:[], processing:[], harvestPool:[], queue:[], pending:null, logs:[], eventId:0, promptId:0, suspicion:[0,0,0,0,0], winner:null, lastEvent:null }
+  const s = { version:VERSION, seed:seed>>>0, revision:0, phase:'resolve', current:0, turns:0, players:[], deck:[], discard:[], processing:[], harvestPool:[], queue:[], pending:null, logs:[], eventId:0, promptId:0, suspicion:Array(roles.length).fill(0), winner:null, lastEvent:null }
   if(catalog.deckVersion)s.deckVersion=catalog.deckVersion
   s.players = heroes.map((h,seat)=>({seat,heroId:h.id,role:assigned[seat],hp:h.hp+(assigned[seat]==='lord'?1:0),maxHp:h.hp+(assigned[seat]==='lord'?1:0),alive:true,hand:[],equip:Object.fromEntries(slots.map(slot=>[slot,null])),judgment:[],marks:{sha:0}}))
   s.deck = shuffle(s,makeDeck()); s.players.forEach(p=>draw(s,p.seat,4))
-  s.current = assigned.indexOf('lord'); note(s, `${name(s,s.current)}担任主公，五人身份局开始`)
+  s.current = assigned.indexOf('lord'); note(s, `${name(s,s.current)}担任主公，${label}开始`)
   s.queue.push({type:'turnStart',seat:s.current}); settle(s); return s
 }
 function winCheck(s) {
@@ -228,7 +239,7 @@ function openRescue(s, context) {
   if(!p.alive||p.hp>0)return
   const order=context.order||orderFrom(s,s.current)
   const cursor=context.cursor||0
-  for(let i=cursor;i<order.length;i++) if(player(s,order[i]).alive && (conversions(player(s,order[i]),'tao').length||order[i]===context.target&&player(s,order[i]).hand.some(c=>c.type==='wine'))) {
+  for(let i=cursor;i<order.length;i++) if(player(s,order[i]).alive && (conversions(player(s,order[i]),'tao',s).length||order[i]===context.target&&player(s,order[i]).hand.some(c=>c.type==='wine'))) {
     makePending(s,{kind:'rescue',actor:order[i],as:'tao',target:context.target,source:context.source,order,cursor:i});return
   }
   die(s,context.target,context.source)
@@ -256,6 +267,7 @@ function takeCard(s, pending, choice) {
   }
   else if(target.judgment.some(c=>c.id===choice) && !pending.equipmentOnly) card=target.judgment.splice(target.judgment.findIndex(c=>c.id===choice),1)[0]
   else card=removeOwned(target,choice,s)
+  if(choice==='hand'||choice.startsWith('hand:'))handEmptied(s,target)
   if(pending.mode==='snatch')player(s,pending.actor).hand.push(card);else s.discard.push(card)
   note(s,`${name(s,pending.actor)}${pending.mode==='snatch'?'获得':'弃置'}了${name(s,pending.target)}的${(choice==='hand'||choice.startsWith('hand:'))&&pending.mode==='snatch'?'一张手牌':CARDS[card.type].name}`)
   if(pending.repeat>1 && ownedCards(target).length) enqueue(s,{type:'take',...pending,repeat:pending.repeat-1})
@@ -316,15 +328,68 @@ function applyJudgment(s,target,card,judge){
   else if(judge.suit==='spade'&&judge.rank>=2&&judge.rank<=9){s.discard.push(card);enqueue(s,{type:'damage',source:null,target,amount:3,cardIds:[card.id]})}
   else passLightning(s,target,card)
 }
+function beginJudgment(s,ctx){
+ const judge=topCard(s)
+ if(!judge){note(s,'没有可用判定牌');applyFinalJudgment(s,{...ctx,judge:null});return}
+ s.processing.push(judge);enqueue(s,{type:'judgmentScan',ctx:{...ctx,judgeId:judge.id},cursor:0})
+}
+function beginYiji(s,seat){
+ const p=player(s,seat),ids=[]
+ for(let i=0;i<2;i++){const c=topCard(s);if(!c)break;p.hand.push(c);ids.push(c.id)}
+ if(ids.length){note(s,`${name(s,seat)}发动${labelSkill(s,seat,'yiji','遗计')}获得${ids.length}张牌`,{kind:'skill',seat,skill:'yiji'});makePending(s,{kind:'yiji',actor:seat,ids})}
+}
+function judgmentScan(s,event){
+ const order=orderFrom(s,s.current)
+ for(let i=event.cursor;i<order.length;i++){
+  const p=player(s,order[i])
+  if(hasSkill(p,'guicai')&&p.hand.length){makePending(s,{kind:'judge-replace',actor:p.seat,target:event.ctx.owner,skill:'guicai',card:clone(s.processing.find(c=>c.id===event.ctx.judgeId)),event:{...event,cursor:i+1}});return}
+ }
+ const ctx=event.ctx,judge=s.processing.find(c=>c.id===ctx.judgeId);if(!judge)throw new Error('判定牌丢失')
+ const hit=ctx.kind==='indulgence'?judge.suit!=='heart':ctx.kind==='lightning'?judge.suit==='spade'&&judge.rank>=2&&judge.rank<=9:ctx.kind==='luoshen'?!isRed(judge):ctx.kind==='ganglie'?judge.suit!=='heart':isRed(judge)
+ const label=CARDS[ctx.kind]?.name||labelSkill(s,ctx.owner,ctx.kind,ctx.kind)
+ note(s,`${name(s,ctx.owner)}判定${label}：${{spade:'♠',heart:'♥',club:'♣',diamond:'♦'}[judge.suit]}${judge.rank}`)
+ if(catalog.animatedJudgments)makePending(s,{kind:'reveal',actor:ctx.owner,target:ctx.owner,card:clone(judge),delayType:ctx.kind,label,hit,event:{type:'judgmentComplete',ctx}})
+ else enqueue(s,{type:'judgmentComplete',ctx})
+}
+function judgmentComplete(s,ctx,keep){
+ const i=s.processing.findIndex(c=>c.id===ctx.judgeId);if(i<0)throw new Error('最终判定牌丢失')
+ const judge=s.processing[i],p=player(s,ctx.owner)
+ if(keep==null&&p.alive&&hasSkill(p,'tiandu')){
+  if(autoSkill('tiandu')){announceSkill(s,p.seat,'tiandu');keep=true}
+  else {makePending(s,{kind:'choice',actor:p.seat,skill:'tiandu',event:{type:'judgmentComplete',ctx},choices:[{value:'yes',label:'天妒：获得最终判定牌'},{value:'no',label:'不获得'}]});return}
+ }
+ s.processing.splice(i,1)
+ if(p.alive&&(keep||ctx.kind==='luoshen'&&!isRed(judge)))p.hand.push(judge);else s.discard.push(judge)
+ applyFinalJudgment(s,{...ctx,judge:clone(judge)})
+}
+function applyFinalJudgment(s,ctx){
+ const judge=ctx.judge,p=player(s,ctx.owner)
+ if(ctx.kind==='indulgence'||ctx.kind==='lightning'){
+  const i=s.processing.findIndex(c=>c.id===ctx.delayId);if(i<0)return
+  const [delay]=s.processing.splice(i,1)
+  if(judge)applyJudgment(s,ctx.owner,delay,judge);else s.discard.push(delay)
+ }else if(ctx.kind==='bagua'){
+  if(judge&&isRed(judge))successfulResponse(s,ctx.response);else makePending(s,ctx.response)
+ }else if(ctx.kind==='tieji'){
+  ctx.attack.ironChecked=true;ctx.attack.unavoidable=!!judge&&isRed(judge);enqueue(s,ctx.attack)
+ }else if(ctx.kind==='luoshen'){
+  if(judge&&!isRed(judge)&&p.alive)enqueue(s,{type:'luoshenAsk',seat:ctx.owner})
+ }else if(ctx.kind==='ganglie'&&judge&&judge.suit!=='heart'&&player(s,ctx.source)?.alive){
+  const source=player(s,ctx.source)
+  if(source.hand.length>=2)makePending(s,{kind:'discard',actor:ctx.source,target:ctx.source,source:ctx.owner,skill:'ganglie',mode:'ganglie',count:2,canPass:true})
+  else enqueue(s,{type:'damage',source:ctx.owner,target:ctx.source,amount:1,cardIds:[]})
+ }
+}
 function settleEvent(s,event) {
   switch(event.type) {
     case 'turnStart': {
       const p=player(s,event.seat); if(!p.alive){enqueue(s,{type:'turnEnd',seat:event.seat});break}
       s.current=event.seat;s.turns++;s.phase='resolve';p.marks={sha:0,rende:0};note(s,`第 ${s.turns} 回合 · ${name(s,event.seat)}`)
-      enqueue(s,...p.judgment.slice().reverse().map(c=>({type:'delayed',target:event.seat,cardId:c.id})),{type:'drawPhase',seat:event.seat},{type:'playPhase',seat:event.seat});break
+      enqueue(s,...(hasSkill(p,'luoshen')?[{type:'luoshenAsk',seat:event.seat}]:[]),...p.judgment.slice().reverse().map(c=>({type:'delayed',target:event.seat,cardId:c.id})),{type:'drawPhase',seat:event.seat},{type:'playPhase',seat:event.seat});break
     }
     case 'drawPhase': {
       const p=player(s,event.seat);if(!p.alive)break
+      if(hasSkill(p,'tuxi')&&s.players.some(t=>t.alive&&t.seat!==event.seat&&t.hand.length)){makePending(s,{kind:'tuxi',actor:event.seat,skill:'tuxi'});break}
       if(hasSkill(p,'yingzi')&&autoSkill('yingzi')&&!hasSkill(p,'luoyi')){announceSkill(s,event.seat,'yingzi');draw(s,event.seat,3)}
       else if(hasSkill(p,'luoyi')||hasSkill(p,'yingzi'))makePending(s,{kind:'choice',actor:event.seat,skill:hasSkill(p,'luoyi')?'luoyi':'yingzi',choices:[{value:'yes',label:hasSkill(p,'luoyi')?'裸衣：少摸一张，增强伤害':'英姿：额外摸一张'},{value:'no',label:'正常摸两张'}]})
       else draw(s,event.seat,2);break
@@ -336,7 +401,7 @@ function settleEvent(s,event) {
       else if(p.alive && p.hand.length>Math.max(0,p.hp))makePending(s,{kind:'discard',actor:event.seat,count:p.hand.length-Math.max(0,p.hp)})
       else enqueue(s,{type:'turnEnd',seat:event.seat});break
     }
-    case 'turnEnd': enqueue(s,{type:'turnStart',seat:nextAlive(s,event.seat)});break
+    case 'turnEnd': enqueue(s,...(player(s,event.seat).alive&&hasSkill(player(s,event.seat),'biyue')?[{type:'equipmentDraw',seat:event.seat,count:1,skill:'biyue'}]:[]),{type:'turnStart',seat:nextAlive(s,event.seat)});break
     case 'finishCard': finishCards(s,event.ids);break
     case 'counter': counter(s,event.chain);break
     case 'gate': gate(s,event.effect,event.cardType,event.source,event.target,event.cancel);break
@@ -367,16 +432,34 @@ function settleEvent(s,event) {
       if(hasSkill(p,'jianxiong')&&ids.length){
         if(autoSkill('jianxiong')){announceSkill(s,event.target,'jianxiong');choice(s,{actor:event.target,skill:'jianxiong',ids,choices:[{value:'yes'}]},'yes')}
         else makePending(s,{kind:'choice',actor:event.target,skill:'jianxiong',ids,choices:[{value:'yes',label:'奸雄：获得伤害牌'},{value:'no',label:'不发动'}]})
-      }break
+      }
+      if(hasSkill(p,'fankui')&&event.source!=null&&player(s,event.source)?.alive&&ownedCards(player(s,event.source)).length)makePending(s,{kind:'choice',actor:event.target,skill:'fankui',event,choices:[{value:'yes',label:'反馈：取得伤害来源一张牌'},{value:'no',label:'不发动'}]})
+      if(hasSkill(p,'ganglie')&&event.source!=null&&player(s,event.source)?.alive)makePending(s,{kind:'choice',actor:event.target,skill:'ganglie',event,choices:[{value:'yes',label:'刚烈：进行判定'},{value:'no',label:'不发动'}]})
+      if(hasSkill(p,'yiji'))enqueue(s,...Array.from({length:event.amount},()=>({type:'yijiOffer',seat:event.target})))
+      break
     }
     case 'rescue': openRescue(s,event);break
     case 'heal': if(player(s,event.target).alive){heal(s,event.target,1);suspect(s,event.source,event.target,false)}break
     case 'draw': draw(s,event.target,event.count,event.cause);break
+    case 'yijiOffer': if(player(s,event.seat).alive){
+      if(autoSkill('yiji'))beginYiji(s,event.seat)
+      else makePending(s,{kind:'choice',actor:event.seat,skill:'yiji',choices:[{value:'yes',label:'遗计：摸两张并分配'},{value:'no',label:'不发动'}]})
+    }break
+    case 'luoshenAsk': if(player(s,event.seat).alive){
+      if(autoSkill('luoshen')){announceSkill(s,event.seat,'luoshen');beginJudgment(s,{owner:event.seat,kind:'luoshen'})}
+      else makePending(s,{kind:'choice',actor:event.seat,skill:'luoshen',choices:[{value:'yes',label:'洛神：判定黑牌归自己'},{value:'no',label:'停止判定'}]})
+    }break
+    case 'judgmentScan': judgmentScan(s,event);break
+    case 'judgmentComplete': judgmentComplete(s,event.ctx);break
+    case 'equipmentDraw': if(player(s,event.seat).alive){
+      if(autoSkill(event.skill)){announceSkill(s,event.seat,event.skill);draw(s,event.seat,event.count)}
+      else makePending(s,{kind:'choice',actor:event.seat,skill:event.skill,count:event.count,choices:[{value:'yes',label:`${event.skill==='xiaoji'?'枭姬':event.skill==='biyue'?'闭月':'连营'}：摸${event.count}张牌`},{value:'no',label:'不发动'}]})
+    }break
     case 'jizhi':
       if(!player(s,event.seat).alive)break
       if(autoSkill('jizhi')){announceSkill(s,event.seat,'jizhi');draw(s,event.seat,1)}
       else makePending(s,{kind:'choice',actor:event.seat,skill:'jizhi',choices:[{value:'yes',label:'集智：摸一张'},{value:'no',label:'不发动'}]});break
-    case 'take': if(targetCardCount(player(s,event.target)))makePending(s,{...event,kind:'take',actor:event.actor??event.source});break
+    case 'take': if(event.handOnly?player(s,event.target).hand.length:event.equipmentOnly?ownedCards(player(s,event.target)).length:targetCardCount(player(s,event.target)))makePending(s,{...event,kind:'take',actor:event.actor??event.source});break
     case 'harvest': {
       if(!player(s,event.target).alive||!s.harvestPool.length)break
       makePending(s,{kind:'pick',actor:event.target,pool:clone(s.harvestPool)});break
@@ -386,13 +469,7 @@ function settleEvent(s,event) {
     case 'delayed': delayed(s,event);break
     case 'judgeResult': {
       const p=player(s,event.target),index=p.judgment.findIndex(c=>c.id===event.cardId);if(index<0||!p.alive)break
-      const card=p.judgment.splice(index,1)[0], judge=topCard(s)
-      if(!judge){s.discard.push(card);break}s.discard.push(judge);note(s,`${name(s,event.target)}判定 ${CARDS[card.type].name}：${{spade:'♠',heart:'♥',club:'♣',diamond:'♦'}[judge.suit]}${judge.rank}`)
-      if(catalog.animatedJudgments){
-        s.processing.push(card)
-        const hit=card.type==='indulgence'?judge.suit!=='heart':judge.suit==='spade'&&judge.rank>=2&&judge.rank<=9
-        makePending(s,{kind:'reveal',actor:event.target,target:event.target,card:clone(judge),delayType:card.type,hit,event:{type:'judgeApply',target:event.target,cardId:card.id,judgeId:judge.id}})
-      }else applyJudgment(s,event.target,card,judge)
+      const card=p.judgment.splice(index,1)[0];s.processing.push(card);beginJudgment(s,{owner:event.target,kind:card.type,delayId:card.id})
       break
     }
     case 'judgeApply': {
@@ -442,6 +519,7 @@ function successfulResponse(s,pending) {
   else if(event.type==='collateral'){const p=player(s,pending.actor),wine=p.marks.wine||0;p.marks.wine=0;enqueue(s,{type:'attack',source:pending.actor,target:pending.target,cardIds:pending.usedIds,color:pending.color,nature:pending.nature,wine,ignoreArmor:p.equip.weapon?.type==='qinggang',...(catalog.trackBattle?{commandedBy:event.source}:{})},{type:'finishCard',ids:pending.usedIds})}
 }
 function failedResponse(s,pending) {
+  if(pending.kind==='discard'&&pending.mode==='ganglie'){enqueue(s,{type:'damage',source:pending.source,target:pending.actor,amount:1,cardIds:[]});return}
   if(pending.kind==='rescue')enqueue(s,{type:'rescue',...pending,cursor:pending.cursor+1})
   else if(pending.kind==='counter'){pending.chain.passes++;enqueue(s,{type:'counter',chain:pending.chain})}
   else if(pending.kind==='support')enqueue(s,{type:'supportAsk',...pending,cursor:pending.cursor+1})
@@ -459,6 +537,11 @@ function choice(s,pending,value) {
   const p=player(s,pending.actor),event=pending.event
   if(!pending.choices.some(c=>c.value===value))throw new Error('请选择有效选项')
   if(pending.skill==='luoyi'){p.marks.naked=value==='yes';draw(s,pending.actor,value==='yes'?1:2)}
+  else if(pending.skill==='tiandu')judgmentComplete(s,pending.event.ctx,value==='yes')
+  else if(pending.skill==='luoshen'&&value==='yes')beginJudgment(s,{owner:pending.actor,kind:'luoshen'})
+  else if(pending.skill==='ganglie'&&value==='yes')beginJudgment(s,{owner:pending.actor,kind:'ganglie',source:event.source})
+  else if(pending.skill==='fankui'&&value==='yes')enqueue(s,{type:'take',actor:pending.actor,source:pending.actor,target:event.source,mode:'snatch',equipmentOnly:true})
+  else if(pending.skill==='yiji'&&value==='yes')beginYiji(s,pending.actor)
   else if(pending.skill==='fan'){event.fanChecked=true;if(value==='yes'){
     event.nature='fire';note(s,`${name(s,pending.actor)}以${CARDS.fan.name}转为炎杀`)
     if(s.lastPlayed?.source===pending.actor&&s.lastPlayed.cards.some(c=>event.cardIds?.includes(c.id)))s.lastPlayed.nature='fire'
@@ -466,14 +549,16 @@ function choice(s,pending,value) {
     for(const entry of s.exchange||[])if(entry.source===pending.actor&&entry.cards.some(c=>event.cardIds?.includes(c.id)))entry.as='firesha'
   }enqueue(s,event)}
   else if(pending.skill==='yingzi')draw(s,pending.actor,value==='yes'?3:2)
+  else if(pending.skill==='xiaoji'&&value==='yes')draw(s,pending.actor,2)
+  else if(pending.skill==='lianying'&&value==='yes')draw(s,pending.actor,1)
+  else if(pending.skill==='biyue'&&value==='yes')draw(s,pending.actor,1)
   else if(pending.skill==='jizhi'&&value==='yes')draw(s,pending.actor,1)
   else if(pending.skill==='jianxiong'&&value==='yes') {
     for(const id of pending.ids)for(const zone of [s.processing,s.discard]) {const index=zone.findIndex(c=>c.id===id);if(index>=0)p.hand.push(...zone.splice(index,1))}
     note(s,`${name(s,pending.actor)}发动奸雄收回牌`)
   } else if(pending.skill==='tieji') {
     event.ironChecked=true
-    if(value==='yes'){const judge=topCard(s);if(judge){s.discard.push(judge);event.unavoidable=isRed(judge);note(s,`铁骑判定${isRed(judge)?'红色，不能闪避':'黑色，可正常响应'}`)}}
-    enqueue(s,event)
+    if(value==='yes')beginJudgment(s,{owner:pending.actor,kind:'tieji',attack:event});else enqueue(s,event)
   } else if(pending.skill==='dualsword') {
     event.prepared=true
     if(value==='yes')makePending(s,{kind:'choice',actor:event.target,skill:'dualTarget',event,choices:[{value:'discard',label:'弃一张手牌'},{value:'draw',label:'让对方摸一张'}].filter(c=>c.value!=='discard'||player(s,event.target).hand.length)})
@@ -492,7 +577,7 @@ function choice(s,pending,value) {
 function playCard(s,action) {
   const seat=action.seat,p=player(s,seat),cards=selectedCards(s,seat,action.ids),as=action.as||cards[0]?.type,targets=action.targets||[]
   const available=legalActions(s,seat).find(option=>option.type==='play'&&option.as===as&&option.ids.length===action.ids?.length&&option.ids.every(id=>action.ids.includes(id))&&option.targets.length===targets.length&&option.targets.every((t,i)=>as==='collateral'?t===targets[i]:targets.includes(t)))
-  if(!available||!canConvert(p,cards,as))throw new Error('这张牌当前不能这样使用，请检查目标与距离')
+  if(!available||!canConvert(p,cards,as,s))throw new Error('这张牌当前不能这样使用，请检查目标与距离')
   const used=spend(s,seat,action.ids,true),ids=used.map(c=>c.id),def=CARDS[as],label=as==='sha'&&used.length===1&&CARDS[used[0].type].attackNature?CARDS[used[0].type].name:def.name
   remember(s,used,label,seat,targets,as);note(s,`${name(s,seat)}使用${label}${targets.length?' → '+targets.map(t=>name(s,t)).join('、'):''}`)
   if(def.category==='equip') {
@@ -532,6 +617,16 @@ function activeSkill(s,action) {
     const cards=spend(s,action.seat,ids,true);s.processing=s.processing.filter(c=>!ids.includes(c.id));player(s,target).hand.push(...cards)
     const before=p.marks.rende||0;p.marks.rende=before+ids.length;if(before<2&&p.marks.rende>=2)heal(s,action.seat,1)
     suspect(s,action.seat,target,false);note(s,`${name(s,action.seat)}以${labelSkill(s,action.seat,'rende','仁德')}交给${name(s,target)} ${ids.length} 张牌`)
+  } else if(skill==='jieyin'){
+    const recipient=player(s,target)
+    if(ids.length!==2||!ids.every(id=>p.hand.some(c=>c.id===id))||!recipient?.alive||target===action.seat||hero(recipient).sex!=='male'||recipient.hp>=recipient.maxHp)throw new Error('结姻需要两张手牌和一名受伤的其他男性')
+    spend(s,action.seat,ids);p.marks.jieyin=true;heal(s,action.seat,1);heal(s,target,1);suspect(s,action.seat,target,false)
+    note(s,`${name(s,action.seat)}发动${labelSkill(s,action.seat,'jieyin','结姻')}，与${name(s,target)}各恢复一点体力`)
+  } else if(skill==='qingnang'){
+    const recipient=player(s,target)
+    if(ids.length!==1||!p.hand.some(c=>c.id===ids[0])||!recipient?.alive||recipient.hp>=recipient.maxHp)throw new Error('青囊需要一张手牌和一名受伤角色')
+    spend(s,action.seat,ids);p.marks.qingnang=true;heal(s,target,1);suspect(s,action.seat,target,false)
+    note(s,`${name(s,action.seat)}发动${labelSkill(s,action.seat,'qingnang','青囊')}治疗${name(s,target)}`)
   } else if(skill==='zhiheng') {
     if(!ids.length)throw new Error('制衡至少选择一张手牌或装备')
     spend(s,action.seat,ids);p.marks.zhiheng=true;draw(s,action.seat,ids.length)
@@ -552,17 +647,39 @@ function answer(s,action) {
   const matches=options.some(o=>o.type===action.type&&(o.value==null||o.value===action.value)&&(o.ids==null||o.ids.length===action.ids?.length&&o.ids.every(id=>action.ids.includes(id))))
   if(!matches)throw new Error('请选择可用的响应')
   s.pending=null
+  if(pending.kind==='judge-replace'){
+    const event=pending.event
+    if(action.type==='respond'){
+      if(action.ids?.length!==1||!player(s,action.seat).hand.some(c=>c.id===action.ids[0]))throw new Error('鬼才只能使用一张手牌')
+      const [replacement]=spend(s,action.seat,action.ids,true),i=s.processing.findIndex(c=>c.id===event.ctx.judgeId);if(i<0)throw new Error('原判定牌丢失')
+      s.discard.push(...s.processing.splice(i,1));event.ctx.judgeId=replacement.id;note(s,`${name(s,action.seat)}发动${labelSkill(s,action.seat,'guicai','鬼才')}替换判定`,{kind:'skill',seat:action.seat,skill:'guicai'})
+    }enqueue(s,event);return
+  }
+  if(pending.kind==='yiji'){
+    if(action.type==='give'){
+      if(!options.some(o=>o.type==='give'&&o.target===action.target&&o.ids.length===action.ids?.length&&o.ids.every(id=>action.ids.includes(id))))throw new Error('只能分配本次遗计得到的牌')
+      const cards=spend(s,action.seat,action.ids,true);s.processing=s.processing.filter(c=>!action.ids.includes(c.id));player(s,action.target).hand.push(...cards)
+      note(s,`${name(s,action.seat)}将遗计所得${cards.length}张牌交给${name(s,action.target)}`)
+      pending.ids=pending.ids.filter(id=>!action.ids.includes(id));if(pending.ids.length)makePending(s,pending)
+    }return
+  }
   if(action.type==='ack'){enqueue(s,pending.event);return}
   if(action.type==='pass'){if(pending.kind==='choice')choice(s,pending,pending.choices[pending.choices.length-1].value);else failedResponse(s,pending);return}
   if(action.type==='discard') {
     if(action.ids?.length!==pending.count||!action.ids.every(id=>player(s,action.seat).hand.some(c=>c.id===id)))throw new Error(`请弃置 ${pending.count} 张手牌`)
-    spend(s,action.seat,action.ids);note(s,`${name(s,action.seat)}弃置 ${pending.count} 张手牌`);enqueue(s,pending.continuation||{type:'turnEnd',seat:action.seat});return
+    spend(s,action.seat,action.ids);note(s,`${name(s,action.seat)}弃置 ${pending.count} 张手牌`);if(pending.mode!=='ganglie')enqueue(s,pending.continuation||{type:'turnEnd',seat:action.seat});return
   }
   if(action.type==='choose') {
+    if(pending.kind==='tuxi'){
+      if(action.value==='normal')draw(s,pending.actor,2)
+      else {note(s,`${name(s,pending.actor)}发动${labelSkill(s,pending.actor,'tuxi','突袭')}替代摸牌`,{kind:'skill',seat:pending.actor,skill:'tuxi'});enqueue(s,...action.value.split(',').map(Number).map(target=>({type:'take',actor:pending.actor,source:pending.actor,target,mode:'snatch',handOnly:true})))}
+      return
+    }
     if(pending.kind==='choice')choice(s,pending,action.value)
     if(pending.kind==='guess') {
       const source=player(s,pending.source);if(!source.hand.length)return
       const card=source.hand.splice(Math.floor(random(s)*source.hand.length),1)[0];player(s,pending.actor).hand.push(card)
+      handEmptied(s,source)
       note(s,`${labelSkill(s,pending.source,'fanjian','反间')}揭晓：${{spade:'♠',heart:'♥',club:'♣',diamond:'♦'}[card.suit]}${CARDS[card.type].name}`)
       if(card.suit!==action.value)enqueue(s,{type:'damage',source:pending.source,target:pending.actor,amount:1,cardIds:[]})
     }
@@ -572,9 +689,7 @@ function answer(s,action) {
   }
   if(action.type==='support'){pending.supportTried=true;enqueue(s,{type:'supportAsk',requester:pending.actor,as:pending.as,returnPending:pending});return}
   if(action.type==='bagua') {
-    pending.baguaTried=true;const judge=topCard(s)
-    if(judge){s.discard.push(judge);note(s,`${name(s,pending.actor)}八卦判定${isRed(judge)?'成功':'失败'}`)}
-    if(judge&&isRed(judge))successfulResponse(s,pending);else makePending(s,pending);return
+    pending.baguaTried=true;beginJudgment(s,{owner:pending.actor,kind:'bagua',response:pending});return
   }
   if(action.type==='respond') {
     const processing=pending.kind==='blade'||pending.kind==='support'&&(!pending.returnPending||pending.returnPending.event?.type==='collateral')||pending.event?.type==='collateral'
@@ -609,7 +724,7 @@ function dispatch(state,action) {
 }
 function playerView(s,seat) {
   return {
-    version:s.version,revision:s.revision,phase:s.phase,current:s.current,turns:s.turns,winner:s.winner,seat,deckSize:allCards(s).length,deckVersion:s.deckVersion||1,
+    version:s.version,revision:s.revision,phase:s.phase,current:s.current,turns:s.turns,winner:s.winner,seat,deckSize:allCards(s).length,deckVersion:s.deckVersion||1,publicRoleCounts:s.players.reduce((counts,p)=>(counts[p.role]=(counts[p.role]||0)+1,counts),{}),
     deckCount:s.deck.length,discardCount:s.discard.length,logs:clone(s.logs),lastEvent:clone(s.lastEvent),lastPlayed:clone(s.lastPlayed||null),suspicion:s.suspicion.slice(),
     ...(catalog.trackBattle?{lastResponse:clone(s.lastResponse||null),harvestPool:clone(s.harvestPool),exchange:clone(s.exchange||null)}:{}),
     players:s.players.map(p=>({seat:p.seat,heroId:p.heroId,hp:p.hp,maxHp:p.maxHp,alive:p.alive,handCount:p.hand.length,
@@ -623,9 +738,9 @@ function playerView(s,seat) {
   }
 }
 function allCards(s) {return s.deck.concat(s.discard,s.processing,s.harvestPool,...s.players.map(p=>ownedCards(p).concat(p.judgment)))}
-const eventTypes=new Set(['turnStart','drawPhase','playPhase','endPhase','turnEnd','finishCard','counter','gate','attack','attackDamage','duel','aoe','damage','postDamage','rescue','heal','draw','jizhi','take','harvest','harvestCleanup','collateral','delayed','judgeResult','judgeApply','delayCancelled','supportAsk'])
-const pendingKinds=new Set(['response','rescue','counter','support','blade','axe','discard','choice','guess','pick','take','reveal'])
-const validSeat=seat=>Number.isInteger(seat)&&seat>=0&&seat<5
+const eventTypes=new Set(['turnStart','drawPhase','playPhase','endPhase','turnEnd','finishCard','counter','gate','attack','attackDamage','duel','aoe','damage','postDamage','rescue','heal','draw','equipmentDraw','jizhi','take','harvest','harvestCleanup','collateral','delayed','judgeResult','judgeApply','delayCancelled','supportAsk'])
+const pendingKinds=new Set(['response','rescue','counter','support','blade','axe','discard','choice','guess','pick','take','reveal','tuxi'])
+const validSeat=seat=>Number.isInteger(seat)&&seat>=0&&seat<8
 function validEvent(event,depth=0) {
   if(!event||depth>8||!eventTypes.has(event.type))return false
   for(const key of ['seat','source','target','actor','victim','requester'])if(event[key]!=null&&!validSeat(event[key]))return false
@@ -643,7 +758,7 @@ function validPending(p,depth=0) {
   if(p.kind==='counter'&&(!p.chain||!validEvent(p.chain.effect)||!CARDS[p.chain.cardType]||typeof p.chain.negated!=='boolean'||!validSeat(p.chain.cursor)||!Number.isInteger(p.chain.passes)))return false
   if(p.kind==='discard'&&(!Number.isInteger(p.count)||p.count<1||p.count>makeDeck().length))return false
   if(p.kind==='choice'&&(!Array.isArray(p.choices)||!p.choices.length||p.choices.length>5||p.choices.some(c=>typeof c.value!=='string'||typeof c.label!=='string')))return false
-  if(p.kind==='choice'&&!['luoyi','yingzi','jizhi','jianxiong','tieji','dualsword','dualTarget','ice','bow','fan'].includes(p.skill))return false
+  if(p.kind==='choice'&&!['luoyi','yingzi','jizhi','jianxiong','tieji','dualsword','dualTarget','ice','bow','fan','xiaoji','lianying','biyue'].includes(p.skill))return false
   if(p.kind==='pick'&&(!Array.isArray(p.pool)||!p.pool.length||p.pool.length>5||p.pool.some(c=>!CARDS[c.type])))return false
   if(p.kind==='support'&&(!Array.isArray(p.candidates)||p.candidates.some(c=>!validSeat(c))||!validSeat(p.requester)))return false
   if(p.kind==='reveal'&&(!catalog.animatedJudgments||p.event?.type!=='judgeApply'||!['indulgence','lightning'].includes(p.delayType)||typeof p.hit!=='boolean'||!CARDS[p.card?.type]))return false
@@ -652,11 +767,11 @@ function validPending(p,depth=0) {
 function restoreGame(raw) {
   try {
     const s=typeof raw==='string'?JSON.parse(raw):clone(raw)
-    if(!s||s.theme!==catalog.theme||s.version!==VERSION||!Array.isArray(s.players)||s.players.length!==5||!Number.isInteger(s.current)||s.current<0||s.current>4||!['play','resolve','finished'].includes(s.phase))return null
+    if(!s||s.theme!==catalog.theme||s.version!==VERSION||!Array.isArray(s.players)||s.players.length<2||s.players.length>8||!Number.isInteger(s.current)||s.current<0||s.current>=s.players.length||!['play','resolve','finished'].includes(s.phase))return null
     if(![s.deck,s.discard,s.processing,s.harvestPool,s.queue,s.logs,s.suspicion].every(Array.isArray))return null
     if(!Number.isInteger(s.seed)||s.seed<0||s.seed>4294967295||!Number.isInteger(s.revision)||s.revision<0||!Number.isInteger(s.promptId)||!Number.isInteger(s.eventId)||!Number.isInteger(s.turns)||s.turns<0)return null
-    if(s.suspicion.length!==5||s.suspicion.some(n=>!Number.isFinite(n))||s.queue.length>512||s.queue.some(event=>!validEvent(event))||s.logs.some(line=>typeof line.text!=='string'))return null
-    if(new Set(s.players.map(p=>p.heroId)).size!==5||s.players.filter(p=>p.role==='lord').length!==1||s.players.filter(p=>p.role==='loyal').length!==1||s.players.filter(p=>p.role==='rebel').length!==2||s.players.filter(p=>p.role==='renegade').length!==1)return null
+    if(s.suspicion.length!==s.players.length||s.suspicion.some(n=>!Number.isFinite(n))||s.queue.length>512||s.queue.some(event=>!validEvent(event))||s.logs.some(line=>typeof line.text!=='string'))return null
+    if(new Set(s.players.map(p=>p.heroId)).size!==s.players.length||s.players.filter(p=>p.role==='lord').length!==1||!s.players.some(p=>p.role==='rebel')||s.players.filter(p=>p.role==='renegade').length>1||s.players.some(p=>!['lord','loyal','rebel','renegade'].includes(p.role)))return null
     for(const p of s.players)if(!HERO_BY_ID[p.heroId]||p.seat!==s.players.indexOf(p)||!Number.isInteger(p.hp)||p.hp>p.maxHp||p.hp< -4||typeof p.alive!=='boolean'||p.maxHp!==hero(p).hp+(p.role==='lord'?1:0)||!Array.isArray(p.hand)||!Array.isArray(p.judgment)||!p.equip||!p.marks)return null
     if(s.deckVersion!=null&&s.deckVersion!==catalog.deckVersion)return null
     const definitions=s.deckVersion==null&&catalog.legacyMakeDeck?catalog.legacyMakeDeck():makeDeck()

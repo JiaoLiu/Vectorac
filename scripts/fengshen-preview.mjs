@@ -5,6 +5,12 @@ import {mkdir,copyFile,cp,readFile,stat,writeFile} from 'node:fs/promises'
 import {resolve,extname} from 'node:path'
 const qa=process.argv.includes('--qa'),release=process.argv.includes('--release'),source=resolve('.private/fengshen'),output=release?resolve('public/games/fengshen'):resolve('.private/fengshen',qa?'qa-dist':'dist')
 if(qa&&release)throw new Error('QA fixtures must never be published')
+if(release){
+ const {HEROES,ALLIANCES}=await import('../.private/fengshen/theme.mjs')
+ const {auditCanonicalRoster}=await import('../.private/fengshen/canonical-roster.mjs')
+ const issues=auditCanonicalRoster(HEROES,ALLIANCES)
+ if(issues.length)console.warn('警告：武将一对一映射尚未核定完成，按用户确认先行发布。'+issues.slice(0,4).join('；'))
+}
 await mkdir(output,{recursive:true})
 const result=await build({entryPoints:[resolve(source,qa?'qa.mjs':'app.js')],...(release?{outdir:output,entryNames:'app-[hash]',metafile:true}:{outfile:resolve(output,qa?'qa.js':'app.js')}),bundle:true,format:'esm',target:['safari15','chrome100'],external:['assets/*'],minify:true,define:{__FENGSHEN_RELEASE__:JSON.stringify(release)}})
 if(release){
