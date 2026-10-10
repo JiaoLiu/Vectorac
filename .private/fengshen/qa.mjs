@@ -32,7 +32,7 @@ function scenario(name){
     const s=createAssignedGame({roles:['lord','loyal','loyal','rebel','rebel','rebel','rebel','renegade'],heroIds:['yangjian','jifa','nezha','wenzhong','jinling','yuding','yunxiao','shiji'],seed:29})
     s.deck=catalog.makeDeck();s.discard=[];s.processing=[];s.harvestPool=[];s.queue=[];s.pending=null;s.phase='play';s.current=0;s.logs=[]
     for(const p of s.players){p.hand=[];p.equip={weapon:null,armor:null,offenseHorse:null,defenseHorse:null};p.judgment=[];p.marks={sha:0};p.hp=p.maxHp}
-    for(const [seat,types]of [[0,['qinggang','bagua','chitu','jueying']],[1,['blade','bagua','dayuan','dilu']],[6,['halberd','renwang','zixing','zhuahuang']]])for(const type of types)equip(s,seat,type,catalog.CARDS[type].slot)
+    for(const [seat,types]of [[0,['qinggang','bagua','chitu','jueying']],[1,['blade','bagua','dayuan','dilu']],[5,['halberd','renwang','zixing','zhuahuang']]])for(const type of types)equip(s,seat,type,catalog.CARDS[type].slot)
     s.players[0].hand.push(...s.deck.splice(0,12));return s
   }
   if(['classic-stars','classic-liuli','classic-yiji','classic-lijian'].includes(name)){

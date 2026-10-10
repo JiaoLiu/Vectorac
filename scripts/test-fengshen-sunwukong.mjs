@@ -4,6 +4,7 @@ import {createAssignedGame,dispatch,playerView,restoreGame,allCards,hasSkill,her
 import {heroDetails,gameRules,formCollection}from '../.private/fengshen/player-guide.mjs'
 import {HEROES,skillName}from '../.private/fengshen/theme.mjs'
 import {modalReturnEntry}from '../.private/fengshen/modal-navigation.mjs'
+import {heroNameSize}from '../.private/fengshen/arena-layout.mjs'
 const setup=()=>createAssignedGame({roles:['loyal','lord','rebel','rebel','renegade'],heroIds:['sunwukong','moliqing','nezha','yangjian','jifa'],seed:71})
 function step(s,a){const r=dispatch(s,{seat:s.pending?.actor??s.current,revision:s.revision,promptId:s.pending?.id,...a});assert.ok(r.ok,r.error);assert.equal(allCards(r.state).length,108);return r.state}
 function prepared(){let s=setup();s.players[0].incarnation.pool=['daqiao','ganning'];s=step(s,{type:'transform',heroId:'daqiao',skill:'guose'});assert.equal(s.pending.skill,'luoyi');s=step(s,{type:'choose',value:'yes'});return s}
@@ -39,4 +40,5 @@ test('player rules and every character detail never expose comparison or engine 
 test('detail closes back to the originating catalog with scroll and focus metadata',()=>{
  const source={kind:'gallery'},entry=modalReturnEntry(source,'card-detail',{scroll:420,focus:'sha'});assert.deepEqual(entry,{modal:{kind:'gallery'},scroll:420,focus:'sha'});assert.notEqual(entry.modal,source);assert.equal(modalReturnEntry({kind:'hand'},'card-detail'),null);assert.equal(modalReturnEntry({kind:'heroes'},'rules'),null)
  const s=prepared(),own=formCollection(playerView(s,0).players[0]),other=formCollection(playerView(s,1).players[0]);assert.ok(own.includes('赵公明'));assert.ok(!other.includes('赵公明'));assert.ok(!own.includes('data-action'));assert.ok(own.includes('正在借用'))
+ for(const height of [108,132,146])for(const [count,reserved]of [[4,47],[4,57],[3,73]]){const size=heroNameSize({height,count,reserved});assert.ok(count*size*1.05+11<=height-reserved-2+.01)}
 })

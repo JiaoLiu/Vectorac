@@ -30,6 +30,7 @@ export function arenaGeometry({width,height,seats=5,safeTop=0,safeBottom=0}){
 }
 export function centerCardHeight(center){return clamp(center.bottom-center.top-28,24,132)}
 export function poolCardHeight({width,height,count}){const fit=(width-4-Math.max(0,count-1)*8)/Math.max(1,count)*1.44;return Math.max(32,Math.min(120,height,fit>=96?fit:120))}
+export function heroNameSize({height,count,reserved=18,portraitOwn=false}){return Math.max(5,Math.min(15,(height-reserved-2-(portraitOwn?9:11))/Math.max(1,count)/1.05))}
 export function layoutArena(root){
  const arena=root.querySelector('.fs-arena');if(!arena)return
  const style=getComputedStyle(root),left=parseFloat(style.paddingLeft)||0,right=parseFloat(style.paddingRight)||0,top=parseFloat(style.paddingTop)||0,bottom=parseFloat(style.paddingBottom)||0
@@ -40,7 +41,7 @@ export function layoutArena(root){
  root.style.setProperty('--pool-card-height',Math.max(32,Math.min(120,g.height-g.dockHeight-60))+'px')
  const pool=root.querySelector('.fs-pool-choice'),list=pool?.querySelector('.fs-center-card-list')
  if(list)pool.style.setProperty('--pool-card-height',poolCardHeight({width:list.clientWidth,height:g.height-g.dockHeight-60,count:list.querySelectorAll('.fs-choice-card').length})+'px')
- for(const name of root.querySelectorAll('.fs-player-info>strong,.fs-own-hero strong')){const own=name.closest('.fs-own-hero'),available=own&&!g.landscape?own.clientHeight-34:g.heroHeight-(own?(own.closest('.fs-own-panel')?.dataset.skillCount==='3'?80:64):50);name.style.setProperty('--hero-name-size',Math.max(8,Math.min(15,available/[...name.textContent].length))+'px')}
+ for(const name of root.querySelectorAll('.fs-player-info>strong,.fs-own-hero strong')){const own=name.closest('.fs-own-hero'),panel=own?.closest('.fs-own-panel'),equipped=own?!!panel.querySelector('.fs-equip'):Number(name.closest('.fs-player')?.dataset.equipCount)>0,three=panel?.dataset.skillCount==='3',portraitOwn=!!own&&!g.landscape,reserved=portraitOwn?(equipped?21:0):own?(equipped?(three?73:57):(three?44:29)):(equipped?47:18);name.style.setProperty('--hero-name-size',heroNameSize({height:portraitOwn?own.clientHeight:g.heroHeight,count:[...name.textContent].length,reserved,portraitOwn})+'px')}
  for(const p of root.querySelectorAll('.fs-player')){const r=g.positions[p.dataset.player];if(r)Object.assign(p.style,{left:r.x+'px',top:r.y+'px',right:'auto',bottom:'auto',width:r.width+'px',height:r.height+'px',transform:'none'})}
  for(const zone of root.querySelectorAll('.fs-star-zone')){
    const list=zone.querySelector('.fs-center-card-list'),fit=(list.clientWidth-32)/5*1.44
