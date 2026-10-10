@@ -1,7 +1,7 @@
-import {HEROES,HERO_BY_THEME_ID,PLAYABLE_HEROES,FACTIONS,CARDS_BY_TYPE,PLANNED_EQUIPMENT,heroForBase,displayText,skillName} from './theme.mjs'
+import {HEROES,HERO_BY_THEME_ID,PLAYABLE_HEROES,FACTIONS,ALLIANCES,ALLIANCE_NAMES,CARDS_BY_TYPE,PLANNED_EQUIPMENT,heroForBase,displayText,skillName,skillHelp} from './theme.mjs'
 import {SKILLS,ROLES,SUITS,isRed,rankName,makeDeck} from '../../.vuepress/components/sanguo/catalog.mjs'
 import {createGame,dispatch,playerView,restoreGame,THEME_VERSION,catalog} from './engine.mjs'
-import {chooseAI} from '../../.vuepress/components/sanguo/ai.mjs'
+import {chooseAI} from './engine.mjs'
 import './style.css'
 import './table.css'
 import './setup.css'
@@ -26,6 +26,13 @@ import {drawEffects} from './draw-effects.mjs'
 
 const SAVE='vectorac.fengshen.internal.save.v1',PREFS='vectorac.fengshen.internal.prefs.v1'
 const RELEASE=typeof __FENGSHEN_RELEASE__!=='undefined'&&__FENGSHEN_RELEASE__
+// 预热牌桌小图：每次操作都会整体重渲染，提前解码并常驻引用，避免 iOS 丢弃解码缓存导致整桌图片重绘闪烁。
+const prewarmed=[]
+const prewarmTableArt=()=>{if(prewarmed.length||typeof Image==='undefined')return;for(const src of [...HEROES.map(h=>h.thumbnail),...Object.values(CARDS_BY_TYPE).map(c=>c.thumb||c.image),'assets/heavenly-arena.jpg']){const img=new Image();img.decoding='async';img.src=src;prewarmed.push(img)}}
+// iOS Safari 横屏：工具栏收起的前提是「文档可滚动」（同斗地主方案）。游戏根节点 fixed 不占文档流，
+// 触屏设备上补一块隐形垫层让文档永远可滚；用户上滑即可把导航栏推上去，收起后 visualViewport 触发重测铺满。
+let scrollSpacer=null
+const syncScrollSpacer=()=>{try{if(!matchMedia('(pointer: coarse)').matches)return}catch{return}document.documentElement.classList.add('fs-scrollable');document.body.classList.add('fs-scrollable');if(!scrollSpacer){scrollSpacer=document.createElement('div');scrollSpacer.className='fs-scroll-spacer';scrollSpacer.setAttribute('aria-hidden','true');document.body.append(scrollSpacer)}scrollSpacer.style.height=(innerHeight+120)+'px'}
 const equal=(a,b)=>a.length===b.length&&a.every(id=>b.includes(id))
 const load=(key,fallback)=>{try{return JSON.parse(localStorage.getItem(key))??fallback}catch{return fallback}}
 const store=(key,v)=>{try{localStorage.setItem(key,JSON.stringify(v))}catch{}}
@@ -38,10 +45,10 @@ export class FengshenUI {
     this.resumeSession=restoreSession(load(SAVE,null));this.resumeState=this.resumeSession?.kind==='game'?this.resumeSession.game:null;root.className='fs-app'
     this.onClick=e=>this.click(e);this.onKey=e=>this.key(e)
     this.onVisibility=()=>{clearTimeout(this.timer);if(document.hidden){this.voice.stop();this.music.pause()}else{if(!this.lobby)this.music.unlock();this.schedule()}this.syncClock()}
-    this.onViewport=()=>{const v=window.visualViewport;root.style.setProperty('--fs-height',`${v?.height||innerHeight}px`);root.style.setProperty('--fs-top',`${v?.offsetTop||0}px`);layoutHand(root);root.querySelector('.fs-hand-card.selected .fs-card-face')?.scrollIntoView({block:'nearest',inline:'nearest'});this.decorateBattle();scaleCards(root)}
+    this.onViewport=()=>{const v=window.visualViewport;root.style.setProperty('--fs-height',`${v?.height||innerHeight}px`);root.style.setProperty('--fs-top',`${v?.offsetTop||0}px`);syncScrollSpacer();layoutHand(root);root.querySelector('.fs-hand-card.selected .fs-card-face')?.scrollIntoView({block:'nearest',inline:'nearest'});this.decorateBattle();scaleCards(root)}
     this.onScreen=()=>{if(!document.fullscreenElement)screen.orientation?.unlock?.();this.onViewport();this.render()};document.addEventListener('fullscreenchange',this.onScreen)
     root.addEventListener('click',this.onClick);root.addEventListener('keydown',this.onKey);document.addEventListener('visibilitychange',this.onVisibility);window.addEventListener('resize',this.onViewport);window.visualViewport?.addEventListener('resize',this.onViewport);window.visualViewport?.addEventListener('scroll',this.onViewport)
-    this.clockTimer=setInterval(()=>this.tickClock(),250);this.onViewport();this.render()
+    this.clockTimer=setInterval(()=>this.tickClock(),250);this.onViewport();this.render();prewarmTableArt()
   }
   reset(){this.selected=[];this.targets=[];this.skill=null;this.as=null;this.choiceIndex=null;this.choiceZone='hand'}
   savePreferences(){store(PREFS,{pace:this.pace,voice:this.voice.enabled,music:this.music.enabled,hints:this.hints})}
@@ -97,9 +104,14 @@ export class FengshenUI {
     if(battle&&['attack','command','duel','aoe'].includes(battle.kind))for(const [seat,role]of [[battle.source,'攻击者'],[battle.target,'受击者']]){const e=anchor(seat);if(e)e.dataset.combatRole=role}
     this.root.querySelector('.fs-target-lines')?.remove()
     const links=targetLinks(v,{targets:this.targets,as:this.currentAs(v)}),r=this.root.getBoundingClientRect()
-    if(links.length){const layer=document.createElementNS('http://www.w3.org/2000/svg','svg');layer.classList.add('fs-target-lines');layer.setAttribute('viewBox',`0 0 ${r.width} ${r.height}`);layer.setAttribute('aria-hidden','true');layer.innerHTML='<defs><marker id="fs-target-arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 7 3.5 0 7Z" fill="#ffe17d"/></marker></defs>'
-      for(const link of links){const a=anchor(link.source)?.getBoundingClientRect(),b=anchor(link.target)?.getBoundingClientRect();if(!a||!b)continue;const x=a.x+a.width/2-r.x,y=a.y+a.height/2-r.y,tx=b.x+b.width/2-r.x,ty=b.y+b.height/2-r.y,length=Math.hypot(tx-x,ty-y)||1,inset=Math.min(b.width,b.height)*.35
-        const line=document.createElementNS('http://www.w3.org/2000/svg','path');line.dataset.source=link.source;line.dataset.target=link.target;line.setAttribute('d',`M${x} ${y} L${tx-(tx-x)*inset/length} ${ty-(ty-y)*inset/length}`);line.setAttribute('marker-end','url(#fs-target-arrow)');layer.append(line)}this.root.append(layer)}
+    if(links.length){const layer=document.createElementNS('http://www.w3.org/2000/svg','svg');layer.classList.add('fs-target-lines');layer.setAttribute('viewBox',`0 0 ${r.width} ${r.height}`);layer.setAttribute('aria-hidden','true');const defs=document.createElementNS('http://www.w3.org/2000/svg','defs');layer.append(defs)
+      // 光束式指向线（参考英雄杀）：细亮芯+柔光晕，源端亮、目标端渐隐，不再用粗箭头。
+      for(const [i,link] of links.entries()){const a=anchor(link.source)?.getBoundingClientRect(),b=anchor(link.target)?.getBoundingClientRect();if(!a||!b)continue;const cx=a.x+a.width/2-r.x,cy=a.y+a.height/2-r.y,bx=b.x+b.width/2-r.x,by=b.y+b.height/2-r.y,length=Math.hypot(bx-cx,by-cy)||1,sa=Math.min(a.width,a.height)*.32,sb=Math.min(b.width,b.height)*.32
+        const x=cx+(bx-cx)*sa/length,y=cy+(by-cy)*sa/length,tx=bx-(bx-cx)*sb/length,ty=by-(by-cy)*sb/length,gid=`fs-beam-g${i}`
+        const grad=document.createElementNS('http://www.w3.org/2000/svg','linearGradient');grad.id=gid;grad.setAttribute('gradientUnits','userSpaceOnUse');grad.setAttribute('x1',x);grad.setAttribute('y1',y);grad.setAttribute('x2',tx);grad.setAttribute('y2',ty)
+        for(const [o,c,op] of [[0,'#fff6cf',.95],[.55,'#ffd77a',.55],[1,'#ffd77a',0]]){const stop=document.createElementNS('http://www.w3.org/2000/svg','stop');stop.setAttribute('offset',o);stop.setAttribute('stop-color',c);stop.setAttribute('stop-opacity',op);grad.append(stop)}defs.append(grad)
+        const glow=document.createElementNS('http://www.w3.org/2000/svg','path');glow.setAttribute('d',`M${x} ${y} L${tx} ${ty}`);glow.setAttribute('class','fs-beam-glow')
+        const line=document.createElementNS('http://www.w3.org/2000/svg','path');line.dataset.source=link.source;line.dataset.target=link.target;line.setAttribute('d',`M${x} ${y} L${tx} ${ty}`);line.setAttribute('class','fs-beam-core');line.setAttribute('stroke',`url(#${gid})`);layer.append(glow,line)}this.root.append(layer)}
     for(const h of this.hits.filter(h=>h.until>Date.now())){const e=anchor(h.target);if(e){e.classList.add('fs-hurt');const badge=document.createElement('span');badge.className='fs-damage-number';badge.textContent='−'+h.amount;e.append(badge)}}
     this.root.querySelector('.fs-transfer-flight')?.remove()
     if(this.transfer&&this.transfer.until>Date.now()){
@@ -232,7 +244,7 @@ export class FengshenUI {
       if(controls.length&&(event.shiftKey&&document.activeElement===first||!event.shiftKey&&document.activeElement===last||!this.root.querySelector('.fs-modal').contains(document.activeElement))){event.preventDefault();(event.shiftKey?last:first).focus()}
     }
   }
-  header(){return `<header class="fs-header"><div class="fs-brand">封神<span>杀</span><small>内部原型 / ${this.lobby?'准备大厅':this.setup?'身份选将':'经典身份'}</small></div>${renderToolbar({lobby:this.lobby,setup:this.setup,paused:this.paused,voice:this.voice.enabled,music:this.music.enabled,fullscreen:!!document.fullscreenElement})}</header>`}
+  header(){return `<header class="fs-header"><div class="fs-brand">众神<span>斗法</span><small>内部原型 / ${this.lobby?'准备大厅':this.setup?'身份选将':'经典身份'}</small></div>${renderToolbar({lobby:this.lobby,setup:this.setup,paused:this.paused,voice:this.voice.enabled,music:this.music.enabled,fullscreen:!!document.fullscreenElement})}</header>`}
   renderLobby(){return renderHome(this)}
   equipment(p,own=false){return Object.entries(p.equip).filter(([,c])=>c).map(([slot,c])=>`<button class="fs-equip ${this.selected.includes(c.id)?'selected':''}" data-action="${own?'card':'card-detail'}" data-id="${c.id}" aria-label="${{weapon:'武器',armor:'防具',offenseHorse:'进攻坐骑',defenseHorse:'防御坐骑'}[slot]}：${CARDS_BY_TYPE[c.type].name}" title="${esc(displayText(CARDS_BY_TYPE[c.type].help))}"><img src="${CARDS_BY_TYPE[c.type].image}" alt="" loading="lazy"><span>${CARDS_BY_TYPE[c.type].name}</span><small>${CARDS_BY_TYPE[c.type].range?'距'+CARDS_BY_TYPE[c.type].range:CARDS_BY_TYPE[c.type].slot==='offenseHorse'?'−1':CARDS_BY_TYPE[c.type].slot==='defenseHorse'?'+1':'防'}</small></button>`).join('')||'<small class="fs-no-equip">法宝栏为空</small>'}
   skills(p,view){const h=display(p);return Object.keys(h.skillNames).filter(s=>SKILLS[s][2]!=='lord'||p.role==='lord').map(s=>{const active=p.seat===0&&view.legal.some(a=>a.type==='skill'&&a.skill===s);return `<button data-action="${active?'skill':'hero-detail'}" data-value="${s}" data-id="${h.id}" class="fs-skill ${this.skill===s&&p.seat===0?'selected':''}"><b>${h.skillNames[s]}</b><small>${active?'发动':catalog.automaticSkills.includes(s)?'自动':{lord:'主公技',locked:'锁定',convert:'转化',trigger:'触发'}[SKILLS[s][2]]||'技能'}</small></button>`}).join('')}
@@ -240,7 +252,7 @@ export class FengshenUI {
   pendingText(view){const p=view.pending;if(!p)return '';const source=p.source==null?'法术':display(view.players[p.source]).name,target=p.target==null?'目标':display(view.players[p.target]).name;return {
     response:combatContext(view)?.hint||`${source} → ${target}：请打出${p.remaining>1?p.remaining+' 张':''}${CARDS_BY_TYPE[p.as]?.name||''}`,
     rescue:`${target}濒死：是否使用仙桃救援？`,counter:`${p.negated?'反制破法':'使用破法'}：${CARDS_BY_TYPE[p.cardType]?.name||''} → ${target}`,
-    discard:`弃牌：请选 ${p.count} 张手牌`,guess:'试心：猜测花色',pick:'仙山采宝：选择一张牌',take:`选择${target}的一张牌`,axe:'番天印：弃两张牌，令杀命中',blade:'打神鞭：是否再出一张杀？',support:`${p.requester==null?'主公':display(view.players[p.requester]).name}请求${CARDS_BY_TYPE[p.as]?.name||''}援助`,choice:`${displayText(SKILLS[p.skill]?.[0]||{dualsword:'阴阳双剑',dualTarget:'阴阳双剑',ice:'乾坤圈',bow:'五色神光'}[p.skill]||'法宝')}：请选择`,
+    discard:`弃牌：请选 ${p.count} 张手牌`,guess:`${skillName(view.players[p.actor]?.heroId,'fanjian')}：猜测花色`,pick:'仙山采宝：选择一张牌',take:`选择${target}的一张牌`,axe:'番天印：弃两张牌，令杀命中',blade:'打神鞭：是否再出一张杀？',support:`${p.requester==null?'主公':display(view.players[p.requester]).name}请求${CARDS_BY_TYPE[p.as]?.name||''}援助`,choice:`${SKILLS[p.skill]?skillName(view.players[p.actor]?.heroId,p.skill):displayText({dualsword:'阴阳双剑',dualTarget:'阴阳双剑',ice:'乾坤圈',bow:'五色神光'}[p.skill]||'法宝')}：请选择`,
   }[p.kind]||'等待响应'}
   renderActions(view){return renderControls(this,view)}
   won(){const role=this.state.players[0].role;return role===this.state.winner||role==='loyal'&&this.state.winner==='lord'}
@@ -252,13 +264,13 @@ export class FengshenUI {
     if(kind==='hand'&&this.state){const v=playerView(this.state,0);title='展开手牌 · '+v.players[0].hand.length+' 张';body=`<p>点击选牌，选中后点“完成选择”回到牌桌确认。这里不会自动出牌。</p><div class="fs-expanded-hand">${v.players[0].hand.map(c=>`<button data-action="card" data-id="${c.id}" class="${this.selected.includes(c.id)?'selected':''}" aria-label="${CARDS_BY_TYPE[c.type].baseName} ${SUITS[c.suit]}${c.rank}" aria-pressed="${this.selected.includes(c.id)}">${cardFace(c)}</button>`).join('')}</div><button data-action="close" class="fs-primary fs-hand-done">完成选择${this.selected.length?' · '+this.selected.length+' 张':''}</button>`}
     if(kind==='identity'&&this.setup){const r=ROLES[setupView(this.setup,0).role];title='你的身份：'+r.name;body=`<h3>${r.name}的胜利条件</h3><p>${r.goal}。</p><p>身份已随机分配且锁定，主公先选将，再由其他玩家选将。</p>`}
     if(kind==='identity'&&this.state){const p=this.state.players[0],r=ROLES[p.role];title='你的身份：'+r.name;body=`<section class="fs-identity-help"><strong class="fs-identity role-${p.role}">${r.name}</strong><h3>你的胜利条件</h3><p>${r.goal}。</p><p>${p.alive?'其他玩家不能看到你的身份，主公除外。':'你已阵亡，身份已公开；仍可在牌桌观看结算。'}</p></section>`}
-    if(kind==='hero-detail'){const h=HERO_BY_THEME_ID[id];title=h.name+' · '+h.title;body=`<div class="fs-hero-detail">${portrait(h)}<div><span>${FACTIONS[h.faction]}势力 · ${h.hp}基础体力 · ${h.sex==='female'?'女性':'男性'}</span><p>${h.playable?'技能已接入，可在单机局使用':'完整技能尚未接入；人物仅供形象与映射评审'}</p><small>测试基准：${h.baseHero}</small></div></div>${Object.entries(h.skillNames).map(([s,n])=>`<section><h3>${n}<small>${SKILLS[s]?{active:'主动',locked:'锁定',lord:'主公技',trigger:'触发',convert:'转化'}[SKILLS[s][2]]||'技能':'待开发'}</small></h3><p>${SKILLS[s]?esc(displayText(SKILLS[s][1])):'映射已记录，当前引擎尚无 '+s+' 完整实现。'}</p></section>`).join('')}`}
+    if(kind==='hero-detail'){const h=HERO_BY_THEME_ID[id];title=h.name+' · '+h.title;body=`<div class="fs-hero-detail">${portrait(h)}<div><span>${FACTIONS[h.faction]} · ${ALLIANCE_NAMES[ALLIANCES[h.faction]]} · ${h.hp}基础体力 · ${h.sex==='female'?'女性':'男性'}</span><p>${h.playable?'技能已接入，可在单机局使用':'完整技能尚未接入；人物仅供形象与映射评审'}</p></div></div>${Object.entries(h.skillNames).map(([s,n])=>`<section><h3>${n}<small>${SKILLS[s]?{active:'主动',locked:'锁定',lord:'主公技',trigger:'触发',convert:'转化'}[SKILLS[s][2]]||'技能':'待开发'}</small></h3><p>${SKILLS[s]?esc(skillHelp(h,s)):'映射已记录，当前引擎尚无 '+s+' 完整实现。'}</p></section>`).join('')}`}
     if(kind==='card-detail'){const c=makeDeck().find(c=>c.id===id)||makeDeck().find(c=>c.type===id),d=c&&CARDS_BY_TYPE[c.type];title=d?.name||'卡牌';body=d?`<div class="fs-card-detail">${cardFace(c)}<div><b>${{basic:'基本牌',trick:'即时法术',delay:'延时阵法',equip:'法宝'}[d.category]}</b><p>${esc(displayText(d.help))}</p><small>测试基准：${d.baseName} · 共 ${makeDeck().filter(c=>c.type===d.type).length} 张</small></div></div>`:''}
     if(kind==='gallery'){title='法宝与卡牌图鉴';body=`<p>108 张经典牌池 · 53 基本 / 36 锦囊 / 19 装备。仅更换表现层，花色、点数、数量与距离不变。</p><div class="fs-gallery">${Object.values(CARDS_BY_TYPE).map(d=>`<button data-action="card-detail" data-id="${d.type}">${cardFace(makeDeck().find(c=>c.type===d.type))}</button>`).join('')}</div><section><h3>扩展法宝 · 未加入当前牌堆</h3><p>${PLANNED_EQUIPMENT.map(d=>d.name).join('、')}仅已建立映射，原引擎没有这些装备效果，未作为可用牌展示。</p></section>`}
     if(kind==='report'){title=this.state?.winner?'终局 · 身份揭晓':'战场记录';if(this.state){const v=playerView(this.state,0);body=`${v.winner?`<div class="fs-role-reveal">${v.players.map(p=>`<span>${display(p).name}<b>${ROLES[p.role].name}</b></span>`).join('')}</div>`:''}<ol class="fs-report">${v.logs.map(l=>`<li>${esc(displayText(l.text))}</li>`).join('')}</ol>`}}
     if(kind==='new'){title='返回准备大厅？';body='<p>当前牌局或选将进度已保存。你可以继续上次进度，也可以新开身份局重新随机分配身份。</p><button data-action="new-confirm" class="fs-primary">返回准备大厅</button>'}
-    if(kind==='rules'){title='经典身份 · 内部测试规则';body=`<section><h3>身份不变</h3>${Object.values(ROLES).map(r=>`<p><b>${r.name}</b>：${r.goal}。</p>`).join('')}<p>当前复用五人引擎：1 主公、1 忠臣、2 反贼、1 内奸。主公额外一点体力；只公开主公，其他角色阵亡或终局才亮身份。八人局与联机尚未接入，不以界面换名冒充完成。</p></section><section><h3>操作与回合</h3><p>主公先行，按席位循环。准备 → 判定 → 摸牌 → 出牌 → 弃牌 → 结束。通常摸两张牌，出牌阶段限一次杀；风火与火尖枪可以解除次数限制。弃牌到当前体力值。</p><p>先选牌，再点亮目标，最后确认出牌。响应时选牌后确认，或主动放弃。两张闪按提示分次打出。混天绫选择两张手牌；借宝诛敌先选持武器者，再选被攻击者。转化牌显示“当杀 / 当闪”，须确认其用途。</p></section><section><h3>主公技与阵营适配</h3><p>周对应蜀，商对应魏，阐对应吴，截对应群，仅作为经典技能的测试阵营适配。伐纣由周势力提供杀，王卫由商势力提供闪，护道由其他阐教角色提供仙桃时额外恢复一点。阵营重新组合后仍需平衡测试。</p><p>龙吉公主替代慈航道人对应小乔，保留女性判定语义；阴阳双剑等性别相关装备仍按明确的人物性别结算。</p></section><section><h3>当前完成边界</h3><p>20 人主题映射，9 人完整技能可试玩，32 类插画卡牌，108 张物理牌，四名本地 AI。其余 11 人有独立形象，但技能未完成时禁止开局。AI 只接收玩家视图，不能读取隐藏手牌和身份。</p><p>没有灵蕴、神位积分或封神争榜。不新增法宝冷却与耐久。此为本机内部原型，不代表商业发行或完成原创性审核。</p></section>`}
-    return `<div class="fs-modal-overlay"><section class="fs-modal" role="dialog" aria-modal="true" aria-labelledby="fs-dialog-title" tabindex="-1"><header><small>封神杀 / INTERNAL</small><h2 id="fs-dialog-title">${title}</h2><button data-action="close" aria-label="关闭弹窗">×</button></header><div class="fs-modal-body">${body}</div></section></div>`
+    if(kind==='rules'){title='众神身份局 · 试玩规则';body=`<section><h3>身份不变</h3>${Object.values(ROLES).map(r=>`<p><b>${r.name}</b>：${r.goal}。</p>`).join('')}<p>当前复用五人引擎：1 主公、1 忠臣、2 反贼、1 内奸。主公额外一点体力；只公开主公，其他角色阵亡或终局才亮身份。八人局与联机尚未接入，不以界面换名冒充完成。</p></section><section><h3>操作与回合</h3><p>主公先行，按席位循环。准备 → 判定 → 摸牌 → 出牌 → 弃牌 → 结束。通常摸两张牌，出牌阶段限一次杀；风火与火尖枪可以解除次数限制。弃牌到当前体力值。</p><p>先选牌，再点亮目标，最后确认出牌。响应时选牌后确认，或主动放弃。两张闪按提示分次打出。混天绫选择两张手牌；借宝诛敌先选持武器者，再选被攻击者。转化牌显示“当杀 / 当闪”，须确认其用途。</p></section><section><h3>主公技与阵营适配</h3><p>青盟：周、尼罗神域；赤盟：商、奥林匹斯；金盟：阐、高天原；玄盟：截、阿斯加德。主公的召集杀、召集闪、救援加成分别只由同盟响应。新角色组合仍在平衡试玩中。</p><p>龙吉公主替代慈航道人对应小乔，保留女性判定语义；阴阳双剑等性别相关装备仍按明确的人物性别结算。</p></section><section><h3>当前完成边界</h3><p>40 人主题图鉴，29 人完整技能可试玩，32 类插画卡牌，108 张物理牌，四名本地 AI。保留的 11 人有独立形象，但技能未完成时禁止开局。AI 只接收玩家视图，不能读取隐藏手牌和身份。</p><p>没有灵蕴、神位积分或封神争榜。不新增法宝冷却与耐久。这是免费的单机试玩版，不代表商业版或完成原创性审核。</p></section>`}
+    return `<div class="fs-modal-overlay"><section class="fs-modal" role="dialog" aria-modal="true" aria-labelledby="fs-dialog-title" tabindex="-1"><header><small>众神斗法 / INTERNAL</small><h2 id="fs-dialog-title">${title}</h2><button data-action="close" aria-label="关闭弹窗">×</button></header><div class="fs-modal-body">${body}</div></section></div>`
   }
   render(){
     if(this.destroyed)return
@@ -293,7 +305,7 @@ export class FengshenUI {
     for(const id of ownIds)this.root.querySelector(`.fs-hand-card[data-id="${id}"]`)?.classList.add('fs-newly-drawn')
     if(ownIds.length)this.root.querySelector(`.fs-hand-card[data-id="${ownIds.at(-1)}"] .fs-card-face`)?.scrollIntoView({block:'nearest',inline:'nearest'})
     if(this.transfer||this.draws.length||this.state?.pending?.kind==='reveal')this.root.querySelector('.fs-dock')?.setAttribute('inert','')
-    if(this.modal){this.root.querySelectorAll('.fs-header,.fs-lobby,.fs-entry,.fs-setup,.fs-round,.fs-arena,.fs-operation,.fs-dock').forEach(e=>e.inert=true);this.root.querySelector('[data-action="close"]')?.focus()}
+    if(this.modal){this.root.querySelectorAll('.fs-header,.fs-lobby,.fs-entry,.fs-setup,.fs-round,.fs-arena,.fs-status,.fs-dock').forEach(e=>e.inert=true);this.root.querySelector('[data-action="close"]')?.focus()}
     else if(wasModal&&this.returnFocus?.action){const s=`[data-action="${this.returnFocus.action}"]${this.returnFocus.id?`[data-id="${this.returnFocus.id}"]`:''}`;this.root.querySelector(s)?.focus()}
     scaleCards(this.root);this.schedule()
   }

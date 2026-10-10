@@ -4,7 +4,6 @@ import {playerView} from './engine.mjs'
 import {esc,display,portrait,hp,cardFace,cardBack,cardTitle} from './presentation.mjs'
 import {combatContext,seatName} from './combat.mjs'
 import {judgmentMark,publicPicks,responsePrompt} from './table-visuals.mjs'
-import {toolButton} from './toolbar.mjs'
 const roleBadge=(p,own=false)=>`<span class="fs-identity role-${p.role||'unknown'} ${own?'fs-own-identity':''}" data-role="${p.role||'unknown'}">${p.role?ROLES[p.role].name:'？'}</span>`
 export const delayLabel=type=>cardTitle(type)
 const delays=(p,v)=>[...p.judgment.map(c=>c.type),...(v.pending?.kind==='reveal'&&v.pending.target===p.seat?[v.pending.delayType]:[])]
@@ -14,7 +13,7 @@ export function renderOpponent(ui,p,view){
   return `<article class="fs-player faction-${h.faction} ${active?'turn-active':''} ${target?'targetable':''} ${ui.targets.includes(p.seat)?'target-selected':''} ${!p.alive?'fallen':''}" data-player="${p.seat}" data-equip-count="${Object.values(p.equip).filter(Boolean).length}" style="--equip-count:${Math.max(1,Object.values(p.equip).filter(Boolean).length)}">
     <button class="fs-player-main" data-action="target" data-value="${p.seat}" aria-label="${target?'选择目标':'查看'}${h.name}${!p.alive?'，已阵亡，'+ROLES[p.role].name:''}">
       ${portrait(h)}<span class="fs-portrait-shade"></span>${roleBadge(p)}<span class="fs-seat">${p.seat}号 · ${FACTIONS[h.faction]}</span>
-      <span class="fs-player-info"><strong>${h.name}</strong>${hp(p)}<span>▣ ${p.handCount}${view.pending?.actor===p.seat?' · 响应中':active?' · 出牌中':''}</span></span>
+      <span class="fs-player-info"><strong style="${h.name.length>4?'font-size:16px;letter-spacing:0':''}">${h.name}</strong>${hp(p)}<span>▣ ${p.handCount}${view.pending?.actor===p.seat?' · 响应中':active?' · 出牌中':''}</span></span>
       ${!p.alive?`<span class="fs-death-banner" data-revealed-role="${p.role}">已阵亡 · ${ROLES[p.role].name}</span>`:''}
       ${delays(p,view).length?`<span class="fs-player-delays">${delayIcons(p,view)}</span>`:''}
     </button><div class="fs-opponent-equipment" data-scroll="equip-${p.seat}">${ui.equipment(p)}</div>
@@ -34,7 +33,7 @@ function counterChoices(ui,view){
   const p=view.pending,d=CARDS_BY_TYPE[p.cardType],target=view.players[p.target],answers=view.legal.filter(a=>a.type==='respond'),own=view.players[0]
   return `<section class="fs-center-choice fs-counter-choice" role="group" aria-label="破法响应">
     <header><div><small>破法 · 抵消锦囊</small><strong>${p.negated?'当前效果已被抵消':'是否抵消当前锦囊？'}</strong></div></header>
-    <div class="fs-counter-context"><img src="${d.image}" alt=""><div><b>${d.name}</b><span>${p.source==null?'判定':display(view.players[p.source]).name} → ${display(target).name}</span><small>${p.negated?'再出破法，会让原锦囊恢复生效':'出破法抵消；放弃则继续结算'}</small></div></div>
+    <div class="fs-counter-context"><img src="${d.thumb||d.image}" alt=""><div><b>${d.name}</b><span>${p.source==null?'判定':display(view.players[p.source]).name} → ${display(target).name}</span><small>${p.negated?'再出破法，会让原锦囊恢复生效':'出破法抵消；放弃则继续结算'}</small></div></div>
     <div class="fs-center-card-list" data-scroll="counters">${answers.map(a=>{const c=own.hand.concat(Object.values(own.equip).filter(Boolean)).find(c=>c.id===a.ids[0]);return `<button data-action="card" data-id="${c.id}" class="fs-choice-card ${ui.selected.includes(c.id)?'selected':''}" aria-label="选择破法 ${SUITS[c.suit]}${c.rank}" aria-pressed="${ui.selected.includes(c.id)}">${cardFace(c)}</button>`}).join('')}</div>
   </section>`
 }
@@ -43,7 +42,17 @@ export function renderCenter(ui,view){
   if(view.pending?.actor===0&&view.pending.kind==='take')return takeChoices(ui,view)
   if(view.pending?.actor===0&&view.pending.kind==='counter')return counterChoices(ui,view)
   const picks=publicPicks(view)
-  if(view.lastPlayed?.as==='harvest'&&(view.harvestPool?.length||picks.length)&&view.lastPlayed.turn===view.turns)return `<section class="fs-center-choice fs-pool-choice" role="group" aria-label="仙山采宝"><header><strong>仙山采宝</strong><small>${view.pending?.kind==='pick'?(view.pending.actor===0?'请选择一张牌':display(view.players[view.pending.actor]).name+'正在选牌'):'选牌完成'}</small></header><div class="fs-center-card-list" data-scroll="pool">${(view.harvestPool||[]).map(c=>{const i=view.legal.findIndex(a=>a.type==='choose'&&a.value===c.id);return `<button class="fs-choice-card" data-action="response" data-value="${i}" ${i<0?'disabled':''} aria-label="${cardTitle(c.type)}">${cardFace(c)}</button>`}).join('')}${picks.map(p=>`<div class="fs-choice-card fs-harvest-picked" data-picked-by="${p.source}">${cardFace(p.card)}<b>${display(view.players[p.source]).name}</b><small>已选 ${cardTitle(p.card.type)}</small></div>`).join('')}</div></section>`
+  if(view.lastPlayed?.as==='harvest'&&(view.harvestPool?.length||picks.length)&&view.lastPlayed.turn===view.turns){
+    // 全部选完后短暂展示结果即自动收起，不再一直占着桌面中央等待
+    if(view.pending?.kind!=='pick'){
+      if(ui.harvestDoneId!==view.lastPlayed.id){ui.harvestDoneId=view.lastPlayed.id;ui.harvestDoneAt=Date.now();setTimeout(()=>{if(!ui.destroyed)ui.render()},1500)}
+      else if(Date.now()-ui.harvestDoneAt>1400)return playedCenter(view)
+    }
+    return `<section class="fs-center-choice fs-pool-choice" role="group" aria-label="仙山采宝"><header><strong>仙山采宝</strong><small>${view.pending?.kind==='pick'?(view.pending.actor===0?'请选择一张牌':display(view.players[view.pending.actor]).name+'正在选牌'):'选牌完成'}</small></header><div class="fs-center-card-list" data-scroll="pool">${(view.harvestPool||[]).map(c=>{const i=view.legal.findIndex(a=>a.type==='choose'&&a.value===c.id);return `<button class="fs-choice-card" data-action="response" data-value="${i}" ${i<0?'disabled':''} aria-label="${cardTitle(c.type)}">${cardFace(c)}</button>`}).join('')}${picks.map(p=>`<div class="fs-choice-card fs-harvest-picked" data-picked-by="${p.source}">${cardFace(p.card)}<b>${display(view.players[p.source]).name}</b><small>已选 ${cardTitle(p.card.type)}</small></div>`).join('')}</div></section>`
+  }
+  return playedCenter(view)
+}
+function playedCenter(view){
   const played=view.lastPlayed,battle=combatContext(view),converted=(played?.as==='sha'||played?.label==='杀')&&played.cards.some(c=>c.type!=='sha'),response=view.lastResponse?.forPlayed===played?.id&&view.lastResponse?.turn===view.turns?view.lastResponse:null,drawn=played?.as==='draw'&&played.turn===view.turns?view.logs.find(l=>l.cue?.kind==='draw'&&l.cue.playedId===played?.id)?.cue:null
   const visibleCard=(c,as,caption)=>`<span class="fs-card-play">${cardFace(as?{...c,type:as}:c)}${caption?`<small>${esc(caption)}</small>`:''}</span>`
   const responseCard=response?response.cards.slice(0,1).map(c=>visibleCard(c,response.as,seatName(view,response.source)+' · '+(c.type!==response.as?'转化':'响应'))).join(''):''
@@ -59,7 +68,7 @@ function playInstruction(ui,view){
   return `${cardTitle(as)} · ${ui.targetable(view).length?ui.targets.length?'目标已选，请确认':'点击人物选择目标':'对自己或全场使用，请确认'}`
 }
 function operation(ui,v){
-  let title='',hint='',battle=combatContext(v)
+  let title='',hint=''
   if(ui.paused)title='牌局已暂停'
   else if(v.winner){title=ui.won()?'你获胜了':'本局结束';hint=ROLES[v.winner].name+'阵营获胜'}
   else if(v.pending?.kind==='reveal'){title=seatName(v,v.pending.target)+'正在进行'+delayLabel(v.pending.delayType)+'判定';hint='判定牌公开翻到中央，展示完自动继续'}
@@ -70,10 +79,10 @@ function operation(ui,v){
   else if(v.pending){title=display(v.players[v.pending.actor]).name+'正在响应…'}
   else if(v.current===0&&v.players[0].alive)title=playInstruction(ui,v)
   else title=display(v.players[v.current]).name+'的回合 · '+(v.players[0].alive?'等待出牌':'你已阵亡，正在观战')
-  const opts=v.current===0&&!v.pending?ui.matching(v):[],as=ui.currentAs(v),variants=[...new Set(opts.map(a=>a.as))],natural=v.players[0].hand.find(c=>c.id===ui.selected[0])?.type
   const selected=v.players[0].hand.find(c=>c.id===ui.selected[0])||Object.values(v.players[0].equip).find(c=>c?.id===ui.selected[0])
-  if(selected&&!ui.skill&&ui.hints!==false){const d=CARDS_BY_TYPE[selected.type];hint=d.name+'：'+displayText(d.help)+(as&&as!==selected.type?' · 当前转化为'+cardTitle(as):'')}
-  return `<section class="fs-operation" aria-live="polite"><span class="fs-operation-light"></span><div><strong>${esc(title)}</strong>${hint?`<small class="fs-teaching-hint">${esc(hint)}</small>`:''}</div>${!v.pending&&as==='collateral'&&ui.targetable(v).includes(0)&&!ui.targets.includes(0)?'<button class="fs-self-target" data-action="target" data-value="0">让他杀我</button>':''}${variants.length>1||variants.length===1&&as!==natural?`<div class="fs-conversions">${variants.map(a=>`<button data-action="as" data-value="${a}" class="${a===as?'selected':''}">当${CARDS_BY_TYPE[a].name}</button>`).join('')}</div>`:''}</section>`
+  if(selected&&!ui.skill&&ui.hints!==false){const d=CARDS_BY_TYPE[selected.type];hint=d.name+'：'+displayText(d.help)+(ui.currentAs(v)&&ui.currentAs(v)!==selected.type?' · 当前转化为'+cardTitle(ui.currentAs(v)):'')}
+  // 状态提示改为牌面上方的浮空文字，不占布局、不遮挡操作（英雄杀式桌面）。
+  return `<div class="fs-status" aria-live="polite"><strong>${esc(title)}</strong>${hint?`<small class="fs-teaching-hint">${esc(hint)}</small>`:''}</div>`
 }
 export function renderControls(ui,v){
   if(ui.paused)return `<div class="fs-action-row"><button data-action="pause" class="fs-primary">继续对局</button></div>`
@@ -88,12 +97,15 @@ export function renderControls(ui,v){
     return `<div class="fs-action-row">${answers.length||pending.kind==='discard'?`<button data-action="confirm" class="fs-primary" ${!canConfirm?'disabled':''}>${pending.kind==='discard'?'确认弃牌':pending.kind==='counter'?'使用破法':'确认响应'}</button>`:''}${options.map(({a,i})=>`<button data-action="response" data-value="${i}" class="fs-secondary">${esc(displayText(a.type==='pass'?'放弃':a.type==='bagua'?'杏黄旗判定':a.type==='support'?'请求援助':a.type==='choose'?a.label||SUITS[a.value]||a.value:'选项'))}</button>`).join('')}<button data-action="clear" class="fs-clear">重选</button></div>`
   }
   if(v.pending||v.current!==0||!v.players[0].alive)return `<div class="fs-action-row fs-idle-controls"><button data-action="report" class="fs-secondary">查看战报</button><span>${v.pending?'等待'+seatName(v,v.pending.actor)+'响应':v.players[0].alive?'等待你的回合':'观战中 · 身份始终可见'}</span></div>`
-  return `<div class="fs-action-row"><button data-action="clear" class="fs-clear">重选</button><button data-action="confirm" class="fs-primary" ${!ui.skill&&!ui.selected.length?'disabled':''}>${ui.skill?'发动'+skillName(v.players[0].heroId,ui.skill):'确认出牌'}${ui.targets.length?' · '+ui.targets.map(t=>display(v.players[t]).name).join('、'):''}</button><button data-action="end" class="fs-secondary">结束出牌</button></div>`
+  const opts=ui.matching(v),as=ui.currentAs(v),variants=[...new Set(opts.map(a=>a.as))],natural=v.players[0].hand.find(c=>c.id===ui.selected[0])?.type
+  const conversions=variants.length>1||variants.length===1&&as!==natural?`<div class="fs-conversions">${variants.map(a=>`<button data-action="as" data-value="${a}" class="${a===as?'selected':''}">当${CARDS_BY_TYPE[a].name}</button>`).join('')}</div>`:''
+  const selfTarget=as==='collateral'&&ui.targetable(v).includes(0)&&!ui.targets.includes(0)?'<button class="fs-self-target fs-secondary" data-action="target" data-value="0">让他杀我</button>':''
+  return `<div class="fs-action-row">${conversions}${selfTarget}<button data-action="clear" class="fs-clear">重选</button><button data-action="confirm" class="fs-primary" ${!ui.skill&&!ui.selected.length?'disabled':''}>${ui.skill?'发动'+skillName(v.players[0].heroId,ui.skill):'确认出牌'}${ui.targets.length?' · '+ui.targets.map(t=>display(v.players[t]).name).join('、'):''}</button><button data-action="end" class="fs-secondary">结束出牌</button></div>`
 }
 export function renderBattle(ui){
   const v=playerView(ui.state,0),p=v.players[0],h=display(p),selfTarget=ui.targetable(v).includes(0),selfSelected=ui.targets.includes(0)
   return `${ui.header()}<div class="fs-round"><button data-action="identity" class="fs-my-role" aria-label="查看自己的${ROLES[p.role].name}身份">${roleBadge(p,true)}<b>你是${ROLES[p.role].name}</b></button><span>第 ${v.turns} 回合 · 牌堆 ${v.deckCount}</span><button data-action="auto" class="fs-clock" aria-label="${ui.auto?'接管操作':'开启AI托管'}">${ui.auto?'AI托管 · 接管':ui.clock?.key?'<b data-seconds>'+ui.clock.seconds+'s</b>':'托管'}</button><button data-action="pace">${ui.pace===250?'快':ui.pace===1100?'慢':'标准'}</button></div>
-    <main class="fs-arena"><div class="fs-players">${v.players.slice(1).map(x=>renderOpponent(ui,x,v)).join('')}</div>${renderCenter(ui,v)}<div class="fs-deck-stack" aria-label="牌堆剩余 ${v.deckCount} 张"><b>牌堆</b><span>${v.deckCount}</span></div></main>
-    ${operation(ui,v)}<section class="fs-dock"><div class="fs-own-panel"><div class="fs-own-hero ${p.alive?'':'fs-own-fallen'} ${selfTarget?'targetable':''} ${selfSelected?'target-selected':''}"><button data-action="${selfTarget||selfSelected?'target':'hero-detail'}" data-value="0" data-id="${h.id}" aria-label="${selfTarget?'选择自己作为被杀目标':'查看'+h.name}">${portrait(h)}${delays(p,v).length?`<span class="fs-own-delays" aria-label="你的判定区">${delays(p,v).map(type=>`<b>${delayLabel(type)}</b>`).join('')}</span>`:''}</button><div><small>${FACTIONS[h.faction]} · ${p.alive?h.title:'已阵亡，观战中'}</small><strong>${h.name}</strong><button data-action="identity" class="fs-own-role-button" aria-label="你的身份：${ROLES[p.role].name}">${roleBadge(p,true)}<span>你的身份</span></button>${hp(p)}</div></div><div class="fs-own-skills" data-scroll="skills">${ui.skills(p,v)}</div><div class="fs-own-equipment" data-scroll="equipment">${ui.equipment(p,true)}</div></div>
+    <main class="fs-arena"><div class="fs-players">${v.players.slice(1).map(x=>renderOpponent(ui,x,v)).join('')}</div>${renderCenter(ui,v)}${operation(ui,v)}<div class="fs-deck-stack" aria-label="牌堆剩余 ${v.deckCount} 张"><b>牌堆</b><span>${v.deckCount}</span></div></main>
+    <section class="fs-dock"><div class="fs-own-panel"><div class="fs-own-hero ${p.alive?'':'fs-own-fallen'} ${selfTarget?'targetable':''} ${selfSelected?'target-selected':''}"><button data-action="${selfTarget||selfSelected?'target':'hero-detail'}" data-value="0" data-id="${h.id}" aria-label="${selfTarget?'选择自己作为被杀目标':'查看'+h.name}">${portrait(h)}${delays(p,v).length?`<span class="fs-own-delays" aria-label="你的判定区">${delays(p,v).map(type=>`<b>${delayLabel(type)}</b>`).join('')}</span>`:''}</button><div><small>${FACTIONS[h.faction]} · ${p.alive?h.title:'已阵亡，观战中'}</small><strong style="${h.name.length>4?'font-size:16px;letter-spacing:0':''}">${h.name}</strong><button data-action="identity" class="fs-own-role-button" aria-label="你的身份：${ROLES[p.role].name}">${roleBadge(p,true)}<span>你的身份</span></button>${hp(p)}</div></div><div class="fs-own-skills" data-scroll="skills">${ui.skills(p,v)}</div><div class="fs-own-equipment" data-scroll="equipment">${ui.equipment(p,true)}</div></div>
     <div class="fs-hand-area"><div class="fs-hand-heading"><b>手牌 <i>${p.hand.length}</i></b><span>${ui.selected.length?'已选 '+ui.selected.length+' 张':'左右滑动 · 点牌抽起'}</span><button data-action="hand">展开手牌</button></div><div class="fs-hand" data-scroll="hand">${p.hand.length?p.hand.map(c=>`<button class="fs-hand-card ${ui.selected.includes(c.id)?'selected':''}" data-action="card" data-id="${c.id}" aria-label="${cardTitle(c.type)} ${SUITS[c.suit]}${c.rank}" aria-pressed="${ui.selected.includes(c.id)}">${cardFace(c)}</button>`).join(''):'<div class="fs-empty">手中无牌 · 静观其变</div>'}</div><div class="fs-actions">${renderControls(ui,v)}</div></div></section>`
 }

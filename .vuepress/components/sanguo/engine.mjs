@@ -15,7 +15,8 @@ const name = (s, seat) => seat == null ? '天灾' : hero(player(s, seat)).name
 const enqueue = (s, ...events) => s.queue.unshift(...events)
 const note = (s, text, cue=null) => { s.logs.unshift({ id: ++s.eventId, text, ...(cue?{cue}:{}) }); s.logs = s.logs.slice(0, 80) }
 const autoSkill = skill => catalog.automaticSkills?.includes(skill)
-const announceSkill = (s,seat,skill) => note(s,`${name(s,seat)}自动发动${catalog.skillNames?.[skill]||skill}`,{kind:'skill',seat,skill})
+const labelSkill = (s,seat,skill,fallback) => catalog.skillName?.(player(s,seat).heroId,skill)||fallback
+const announceSkill = (s,seat,skill) => note(s,`${name(s,seat)}自动发动${catalog.skillName?.(player(s,seat).heroId,skill)||catalog.skillNames?.[skill]||skill}`,{kind:'skill',seat,skill})
 function random(s) { s.seed = (Math.imul(s.seed, 1664525) + 1013904223) >>> 0; return s.seed / 4294967296 }
 function shuffle(s, cards) { const out = cards.slice(); for (let i = out.length - 1; i > 0; i--) { const j = Math.floor(random(s) * (i + 1)); [out[i],out[j]] = [out[j],out[i]] } return out }
 function orderFrom(s, start) { return Array.from({ length: 5 }, (_, i) => (start + i) % 5).filter(seat => player(s, seat).alive) }
@@ -497,12 +498,12 @@ function activeSkill(s,action) {
     if(!ids.length||!player(s,target)?.alive||target===action.seat||!ids.every(id=>p.hand.some(c=>c.id===id)))throw new Error('仁德需选择手牌和一名其他角色')
     const cards=spend(s,action.seat,ids,true);s.processing=s.processing.filter(c=>!ids.includes(c.id));player(s,target).hand.push(...cards)
     const before=p.marks.rende||0;p.marks.rende=before+ids.length;if(before<2&&p.marks.rende>=2)heal(s,action.seat,1)
-    suspect(s,action.seat,target,false);note(s,`${name(s,action.seat)}以仁德交给${name(s,target)} ${ids.length} 张牌`)
+    suspect(s,action.seat,target,false);note(s,`${name(s,action.seat)}以${labelSkill(s,action.seat,'rende','仁德')}交给${name(s,target)} ${ids.length} 张牌`)
   } else if(skill==='zhiheng') {
     if(!ids.length)throw new Error('制衡至少选择一张手牌或装备')
     spend(s,action.seat,ids);p.marks.zhiheng=true;draw(s,action.seat,ids.length)
   } else if(skill==='kurou') {
-    p.hp--;note(s,`${name(s,action.seat)}发动苦肉，失去一点体力`);enqueue(s,{type:'rescue',target:action.seat,source:null},{type:'draw',target:action.seat,count:2})
+    p.hp--;note(s,`${name(s,action.seat)}发动${labelSkill(s,action.seat,'kurou','苦肉')}，失去一点体力`);enqueue(s,{type:'rescue',target:action.seat,source:null},{type:'draw',target:action.seat,count:2})
   } else if(skill==='fanjian') {
     if(!player(s,target)?.alive||target===action.seat||!p.hand.length)throw new Error('反间需指定一名其他角色')
     p.marks.fanjian=true;makePending(s,{kind:'guess',actor:target,source:action.seat,target})
@@ -529,7 +530,7 @@ function answer(s,action) {
     if(pending.kind==='guess') {
       const source=player(s,pending.source);if(!source.hand.length)return
       const card=source.hand.splice(Math.floor(random(s)*source.hand.length),1)[0];player(s,pending.actor).hand.push(card)
-      note(s,`反间揭晓：${{spade:'♠',heart:'♥',club:'♣',diamond:'♦'}[card.suit]}${CARDS[card.type].name}`)
+      note(s,`${labelSkill(s,pending.source,'fanjian','反间')}揭晓：${{spade:'♠',heart:'♥',club:'♣',diamond:'♦'}[card.suit]}${CARDS[card.type].name}`)
       if(card.suit!==action.value)enqueue(s,{type:'damage',source:pending.source,target:pending.actor,amount:1,cardIds:[]})
     }
     if(pending.kind==='pick'){const index=s.harvestPool.findIndex(c=>c.id===action.value);if(index<0)throw new Error('该牌已被选走');const [card]=s.harvestPool.splice(index,1);player(s,pending.actor).hand.push(card);note(s,`${name(s,pending.actor)}从五谷丰登选择了一张牌`,catalog.trackBattle?{kind:'harvest-pick',source:pending.actor,card:clone(card),playedId:s.lastPlayed?.id}:null)}

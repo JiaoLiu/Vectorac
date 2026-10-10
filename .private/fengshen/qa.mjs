@@ -2,7 +2,7 @@
 import './app.js'
 import {createGame,dispatch,playerView,catalog} from './engine.mjs'
 import {makeDeck} from '../../.vuepress/components/sanguo/catalog.mjs'
-import {chooseAI} from '../../.vuepress/components/sanguo/ai.mjs'
+import {chooseAI} from './engine.mjs'
 import {createSetup} from './setup.mjs'
 import {advanceUnavailable,DecisionClock} from './flow.mjs'
 const ui=window.__fengshenUI,normalSchedule=ui.schedule.bind(ui)
@@ -20,6 +20,12 @@ function card(s,seat,type){const i=s.deck.findIndex(c=>c.type===type);if(i<0)thr
 function equip(s,seat,type,slot){const c=card(s,seat,type);s.players[seat].hand.pop();s.players[seat].equip[slot]=c;return c}
 function step(s,a){const r=dispatch(s,{seat:s.pending?.actor??s.current,...a});if(!r.ok)throw Error(r.error);return r.state}
 function scenario(name){
+  if(['gods','gods-female','gods-male'].includes(name)){
+    const s=fixture(name==='gods'?'artemis':name==='gods-female'?'isis':'apollo')
+    for(const [i,id]of ['zeus','sunwukong','athena','odin'].entries()){const p=s.players[i+1];p.heroId=id;p.hp=p.maxHp=catalog.HERO_BY_ID[id].hp+(p.role==='lord'?1:0)}
+    for(const type of ['draw','shan','sha','tao','nullify','snatch','dismantle','collateral','halberd','bagua','indulgence','lightning'])card(s,0,type)
+    return s
+  }
   if(name==='mobile-demo'){
     let s=fixture('yangjian','lord',1);for(const type of ['shan','sha','tao','nullify','draw','snatch','dismantle','collateral','halberd','bagua','indulgence','lightning'])card(s,0,type)
     const attack=card(s,1,'sha');return step(s,{type:'play',ids:[attack.id],as:'sha',targets:[0]})
@@ -73,7 +79,7 @@ function scenario(name){
 }
 const tools=document.createElement('section');tools.className='qa-tools';tools.style='position:fixed;top:0;left:0;right:0;z-index:999;background:#293d46;padding:6px;display:flex;gap:6px;align-items:center;font:11px sans-serif'
 // Filled below, then add a realistic mixed-hand mobile showcase option.
-tools.innerHTML='<select aria-label="验收场景" style="color:#14242a;background:#eef0db;max-width:180px">'+Object.entries({table:'普通牌桌',death:'他人阵亡', 'own-death':'自己阵亡',snatch:'顺手选牌',dismantle:'过河选牌',counter:'无懈响应',draw:'集智与女声','draw-self':'自己无中生有摸两张','draw-other':'他人无中生有待无懈',hand:'18张手牌',hand6:'6张手牌',hand12:'12张手牌',hand30:'30张手牌','slash-self':'他人杀你：闪或受伤','slash-other':'你杀他人','slash-empty':'实际出杀：目标无闪','duel-empty':'实际决斗：目标无杀','borrow-self':'借刀指定自己','judge-lightning':'闪电命中翻牌','judge-miss':'闪电未命中翻牌','judge-prison':'画地为牢翻牌',delays:'自己挂雷与画地为牢',equipped:'他人四件装备与全体牌',harvest:'五谷中央选牌','no-shan':'没有闪自动伤害','no-sha':'没有杀决斗伤害','clock-short':'2秒加速超时托管',ai:'完整UI定时器对局','draft-lord':'随机身份：你为主公','draft-other':'随机身份：AI为主公'}).map(([value,label])=>`<option value="${value}">${label}</option>`).join('')+'</select><button style="border:1px solid #d3c09b;padding:5px" data-qa-load>载入验收场景</button>'
+tools.innerHTML='<select aria-label="验收场景" style="color:#14242a;background:#eef0db;max-width:180px">'+Object.entries({gods:'众神长名称手机牌桌','gods-female':'伊西斯女声与秘法','gods-male':'阿波罗男声与神谕',table:'普通牌桌',death:'他人阵亡', 'own-death':'自己阵亡',snatch:'顺手选牌',dismantle:'过河选牌',counter:'无懈响应',draw:'集智与女声','draw-self':'自己无中生有摸两张','draw-other':'他人无中生有待无懈',hand:'18张手牌',hand6:'6张手牌',hand12:'12张手牌',hand30:'30张手牌','slash-self':'他人杀你：闪或受伤','slash-other':'你杀他人','slash-empty':'实际出杀：目标无闪','duel-empty':'实际决斗：目标无杀','borrow-self':'借刀指定自己','judge-lightning':'闪电命中翻牌','judge-miss':'闪电未命中翻牌','judge-prison':'画地为牢翻牌',delays:'自己挂雷与画地为牢',equipped:'他人四件装备与全体牌',harvest:'五谷中央选牌','no-shan':'没有闪自动伤害','no-sha':'没有杀决斗伤害','clock-short':'2秒加速超时托管',ai:'完整UI定时器对局','draft-lord':'随机身份：你为主公','draft-other':'随机身份：AI为主公'}).map(([value,label])=>`<option value="${value}">${label}</option>`).join('')+'</select><button style="border:1px solid #d3c09b;padding:5px" data-qa-load>载入验收场景</button>'
 const stateProof=document.createElement('output');stateProof.hidden=true;document.body.append(stateProof)
 const mobileOption=document.createElement('option');mobileOption.value='mobile-demo';mobileOption.textContent='手机综合：12张手牌与攻击黄线';tools.querySelector('select').append(mobileOption)
 const normalRender=ui.render.bind(ui);ui.render=()=>{normalRender();const v=ui.state&&playerView(ui.state,0);stateProof.dataset.qaState=JSON.stringify(v?{pending:v.pending,revision:v.revision,hp:v.players.map(p=>p.hp),hand:v.players[0].hand.map(c=>c.id),handCounts:v.players.map(p=>p.handCount),draws:ui.draws,selected:ui.selected,targets:ui.targets,damage:v.logs.filter(l=>l.cue?.kind==='damage').map(l=>l.cue),auto:ui.auto,clockDuration:ui.clock.duration}:{})}

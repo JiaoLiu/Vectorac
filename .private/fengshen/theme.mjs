@@ -1,8 +1,9 @@
 // Internal prototype: aliases do not constitute a cleared commercial design.
 import { HERO_BY_ID, CARDS, SKILLS, makeDeck } from '../../.vuepress/components/sanguo/catalog.mjs'
+import {GODS,GOD_FACTIONS,GOD_ALLIANCES} from './gods.mjs'
 
-export const FACTIONS = { zhou:'周', shang:'商', chan:'阐', jie:'截' }
-export const ALLIANCES = { zhou:'shu', shang:'wei', chan:'wu', jie:'qun' }
+export const FACTIONS = { zhou:'周', shang:'商', chan:'阐', jie:'截',...GOD_FACTIONS }
+export const ALLIANCES = { zhou:'shu', shang:'wei', chan:'wu', jie:'qun',...GOD_ALLIANCES }
 const rows = [
   ['jiangziya','姜子牙','昆仑执榜', 'zhou','zhugeliang',3,'male', {guanxing:'推演',kongcheng:'垂钓'},'silver-haired elderly sage, long white beard, ivory and indigo robes, bamboo fishing rod, scroll, misty river; thoughtful stillness'],
   ['jifa','姬发','西岐明君','zhou','liubei',4,'male',{rende:'仁君',jijiang:'伐纣'},'young solemn king, bronze phoenix crown, jade and ivory ceremonial armor, command sword, dawn banners'],
@@ -26,20 +27,20 @@ const rows = [
   ['duobao','多宝道人','万宝归藏','jie','lvmeng',4,'male',{keji:'藏宝'},'solemn adult Taoist with swept-back black hair, saffron and dark violet robes, luminous treasure pagoda and small floating bronze bells'],
 ]
 export const HEROES = rows.map(([id,name,title,faction,baseHero,hp,sex,skillNames,artDirection])=>({
-  id,name,title,faction,baseHero,hp,sex,skillNames,artDirection,
+  id,name,title,faction,baseHero,engineId:baseHero,hp,sex,skillNames,artDirection,
   playable:!!HERO_BY_ID[baseHero], missingSkills:HERO_BY_ID[baseHero]?[]:Object.keys(skillNames),
   image:`assets/heroes/${id}.jpg`, thumbnail:`assets/heroes/${id}-thumb.jpg`,
-}))
+})).concat(GODS)
 export const HERO_BY_THEME_ID=Object.fromEntries(HEROES.map(h=>[h.id,h]))
 export const PLAYABLE_HEROES=HEROES.filter(h=>h.playable)
 export const SECOND_BATCH=[['huangfeihu','黄飞虎','lvbu'],['shiji','石矶娘娘','zhenji'],['tuxingsun','土行孙','zhangliao'],['jinzha','金吒','guanyu'],['muzha','木吒','huangzhong']]
 
 // All baseline physical cards retain their IDs, quantities, suit, rank and stats.
 const cardNames={sha:'杀',shan:'闪',tao:'仙桃',duel:'斗法',dismantle:'破阵',snatch:'摄宝',draw:'天机显化',savage:'万妖袭营',arrows:'飞剑齐发',garden:'瑶池仙宴',harvest:'仙山采宝',collateral:'借宝诛敌',nullify:'破法',indulgence:'迷魂阵',lightning:'天雷劫',crossbow:'火尖枪',dualsword:'阴阳双剑',qinggang:'斩仙飞刀',blade:'打神鞭',spear:'混天绫',axe:'番天印',halberd:'金蛟剪',bow:'五色神光',ice:'乾坤圈',bagua:'戊己杏黄旗',renwang:'紫绶仙衣',chitu:'风火轮',dayuan:'金睛兽',zixing:'墨麒麟',jueying:'五色神牛',dilu:'青鸾',zhuahuang:'白鹤'}
-export const CARDS_BY_TYPE=Object.fromEntries(Object.entries(CARDS).map(([type,base])=>[type,{...base,type,baseName:base.name,name:cardNames[type],image:`assets/cards/${type}.jpg`,help:base.help}]))
+export const CARDS_BY_TYPE=Object.fromEntries(Object.entries(CARDS).map(([type,base])=>[type,{...base,type,baseName:base.name,name:cardNames[type],image:`assets/cards/${type}.jpg`,thumb:`assets/cards/${type}-thumb.webp`,help:base.help}]))
 export const PLANNED_EQUIPMENT=[{type:'guding',name:'化血神刀',baseName:'古锭刀'},{type:'fan',name:'五火七禽扇',baseName:'朱雀羽扇'},{type:'silverlion',name:'莲花宝甲',baseName:'白银狮子'}]
-export function heroForBase(id){return PLAYABLE_HEROES.find(h=>h.baseHero===id)||null}
-const aliases=[...PLAYABLE_HEROES.map(h=>[HERO_BY_ID[h.baseHero].name,h.name]),...Object.values(CARDS_BY_TYPE).map(c=>[c.baseName,c.name]),...HEROES.flatMap(h=>Object.entries(h.skillNames).filter(([id])=>SKILLS[id]).map(([id,n])=>[SKILLS[id][0],n])),['八卦','杏黄旗'],['青龙刀','打神鞭']]
+export function heroForBase(id){return PLAYABLE_HEROES.find(h=>h.engineId===id)||null}
+const aliases=[...PLAYABLE_HEROES.filter(h=>h.baseHero).map(h=>[HERO_BY_ID[h.baseHero].name,h.name]),...Object.values(CARDS_BY_TYPE).map(c=>[c.baseName,c.name]),...HEROES.filter(h=>h.baseHero).flatMap(h=>Object.entries(h.skillNames).filter(([id])=>SKILLS[id]).map(([id,n])=>[SKILLS[id][0],n])),['八卦','杏黄旗'],['青龙刀','打神鞭']]
 const replacements=new Map(aliases)
 // Reserve full themed words, so the old name 桃 never turns 仙桃 into 仙仙桃.
 for(const word of [...HEROES.map(h=>h.name),...Object.values(CARDS_BY_TYPE).map(c=>c.name),...HEROES.flatMap(h=>Object.values(h.skillNames))])replacements.set(word,word)
@@ -49,4 +50,12 @@ export function displayText(text) {
   return result.replace(/其他蜀将/g,'其他周势力角色').replace(/其他魏将/g,'其他商势力角色').replace(/其他吴将/g,'其他阐教角色')
 }
 export function skillName(heroId,skill){return heroForBase(heroId)?.skillNames[skill]||SKILLS[skill]?.[0]||skill}
-export function manifest(){return {codeName:'封神杀',visibility:'internal-only',rules:'classic-identity-5',heroes:HEROES,cards:CARDS_BY_TYPE,plannedEquipment:PLANNED_EQUIPMENT,deckSize:makeDeck().length}}
+export function skillHelp(h,skill){
+ let text=displayText(SKILLS[skill]?.[1]||'技能待接入')
+ if(skill==='jijiang')text='主公技：需要杀时，可请其他青盟角色提供。'
+ if(skill==='hujia')text='主公技：需要闪时，可请其他赤盟角色提供。'
+ if(skill==='jiuyuan')text='主公技：其他金盟角色救你时，一张仙桃回复两点体力。'
+ return text+(h?.playable&&['jizhi','yingzi','jianxiong','tieji'].includes(skill)?' 有效条件满足时自动发动。':'')
+}
+export const ALLIANCE_NAMES={shu:'青盟',wei:'赤盟',wu:'金盟',qun:'玄盟'}
+export function manifest(){return {codeName:'众神斗法',visibility:'free-demo',rules:'classic-identity-5',heroes:HEROES,cards:CARDS_BY_TYPE,plannedEquipment:PLANNED_EQUIPMENT,deckSize:makeDeck().length}}

@@ -19,7 +19,6 @@
 .fs-card-play{display:flex;flex-direction:column;align-items:center;gap:3px;flex:none}
 .fs-card-play>.fs-clean-card{width:65px;height:94px;flex:none}
 .fs-card-play>small{font-size:9px;line-height:1.2;color:#f0dcaf;white-space:nowrap}
-.fs-playing .fs-operation small{max-height:2.8em;overflow:auto}
 @media(max-width:699px) and (orientation:portrait){.fs-card-play>.fs-clean-card,.fs-playing .fs-played>.fs-clean-card{width:53px;height:77px}.fs-playing .fs-table-caption>b{font-size:9px}}
 @media(max-height:559px) and (orientation:landscape){
  .fs-playing .fs-table-center{inset:3px 35% 3px;gap:3px}

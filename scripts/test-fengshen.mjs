@@ -5,14 +5,13 @@ import {HEROES,PLAYABLE_HEROES,CARDS_BY_TYPE,PLANNED_EQUIPMENT,ALLIANCES,heroFor
 import {catalog,createGame,dispatch,playerView,restoreGame,allCards,THEME_VERSION} from '../.private/fengshen/engine.mjs'
 import {createGame as classicGame,restoreGame as classicRestore,hero as classicHero} from '../.vuepress/components/sanguo/engine.mjs'
 import {HERO_BY_ID,CARDS,makeDeck} from '../.vuepress/components/sanguo/catalog.mjs'
-import {chooseAI} from '../.vuepress/components/sanguo/ai.mjs'
+import {chooseAI} from '../.private/fengshen/engine.mjs'
 import {ART_PROMPTS} from '../.private/fengshen/art-prompts.mjs'
 
-test('20 explicit unique character mappings, 5 per faction; no substitute skills',()=>{
-  assert.equal(HEROES.length,20);assert.equal(new Set(HEROES.map(h=>h.id)).size,20)
-  for(const faction of Object.keys(ALLIANCES))assert.equal(HEROES.filter(h=>h.faction===faction).length,5)
-  assert.equal(PLAYABLE_HEROES.length,9)
-  for(const h of HEROES){assert.equal(h.playable,!!HERO_BY_ID[h.baseHero]);if(h.playable)assert.deepEqual(Object.keys(h.skillNames),HERO_BY_ID[h.baseHero].skills);else assert.throws(()=>createGame({heroId:h.id}))}
+test('40 unique portraits, 29 playable heroes; every enabled primitive exists',()=>{
+  assert.equal(HEROES.length,40);assert.equal(new Set(HEROES.map(h=>h.id)).size,40)
+  assert.equal(PLAYABLE_HEROES.length,29)
+  for(const h of HEROES){if(h.playable){assert.ok(catalog.HERO_BY_ID[h.engineId]);assert.deepEqual(Object.keys(h.skillNames),catalog.HERO_BY_ID[h.engineId].skills)}else assert.throws(()=>createGame({heroId:h.id}))}
   assert.equal(HEROES.find(h=>h.baseHero==='xiaoqiao').name,'龙吉公主');assert.equal(HEROES.find(h=>h.baseHero==='xiaoqiao').sex,'female')
 })
 test('theme and classic catalogs do not mutate each other',()=>{
@@ -59,14 +58,14 @@ test('AI only receives legal player views, not hidden hands, identities or deck'
 test('180 seeded matches complete legally across every enabled character and role',()=>{
   const winners={lord:0,rebel:0,renegade:0}
   for(let seed=1;seed<=180;seed++){
-    let s=createGame({heroId:PLAYABLE_HEROES[(seed-1)%9].id,role:['lord','loyal','rebel','renegade','random'][seed%5],seed}),actions=0
+    let s=createGame({heroId:PLAYABLE_HEROES[(seed-1)%PLAYABLE_HEROES.length].id,role:['lord','loyal','rebel','renegade','random'][seed%5],seed}),actions=0
     while(!s.winner&&actions++<3500){const actor=s.pending?.actor??s.current,v=playerView(s,actor),a=chooseAI(v);assert.ok(a,`seed ${seed} actor ${actor}`);const r=dispatch(s,a);assert.ok(r.ok,`seed ${seed}: ${r.error} ${JSON.stringify(a)}`);s=r.state;if(actions%71===0){assert.equal(allCards(s).length,108);assert.ok(restoreGame(s))}}
     assert.ok(s.winner,`seed ${seed} failed to finish`);winners[s.winner]++;assert.equal(allCards(s).length,108)
   }
   console.log('Fengshen prototype simulations (not a balance result):',winners)
 })
-test('52 independent artwork prompts are complete and workspace assets exist',async()=>{
-  assert.equal(ART_PROMPTS.length,52);assert.equal(new Set(ART_PROMPTS.map(a=>a.kind+'/'+a.id)).size,52)
+test('72 independent artwork prompts are complete and workspace assets exist',async()=>{
+  assert.equal(ART_PROMPTS.length,72);assert.equal(new Set(ART_PROMPTS.map(a=>a.kind+'/'+a.id)).size,72)
   for(const a of ART_PROMPTS){assert.ok(a.prompt.includes('no watermark'));const s=await stat(new URL(`../.private/fengshen/assets/${a.kind}/${a.id}.jpg`,import.meta.url));assert.ok(s.size>1000)}
   for(const h of HEROES){const full=await stat(new URL(`../.private/fengshen/${h.image}`,import.meta.url)),thumb=await stat(new URL(`../.private/fengshen/${h.thumbnail}`,import.meta.url));assert.ok(thumb.size>1000&&thumb.size<full.size)}
 })

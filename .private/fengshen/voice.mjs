@@ -1,5 +1,6 @@
 import {AUDIO_ENTRIES,audioPath} from './audio-manifest.mjs'
 import {heroForBase} from './theme.mjs'
+import {skillAudioKey} from './audio-manifest.mjs'
 const allowed=new Set(AUDIO_ENTRIES.map(e=>e.key))
 export class CardVoice {
   constructor({enabled=true,createContext=()=>{const C=window.AudioContext||window.webkitAudioContext;return C?new C():null},fetchAudio=url=>fetch(url),onIdle=()=>{}}={}){
@@ -70,8 +71,8 @@ export class CardVoice {
 export function cuesForAction(before,action,after){
   const seat=action.seat??0,cues=[],type=action.type==='play'?action.as||before.players[seat].hand.find(c=>c.id===action.ids?.[0])?.type:action.type==='respond'&&before.pending?.kind!=='axe'?before.pending?.as:null
   if(type)cues.push({key:`card-${type}`,sex:displaySex(before,seat)})
-  if(action.type==='skill')cues.push({key:`skill-${action.skill}`,sex:displaySex(before,seat)})
-  for(const line of after.logs.filter(l=>l.id>before.eventId).slice().reverse())if(line.cue?.kind==='skill'&&after.players[line.cue.seat])cues.push({key:`skill-${line.cue.skill}`,sex:displaySex(after,line.cue.seat)})
+  if(action.type==='skill')cues.push({key:skillAudioKey(before.players[seat].heroId,action.skill),sex:displaySex(before,seat)})
+  for(const line of after.logs.filter(l=>l.id>before.eventId).slice().reverse())if(line.cue?.kind==='skill'&&after.players[line.cue.seat])cues.push({key:skillAudioKey(after.players[line.cue.seat].heroId,line.cue.skill),sex:displaySex(after,line.cue.seat)})
   return cues
 }
 function displaySex(state,seat){return heroForBase(state.players[seat].heroId)?.sex||'male'}

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import {openBrowser} from './browser-cdp.mjs'
 import {createGame,dispatch,playerView,allCards} from '../.private/fengshen/engine.mjs'
-import {chooseAI} from '../.vuepress/components/sanguo/ai.mjs'
+import {chooseAI} from '../.private/fengshen/engine.mjs'
 import {makeDeck} from '../.vuepress/components/sanguo/catalog.mjs'
 import {hand,equipment} from './fixtures/sanguo.mjs'
 const browser=await openBrowser({name:'fengshen',baseUrl:process.env.FENGSHEN_TEST_URL||'http://127.0.0.1:4178',route:'/'})

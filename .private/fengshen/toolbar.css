@@ -9,3 +9,7 @@
 @media(max-width:699px){.fs-app .fs-header nav{gap:3px}.fs-app .fs-header nav .fs-tool{width:32px;height:34px;min-height:34px;border-radius:6px}.fs-app .fs-tool>svg{width:18px;height:18px}}
 @media(max-height:559px) and (orientation:landscape){.fs-app .fs-header nav .fs-tool{width:32px;height:29px;min-height:29px;border-radius:5px}.fs-app .fs-tool>svg{width:17px;height:17px}}
 @media(max-width:359px) and (orientation:portrait){.fs-app .fs-header nav{gap:2px}.fs-app .fs-header nav .fs-tool{width:27px;height:32px;min-height:32px}.fs-app .fs-tool>svg{width:17px;height:17px}}
+.fs-brand{flex-shrink:0;white-space:nowrap}
+@media(max-width:420px){.fs-brand{font-size:14px;letter-spacing:0}.fs-header{padding-left:8px;padding-right:8px}}
+.fs-player-info>strong,.fs-own-hero strong{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fs-player-info>strong{font-size:clamp(10px,2.5vw,16px)}

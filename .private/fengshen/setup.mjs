@@ -1,7 +1,7 @@
 import {PLAYABLE_HEROES,HERO_BY_THEME_ID,ALLIANCES} from './theme.mjs'
 import {createAssignedGame,restoreGame,THEME_VERSION} from './engine.mjs'
 export const SETUP_VERSION=1
-export const LORD_HEROES=['jifa','dixin','yunzhongzi']
+export const LORD_HEROES=['jifa','dixin','yunzhongzi','nuwa','fuxi','amaterasu']
 const roleCounts={lord:1,loyal:1,rebel:2,renegade:1}
 const clone=s=>JSON.parse(JSON.stringify(s))
 function random(s){s.seed=(Math.imul(s.seed,1664525)+1013904223)>>>0;return s.seed/4294967296}
@@ -13,7 +13,7 @@ export function createSetup({seed=Date.now()>>>0}={}){
   const s={version:SETUP_VERSION,theme:THEME_VERSION,stage:'identity',seed:mixSeed(seed),revision:0,roles:[],lord:0,offers:Array.from({length:5},()=>[]),picks:Array(5).fill(null),published:Array(5).fill(null),candidateCount:Math.min(3,Math.floor((PLAYABLE_HEROES.length-1)/4))}
   s.roles=shuffle(s,['lord','loyal','rebel','rebel','renegade']);s.lord=s.roles.indexOf('lord')
   const extras=shuffle(s,PLAYABLE_HEROES.filter(h=>!LORD_HEROES.includes(h.id)).map(h=>h.id)).slice(0,2)
-  s.offers[s.lord]=shuffle(s,[...LORD_HEROES,...extras]);return s
+  s.offers[s.lord]=shuffle(s,[...shuffle(s,LORD_HEROES).slice(0,3),...extras]);return s
 }
 export function setupView(s,seat=0){
   return {stage:s.stage,revision:s.revision,seat,role:s.roles[seat],lord:s.lord,candidateCount:s.candidateCount,
@@ -66,7 +66,7 @@ export function restoreSetup(raw){
     if(!Number.isInteger(s.candidateCount)||s.candidateCount<1||s.candidateCount>3||s.candidateCount*4>PLAYABLE_HEROES.length-1)return null
     if(![s.offers,s.picks,s.published].every(a=>Array.isArray(a)&&a.length===5)||s.offers.some(a=>!Array.isArray(a)||a.some(id=>!valid(id))||new Set(a).size!==a.length))return null
     if(s.picks.some((id,i)=>id!==null&&(!valid(id)||!s.offers[i].includes(id)))||new Set(s.picks.filter(Boolean)).size!==s.picks.filter(Boolean).length)return null
-    const lordOffers=s.offers[s.lord];if(lordOffers.length!==5||LORD_HEROES.some(id=>!lordOffers.includes(id)))return null
+    const lordOffers=s.offers[s.lord];if(lordOffers.length!==5||lordOffers.filter(id=>LORD_HEROES.includes(id)).length!==3)return null
     if(['identity','lord'].includes(s.stage)){
       if(s.picks.some(Boolean)||s.published.some(x=>x!==null)||s.offers.some((a,i)=>i!==s.lord&&a.length))return null
     }else{

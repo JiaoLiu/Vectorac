@@ -192,6 +192,162 @@
     {
       "key": "skill-qicai",
       "text": "通法"
+    },
+    {
+      "key": "skill-sunwukong-paoxiao",
+      "text": "大闹天宫"
+    },
+    {
+      "key": "skill-sunwukong-longdan",
+      "text": "七十二变"
+    },
+    {
+      "key": "skill-nuwa-rende",
+      "text": "补天"
+    },
+    {
+      "key": "skill-nuwa-hujia",
+      "text": "护生"
+    },
+    {
+      "key": "skill-fuxi-zhiheng",
+      "text": "演卦"
+    },
+    {
+      "key": "skill-fuxi-jijiang",
+      "text": "御灵"
+    },
+    {
+      "key": "skill-houyi-wusheng",
+      "text": "射日"
+    },
+    {
+      "key": "skill-houyi-tieji",
+      "text": "穿云"
+    },
+    {
+      "key": "skill-zeus-tieji",
+      "text": "霆怒"
+    },
+    {
+      "key": "skill-zeus-luoyi",
+      "text": "天威"
+    },
+    {
+      "key": "skill-athena-qicai",
+      "text": "神谋"
+    },
+    {
+      "key": "skill-athena-wusheng",
+      "text": "圣枪"
+    },
+    {
+      "key": "skill-hades-jianxiong",
+      "text": "收魂"
+    },
+    {
+      "key": "skill-hades-kurou",
+      "text": "冥契"
+    },
+    {
+      "key": "skill-poseidon-mashu",
+      "text": "潮行"
+    },
+    {
+      "key": "skill-poseidon-paoxiao",
+      "text": "怒涛"
+    },
+    {
+      "key": "skill-artemis-mashu",
+      "text": "逐月"
+    },
+    {
+      "key": "skill-artemis-wusheng",
+      "text": "月矢"
+    },
+    {
+      "key": "skill-apollo-yingzi",
+      "text": "晨辉"
+    },
+    {
+      "key": "skill-apollo-jizhi",
+      "text": "神谕"
+    },
+    {
+      "key": "skill-odin-zhiheng",
+      "text": "卢恩"
+    },
+    {
+      "key": "skill-odin-jizhi",
+      "text": "万智"
+    },
+    {
+      "key": "skill-thor-wushuang",
+      "text": "雷锤"
+    },
+    {
+      "key": "skill-loki-yingzi",
+      "text": "诡焰"
+    },
+    {
+      "key": "skill-loki-fanjian",
+      "text": "幻诈"
+    },
+    {
+      "key": "skill-anubis-jianxiong",
+      "text": "摄魄"
+    },
+    {
+      "key": "skill-anubis-zhiheng",
+      "text": "裁魂"
+    },
+    {
+      "key": "skill-isis-rende",
+      "text": "圣佑"
+    },
+    {
+      "key": "skill-isis-jizhi",
+      "text": "秘法"
+    },
+    {
+      "key": "skill-ra-tieji",
+      "text": "烈日"
+    },
+    {
+      "key": "skill-ra-qicai",
+      "text": "天舟"
+    },
+    {
+      "key": "skill-bastet-longdan",
+      "text": "灵跃"
+    },
+    {
+      "key": "skill-bastet-mashu",
+      "text": "夜巡"
+    },
+    {
+      "key": "skill-amaterasu-yingzi",
+      "text": "日耀"
+    },
+    {
+      "key": "skill-amaterasu-jiuyuan",
+      "text": "神恩"
+    },
+    {
+      "key": "skill-susanoo-wusheng",
+      "text": "天剑"
+    },
+    {
+      "key": "skill-susanoo-luoyi",
+      "text": "荒魂"
+    },
+    {
+      "key": "skill-tsukuyomi-zhiheng",
+      "text": "月相"
+    },
+    {
+      "key": "skill-tsukuyomi-qicai",
+      "text": "夜域"
     }
   ],
   "files": [
@@ -242,6 +398,45 @@
     "male/skill-jiuyuan.mp3",
     "male/skill-jizhi.mp3",
     "male/skill-qicai.mp3",
+    "male/skill-sunwukong-paoxiao.mp3",
+    "male/skill-sunwukong-longdan.mp3",
+    "male/skill-nuwa-rende.mp3",
+    "male/skill-nuwa-hujia.mp3",
+    "male/skill-fuxi-zhiheng.mp3",
+    "male/skill-fuxi-jijiang.mp3",
+    "male/skill-houyi-wusheng.mp3",
+    "male/skill-houyi-tieji.mp3",
+    "male/skill-zeus-tieji.mp3",
+    "male/skill-zeus-luoyi.mp3",
+    "male/skill-athena-qicai.mp3",
+    "male/skill-athena-wusheng.mp3",
+    "male/skill-hades-jianxiong.mp3",
+    "male/skill-hades-kurou.mp3",
+    "male/skill-poseidon-mashu.mp3",
+    "male/skill-poseidon-paoxiao.mp3",
+    "male/skill-artemis-mashu.mp3",
+    "male/skill-artemis-wusheng.mp3",
+    "male/skill-apollo-yingzi.mp3",
+    "male/skill-apollo-jizhi.mp3",
+    "male/skill-odin-zhiheng.mp3",
+    "male/skill-odin-jizhi.mp3",
+    "male/skill-thor-wushuang.mp3",
+    "male/skill-loki-yingzi.mp3",
+    "male/skill-loki-fanjian.mp3",
+    "male/skill-anubis-jianxiong.mp3",
+    "male/skill-anubis-zhiheng.mp3",
+    "male/skill-isis-rende.mp3",
+    "male/skill-isis-jizhi.mp3",
+    "male/skill-ra-tieji.mp3",
+    "male/skill-ra-qicai.mp3",
+    "male/skill-bastet-longdan.mp3",
+    "male/skill-bastet-mashu.mp3",
+    "male/skill-amaterasu-yingzi.mp3",
+    "male/skill-amaterasu-jiuyuan.mp3",
+    "male/skill-susanoo-wusheng.mp3",
+    "male/skill-susanoo-luoyi.mp3",
+    "male/skill-tsukuyomi-zhiheng.mp3",
+    "male/skill-tsukuyomi-qicai.mp3",
     "female/card-sha.mp3",
     "female/card-shan.mp3",
     "female/card-tao.mp3",
@@ -288,6 +483,45 @@
     "female/skill-zhiheng.mp3",
     "female/skill-jiuyuan.mp3",
     "female/skill-jizhi.mp3",
-    "female/skill-qicai.mp3"
+    "female/skill-qicai.mp3",
+    "female/skill-sunwukong-paoxiao.mp3",
+    "female/skill-sunwukong-longdan.mp3",
+    "female/skill-nuwa-rende.mp3",
+    "female/skill-nuwa-hujia.mp3",
+    "female/skill-fuxi-zhiheng.mp3",
+    "female/skill-fuxi-jijiang.mp3",
+    "female/skill-houyi-wusheng.mp3",
+    "female/skill-houyi-tieji.mp3",
+    "female/skill-zeus-tieji.mp3",
+    "female/skill-zeus-luoyi.mp3",
+    "female/skill-athena-qicai.mp3",
+    "female/skill-athena-wusheng.mp3",
+    "female/skill-hades-jianxiong.mp3",
+    "female/skill-hades-kurou.mp3",
+    "female/skill-poseidon-mashu.mp3",
+    "female/skill-poseidon-paoxiao.mp3",
+    "female/skill-artemis-mashu.mp3",
+    "female/skill-artemis-wusheng.mp3",
+    "female/skill-apollo-yingzi.mp3",
+    "female/skill-apollo-jizhi.mp3",
+    "female/skill-odin-zhiheng.mp3",
+    "female/skill-odin-jizhi.mp3",
+    "female/skill-thor-wushuang.mp3",
+    "female/skill-loki-yingzi.mp3",
+    "female/skill-loki-fanjian.mp3",
+    "female/skill-anubis-jianxiong.mp3",
+    "female/skill-anubis-zhiheng.mp3",
+    "female/skill-isis-rende.mp3",
+    "female/skill-isis-jizhi.mp3",
+    "female/skill-ra-tieji.mp3",
+    "female/skill-ra-qicai.mp3",
+    "female/skill-bastet-longdan.mp3",
+    "female/skill-bastet-mashu.mp3",
+    "female/skill-amaterasu-yingzi.mp3",
+    "female/skill-amaterasu-jiuyuan.mp3",
+    "female/skill-susanoo-wusheng.mp3",
+    "female/skill-susanoo-luoyi.mp3",
+    "female/skill-tsukuyomi-zhiheng.mp3",
+    "female/skill-tsukuyomi-qicai.mp3"
   ]
 }

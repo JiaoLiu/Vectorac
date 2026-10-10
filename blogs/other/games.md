@@ -77,10 +77,10 @@
   </a>
 
   <a href="/games/fengshen/" class="game-card">
-    <div class="game-card-cover"><img src="/games/fengshen/assets/heroes/yangjian-thumb.jpg" alt="封神杀：杨戬与天庭斗法" loading="lazy"></div>
+    <div class="game-card-cover"><img src="/games/fengshen/assets/heroes/yangjian-thumb.jpg" alt="众神斗法：杨戬与天庭斗法" loading="lazy"></div>
     <div class="game-card-body">
-      <div class="game-card-title">封神杀 · 试玩版</div>
-      <div class="game-card-desc">五人身份 · 9 位仙将 · 108 张牌 · 单机 AI · 手机横屏</div>
+      <div class="game-card-title">众神斗法 · 试玩版</div>
+      <div class="game-card-desc">五人身份 · 29 位神话角色 · 108 张牌 · 单机 AI · 手机横屏</div>
       <span class="game-card-btn">入局斗法</span>
     </div>
   </a>

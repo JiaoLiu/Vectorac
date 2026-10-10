@@ -23,23 +23,25 @@ async def main():
         if available.get(voice, '').lower() != sex:
             raise RuntimeError(f'Voice not verified: {sex} {voice}')
         (OUT / sex).mkdir(parents=True, exist_ok=True)
-    semaphore = asyncio.Semaphore(4)
+    semaphore = asyncio.Semaphore(1)
     async def generate(sex, voice, entry):
         path = OUT / sex / (entry['key'] + '.mp3')
         if path.exists() and path.stat().st_size > 1000:
             return
         async with semaphore:
-            for attempt in range(3):
+            for attempt in range(6):
                 try:
+                    await asyncio.sleep(0.6)
                     await edge_tts.Communicate(entry['text'] + '！', voice, rate='+8%').save(str(path))
                     if path.stat().st_size < 1000:
                         raise RuntimeError('Empty audio')
                     print(f"OK {sex}/{entry['key']} {entry['text']}", flush=True)
                     return
                 except Exception:
-                    if attempt == 2:
+                    if attempt == 5:
                         raise
-                    await asyncio.sleep(attempt + 1)
+                    print(f"RETRY {sex}/{entry['key']} {attempt + 1}", flush=True)
+                    await asyncio.sleep(2 * (attempt + 1))
     await asyncio.gather(*(generate(sex, voice, entry) for sex, voice in VOICES.items() for entry in entries))
     manifest = {'provider': 'Edge TTS', 'voices': VOICES, 'entries': entries, 'files': [f"{sex}/{e['key']}.mp3" for sex in VOICES for e in entries]}
     (OUT / 'manifest.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding='utf-8')

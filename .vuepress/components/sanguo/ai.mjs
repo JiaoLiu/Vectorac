@@ -1,4 +1,5 @@
-import { CARDS, HERO_BY_ID, isRed } from './catalog.mjs'
+import * as defaultCatalog from './catalog.mjs'
+const {CARDS}=defaultCatalog
 
 // This module receives playerView only: no deck, concealed identities, opponent
 // hands or engine reference. Decisions use visible actions and public suspicion.
@@ -37,12 +38,12 @@ export function cardValue(card,view) {
 const ownCards = view => {const p=view.players[view.seat];return p.hand.concat(Object.values(p.equip).filter(Boolean))}
 const cost = (view,ids=[]) => ids.reduce((n,id)=>n+cardValue(ownCards(view).find(c=>c.id===id),view),0)
 const orderByValue = view => view.players[view.seat].hand.slice().sort((a,b)=>cardValue(a,view)-cardValue(b,view))
-function slashResources(view) {
+function slashResources(view,HERO_BY_ID,isRed) {
   const p=view.players[view.seat],skills=HERO_BY_ID[p.heroId].skills
   const cards=ownCards(view),singles=cards.filter(c=>p.hand.some(h=>h.id===c.id)&&c.type==='sha'||skills.includes('wusheng')&&isRed(c)||skills.includes('longdan')&&p.hand.some(h=>h.id===c.id)&&c.type==='shan')
   return singles.length+(p.equip.weapon?.type==='spear'?Math.floor(p.hand.filter(c=>!singles.some(s=>s.id===c.id)).length/2):0)
 }
-function response(view) {
+function response(view,HERO_BY_ID,isRed) {
   const pending=view.pending,opts=view.legal,pass=opts.find(o=>o.type==='pass')
   if(pending.kind==='reveal')return opts.find(o=>o.type==='ack')
   const answers=opts.filter(o=>o.type==='respond').sort((a,b)=>cost(view,a.ids)-cost(view,b.ids))
@@ -73,14 +74,16 @@ function response(view) {
   if(pending.kind==='axe')return hostility(view,pending.target)>0&&answers.length&&cost(view,answers[0].ids)<11?answers[0]:pass
   if(pending.kind==='blade')return hostility(view,pending.target)>0&&answers.length?answers[0]:pass
   const armor=opts.find(o=>o.type==='bagua');if(armor)return armor
-  if(pending.as==='sha'&&pending.remaining>slashResources(view))return opts.find(o=>o.type==='support')||pass
+  if(pending.as==='sha'&&pending.remaining>slashResources(view,HERO_BY_ID,isRed))return opts.find(o=>o.type==='support')||pass
   if(answers.length)return answers[0]
   return opts.find(o=>o.type==='support')||pass
 }
-export function chooseAI(view) {
+export function createAI(catalog=defaultCatalog){
+const {HERO_BY_ID,isRed}=catalog
+return function chooseAI(view) {
   if(!view.legal.length)return null
   let chosen
-  if(view.pending)chosen=response(view)
+  if(view.pending)chosen=response(view,HERO_BY_ID,isRed)
   else {
     const self=view.players[view.seat],h=HERO_BY_ID[self.heroId]
     const scored=[]
@@ -101,7 +104,7 @@ export function chooseAI(view) {
             if(rel<0&&ally.judgment.some(c=>c.type==='indulgence'))score=13
           }
           score-=Math.max(0,cost(view,action.ids)-5)*.4
-          if(action.as==='duel'&&view.players[target].handCount>0&&slashResources(view)===0)score-=self.hp<=1?30:5
+          if(action.as==='duel'&&view.players[target].handCount>0&&slashResources(view,HERO_BY_ID,isRed)===0)score-=self.hp<=1?30:5
         } else if(action.as==='savage'||action.as==='arrows')score=view.players.filter(p=>p.alive&&p.seat!==view.seat).reduce((n,p)=>n+hostility(view,p.seat)*(p.hp<=2?1.7:1),0)
         else if(action.as==='garden')score=view.players.filter(p=>p.alive&&p.hp<p.maxHp).reduce((n,p)=>n-hostility(view,p.seat),0)+1
         else if(action.as==='harvest')score=5
@@ -130,3 +133,5 @@ export function chooseAI(view) {
   if(!chosen)return null
   return {...chosen,seat:view.seat,revision:view.revision,...(view.pending?{promptId:view.pending.id}:{})}
 }
+}
+export const chooseAI=createAI()

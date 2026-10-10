@@ -1,0 +1,182 @@
+[
+  {
+    "id": "sunwukong",
+    "name": "孙悟空",
+    "provider": "built-in imagegen",
+    "prompt": "Use case: stylized-concept. Asset type: original hero portrait for the mythology strategy card game 众神斗法. Hand-painted premium dark fantasy, refined realistic faces, detailed tactile fabric and metal, dramatic chiaroscuro and cloud depth, crisp silhouette at thumbnail size. Portrait 2:3 composition, waist-up three-quarter portrait, face large in upper half, lower 15% quiet for code labels. One character only, NO text, logos, border, numbers or watermark. Independently designed, no copying commercial game or movie artwork. Subject: 孙悟空, golden-furred monkey king, expressive simian face, red-gold lamellar armor, long golden staff, phoenix feather crown, cloud mountain",
+    "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-cc7a9da4-d058-4b28-a8d3-1099312fc004.png",
+    "full": "assets/heroes/sunwukong.jpg",
+    "thumbnail": "assets/heroes/sunwukong-thumb.jpg"
+  },
+  {
+    "id": "nuwa",
+    "name": "女娲",
+    "provider": "built-in imagegen",
+    "prompt": "Use case: stylized-concept. Asset type: original hero portrait for the mythology strategy card game 众神斗法. Hand-painted premium dark fantasy, refined realistic faces, detailed tactile fabric and metal, dramatic chiaroscuro and cloud depth, crisp silhouette at thumbnail size. Portrait 2:3 composition, waist-up three-quarter portrait, face large in upper half, lower 15% quiet for code labels. One character only, NO text, logos, border, numbers or watermark. Independently designed, no copying commercial game or movie artwork. Subject: 女娲, adult Chinese creator goddess, elegant jade and ivory layered gown, five luminous stones, serene compassionate face, repaired cosmic sky",
+    "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-7339978c-0d69-4368-ae43-ae034a93bd1b.png",
+    "full": "assets/heroes/nuwa.jpg",
+    "thumbnail": "assets/heroes/nuwa-thumb.jpg"
+  },
+  {
+    "id": "fuxi",
+    "name": "伏羲",
+    "provider": "built-in imagegen",
+    "prompt": "Use case: stylized-concept. Asset type: original hero portrait for the mythology strategy card game 众神斗法. Hand-painted premium dark fantasy, refined realistic faces, detailed tactile fabric and metal, dramatic chiaroscuro and cloud depth, crisp silhouette at thumbnail size. Portrait 2:3 composition, waist-up three-quarter portrait, face large in upper half, lower 15% quiet for code labels. One character only, NO text, logos, border, numbers or watermark. Independently designed, no copying commercial game or movie artwork. Subject: 伏羲, ancient Chinese sage deity, long dark beard, bronze-jade robes, luminous eight-trigram disk, mountain dawn",
+    "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-bbe4f3e6-970f-46ee-9a6a-3a359e43da1f.png",
+    "full": "assets/heroes/fuxi.jpg",
+    "thumbnail": "assets/heroes/fuxi-thumb.jpg"
+  },
+  {
+    "id": "houyi",
+    "name": "后羿",
+    "provider": "built-in imagegen",
+    "prompt": "Use case: stylized-concept. Asset type: original hero portrait for the mythology strategy card game 众神斗法. Hand-painted premium dark fantasy, refined realistic faces, detailed tactile fabric and metal, dramatic chiaroscuro and cloud depth, crisp silhouette at thumbnail size. Portrait 2:3 composition, waist-up three-quarter portrait, face large in upper half, lower 15% quiet for code labels. One character only, NO text, logos, border, numbers or watermark. Independently designed, no copying commercial game or movie artwork. Subject: 后羿, athletic adult Chinese divine archer, bronze leather armor, long sun-carved bow, dark hair, distant golden suns",
+    "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-bdb1beef-5110-4ae5-897b-3b67c0cb72a7.png",
+    "full": "assets/heroes/houyi.jpg",
+    "thumbnail": "assets/heroes/houyi-thumb.jpg"
+  },
+  {
+    "id": "zeus",
+    "name": "宙斯",
+    "provider": "built-in imagegen",
+    "prompt": "Use case: stylized-concept. Asset type: original hero portrait for the mythology strategy card game 众神斗法. Hand-painted premium dark fantasy, refined realistic faces, detailed tactile fabric and metal, dramatic chiaroscuro and cloud depth, crisp silhouette at thumbnail size. Portrait 2:3 composition, waist-up three-quarter portrait, face large in upper half, lower 15% quiet for code labels. One character only, NO text, logos, border, numbers or watermark. Independently designed, no copying commercial game or movie artwork. Subject: 宙斯, powerful elderly Greek sky god, white curled beard, white-gold draped robes and bronze cuirass, blue lightning bolt in hand, stormy Olympus",
+    "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-5dfe182b-9160-4e03-a358-301284b25b69.png",
+    "full": "assets/heroes/zeus.jpg",
+    "thumbnail": "assets/heroes/zeus-thumb.jpg"
+  },
+  {
+    "id": "athena",
+    "name": "雅典娜",
+    "provider": "built-in imagegen",
+    "prompt": "Use case: stylized-concept. Asset type: original hero portrait for the mythology strategy card game 众神斗法. Hand-painted premium dark fantasy, refined realistic faces, detailed tactile fabric and metal, dramatic chiaroscuro and cloud depth, crisp silhouette at thumbnail size. Portrait 2:3 composition, waist-up three-quarter portrait, face large in upper half, lower 15% quiet for code labels. One character only, NO text, logos, border, numbers or watermark. Independently designed, no copying commercial game or movie artwork. Subject: 雅典娜, adult Greek warrior goddess, bronze crested helmet with face visible, ivory tunic and bronze armor, spear and owl, calm intelligent face",
+    "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-f64fd7a0-e84f-4d36-b702-94f667926a16.png",
+    "full": "assets/heroes/athena.jpg",
+    "thumbnail": "assets/heroes/athena-thumb.jpg"
+  },
+  {
+    "id": "hades",
+    "name": "哈迪斯",
+    "provider": "built-in imagegen",
+    "prompt": "Use case: stylized-concept. Asset type: original hero portrait for the mythology strategy card game 众神斗法. Hand-painted premium dark fantasy, refined realistic faces, detailed tactile fabric and metal, dramatic chiaroscuro and cloud depth, crisp silhouette at thumbnail size. Portrait 2:3 composition, waist-up three-quarter portrait, face large in upper half, lower 15% quiet for code labels. One character only, NO text, logos, border, numbers or watermark. Independently designed, no copying commercial game or movie artwork. Subject: 哈迪斯, stern mature Greek underworld god, black beard, obsidian and gold armor, bident, quiet blue spectral flames, no gore",
+    "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-4e88f874-a49d-4e80-810e-ef2b47b0dc14.png",
+    "full": "assets/heroes/hades.jpg",
+    "thumbnail": "assets/heroes/hades-thumb.jpg"
+  },
+  {
+    "id": "poseidon",
+    "name": "波塞冬",
+    "provider": "built-in imagegen",
+    "prompt": "Use case: stylized-concept. Asset type: original hero portrait for the mythology strategy card game 众神斗法. Hand-painted premium dark fantasy, refined realistic faces, detailed tactile fabric and metal, dramatic chiaroscuro and cloud depth, crisp silhouette at thumbnail size. Portrait 2:3 composition, waist-up three-quarter portrait, face large in upper half, lower 15% quiet for code labels. One character only, NO text, logos, border, numbers or watermark. Independently designed, no copying commercial game or movie artwork. Subject: 波塞冬, mature Greek sea deity with sea-green beard, scaled bronze armor, long trident, towering dark teal wave",
+    "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-7e802fc6-12f5-43e5-a576-582d2f9d5a29.png",
+    "full": "assets/heroes/poseidon.jpg",
+    "thumbnail": "assets/heroes/poseidon-thumb.jpg"
+  },
+  {
+    "id": "artemis",
+    "name": "阿尔忒弥斯",
+    "provider": "built-in imagegen",
+    "prompt": "Use case: stylized-concept. Asset type: original hero portrait for the mythology strategy card game 众神斗法. Hand-painted premium dark fantasy, refined realistic faces, detailed tactile fabric and metal, dramatic chiaroscuro and cloud depth, crisp silhouette at thumbnail size. Portrait 2:3 composition, waist-up three-quarter portrait, face large in upper half, lower 15% quiet for code labels. One character only, NO text, logos, border, numbers or watermark. Independently designed, no copying commercial game or movie artwork. Subject: 阿尔忒弥斯, adult Greek huntress goddess, dark braided hair, practical silver-green hunter armor, crescent bow, moonlit forest, no nudity",
+    "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-1b29d87a-8568-4d2c-96ba-571b34c871d5.png",
+    "full": "assets/heroes/artemis.jpg",
+    "thumbnail": "assets/heroes/artemis-thumb.jpg"
+  },
+  {
+    "id": "apollo",
+    "name": "阿波罗",
+    "provider": "built-in imagegen",
+    "prompt": "Use case: stylized-concept. Asset type: original hero portrait for the mythology strategy card game 众神斗法. Hand-painted premium dark fantasy, refined realistic faces, detailed tactile fabric and metal, dramatic chiaroscuro and cloud depth, crisp silhouette at thumbnail size. Portrait 2:3 composition, waist-up three-quarter portrait, face large in upper half, lower 15% quiet for code labels. One character only, NO text, logos, border, numbers or watermark. Independently designed, no copying commercial game or movie artwork. Subject: 阿波罗, adult Greek radiant sun deity, golden curls and laurel, ivory bronze robes, lyre, dawn halo, thoughtful expression",
+    "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-a87744e3-7d12-437c-8d81-1dcfafa1069c.png",
+    "full": "assets/heroes/apollo.jpg",
+    "thumbnail": "assets/heroes/apollo-thumb.jpg"
+  },
+  {
+    "id": "odin",
+    "name": "奥丁",
+    "provider": "built-in imagegen",
+    "prompt": "Use case: stylized-concept. Asset type: original hero portrait for the mythology strategy card game 众神斗法. Hand-painted premium dark fantasy, refined realistic faces, detailed tactile fabric and metal, dramatic chiaroscuro and cloud depth, crisp silhouette at thumbnail size. Portrait 2:3 composition, waist-up three-quarter portrait, face large in upper half, lower 15% quiet for code labels. One character only, NO text, logos, border, numbers or watermark. Independently designed, no copying commercial game or movie artwork. Subject: 奥丁, aged Norse one-eyed god, gray beard, dark blue cloak and iron armor, long spear, two raven silhouettes, snowy rune-lit hall",
+    "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-5054a694-552c-4f9d-8dec-f21ec9d9095f.png",
+    "full": "assets/heroes/odin.jpg",
+    "thumbnail": "assets/heroes/odin-thumb.jpg"
+  },
+  {
+    "id": "thor",
+    "name": "索尔",
+    "provider": "built-in imagegen",
+    "prompt": "Use case: stylized-concept. Asset type: original hero portrait for the mythology strategy card game 众神斗法. Hand-painted premium dark fantasy, refined realistic faces, detailed tactile fabric and metal, dramatic chiaroscuro and cloud depth, crisp silhouette at thumbnail size. Portrait 2:3 composition, waist-up three-quarter portrait, face large in upper half, lower 15% quiet for code labels. One character only, NO text, logos, border, numbers or watermark. Independently designed, no copying commercial game or movie artwork. Subject: 索尔, powerful adult Norse thunder god, long red beard, iron leather armor, compact ancient stone hammer, thunderstorm, no modern superhero costume",
+    "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-4e7da1f9-c571-4edd-b1a2-fa5dcbfa119a.png",
+    "full": "assets/heroes/thor.jpg",
+    "thumbnail": "assets/heroes/thor-thumb.jpg"
+  },
+  {
+    "id": "loki",
+    "name": "洛基",
+    "provider": "built-in imagegen",
+    "prompt": "Use case: stylized-concept. Asset type: original hero portrait for the mythology strategy card game 众神斗法. Hand-painted premium dark fantasy, refined realistic faces, detailed tactile fabric and metal, dramatic chiaroscuro and cloud depth, crisp silhouette at thumbnail size. Portrait 2:3 composition, waist-up three-quarter portrait, face large in upper half, lower 15% quiet for code labels. One character only, NO text, logos, border, numbers or watermark. Independently designed, no copying commercial game or movie artwork. Subject: 洛基, lean adult Norse trickster, copper red hair, intricate forest-green leather tunic, small flame and mirrored rune, clever smile, no superhero costume",
+    "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-b001e901-5ac5-45ed-a0ac-61d1109eb966.png",
+    "full": "assets/heroes/loki.jpg",
+    "thumbnail": "assets/heroes/loki-thumb.jpg"
+  },
+  {
+    "id": "anubis",
+    "name": "阿努比斯",
+    "provider": "built-in imagegen",
+    "prompt": "Use case: stylized-concept. Asset type: original hero portrait for the mythology strategy card game 众神斗法. Hand-painted premium dark fantasy, refined realistic faces, detailed tactile fabric and metal, dramatic chiaroscuro and cloud depth, crisp silhouette at thumbnail size. Portrait 2:3 composition, waist-up three-quarter portrait, face large in upper half, lower 15% quiet for code labels. One character only, NO text, logos, border, numbers or watermark. Independently designed, no copying commercial game or movie artwork. Subject: 阿努比斯, Egyptian jackal-headed god, sleek black jackal face, lapis and gold broad collar, black gold ceremonial armor, scales and desert tomb",
+    "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-c737736d-dc1a-4489-8186-a2f9d44bb743.png",
+    "full": "assets/heroes/anubis.jpg",
+    "thumbnail": "assets/heroes/anubis-thumb.jpg"
+  },
+  {
+    "id": "isis",
+    "name": "伊西斯",
+    "provider": "built-in imagegen",
+    "prompt": "Use case: stylized-concept. Asset type: original hero portrait for the mythology strategy card game 众神斗法. Hand-painted premium dark fantasy, refined realistic faces, detailed tactile fabric and metal, dramatic chiaroscuro and cloud depth, crisp silhouette at thumbnail size. Portrait 2:3 composition, waist-up three-quarter portrait, face large in upper half, lower 15% quiet for code labels. One character only, NO text, logos, border, numbers or watermark. Independently designed, no copying commercial game or movie artwork. Subject: 伊西斯, adult Egyptian goddess, elegant fully covered white and lapis gown, golden wing motifs, throne-shaped headdress, ankh, warm Nile light",
+    "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-ac8fadf7-b9a7-4d48-beb3-b3fbb7bc0ae9.png",
+    "full": "assets/heroes/isis.jpg",
+    "thumbnail": "assets/heroes/isis-thumb.jpg"
+  },
+  {
+    "id": "ra",
+    "name": "拉",
+    "provider": "built-in imagegen",
+    "prompt": "Use case: stylized-concept. Asset type: original hero portrait for the mythology strategy card game 众神斗法. Hand-painted premium dark fantasy, refined realistic faces, detailed tactile fabric and metal, dramatic chiaroscuro and cloud depth, crisp silhouette at thumbnail size. Portrait 2:3 composition, waist-up three-quarter portrait, face large in upper half, lower 15% quiet for code labels. One character only, NO text, logos, border, numbers or watermark. Independently designed, no copying commercial game or movie artwork. Subject: 拉, Egyptian falcon-headed sun god, red solar disk, gold lapis armor, staff, sun barque and desert horizon",
+    "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-bfc7a9eb-2771-41d3-9620-9451aefe7b25.png",
+    "full": "assets/heroes/ra.jpg",
+    "thumbnail": "assets/heroes/ra-thumb.jpg"
+  },
+  {
+    "id": "bastet",
+    "name": "芭丝特",
+    "provider": "built-in imagegen",
+    "prompt": "Use case: stylized-concept. Asset type: original hero portrait for the mythology strategy card game 众神斗法. Hand-painted premium dark fantasy, refined realistic faces, detailed tactile fabric and metal, dramatic chiaroscuro and cloud depth, crisp silhouette at thumbnail size. Portrait 2:3 composition, waist-up three-quarter portrait, face large in upper half, lower 15% quiet for code labels. One character only, NO text, logos, border, numbers or watermark. Independently designed, no copying commercial game or movie artwork. Subject: 芭丝特, Egyptian black cat-headed goddess, gold and turquoise modest ceremonial gown, alert feline eyes, sistrum, moonlit temple",
+    "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-bcbc544d-a62b-4681-b3ad-8c5a10d27903.png",
+    "full": "assets/heroes/bastet.jpg",
+    "thumbnail": "assets/heroes/bastet-thumb.jpg"
+  },
+  {
+    "id": "amaterasu",
+    "name": "天照",
+    "provider": "built-in imagegen",
+    "prompt": "Use case: stylized-concept. Asset type: original hero portrait for the mythology strategy card game 众神斗法. Hand-painted premium dark fantasy, refined realistic faces, detailed tactile fabric and metal, dramatic chiaroscuro and cloud depth, crisp silhouette at thumbnail size. Portrait 2:3 composition, waist-up three-quarter portrait, face large in upper half, lower 15% quiet for code labels. One character only, NO text, logos, border, numbers or watermark. Independently designed, no copying commercial game or movie artwork. Subject: 天照, adult Japanese sun goddess, white and crimson layered ceremonial kimono, gold hair ornament, bronze sacred mirror, rising sun and clouds",
+    "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-e6b142aa-91e7-4668-8fba-3982d257baf5.png",
+    "full": "assets/heroes/amaterasu.jpg",
+    "thumbnail": "assets/heroes/amaterasu-thumb.jpg"
+  },
+  {
+    "id": "susanoo",
+    "name": "须佐之男",
+    "provider": "built-in imagegen",
+    "prompt": "Use case: stylized-concept. Asset type: original hero portrait for the mythology strategy card game 众神斗法. Hand-painted premium dark fantasy, refined realistic faces, detailed tactile fabric and metal, dramatic chiaroscuro and cloud depth, crisp silhouette at thumbnail size. Portrait 2:3 composition, waist-up three-quarter portrait, face large in upper half, lower 15% quiet for code labels. One character only, NO text, logos, border, numbers or watermark. Independently designed, no copying commercial game or movie artwork. Subject: 须佐之男, adult Japanese storm deity, windswept dark hair, ancient blue lacquer armor, curved sacred sword, storm sea, no modern anime copying",
+    "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-86a9e8bb-6a7f-4a9d-83de-710dbebbc703.png",
+    "full": "assets/heroes/susanoo.jpg",
+    "thumbnail": "assets/heroes/susanoo-thumb.jpg"
+  },
+  {
+    "id": "tsukuyomi",
+    "name": "月读",
+    "provider": "built-in imagegen",
+    "prompt": "Use case: stylized-concept. Asset type: original hero portrait for the mythology strategy card game 众神斗法. Hand-painted premium dark fantasy, refined realistic faces, detailed tactile fabric and metal, dramatic chiaroscuro and cloud depth, crisp silhouette at thumbnail size. Portrait 2:3 composition, waist-up three-quarter portrait, face large in upper half, lower 15% quiet for code labels. One character only, NO text, logos, border, numbers or watermark. Independently designed, no copying commercial game or movie artwork. Subject: 月读, adult Japanese moon deity, long silver-black hair, indigo silver layered robes, crescent mirror, quiet moonlit celestial shrine",
+    "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-ac17796e-4349-4de2-a1fb-dcace91237b4.png",
+    "full": "assets/heroes/tsukuyomi.jpg",
+    "thumbnail": "assets/heroes/tsukuyomi-thumb.jpg"
+  }
+]

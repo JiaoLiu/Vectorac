@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import {createSetup,setupView,dispatchSetup,chooseSetupAI,restoreSetup,restoreSession,LORD_HEROES} from '../.private/fengshen/setup.mjs'
 import {PLAYABLE_HEROES,HERO_BY_THEME_ID} from '../.private/fengshen/theme.mjs'
 import {createGame,playerView,dispatch,allCards,restoreGame} from '../.private/fengshen/engine.mjs'
-import {chooseAI} from '../.vuepress/components/sanguo/ai.mjs'
+import {chooseAI} from '../.private/fengshen/engine.mjs'
 import {renderHome,renderSetup} from '../.private/fengshen/setup-ui.mjs'
 const step=(s,a)=>{const r=dispatchSetup(s,{revision:s.revision,...a});assert.ok(r.ok,r.error);return r.setup}
 function reveal(s){return step(s,{type:'reveal',seat:0})}
@@ -21,7 +21,7 @@ test('identities are randomly assigned before any character is chosen or hand is
 test('lord candidates contain 3 lord-style heroes plus 2 distinct random supported heroes',()=>{
   for(let seed=1;seed<=100;seed++){
     const s=createSetup({seed}),offers=s.offers[s.lord];assert.equal(offers.length,5);assert.equal(new Set(offers).size,5)
-    for(const id of LORD_HEROES)assert.ok(offers.includes(id))
+    assert.equal(offers.filter(id=>LORD_HEROES.includes(id)).length,3)
     for(const id of offers)assert.ok(HERO_BY_THEME_ID[id].playable)
     for(let seat=0;seat<5;seat++)if(seat!==s.lord)assert.deepEqual(s.offers[seat],[])
   }
@@ -34,10 +34,10 @@ test('invalid sequence, picking outside own offer and stale confirmations are at
   assert.equal(dispatchSetup(s,{type:'pick',seat:s.lord,heroId:'jiangziya'}).ok,false)
   assert.equal(dispatchSetup(s,{type:'pick',seat:s.lord,heroId:s.offers[s.lord][0],revision:0}).ok,false)
 })
-test('after lord confirmation, others receive independent random 2-card packets, excluding the selected lord',()=>{
+test('after lord confirmation, others receive independent random 3-card packets, excluding the selected lord',()=>{
   for(let seed=1;seed<=100;seed++){
     let s=reveal(createSetup({seed}));const selected=s.offers[s.lord][0];s=step(s,{type:'pick',seat:s.lord,heroId:selected});assert.equal(s.stage,'others');assert.equal(s.published[s.lord],selected)
-    const packets=s.offers.filter((_,i)=>i!==s.lord);assert.ok(packets.every(a=>a.length===2));assert.equal(new Set(packets.flat()).size,8);assert.equal(packets.flat().includes(selected),false)
+    const packets=s.offers.filter((_,i)=>i!==s.lord);assert.ok(packets.every(a=>a.length===3));assert.equal(new Set(packets.flat()).size,12);assert.equal(packets.flat().includes(selected),false)
     assert.ok(restoreSetup(s))
   }
 })
@@ -53,7 +53,7 @@ test('ready draft is handed to the game unchanged; it never rerolls roles or her
     const ready=finish(createSetup({seed}));assert.equal(ready.stage,'ready');assert.deepEqual(ready.published,ready.picks)
     const r=dispatchSetup(ready,{type:'begin',seat:0,revision:ready.revision});assert.ok(r.ok);const game=r.game
     assert.deepEqual(game.players.map(p=>p.role),ready.roles)
-    assert.deepEqual(game.players.map(p=>p.heroId),ready.picks.map(id=>HERO_BY_THEME_ID[id].baseHero))
+    assert.deepEqual(game.players.map(p=>p.heroId),ready.picks.map(id=>HERO_BY_THEME_ID[id].engineId))
     assert.equal(game.current,ready.lord);assert.equal(game.turns,1);assert.equal(allCards(game).length,108)
     for(const p of game.players){const h=HERO_BY_THEME_ID[ready.picks[p.seat]];assert.equal(p.maxHp,h.hp+(p.seat===ready.lord?1:0));if(p.seat!==ready.lord)assert.equal(p.hand.length,4)}
     assert.ok(restoreGame(game));assert.deepEqual(dispatchSetup(ready,{type:'begin',seat:0}).game,game)
@@ -67,7 +67,7 @@ test('refresh preserves every draft stage and locked picks; old combat saves sti
   const game=createGame({heroId:'jifa',seed:42});assert.deepEqual(restoreSession(game),{kind:'game',game});assert.equal(restoreSession({kind:'setup',setup:{}}),null)
 })
 test('malformed drafts reject duplicate packets, leaked publication, unsupported heroes and mismatched identities',()=>{
-  const ready=finish(createSetup({seed:3}));for(const modify of [s=>s.roles[0]='invalid',s=>s.lord=(s.lord+1)%5,s=>s.offers[s.lord][0]='jiangziya',s=>s.picks[0]=s.picks[1],s=>s.published[0]='bad',s=>s.seed=-1,s=>s.candidateCount=3]){const bad=structuredClone(ready);modify(bad);assert.equal(restoreSetup(bad),null)}
+  const ready=finish(createSetup({seed:3}));for(const modify of [s=>s.roles[0]='invalid',s=>s.lord=(s.lord+1)%5,s=>s.offers[s.lord][0]='jiangziya',s=>s.picks[0]=s.picks[1],s=>s.published[0]='bad',s=>s.seed=-1,s=>s.candidateCount=4]){const bad=structuredClone(ready);modify(bad);assert.equal(restoreSetup(bad),null)}
   let s=reveal(createSetup({seed:5}));s=step(s,chooseSetupAI(setupView(s,s.lord)));const bad=structuredClone(s),seat=(s.lord+1)%5;bad.published[seat]=bad.offers[seat][0];assert.equal(restoreSetup(bad),null)
 })
 test('home removes role/free-hero picking; draft shows only the local assigned candidates',()=>{

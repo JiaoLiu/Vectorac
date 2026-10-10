@@ -57,7 +57,7 @@ test('converted Sha uses the same illustrated card UI without changing the physi
 })
 test('selecting a theme card explains its function outside the face',()=>{
   const s=fixture(),[c]=hand(s,0,'snatch');hand(s,1,'shan');const model=ui(s);model.selected=[c.id]
-  const html=renderBattle(model),rail=html.slice(html.indexOf('class="fs-operation"'),html.indexOf('class="fs-dock"'))
+  const html=renderBattle(model),rail=html.slice(html.indexOf('class="fs-status"'),html.indexOf('class="fs-dock"'))
   assert.ok(rail.includes('摄宝：'));assert.ok(rail.includes('获得'));assert.ok(html.includes('<strong>摄宝</strong>'));assert.equal(html.includes('<strong>顺手牵羊</strong>'),false)
 })
 test('Jizhi and Yingzi draw automatically; Luoyi keeps its real tradeoff prompt',()=>{
@@ -80,8 +80,8 @@ test('dead identities are revealed and own identity persists through death and e
   s.players[0].alive=false;s.players[0].hp=0;s.current=2;html=renderBattle(ui(s));assert.ok(html.includes('你的身份：忠臣'));assert.ok(html.includes('观战中'));assert.ok(html.includes('fs-own-identity'))
   s.phase='finished';s.winner='rebel';v=playerView(s,0);assert.ok(v.players.every(p=>p.role));assert.ok(renderBattle(ui(s)).includes('你的身份：忠臣'))
 })
-test('operation reminders occupy a separate rail, not a hand or modal row',()=>{
-  const html=renderBattle(ui(fixture()));assert.ok(html.indexOf('class="fs-operation"')<html.indexOf('class="fs-dock"'));assert.equal(html.includes('class="fs-instruction"'),false)
+test('status hint floats above the table without a layout rail',()=>{
+  const html=renderBattle(ui(fixture()));assert.ok(html.includes('class="fs-status"'));assert.equal(html.includes('class="fs-operation"'),false);assert.equal(html.includes('class="fs-instruction"'),false)
 })
 test('male/female cues follow the effective card and actor, including auto skills and nullify',()=>{
   let s=fixture('jinling'),[c]=hand(s,0,'draw'),r=dispatch(s,{seat:0,type:'play',as:'draw',ids:[c.id],targets:[]})
@@ -102,8 +102,8 @@ test('blocked autoplay and disabling audio do not spin or block gameplay',async(
   const voice=new CardVoice({createContext:()=>fakeContext({rejectResume:true})});await voice.unlock();voice.speak('card-sha');await tick();assert.equal(voice.busy,false);assert.equal(voice.queue.length,0)
   voice.setEnabled(false);assert.equal(voice.speak('card-shan','female'),false);voice.destroy()
 })
-test('all 94 generated MP3s are present and decodable, with verified male/female voices',async()=>{
-  const manifest=JSON.parse(await readFile(new URL('../.private/fengshen/assets/audio/manifest.json',import.meta.url),'utf8'));assert.deepEqual(manifest.voices,VOICES);assert.equal(manifest.files.length,AUDIO_ENTRIES.length*2);assert.equal(manifest.files.length,94)
+test('all generated MP3s are present and decodable, with verified male/female voices',async()=>{
+  const manifest=JSON.parse(await readFile(new URL('../.private/fengshen/assets/audio/manifest.json',import.meta.url),'utf8'));assert.deepEqual(manifest.voices,VOICES);assert.equal(manifest.files.length,AUDIO_ENTRIES.length*2);assert.equal(manifest.files.length,172)
   for(const file of manifest.files){
     const path=new URL('../.private/fengshen/assets/audio/'+file,import.meta.url);assert.ok((await stat(path)).size>1000)
     const result=spawnSync('/opt/homebrew/bin/ffprobe',['-v','error','-show_entries','format=duration','-of','default=noprint_wrappers=1:nokey=1',path.pathname],{encoding:'utf8'});assert.equal(result.status,0,file)
