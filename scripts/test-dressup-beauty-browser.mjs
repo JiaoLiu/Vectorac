@@ -46,6 +46,7 @@ for(const [name,engine] of [['chromium',chromium],['webkit',webkit]]){
    for(const [slot,id] of Object.entries(initial.look.parts))if(!BEAUTY_SLOTS.includes(slot))assert.equal(state.look.parts[slot],id,name+'/'+preset.id+': altered '+slot)
    assert.equal(state.coins,initial.coins);assert.deepEqual(state.ownedParts,initial.ownedParts)
    assert.equal(await game.getByRole('button',{name:'换上'+preset.name+'妆容'}).getAttribute('aria-pressed'),'true')
+   assert.ok(await page.locator('.fw-model').evaluate(c=>{const d=c.getContext('2d').getImageData(0,0,c.width,c.height).data,s=c.width/512;return [[210,73],[208,80],[205,85],[205,90]].every(([x,y])=>d[((Math.floor(y*s)+1)*c.width+Math.floor(x*s)+1)*4+3]>=240)}),name+'/'+preset.id+': pony/beret left seam still exposes background')
    await game.evaluate(e=>{e.__vue__.$refs.panel.scrollTop=0})
    await page.screenshot({path:join(out,name+'-'+preset.id+'-portrait.png')})
    await page.setViewportSize({width:844,height:390});await settled(preset.parts);rotations++

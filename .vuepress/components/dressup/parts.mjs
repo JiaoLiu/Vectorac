@@ -39,7 +39,9 @@ for(const p of PARTS)if(['face','eyes','brows','lip'].includes(p.category)){p.as
 // not face-4's item index: old eyes-4 must still render when chosen separately.
 for(const id of ['face-4','eyes-5','brows-4','lip-5'])Object.assign(PARTS.find(p=>p.id===id),{assetVersion:'v20',wearVersion:'v20',beautyIndex:5})
 for(const p of PARTS)if(p.category==='hair'){p.wearVersion='v17';p.backVersion='v17';p.back=true;p.frame=HEAD_FRAMES.hair;p.backFrame=HEAD_FRAMES.back;p.wearFile=p.id}
-Object.assign(PARTS.find(p=>p.id==='hair-2'),{capReady:'hair-2-cap'})
+// Berets need the ponytail's full temple silhouette; the narrower generic cap
+// art leaves a visible left seam. Straw/cloche retain their fitted cap artwork.
+Object.assign(PARTS.find(p=>p.id==='hair-2'),{capReady:'hair-2-cap',capReadyByHat:{1:'hair-2'}})
 Object.assign(PARTS.find(p=>p.id==='hair-5'),{name:'轻柔空气刘海长发',wearVersion:'v19',capWearVersion:'v18',backVersion:'v19',frame:AIR_BANGS_FRONT_FRAME,capReadyByHat:{0:'hair-5-straw',1:'hair-5-beret',10:'hair-5-cloche'}})
 // Reuse corrected wearing art across colour editions; catalogue designs stay
 // independent and old purchase/save IDs do not change.

@@ -83,7 +83,9 @@ test('air bangs use independent cap families in front and rear, keeping other ha
   const hat=PARTS.find(p=>p.id===hatId);assert.ok(partHairAsset(hair,hat).endsWith('hair-5-'+name+'.webp'));assert.ok(partBackAsset(hair,hat).endsWith('hair-5-'+name+'-back.webp'))
  }
  for(const id of ['hat-none','hat-3','hat-11'])assert.equal(partHairAsset(hair,PARTS.find(p=>p.id===id)),partAsset(hair))
- const pony=PARTS.find(p=>p.id==='hair-2');assert.ok(partHairAsset(pony,PARTS.find(p=>p.id==='hat-1')).endsWith('/v17/hair-2-cap.webp'));assert.ok(partThumbnail(hair).includes('/v11/catalog/'))
+ const pony=PARTS.find(p=>p.id==='hair-2');assert.ok(partThumbnail(hair).includes('/v11/catalog/'))
+ for(const hatId of ['hat-1','hat-6','hat-7']){const hat=PARTS.find(p=>p.id===hatId);assert.equal(partHairAsset(pony,hat),partAsset(pony));assert.equal(partBackAsset(pony,hat),partBackAsset(pony))}
+ for(const hatId of ['hat-0','hat-10'])assert.ok(partHairAsset(pony,PARTS.find(p=>p.id===hatId)).endsWith('/v17/hair-2-cap.webp'))
  for(const hatId of ['hat-0','hat-1','hat-10'])assert.ok(partHairAsset(hair,PARTS.find(p=>p.id===hatId)).includes('/v18/'),'fitted cap fronts must remain the approved art')
 })
 test('cap bows and flowers paint outside the cap; hairpins retain original attachment',()=>{
