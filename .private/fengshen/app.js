@@ -53,7 +53,7 @@ export class FengshenUI {
     this.resumeSession=restoreSession(load(SAVE,null));this.resumeState=this.resumeSession?.kind==='game'?this.resumeSession.game:null;this.legacySave=load('vectorac.fengshen.internal.save.v1',null)!=null;root.className='fs-app'
     this.onClick=e=>this.click(e);this.onKey=e=>this.key(e)
     this.onVisibility=()=>{clearTimeout(this.timer);if(document.hidden){this.voice.stop();this.music.pause()}else{if(!this.lobby)this.music.unlock();this.schedule()}this.syncClock()}
-    this.onViewport=()=>{layoutArena(root);layoutHand(root);if(this.selected[0])revealHandCard(root,this.selected[0]);this.decorateBattle();scaleCards(root)}
+    this.onViewport=()=>{layoutArena(root);layoutHand(root);if(this.selected.length)revealHandCard(root,this.selected.at(-1));this.decorateBattle();scaleCards(root)}
     this.viewport=bindGameViewport(root,this.onViewport)
     this.starGesture=bindStarDrag(root,{getState:()=>this.state?.pending?.kind==='guanxing'?this.star:null,onMove:state=>{this.star=state;this.render()},onInteraction:active=>{this.draggingStars=active;this.syncClock()}})
     this.onScreen=()=>{if(!document.fullscreenElement)screen.orientation?.unlock?.();this.onViewport();this.render()};document.addEventListener('fullscreenchange',this.onScreen)
@@ -88,6 +88,8 @@ export class FengshenUI {
     }
     const draws=drawEffects(before,this.state)
     if(draws.length){const started=Date.now();this.draws=draws.map(d=>({...d,started}));clearTimeout(this.drawTimer);this.drawTimer=setTimeout(()=>{this.draws=[];if(!this.destroyed)this.render()},1300)}
+    const previousIds=new Set(before.players[0].hand.map(c=>c.id)),received=this.state.players[0].hand.filter(c=>!previousIds.has(c.id))
+    this.handRevealId=received.at(-1)?.id||null
     this.reset();this.save();this.render();return true}
   clearEffects(){clearTimeout(this.hitTimer);clearTimeout(this.transferTimer);clearTimeout(this.drawTimer);this.hits=[];this.transfer=null;this.draws=[]}
   syncClock(){
@@ -328,10 +330,11 @@ export class FengshenUI {
     if(RELEASE){const label=this.root.querySelector('.fs-brand>small');if(label)label.textContent=label.textContent.replace('内部原型','单机试玩');if(this.modal?.kind==='rules'){const body=this.root.querySelector('.fs-modal-body');if(body)body.innerHTML=body.innerHTML.replace('此为本机内部原型，不代表商业发行或完成原创性审核。','当前为免费单机试玩版，部分人物技能仍在开发；名称、主题与玩法仍需在商业发行前另行审核。')}}
     layoutArena(this.root);layoutHand(this.root)
     for(const [key,v]of Object.entries(scrolls)){const e=this.root.querySelector(`[data-scroll="${key}"]`);if(e){e.scrollLeft=v.left;e.scrollTop=v.top}}
-    if(this.selected[0])revealHandCard(this.root,this.selected[0]);this.decorateBattle()
+    if(this.selected.length)revealHandCard(this.root,this.selected.at(-1));this.decorateBattle()
     const ownIds=this.draws.flatMap(d=>d.ownIds)
     for(const id of ownIds)this.root.querySelector(`.fs-hand-card[data-id="${id}"]`)?.classList.add('fs-newly-drawn')
     if(ownIds.length)revealHandCard(this.root,ownIds.at(-1))
+    if(this.handRevealId){revealHandCard(this.root,this.handRevealId);this.handRevealId=null}
     if(this.transfer||this.draws.length||this.state?.pending?.kind==='reveal')this.root.querySelector('.fs-dock')?.setAttribute('inert','')
     if(this.modal){this.root.querySelectorAll('.fs-header,.fs-lobby,.fs-entry,.fs-setup,.fs-hud,.fs-arena,.fs-status,.fs-dock').forEach(e=>e.inert=true);this.root.querySelector('[data-action="close"]')?.focus()}
     else if(wasModal&&this.returnFocus?.action){const s=`[data-action="${this.returnFocus.action}"]${this.returnFocus.id?`[data-id="${this.returnFocus.id}"]`:''}`;this.root.querySelector(s)?.focus()}

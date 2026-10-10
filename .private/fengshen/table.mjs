@@ -84,7 +84,7 @@ function playedCenter(view){
   return `<div class="fs-table-center"><div class="fs-played">${played?.virtualType?visibleCard({type:played.virtualType,virtual:true},null,'技能虚拟牌 · 无实体花色点数'):''}${(played?.cards||[]).slice(0,response?1:2).map(c=>visibleCard(c,fanFire?'firesha':converted?'sha':otherConversion?'dismantle':null,fanFire?'火扇转为炎杀':converted?'转化攻击':otherConversion?'转化破阵':'')).join('')}${responseCard}</div>${caption?`<div class="fs-table-caption"><b>${caption}</b></div>`:''}</div>`
 }
 function playInstruction(ui,view){
-  if(ui.skill)return `${skillName(view.players[0].heroId,ui.skill)}：${ui.skill==='lijian'?'弃一张牌，先选决斗发起者，再选先出杀者（两名其他男性）':ui.skill==='rende'?'选择要交出的手牌，再选择接收者':ui.skill==='zhiheng'?'选择要替换的手牌或装备':ui.skill==='jieyin'?'选择两张手牌，再选择一名受伤男性':ui.skill==='qingnang'?'选择一张手牌，再选择受伤角色（包括自己）':'点击人物选择目标'}`
+  if(ui.skill)return `${skillName(view.players[0].heroId,ui.skill)}：${ui.skill==='lijian'?'弃一张牌，先选决斗发起者，再选先出杀者（两名其他男性）':ui.skill==='rende'?'选择要交出的手牌，再选择接收者':ui.skill==='zhiheng'?'选择要替换的手牌或装备':ui.skill==='jieyin'?'选择两张手牌，再选择一名受伤男性':ui.skill==='kurou'?'失去一点体力，摸两张牌；可以连续发动，请留意濒死风险':ui.skill==='qingnang'?'选择一张手牌，再选择受伤角色（包括自己）':'点击人物选择目标'}`
   const as=ui.currentAs(view)
   if(!ui.selected.length)return ui.hints===false?'你的出牌阶段':'你的出牌阶段 · 先选手牌，再选目标，最后确认'
   if(!as)return '这张牌只能在对应的响应窗口使用'

@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {arenaGeometry} from '../.private/fengshen/arena-layout.mjs'
+import {arenaGeometry,handScrollForCard} from '../.private/fengshen/arena-layout.mjs'
+import {handLayout,HAND_LIFT,HAND_TOP,HAND_BOTTOM} from '../.private/fengshen/hand.mjs'
 import {viewportFrame,bindGameViewport} from '../.private/fengshen/viewport.mjs'
 import {moveStarCard} from '../.private/fengshen/star-drag.mjs'
 import {readFile} from 'node:fs/promises'
@@ -35,4 +36,15 @@ test('timer belongs to hand heading, not portrait; star panel owns visible confi
 })
 test('legacy take-grid rules never shrink or hide Star panel; hand reveal never scrolls the document',async()=>{
  const css=await readFile(new URL('../.private/fengshen/table.css',import.meta.url),'utf8'),app=await readFile(new URL('../.private/fengshen/app.js',import.meta.url),'utf8'),hand=await readFile(new URL('../.private/fengshen/hand.mjs',import.meta.url),'utf8');assert.ok(!css.includes('.fs-center-choice:not(.fs-counter-choice)'));assert.ok(css.includes('.fs-take-choice>footer'));assert.ok(!app.includes('scrollIntoView'));assert.ok(!app.includes('syncScrollSpacer'));assert.ok(!hand.includes('visualViewport?.height'))
+})
+test('1 to 108 cards fit the actual vertical budget including raised selection and badge clearance',()=>{
+ for(const availableHeight of [70,100,130,180])for(const count of [1,6,30,60,108])for(const landscape of [true,false]){
+  const l=handLayout({count,width:360,height:landscape?390:844,landscape,availableHeight});assert.ok(l.cardHeight+HAND_TOP+HAND_BOTTOM<=availableHeight+.01);assert.ok(HAND_TOP-HAND_LIFT>=9);assert.ok(l.step>=l.cardWidth*.84);if(count>=30)assert.ok(l.scroll);assert.equal(l.span,count?l.cardWidth+l.step*(count-1):0)
+ }
+})
+test('revealing selection uses full card face width, including the last card and returns to the first',()=>{
+ assert.equal(handScrollForCard({scrollLeft:0,viewportWidth:300,cardStart:270,cardWidth:80}),52)
+ assert.equal(handScrollForCard({scrollLeft:52,viewportWidth:300,cardStart:0,cardWidth:80}),0)
+ assert.equal(handScrollForCard({scrollLeft:52,viewportWidth:300,cardStart:80,cardWidth:80}),52)
+ const l=handLayout({count:108,width:300,height:390,landscape:true,availableHeight:150});assert.ok(handScrollForCard({scrollLeft:0,viewportWidth:300,cardStart:l.step*107,cardWidth:l.cardWidth})>0)
 })

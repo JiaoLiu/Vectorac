@@ -7,10 +7,11 @@ export function arenaGeometry({width,height,seats=5,safeTop=0,safeBottom=0}){
  if(landscape){
    heroHeight=Math.min(174,height*.34,(width-gap*(topSeats.length+1))/(topSeats.length+2)*1.46)
    heroHeight=Math.max(56,heroHeight)
-   dockHeight=clamp(height*.29,82,146)+42
+   dockHeight=clamp(height*.29,82,146)+50
    centerTop=heroHeight+8;centerBottom=height-dockHeight-8
  }else{
-   dockHeight=height<660?248:284
+   // 76 own strip + 22 heading + 38 controls + card + lift + gaps + home indicator.
+   dockHeight=(width<360?95:115)+182+safeBottom
    const board=height-safeTop-safeBottom-dockHeight
    heroHeight=Math.max(52,Math.min(132,board*.29,(width-gap*(topSeats.length+1))/(topSeats.length+2)*1.46))
    centerTop=safeTop+heroHeight+38;centerBottom=height-safeBottom-dockHeight-8
@@ -42,7 +43,11 @@ export function layoutArena(root){
 // Scroll the hand only; scrollIntoView can pan the whole Safari visual viewport.
 export function revealHandCard(root,id){
  const hand=root.querySelector('.fs-hand'),button=hand?.querySelector(`[data-id="${id}"]`);if(!button)return
- const x=button.offsetLeft,end=x+button.offsetWidth
- if(x<hand.scrollLeft)hand.scrollLeft=x
- else if(end>hand.scrollLeft+hand.clientWidth)hand.scrollLeft=end-hand.clientWidth
+ const row=button.closest('.fs-hand-row'),x=button.offsetLeft+(row?.offsetLeft||0),width=button.querySelector('.fs-card-face')?.offsetWidth||button.offsetWidth
+ hand.scrollLeft=handScrollForCard({scrollLeft:hand.scrollLeft,viewportWidth:hand.clientWidth,cardStart:x,cardWidth:width});hand.scrollTop=0
+}
+export function handScrollForCard({scrollLeft,viewportWidth,cardStart,cardWidth}){
+ if(cardStart<scrollLeft+2)return Math.max(0,cardStart-2)
+ if(cardStart+cardWidth>scrollLeft+viewportWidth-2)return Math.max(0,cardStart+cardWidth-viewportWidth+2)
+ return scrollLeft
 }

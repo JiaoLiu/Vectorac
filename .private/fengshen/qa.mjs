@@ -20,6 +20,9 @@ function card(s,seat,type){const i=s.deck.findIndex(c=>c.type===type);if(i<0)thr
 function equip(s,seat,type,slot){const c=card(s,seat,type);s.players[seat].hand.pop();s.players[seat].equip[slot]=c;return c}
 function step(s,a){const r=dispatch(s,{seat:s.pending?.actor??s.current,...a});if(!r.ok)throw Error(r.error);return r.state}
 function scenario(name){
+  if(name==='kurou-many'){
+    const s=fixture('chenqi');s.players[0].hand.push(...s.deck.splice(0,30));return s
+  }
   if(name==='layout-eight'){
     const s=createAssignedGame({roles:['lord','loyal','loyal','rebel','rebel','rebel','rebel','renegade'],heroIds:['yangjian','jifa','nezha','wenzhong','jinling','yuding','yunxiao','shiji'],seed:29})
     s.deck=catalog.makeDeck();s.discard=[];s.processing=[];s.harvestPool=[];s.queue=[];s.pending=null;s.phase='play';s.current=0;s.logs=[]
@@ -87,7 +90,7 @@ function scenario(name){
     if(s.players[1].heroId==='machao'){const other=s.players.slice(2).find(p=>p.heroId!=='machao');[s.players[1].heroId,other.heroId]=[other.heroId,s.players[1].heroId]}
     return s
   }
-  if(['hand6','hand12','hand30'].includes(name)){const s=fixture();s.players[0].hand.push(...s.deck.splice(0,Number(name.slice(4))));return s}
+  if(['hand6','hand12','hand30','hand60'].includes(name)){const s=fixture();s.players[0].hand.push(...s.deck.splice(0,Number(name.slice(4))));return s}
   if(name==='counter'){
     let s=fixture('jinling','loyal',1);const c=card(s,1,'dismantle');card(s,0,'nullify');card(s,0,'shan');return step(s,{type:'play',ids:[c.id],as:'dismantle',targets:[0]})
   }
@@ -126,4 +129,5 @@ document.body.append(tools)
 const safeStyle=document.createElement('style');safeStyle.textContent='@media(orientation:landscape){#app.fs-qa-safe{--fs-safe-left:59px;--fs-safe-right:59px;--fs-safe-bottom:21px}}@media(orientation:portrait){#app.fs-qa-safe{--fs-safe-top:47px;--fs-safe-bottom:34px}}';document.head.append(safeStyle)
 const safe=document.createElement('input');safe.type='checkbox';safe.setAttribute('aria-label','模拟iPhone安全区');safe.onchange=()=>{ui.root.classList.toggle('fs-qa-safe',safe.checked);ui.onViewport()};tools.append(safe)
 const eight=document.createElement('option');eight.value='layout-eight';eight.textContent='八人布局：三人四件装备与12手牌';tools.querySelector('select').append(eight)
+for(const [value,label]of [['hand60','60张手牌与选中抬升'],['kurou-many','陈奇：30手牌连续苦肉摸牌']]){const o=document.createElement('option');o.value=value;o.textContent=label;tools.querySelector('select').append(o)}
 document.addEventListener('click',event=>{if(event.target.closest('[data-action="resume"],[data-action="start"]')){tools.hidden=true;tools.style.display='none'}})
