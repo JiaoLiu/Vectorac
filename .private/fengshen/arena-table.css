@@ -32,14 +32,18 @@
 .fs-playing .fs-no-equip{display:none}
 .fs-playing .fs-table-center,.fs-playing .fs-judgment-reveal{top:var(--center-top);bottom:var(--center-bottom);left:var(--center-side);right:var(--center-side);overflow:visible;min-height:0;gap:3px;flex-direction:column}
 .fs-playing .fs-table-center{left:var(--center-side);right:var(--center-side)}
-.fs-playing .fs-card-play>.fs-clean-card,.fs-playing .fs-played>.fs-clean-card{height:clamp(60px,calc(var(--fs-height)*.25),132px);width:clamp(42px,calc(var(--fs-height)*.174),92px)}
-.fs-playing .fs-table-caption>b{font-size:10px;letter-spacing:0}
-.fs-playing .fs-exchange{flex-wrap:wrap;justify-content:center;gap:4px}
+.fs-playing .fs-card-play>.fs-clean-card,.fs-playing .fs-played>.fs-clean-card{height:var(--center-card-height);width:calc(var(--center-card-height)/1.44)}
+.fs-playing .fs-table-caption{padding:0 4px;line-height:10px}
+.fs-playing .fs-table-caption>b{font-size:10px;letter-spacing:0;line-height:10px}
+.fs-playing .fs-table-center.fs-exchange-view{left:var(--center-side);right:var(--center-side)}
+.fs-playing .fs-exchange{flex-wrap:nowrap;justify-content:flex-start;gap:4px;max-width:100%;overflow-x:auto;overflow-y:hidden;touch-action:pan-x pinch-zoom}
 .fs-playing .fs-judgment-reveal{justify-content:center}
 .fs-playing .fs-judgment-reveal .fs-flip-card{width:66px;height:95px;flex:none}
 .fs-playing .fs-judgment-reveal header{font-size:11px}
 .fs-playing .fs-judgment-reveal>strong{font-size:11px}
 .fs-playing .fs-status{bottom:calc(var(--dock-size) + 2px);font-size:10px;max-width:70%;line-height:1.2}
+@media(orientation:landscape){.fs-playing .fs-status{bottom:calc(var(--dock-size) - 28px)}}
+@media(max-height:559px) and (orientation:landscape){.fs-playing .fs-table-center{justify-content:flex-start}.fs-playing .fs-table-caption{display:none}}
 .fs-playing .fs-teaching-hint{max-height:24px;overflow:hidden;font-size:9px}
 .fs-playing .fs-dock{position:absolute;bottom:0;left:var(--fs-safe-left);right:var(--fs-safe-right);transform:none;width:auto;max-width:none;height:var(--dock-size);min-height:0;max-height:none;margin:0;padding:0;z-index:6;display:grid;grid-template-columns:var(--hero-width) minmax(0,1fr);gap:var(--seat-gap);background:linear-gradient(#142b3300,#122b3250);border:0;box-shadow:none;overflow:visible}
 .fs-playing .fs-hand-area{display:grid;grid-template-columns:minmax(0,1fr) var(--action-width);grid-template-rows:22px minmax(0,1fr);gap:0 8px;min-height:0}
@@ -73,7 +77,20 @@
 .fs-playing .fs-center-choice .fs-choice-card{flex-shrink:0;min-height:0}
 .fs-playing .fs-center-choice.fs-skill-prompt{pointer-events:none;height:auto;max-height:95px;overflow:hidden;top:55%;background:#142b32dd}
 /* 五谷选牌面板落在中央出牌区，避开底部牌堆与两侧人物，不遮挡自己的手牌。 */
-.fs-playing .fs-center-choice.fs-pool-choice{top:var(--center-top);bottom:calc(var(--dock-size) + 6px);left:var(--center-side);right:var(--center-side);height:auto;max-height:none;transform:none}
+.fs-playing .fs-center-choice.fs-pool-choice{top:6px;bottom:calc(var(--dock-size) + 6px);left:var(--center-side);right:var(--center-side);height:auto;max-height:none;transform:none;z-index:15;display:flex;flex-direction:column;justify-content:center;background:#172e36f5}
+.fs-playing .fs-pool-choice>header{flex:none;min-height:24px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.fs-playing .fs-pool-choice>.fs-center-card-list{display:flex;flex:none;min-height:0;height:auto;max-height:none;align-items:center;justify-content:flex-start;overflow-x:auto;overflow-y:hidden;padding:4px 2px;touch-action:pan-x pinch-zoom}
+.fs-playing .fs-pool-choice .fs-choice-card{flex:0 0 calc(var(--pool-card-height)/1.44);width:calc(var(--pool-card-height)/1.44);height:var(--pool-card-height);min-height:var(--pool-card-height);padding:0;overflow:hidden}
+.fs-playing .fs-harvest-picked>b{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Complete CJK name face; the card calligraphy font is only a subset. */
+.fs-app :is(.fs-player-info>strong,.fs-own-hero strong,.fs-hero-pick strong){font-family:"PingFang SC","Microsoft YaHei","Noto Sans CJK SC",sans-serif;font-weight:700}
+/* Illustrated equipment mini-cards with slot and range badges. */
+.fs-playing :is(.fs-opponent-equipment,.fs-own-equipment) .fs-equip{background:#e8dec5;border:1px solid #b59a66;padding:0}
+.fs-playing :is(.fs-opponent-equipment,.fs-own-equipment) .fs-equip img{opacity:1;object-fit:cover}
+.fs-playing :is(.fs-opponent-equipment,.fs-own-equipment) .fs-equip>span{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+.fs-playing :is(.fs-opponent-equipment,.fs-own-equipment) .fs-equip small{z-index:2;bottom:0;right:0;background:#f0e6cef0;color:#243333;font:bold 8px/1.1 sans-serif;padding:1px}
+.fs-equip-slot{position:absolute;left:0;top:0;width:12px;height:12px;display:grid;place-items:center;background:#18343cdd;color:#ffe4a5;z-index:2;font:bold 9px sans-serif}
+.fs-equip-slot svg{width:10px;height:10px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linejoin:round;stroke-linecap:round}
 .fs-playing .fs-skill-prompt p{margin:3px 0;font-size:11px}
 .fs-playing .fs-star-choice{z-index:10;height:auto;max-height:calc(100% - 32px);display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto;overflow:hidden}
 .fs-playing .fs-star-choice>header{grid-column:1;grid-row:1}

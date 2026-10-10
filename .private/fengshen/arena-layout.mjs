@@ -8,7 +8,8 @@ export function arenaGeometry({width,height,seats=5,safeTop=0,safeBottom=0}){
    heroHeight=Math.min(174,height*.34,(width-gap*(topSeats.length+1))/(topSeats.length+2)*1.46)
    heroHeight=Math.max(56,heroHeight)
    dockHeight=clamp(height*.29,82,146)+50
-   centerTop=heroHeight+8;centerBottom=height-dockHeight-8
+   // Reuse the hand-heading/lift clearance; never scale the whole board.
+   centerTop=heroHeight+8;centerBottom=height-dockHeight+28
  }else{
    // 76 own strip + 22 heading + 38 controls + card + lift + gaps + home indicator.
    dockHeight=(width<360?95:115)+182+safeBottom
@@ -27,12 +28,18 @@ export function arenaGeometry({width,height,seats=5,safeTop=0,safeBottom=0}){
  const center={left:heroWidth+gap,right:width-heroWidth-gap,top:centerTop,bottom:Math.max(centerTop+40,centerBottom)}
  return {landscape,width,height,heroWidth,heroHeight,gap,dockHeight,handHeight:dockHeight-28,actionWidth:clamp(width*.13,80,116),positions,center}
 }
+export function centerCardHeight(center){return clamp(center.bottom-center.top-28,24,132)}
+export function poolCardHeight({width,height,count}){const fit=(width-4-Math.max(0,count-1)*8)/Math.max(1,count)*1.44;return Math.max(32,Math.min(120,height,fit>=96?fit:120))}
 export function layoutArena(root){
  const arena=root.querySelector('.fs-arena');if(!arena)return
  const style=getComputedStyle(root),left=parseFloat(style.paddingLeft)||0,right=parseFloat(style.paddingRight)||0,top=parseFloat(style.paddingTop)||0,bottom=parseFloat(style.paddingBottom)||0
  const g=arenaGeometry({width:root.clientWidth-left-right,height:root.clientHeight,seats:Number(arena.dataset.seats),safeTop:top,safeBottom:bottom})
  root.dataset.layout=g.landscape?'landscape':'portrait'
  for(const [key,value]of Object.entries({'hero-width':g.heroWidth,'hero-height':g.heroHeight,'dock-size':g.dockHeight,'hand-height':g.handHeight,'action-width':g.actionWidth,'seat-gap':g.gap,'center-top':g.center.top,'center-bottom':g.height-g.center.bottom,'center-side':g.center.left}))root.style.setProperty('--'+key,value+'px')
+ root.style.setProperty('--center-card-height',centerCardHeight(g.center)+'px')
+ root.style.setProperty('--pool-card-height',Math.max(32,Math.min(120,g.height-g.dockHeight-60))+'px')
+ const pool=root.querySelector('.fs-pool-choice'),list=pool?.querySelector('.fs-center-card-list')
+ if(list)pool.style.setProperty('--pool-card-height',poolCardHeight({width:list.clientWidth,height:g.height-g.dockHeight-60,count:list.querySelectorAll('.fs-choice-card').length})+'px')
  for(const p of root.querySelectorAll('.fs-player')){const r=g.positions[p.dataset.player];if(r)Object.assign(p.style,{left:r.x+'px',top:r.y+'px',right:'auto',bottom:'auto',width:r.width+'px',height:r.height+'px',transform:'none'})}
  for(const zone of root.querySelectorAll('.fs-star-zone')){
    const list=zone.querySelector('.fs-center-card-list'),fit=(list.clientWidth-32)/5*1.44

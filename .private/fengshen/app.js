@@ -17,12 +17,13 @@ import {createSetup,dispatchSetup,setupView,chooseSetupAI,restoreSession,MODE_LI
 import {renderHome,renderSetup,heroGallery} from './setup-ui.mjs'
 import {CardVoice,cuesForAction} from './voice.mjs'
 import {renderBattle,renderOpponent,renderControls} from './table.mjs'
-import {esc,display,portrait,hp,cardFace,scaleCards} from './presentation.mjs'
+import {esc,display,portrait,hp,cardFace,scaleCards,equipmentSlot} from './presentation.mjs'
 import {combatContext,damageCues,collateralSelection} from './combat.mjs'
 import {layoutHand} from './hand.mjs'
 import {layoutArena,revealHandCard} from './arena-layout.mjs'
 import {bindGameViewport} from './viewport.mjs'
 import {localPoint} from './screen-mode.mjs'
+import {cardTargetCandidates,selectingTargets,replaceTarget,boundedTargets} from './target-selection.mjs'
 import {bindStarDrag} from './star-drag.mjs'
 import {advanceUnavailable,DecisionClock} from './flow.mjs'
 import {BackgroundMusic} from './music.mjs'
@@ -191,8 +192,7 @@ export class FengshenUI {
     if(this.skill==='lijian')return view.players.filter(p=>p.alive&&p.seat!==0&&catalog.HERO_BY_ID[p.heroId].sex==='male'&&(!this.targets.length||p.seat===this.targets[0]||!(catalog.HERO_BY_ID[p.heroId].skills.includes('kongcheng')&&!p.handCount))).map(p=>p.seat)
     if(this.skill==='jijiang')return view.legal.filter(a=>a.type==='skill'&&a.skill==='jijiang').map(a=>a.target)
     let opts=this.matching(view).filter(a=>a.as===this.currentAs(view))
-    if(this.currentAs(view)==='collateral')return [...new Set(opts.filter(a=>!this.targets.length||a.targets[0]===this.targets[0]).map(a=>a.targets[this.targets.length?1:0]))]
-    return [...new Set(opts.filter(a=>this.targets.every(t=>a.targets.includes(t))).flatMap(a=>a.targets))]
+    return cardTargetCandidates(opts,this.currentAs(view),this.targets)
   }
   confirm(){
     const view=playerView(this.state,0),pending=view.pending
@@ -209,7 +209,20 @@ export class FengshenUI {
     return a?this.act(a):this.inform('先选牌，再点亮目标，最后确认')
   }
   click(event){
-    const b=event.target.closest('[data-action]');if(!b||!this.root.contains(b)||b.disabled)return
+    let b=event.target.closest('[data-action]');if(!b||!this.root.contains(b)||b.disabled)return
+    if(this.state&&!this.modal&&!this.paused&&!this.auto&&!this.transfer&&!this.draws.length&&b.dataset.action==='card'&&event.target.closest('.fs-own-equipment')){
+      const view=playerView(this.state,0)
+      if(!view.pending&&!this.skill&&selectingTargets(this,view)&&this.matching(view).some(a=>a.targets.length)){
+        if(this.targetable(view).includes(0)){this.targets=this.currentAs(view)==='collateral'?collateralSelection(this.targets,0):replaceTarget(this.targets,0);this.render()}return
+      }
+    }
+    // Portrait equipment and detail buttons must not steal a targeting tap.
+    if(this.state&&!this.modal&&!this.lobby&&!this.paused&&!this.auto&&!this.transfer&&!this.draws.length&&['target','hero-detail','card-detail','identity'].includes(b.dataset.action)&&selectingTargets(this,playerView(this.state,0))){
+      const player=event.target.closest('.fs-player'),own=event.target.closest('.fs-own-hero')
+      if(player)b=player.querySelector('[data-action="target"]')||b
+      else if(own){const view=playerView(this.state,0);if(this.targetable(view).includes(0)){this.targets=this.currentAs(view)==='collateral'?collateralSelection(this.targets,0):replaceTarget(this.targets,0);this.render()}return}
+      else if(b.dataset.action==='hero-detail')return
+    }
     const action=b.dataset.action,id=b.dataset.id,value=b.dataset.value
     this.voice.unlock()
     if(!this.lobby&&action!=='music')this.music.unlock()
@@ -257,11 +270,12 @@ export class FengshenUI {
     }
     if(action==='target'){
       const t=Number(value)
-      if(!this.targetable(view).includes(t)&&!this.targets.includes(t)){this.modal={kind:'hero-detail',id:display(view.players[t]).id};this.render();return}
+      if(!selectingTargets(this,view)){this.modal={kind:'hero-detail',id:display(view.players[t]).id};this.render();return}
+      if(!this.targetable(view).includes(t)&&!this.targets.includes(t))return
       const multi=view.pending?.kind==='tuxi'||this.skill==='lijian'||!this.skill&&this.currentAs(view)==='sha'&&this.matching(view).some(a=>a.targets.length>1)
       if(!this.skill&&this.currentAs(view)==='collateral')this.targets=collateralSelection(this.targets,t)
       else if(this.targets.includes(t))this.targets=this.targets.filter(x=>x!==t)
-      else this.targets=multi?((view.pending?.kind==='tuxi'||this.skill==='lijian')&&this.targets.length>=2?this.targets.slice(1).concat(t):this.targets.concat(t)):[t]
+      else this.targets=multi?boundedTargets(this.targets,t,view.pending?.kind==='tuxi'||this.skill==='lijian'?2:Math.max(...this.matching(view).filter(a=>a.as===this.currentAs(view)).map(a=>a.targets.length))):replaceTarget(this.targets,t)
       this.render();return
     }
     if(action==='skill'){this.reset();this.skill=value;this.render();return}
@@ -281,7 +295,7 @@ export class FengshenUI {
   }
   header(){const label=this.lobby?'准备大厅':this.setup?(setupView(this.setup,0).teamMode?'选将':'身份选将'):(this.state?.teamMode?'两军对垒':'经典身份');return `<header class="fs-header"><div class="fs-brand">众神<span>斗法</span><small>内部原型 / ${label}</small></div>${renderToolbar({lobby:this.lobby,setup:this.setup,paused:this.paused,voice:this.voice.enabled,music:this.music.enabled})}</header>`}
   renderLobby(){return renderHome(this)}
-  equipment(p,own=false){return Object.entries(p.equip).filter(([,c])=>c).map(([slot,c])=>`<button class="fs-equip ${this.selected.includes(c.id)?'selected':''}" data-action="${own?'card':'card-detail'}" data-id="${c.id}" aria-label="${{weapon:'武器',armor:'防具',offenseHorse:'进攻坐骑',defenseHorse:'防御坐骑'}[slot]}：${CARDS_BY_TYPE[c.type].name}" title="${esc(displayText(CARDS_BY_TYPE[c.type].help))}"><img src="${CARDS_BY_TYPE[c.type].image}" alt="" loading="lazy"><span>${CARDS_BY_TYPE[c.type].name}</span><small>${CARDS_BY_TYPE[c.type].range?'距'+CARDS_BY_TYPE[c.type].range:CARDS_BY_TYPE[c.type].slot==='offenseHorse'?'−1':CARDS_BY_TYPE[c.type].slot==='defenseHorse'?'+1':'防'}</small></button>`).join('')||'<small class="fs-no-equip">法宝栏为空</small>'}
+  equipment(p,own=false){return Object.entries(p.equip).filter(([,c])=>c).map(([slot,c])=>`<button class="fs-equip ${this.selected.includes(c.id)?'selected':''}" data-action="${own?'card':'card-detail'}" data-id="${c.id}" data-slot="${slot}" aria-label="${{weapon:'武器',armor:'防具',offenseHorse:'进攻坐骑',defenseHorse:'防御坐骑'}[slot]}：${CARDS_BY_TYPE[c.type].name}" title="${esc(displayText(CARDS_BY_TYPE[c.type].help))}"><img src="${CARDS_BY_TYPE[c.type].image}" alt="" loading="lazy">${equipmentSlot(slot)}<span>${CARDS_BY_TYPE[c.type].name}</span><small>${CARDS_BY_TYPE[c.type].range?'距'+CARDS_BY_TYPE[c.type].range:CARDS_BY_TYPE[c.type].slot==='offenseHorse'?'−1':CARDS_BY_TYPE[c.type].slot==='defenseHorse'?'+1':'防'}</small></button>`).join('')||'<small class="fs-no-equip">法宝栏为空</small>'}
   skills(p,view){const h=display(p);return Object.keys(h.skillNames).filter(s=>SKILLS[s][2]!=='lord'||(!view.teamMode&&p.role==='lord')).map(s=>{const active=p.seat===0&&view.legal.some(a=>a.type==='skill'&&a.skill===s);return `<button data-action="${active?'skill':'hero-detail'}" data-value="${s}" data-id="${h.id}" class="fs-skill ${this.skill===s&&p.seat===0?'selected':''}"><b>${h.skillNames[s]}</b><small>${active?'发动':catalog.automaticSkills.includes(s)?'自动':{lord:'主公技',locked:'锁定',convert:'转化',trigger:'触发'}[SKILLS[s][2]]||'技能'}</small></button>`}).join('')}
   opponent(p,view){return renderOpponent(this,p,view)}
   pendingText(view){const p=view.pending;if(!p)return '';const source=p.source==null?'法术':display(view.players[p.source]).name,target=p.target==null?'目标':display(view.players[p.target]).name;return {

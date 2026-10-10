@@ -20,6 +20,10 @@ function card(s,seat,type){const i=s.deck.findIndex(c=>c.type===type);if(i<0)thr
 function equip(s,seat,type,slot){const c=card(s,seat,type);s.players[seat].hand.pop();s.players[seat].equip[slot]=c;return c}
 function step(s,a){const r=dispatch(s,{seat:s.pending?.actor??s.current,...a});if(!r.ok)throw Error(r.error);return r.state}
 function scenario(name){
+  if(name==='target-switch'){
+    const s=fixture();for(const type of ['sha','snatch','dismantle','collateral'])card(s,0,type);equip(s,0,'spear','weapon');equip(s,1,'qinggang','weapon');for(let seat=1;seat<5;seat++)card(s,seat,'shan');return s
+  }
+  if(name==='harvest-eight'){const s=scenario('layout-eight'),c=card(s,0,'harvest');return step(s,{type:'play',as:'harvest',ids:[c.id],targets:[]})}
   if(name==='kurou-many'){
     const s=fixture('chenqi');s.players[0].hand.push(...s.deck.splice(0,30));return s
   }
@@ -119,7 +123,7 @@ for(const [value,label]of [['classic-isis','伊西斯：标准孙尚香完整技
 for(const o of [...tools.querySelector('select').options])if(['gods','gods-female','gods-male','expansion-qixi','expansion-fan'].includes(o.value))o.remove()
 const normalRender=ui.render.bind(ui);ui.render=()=>{normalRender();const v=ui.state&&playerView(ui.state,0);stateProof.dataset.qaState=JSON.stringify(v?{pending:v.pending,revision:v.revision,hp:v.players.map(p=>p.hp),hand:v.players[0].hand.map(c=>c.id),handCounts:v.players.map(p=>p.handCount),draws:ui.draws,selected:ui.selected,targets:ui.targets,damage:v.logs.filter(l=>l.cue?.kind==='damage').map(l=>l.cue),auto:ui.auto,clockDuration:ui.clock.duration}:{})}
 tools.querySelector('[data-qa-load]').onclick=()=>{
-  clearInterval(humanTimer);clearTimeout(ui.timer);ui.clearEffects();ui.voice.stop();ui.voice.history=[];ui.music.pause();ui.modal=null;ui.lobby=false;ui.paused=false;ui.auto=false;ui.reset();const name=tools.querySelector('select').value,sample=scenario(name);ui.clock=new DecisionClock({duration:name==='clock-short'?2000:name==='layout-eight'||name==='classic-stars'?600000:60000});ui.setup=sample.setup||null;ui.state=sample.setup?null:sample;ui.draftHero=null;ui.schedule=sample.setup||['borrow-self','clock-short'].includes(name)?normalSchedule:name.startsWith('judge-')?()=>{if(ui.state.pending?.kind==='reveal')normalSchedule()}:()=>{};ui.pace=sample.setup?120:650;ui.save();ui.render();tools.hidden=true;tools.style.display='none';ui.voice.unlock();ui.music.unlock()
+  clearInterval(humanTimer);clearTimeout(ui.timer);ui.clearEffects();ui.voice.stop();ui.voice.history=[];ui.music.pause();ui.modal=null;ui.lobby=false;ui.paused=false;ui.auto=false;ui.reset();const name=tools.querySelector('select').value,sample=scenario(name);ui.clock=new DecisionClock({duration:name==='clock-short'?2000:['layout-eight','classic-stars','harvest-eight','target-switch'].includes(name)?600000:60000});ui.setup=sample.setup||null;ui.state=sample.setup?null:sample;ui.draftHero=null;ui.schedule=sample.setup||['borrow-self','clock-short'].includes(name)?normalSchedule:name.startsWith('judge-')?()=>{if(ui.state.pending?.kind==='reveal')normalSchedule()}:()=>{};ui.pace=sample.setup?120:650;ui.save();ui.render();tools.hidden=true;tools.style.display='none';ui.voice.unlock();ui.music.unlock()
   if(name==='ai'){
     ui.voice.setEnabled(false);ui.pace=1;ui.schedule=normalSchedule;ui.render()
     humanTimer=setInterval(()=>{if(ui.destroyed||ui.state.winner){clearInterval(humanTimer);return}if((ui.state.pending?.actor??ui.state.current)===0){const action=chooseAI(playerView(ui.state,0));if(action&&!ui.act(action)){clearInterval(humanTimer);throw Error('Human AI fixture failed')}}},5)
@@ -131,4 +135,5 @@ const safeStyle=document.createElement('style');safeStyle.textContent='@media(or
 const safe=document.createElement('input');safe.type='checkbox';safe.setAttribute('aria-label','模拟iPhone安全区');safe.onchange=()=>{ui.root.classList.toggle('fs-qa-safe',safe.checked);ui.onViewport()};tools.append(safe)
 const eight=document.createElement('option');eight.value='layout-eight';eight.textContent='八人布局：三人四件装备与12手牌';tools.querySelector('select').append(eight)
 for(const [value,label]of [['hand60','60张手牌与选中抬升'],['kurou-many','陈奇：30手牌连续苦肉摸牌']]){const o=document.createElement('option');o.value=value;o.textContent=label;tools.querySelector('select').append(o)}
+for(const [value,label]of [['target-switch','目标快速切换与装备点击隔离'],['harvest-eight','八人五谷：完整牌面与选牌者']]){const o=document.createElement('option');o.value=value;o.textContent=label;tools.querySelector('select').append(o)}
 document.addEventListener('click',event=>{if(event.target.closest('[data-action="resume"],[data-action="start"]')){tools.hidden=true;tools.style.display='none'}})
