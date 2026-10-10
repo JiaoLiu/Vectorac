@@ -22,6 +22,7 @@ import {combatContext,damageCues,collateralSelection} from './combat.mjs'
 import {layoutHand} from './hand.mjs'
 import {layoutArena,revealHandCard} from './arena-layout.mjs'
 import {bindGameViewport} from './viewport.mjs'
+import {localPoint} from './screen-mode.mjs'
 import {bindStarDrag} from './star-drag.mjs'
 import {advanceUnavailable,DecisionClock} from './flow.mjs'
 import {BackgroundMusic} from './music.mjs'
@@ -103,8 +104,10 @@ export class FengshenUI {
     if(this.clock.key&&this.clock.running&&this.clock.left===0&&!this.auto){this.auto=true;this.modal=null;this.reset();this.render();this.inform('思考时间已到，AI 已接手；点“接管”可随时回来')}
   }
   async requestGameScreen(){
-    try{if(!document.fullscreenElement)await this.root.requestFullscreen?.({navigationUI:'hide'});await screen.orientation?.lock?.('landscape')}catch{/* iPhone/WebViews may forbid fullscreen or orientation locking. */}
-    if(!this.destroyed){this.onViewport();if(innerHeight>innerWidth&&!this.screenNotice){this.screenNotice=true;this.inform('已请求全屏横屏；若未自动旋转，请手动横过手机')}}
+    this.viewport.setImmersive(true)
+    try{const req=this.root.requestFullscreen||this.root.webkitRequestFullscreen;if(!document.fullscreenElement&&!document.webkitFullscreenElement)await req?.call(this.root,{navigationUI:'hide'});await screen.orientation?.lock?.('landscape')}catch{/* CSS landscape remains active when native APIs are unavailable. */}
+    this.viewport.recover()
+    if(!this.destroyed){this.onViewport();if(innerHeight>innerWidth&&!this.screenNotice){this.screenNotice=true;this.inform('已进入横屏画面；Safari工具栏仍在时，可在牌桌空白处上滑收起')}}
   }
   decorateBattle(){
     if(!this.state||this.lobby||this.setup)return
@@ -114,9 +117,9 @@ export class FengshenUI {
     if(battle&&['attack','command','duel','aoe'].includes(battle.kind))for(const [seat,role]of [[battle.source,'攻击者'],[battle.target,'受击者']]){const e=anchor(seat);if(e)e.dataset.combatRole=role}
     this.root.querySelector('.fs-target-lines')?.remove()
     const links=targetLinks(v,{targets:this.targets,as:this.currentAs(v)}),r=this.root.getBoundingClientRect()
-    if(links.length){const layer=document.createElementNS('http://www.w3.org/2000/svg','svg');layer.classList.add('fs-target-lines');layer.setAttribute('viewBox',`0 0 ${r.width} ${r.height}`);layer.setAttribute('aria-hidden','true');const defs=document.createElementNS('http://www.w3.org/2000/svg','defs');layer.append(defs)
+    if(links.length){const layer=document.createElementNS('http://www.w3.org/2000/svg','svg');layer.classList.add('fs-target-lines');layer.setAttribute('viewBox',`0 0 ${this.root.clientWidth} ${this.root.clientHeight}`);layer.setAttribute('aria-hidden','true');const defs=document.createElementNS('http://www.w3.org/2000/svg','defs');layer.append(defs)
       // 光束式指向线（参考英雄杀）：细亮芯+柔光晕，源端亮、目标端渐隐，不再用粗箭头。
-      for(const [i,link] of links.entries()){const a=anchor(link.source)?.getBoundingClientRect(),b=anchor(link.target)?.getBoundingClientRect();if(!a||!b)continue;const cx=a.x+a.width/2-r.x,cy=a.y+a.height/2-r.y,bx=b.x+b.width/2-r.x,by=b.y+b.height/2-r.y,length=Math.hypot(bx-cx,by-cy)||1,sa=Math.min(a.width,a.height)*.32,sb=Math.min(b.width,b.height)*.32
+      for(const [i,link] of links.entries()){const a=anchor(link.source)?.getBoundingClientRect(),b=anchor(link.target)?.getBoundingClientRect();if(!a||!b)continue;const ap=localPoint(this.root,a.x+a.width/2,a.y+a.height/2),bp=localPoint(this.root,b.x+b.width/2,b.y+b.height/2),cx=ap.x,cy=ap.y,bx=bp.x,by=bp.y,length=Math.hypot(bx-cx,by-cy)||1,sa=Math.min(a.width,a.height)*.32,sb=Math.min(b.width,b.height)*.32
         const x=cx+(bx-cx)*sa/length,y=cy+(by-cy)*sa/length,tx=bx-(bx-cx)*sb/length,ty=by-(by-cy)*sb/length,gid=`fs-beam-g${i}`
         const grad=document.createElementNS('http://www.w3.org/2000/svg','linearGradient');grad.id=gid;grad.setAttribute('gradientUnits','userSpaceOnUse');grad.setAttribute('x1',x);grad.setAttribute('y1',y);grad.setAttribute('x2',tx);grad.setAttribute('y2',ty)
         for(const [o,c,op] of [[0,'#fff6cf',.95],[.55,'#ffd77a',.55],[1,'#ffd77a',0]]){const stop=document.createElementNS('http://www.w3.org/2000/svg','stop');stop.setAttribute('offset',o);stop.setAttribute('stop-color',c);stop.setAttribute('stop-opacity',op);grad.append(stop)}defs.append(grad)
@@ -125,12 +128,12 @@ export class FengshenUI {
     for(const h of this.hits.filter(h=>h.until>Date.now())){const e=anchor(h.target);if(e){e.classList.add('fs-hurt');const badge=document.createElement('span');badge.className='fs-damage-number';badge.textContent='−'+h.amount;e.append(badge)}}
     this.root.querySelector('.fs-transfer-flight')?.remove()
     if(this.transfer&&this.transfer.until>Date.now()){
-      const f=this.transfer,r=this.root.getBoundingClientRect(),a=anchor(f.from)?.getBoundingClientRect(),to=f.mode==='snatch'?anchor(f.to)?.getBoundingClientRect():this.root.querySelector('.fs-table-center,.fs-center-choice')?.getBoundingClientRect()
-      if(a&&to){const e=document.createElement('div');e.className='fs-transfer-flight';e.dataset.transferMode=f.mode;e.innerHTML=(f.card?cardFace(f.card):'<span class="fs-card-back"><i>封</i><b>暗手牌</b></span>')+`<span>${f.mode==='snatch'?'取走':'弃置'}</span>`;e.style.setProperty('--from-x',`${a.x+a.width/2-r.x-27}px`);e.style.setProperty('--from-y',`${a.y+a.height/2-r.y-38}px`);e.style.setProperty('--to-x',`${to.x+to.width/2-r.x-27}px`);e.style.setProperty('--to-y',`${to.y+to.height/2-r.y-38}px`);this.root.append(e)}
+      const f=this.transfer,a=anchor(f.from)?.getBoundingClientRect(),to=f.mode==='snatch'?anchor(f.to)?.getBoundingClientRect():this.root.querySelector('.fs-table-center,.fs-center-choice')?.getBoundingClientRect()
+      if(a&&to){const ap=localPoint(this.root,a.x+a.width/2,a.y+a.height/2),tp=localPoint(this.root,to.x+to.width/2,to.y+to.height/2);const e=document.createElement('div');e.className='fs-transfer-flight';e.dataset.transferMode=f.mode;e.innerHTML=(f.card?cardFace(f.card):'<span class="fs-card-back"><i>封</i><b>暗手牌</b></span>')+`<span>${f.mode==='snatch'?'取走':'弃置'}</span>`;e.style.setProperty('--from-x',`${ap.x-27}px`);e.style.setProperty('--from-y',`${ap.y-38}px`);e.style.setProperty('--to-x',`${tp.x-27}px`);e.style.setProperty('--to-y',`${tp.y-38}px`);this.root.append(e)}
     }
     this.root.querySelectorAll('.fs-draw-flight,.fs-draw-count').forEach(e=>e.remove())
     this.root.querySelectorAll('.fs-draw-receiver').forEach(e=>e.classList.remove('fs-draw-receiver'))
-    const deck=this.root.querySelector('.fs-deck-stack')?.getBoundingClientRect(),bounds=this.root.getBoundingClientRect(),factor=bounds.width/this.root.clientWidth||1
+    const deck=this.root.querySelector('.fs-deck-stack')?.getBoundingClientRect(),deckPoint=deck&&localPoint(this.root,deck.x,deck.y)
     for(const d of this.draws){
       const receiver=anchor(d.target),to=(d.target===0?this.root.querySelector('.fs-hand'):receiver?.querySelector('.fs-player-info>span:last-child')||receiver)?.getBoundingClientRect()
       if(receiver){receiver.classList.add('fs-draw-receiver');const badge=document.createElement('span');badge.className='fs-draw-count';badge.textContent=`摸牌 +${d.count}`;receiver.append(badge)}
@@ -138,8 +141,8 @@ export class FengshenUI {
       for(let i=0;i<d.count;i++){
         const e=document.createElement('div');e.className='fs-draw-flight';e.dataset.drawTarget=d.target;e.dataset.drawIndex=i+1
         e.innerHTML=`<span class="fs-card-back"><i>封</i><b>暗手牌</b><small>摸牌 ${i+1}/${d.count}</small></span>`
-        const x=(to.x+to.width/2-bounds.x)/factor-20+i*12,y=(to.y+to.height/2-bounds.y)/factor-28
-        e.style.setProperty('--from-x',`${(deck.x-bounds.x)/factor+i*4}px`);e.style.setProperty('--from-y',`${(deck.y-bounds.y)/factor}px`);e.style.setProperty('--to-x',`${x}px`);e.style.setProperty('--to-y',`${y}px`);e.style.setProperty('--mid-x',`${((deck.x-bounds.x)/factor+x)/2}px`);e.style.setProperty('--mid-y',`${((deck.y-bounds.y)/factor+y)/2-25}px`);e.style.setProperty('--draw-delay',`${i*140-Math.max(0,Date.now()-(d.started??Date.now()))}ms`);this.root.append(e)
+        const tp=localPoint(this.root,to.x+to.width/2,to.y+to.height/2),x=tp.x-20+i*12,y=tp.y-28
+        e.style.setProperty('--from-x',`${deckPoint.x+i*4}px`);e.style.setProperty('--from-y',`${deckPoint.y}px`);e.style.setProperty('--to-x',`${x}px`);e.style.setProperty('--to-y',`${y}px`);e.style.setProperty('--mid-x',`${(deckPoint.x+x)/2}px`);e.style.setProperty('--mid-y',`${(deckPoint.y+y)/2-25}px`);e.style.setProperty('--draw-delay',`${i*140-Math.max(0,Date.now()-(d.started??Date.now()))}ms`);this.root.append(e)
       }
     }
   }
@@ -315,7 +318,7 @@ export class FengshenUI {
     const scrolls=Object.fromEntries([...this.root.querySelectorAll('[data-scroll]')].map(e=>[e.dataset.scroll,{left:e.scrollLeft,top:e.scrollTop}]))
     const wasModal=!!this.root.querySelector('.fs-modal'),prior=document.activeElement
     if(this.modal&&!wasModal)this.returnFocus={action:prior?.dataset?.action,id:prior?.dataset?.id}
-    this.syncClock();this.root.classList.toggle('fs-has-pool',this.state?.pending?.kind==='pick'&&this.state.pending.actor===0)
+    this.viewport.setImmersive(!this.lobby);this.syncClock()
     this.root.classList.toggle('fs-playing',!this.lobby&&!this.setup)
     morph(this.root,(this.lobby?this.renderLobby():this.setup?renderSetup(this):this.renderGame())+this.modalContent()+(this.toast?`<div class="fs-toast" role="status">${esc(this.toast)}</div>`:''))
     if(this.modal&&!this.lobby&&(this.state||this.setup)){

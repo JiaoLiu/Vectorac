@@ -1,6 +1,6 @@
 /* Final board layout. Geometry comes from arena-layout.mjs, measured inside
    the horizontal safe area. Equipment never participates in portrait height. */
-.fs-playing{display:block;background:linear-gradient(#102c3428,#102b3538),url('assets/heavenly-arena.jpg') center/cover no-repeat;touch-action:pan-x pan-y}
+.fs-playing{display:block;background:linear-gradient(#102c3428,#102b3538),url('assets/heavenly-arena.jpg') center/cover no-repeat;touch-action:manipulation}
 .fs-playing .fs-arena{position:absolute;inset:0 var(--fs-safe-right) 0 var(--fs-safe-left);width:auto;height:auto;min-height:0;max-width:none;margin:0;padding:0;overflow:visible;background:none;box-shadow:none;border-radius:0}
 .fs-playing .fs-arena:before{display:none}
 .fs-playing .fs-header{position:absolute;top:0;left:var(--fs-safe-left);right:var(--fs-safe-right);height:26px;z-index:12;padding:1px 4px;pointer-events:none;background:none;border:0}
@@ -47,11 +47,11 @@
 .fs-playing .fs-hand-heading>span{display:none}
 .fs-playing .fs-hand-heading button{font-size:9px;min-height:22px}
 .fs-playing .fs-hand-heading>.fs-timer{position:static;display:inline-flex;min-height:18px;padding:1px 5px;border-radius:3px;background:#172b32b0;color:#f1d195;white-space:nowrap;font-size:11px}
-.fs-playing .fs-hand{position:relative;grid-column:1;grid-row:2;height:100%;min-height:0;padding:var(--hand-top,30px) 1px var(--hand-bottom,4px);touch-action:pan-x;overflow-x:auto;overflow-y:hidden}
+.fs-playing .fs-hand{position:relative;grid-column:1;grid-row:2;height:100%;min-height:0;padding:var(--hand-top,30px) 1px var(--hand-bottom,4px);touch-action:pan-x pinch-zoom;overflow-x:auto;overflow-y:hidden}
 .fs-playing .fs-hand-row{position:relative}
 .fs-playing .fs-hand-card.selected{transform:translateY(calc(-1 * var(--hand-lift,21px)))}
 .fs-playing .fs-actions{grid-column:2;grid-row:1/3;align-self:stretch;display:flex;align-items:center;padding:0 3px var(--fs-safe-bottom)}
-.fs-playing .fs-action-row{width:100%;max-height:100%;flex-direction:column;align-items:stretch;justify-content:center;gap:4px;min-height:0;overflow:auto;touch-action:pan-y}
+.fs-playing .fs-action-row{width:100%;max-height:100%;flex-direction:column;align-items:stretch;justify-content:center;gap:4px;min-height:0;overflow:auto;touch-action:pan-y pinch-zoom}
 .fs-playing .fs-action-row .fs-primary,.fs-playing .fs-action-row .fs-secondary,.fs-playing .fs-action-row .fs-clear{min-height:32px;padding:4px 5px;width:100%;max-width:none;font-size:11px;white-space:normal;flex:none;margin:0}
 .fs-playing .fs-own-panel{position:relative;display:block;align-self:end;height:var(--hero-height);min-height:0;overflow:visible}
 .fs-playing .fs-own-hero{position:absolute;inset:0;display:block;overflow:hidden;border:1px solid #c9ab7060;border-radius:5px;background:#172c2c}
@@ -72,6 +72,8 @@
 .fs-playing .fs-center-choice{left:8px;right:8px;width:auto;top:50%;bottom:auto;height:min(310px,calc(100% - 32px));max-height:calc(100% - 32px);transform:translateY(-50%);padding:8px;gap:6px;overflow:auto}
 .fs-playing .fs-center-choice .fs-choice-card{flex-shrink:0;min-height:0}
 .fs-playing .fs-center-choice.fs-skill-prompt{pointer-events:none;height:auto;max-height:95px;overflow:hidden;top:55%;background:#142b32dd}
+/* 五谷选牌面板落在中央出牌区，避开底部牌堆与两侧人物，不遮挡自己的手牌。 */
+.fs-playing .fs-center-choice.fs-pool-choice{top:var(--center-top);bottom:calc(var(--dock-size) + 6px);left:var(--center-side);right:var(--center-side);height:auto;max-height:none;transform:none}
 .fs-playing .fs-skill-prompt p{margin:3px 0;font-size:11px}
 .fs-playing .fs-star-choice{z-index:10;height:auto;max-height:calc(100% - 32px);display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto;overflow:hidden}
 .fs-playing .fs-star-choice>header{grid-column:1;grid-row:1}
@@ -80,8 +82,8 @@
 .fs-star-rows{min-height:0;overflow:auto;display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .fs-star-zone{min-width:0;border:1px solid #b49b6155;border-radius:4px;padding:5px;display:flex;flex-direction:column;gap:4px}
 .fs-star-zone h4{margin:0;font-size:11px;color:#e7d095}
-.fs-star-zone .fs-center-card-list{flex:none;min-height:calc(var(--star-card-height) + 8px);height:calc(var(--star-card-height) + 8px);align-items:center;justify-content:flex-start;overflow-x:auto;overflow-y:hidden;gap:6px;padding:4px 2px;touch-action:pan-x}
-.fs-star-zone .fs-choice-card{height:var(--star-card-height);width:calc(var(--star-card-height)/1.44);flex-basis:calc(var(--star-card-height)/1.44);touch-action:none;cursor:grab}
+.fs-star-zone .fs-center-card-list{flex:none;min-height:calc(var(--star-card-height) + 8px);height:calc(var(--star-card-height) + 8px);align-items:center;justify-content:flex-start;overflow-x:auto;overflow-y:hidden;gap:6px;padding:4px 2px;touch-action:pan-x pinch-zoom}
+.fs-star-zone .fs-choice-card{height:var(--star-card-height);width:calc(var(--star-card-height)/1.44);flex-basis:calc(var(--star-card-height)/1.44);touch-action:pinch-zoom;cursor:grab}
 .fs-star-card.is-dragging{opacity:.4}
 .fs-star-card.is-drop-target{outline:2px solid #ffe08b}
 .fs-star-choice{--star-card-height:clamp(85px,calc(var(--fs-height)*.32),130px)}

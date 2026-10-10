@@ -63,7 +63,6 @@
 .fs-playing .fs-center-choice{left:50%;right:auto;top:50%;bottom:auto;transform:translate(-50%,-50%);width:min(680px,calc(100% - 16px));height:min(310px,calc(100% - 10px));max-height:calc(100% - 10px)}
 .fs-center-card-list{min-width:0;max-width:100%}
 .fs-playing .fs-hand{scrollbar-width:none}.fs-playing .fs-hand::-webkit-scrollbar{display:none}
-.fs-app.fs-has-pool .fs-hand{display:none}
 @media(max-height:559px) and (orientation:landscape){.fs-playing .fs-center-choice{width:min(680px,calc(100% - 210px))}.fs-playing .fs-player{--portrait-height:84px}.fs-playing .fs-player[data-player="2"],.fs-playing .fs-player[data-player="3"]{top:1px}}
 @media(prefers-reduced-motion:reduce){.fs-transfer-flight{transform:translate(var(--to-x),var(--to-y));opacity:1}}
 @media(max-height:559px) and (orientation:landscape){

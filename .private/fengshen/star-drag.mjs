@@ -1,3 +1,4 @@
+import {localPoint}from './screen-mode.mjs'
 export function moveStarCard(state,id,zone,beforeId=null){
  if(!state||!['top','bottom'].includes(zone)||!state.top.concat(state.bottom).includes(id))return state
  const next={...state,top:state.top.filter(x=>x!==id),bottom:state.bottom.filter(x=>x!==id)}
@@ -7,7 +8,7 @@ export function bindStarDrag(root,{getState,onMove,onInteraction=()=>{}}){
  let drag=null,suppressUntil=0
  const cleanup=()=>{if(!drag)return;root.querySelectorAll('.is-dragging,.is-drop-target').forEach(e=>e.classList.remove('is-dragging','is-drop-target'));drag.ghost?.remove();try{root.releasePointerCapture(drag.pointer)}catch{}drag=null;onInteraction(false)}
  const down=e=>{
-   const card=e.target.closest('.fs-star-card');if(!card||e.button!==0||!getState())return
+   const card=e.target.closest('.fs-star-card');if(!card||e.button!==0||e.isPrimary===false||!getState())return
    cleanup();drag={id:card.dataset.id,pointer:e.pointerId,x:e.clientX,y:e.clientY,card,moved:false,zone:null,before:null};onInteraction(true);root.setPointerCapture?.(e.pointerId)
  }
  const move=e=>{
@@ -15,14 +16,14 @@ export function bindStarDrag(root,{getState,onMove,onInteraction=()=>{}}){
    if(!drag.moved&&Math.hypot(e.clientX-drag.x,e.clientY-drag.y)<6)return
    if(e.cancelable)e.preventDefault()
    if(!drag.moved){drag.moved=true;drag.card.classList.add('is-dragging');drag.ghost=document.createElement('div');drag.ghost.className='fs-star-ghost';drag.ghost.setAttribute('aria-hidden','true');drag.ghost.style.width=drag.card.offsetWidth+'px';drag.ghost.style.height=drag.card.offsetHeight+'px';drag.ghost.append(drag.card.querySelector('.fs-card-face').cloneNode(true));root.append(drag.ghost)}
-   const bounds=root.getBoundingClientRect(),scale=bounds.width/root.clientWidth||1
-   drag.ghost.style.left=(e.clientX-bounds.left)/scale+'px';drag.ghost.style.top=(e.clientY-bounds.top)/scale+'px'
+   const point=localPoint(root,e.clientX,e.clientY)
+   drag.ghost.style.left=point.x+'px';drag.ghost.style.top=point.y+'px'
    const hit=document.elementFromPoint(e.clientX,e.clientY),zone=hit?.closest('[data-star-zone]')
    root.querySelectorAll('.is-drop-target').forEach(e=>e.classList.remove('is-drop-target'))
    drag.zone=zone?.dataset.starZone||null;drag.before=null
    if(zone){
-     const list=zone.querySelector('.fs-center-card-list'),r=list.getBoundingClientRect();if(e.clientX>r.right-18)list.scrollLeft+=14;if(e.clientX<r.left+18)list.scrollLeft-=14
-     const before=[...list.querySelectorAll('.fs-star-card')].filter(c=>c.dataset.id!==drag.id).find(c=>{const r=c.getBoundingClientRect();return e.clientX<r.left+r.width/2})
+     const list=zone.querySelector('.fs-center-card-list'),r=list.getBoundingClientRect(),rotated=root.classList.contains('fs-force-landscape'),axis=rotated?e.clientY:e.clientX,start=rotated?r.top:r.left,end=rotated?r.bottom:r.right;if(axis>end-18)list.scrollLeft+=14;if(axis<start+18)list.scrollLeft-=14
+     const before=[...list.querySelectorAll('.fs-star-card')].filter(c=>c.dataset.id!==drag.id).find(c=>{const r=c.getBoundingClientRect();return rotated?e.clientY<r.top+r.height/2:e.clientX<r.left+r.width/2})
      drag.before=before?.dataset.id||null;before?.classList.add('is-drop-target')
    }
  }

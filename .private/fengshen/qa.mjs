@@ -126,6 +126,7 @@ tools.querySelector('[data-qa-load]').onclick=()=>{
   }
 }
 document.body.append(tools)
+const touch=document.createElement('input');touch.type='checkbox';touch.setAttribute('aria-label','模拟触屏默认横屏');touch.onchange=()=>ui.viewport.setMobileOverride(touch.checked);tools.append(touch)
 const safeStyle=document.createElement('style');safeStyle.textContent='@media(orientation:landscape){#app.fs-qa-safe{--fs-safe-left:59px;--fs-safe-right:59px;--fs-safe-bottom:21px}}@media(orientation:portrait){#app.fs-qa-safe{--fs-safe-top:47px;--fs-safe-bottom:34px}}';document.head.append(safeStyle)
 const safe=document.createElement('input');safe.type='checkbox';safe.setAttribute('aria-label','模拟iPhone安全区');safe.onchange=()=>{ui.root.classList.toggle('fs-qa-safe',safe.checked);ui.onViewport()};tools.append(safe)
 const eight=document.createElement('option');eight.value='layout-eight';eight.textContent='八人布局：三人四件装备与12手牌';tools.querySelector('select').append(eight)
