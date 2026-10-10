@@ -1,0 +1,724 @@
+.private/fengshen/generate-music.mjs
+  5058ed3dc1a97a8c 1-4,6-55,58-59,61-62
+.private/fengshen/assets/audio/manifest.json
+  5058ed3dc1a97a8c 195-350,401-439,486-525
+.private/fengshen/arena-table.css
+  5058ed3dc1a97a8c 3,7-9,15,20-21,26,30,34,39-40
+.private/fengshen/setup.mjs
+  5058ed3dc1a97a8c 4,16,69
+.private/fengshen/setup-ui.mjs
+  5058ed3dc1a97a8c 18
+.private/fengshen/app.js
+  5058ed3dc1a97a8c 29-35,48,51,107-114,308
+.private/fengshen/qa.html
+  5058ed3dc1a97a8c 2
+scripts/test-fengshen-setup.mjs
+  5058ed3dc1a97a8c 6,24,37,40,56,70
+.private/fengshen/presentation.mjs
+  5058ed3dc1a97a8c 10
+.private/fengshen/assets/gods-art-manifest.json
+  5058ed3dc1a97a8c 1-182
+scripts/test-fengshen-browser.mjs
+  5058ed3dc1a97a8c 4
+.private/fengshen/table.mjs
+  5058ed3dc1a97a8c 16,36,45-55,71,83-85,100-103,108-109
+.private/fengshen/voice.mjs
+  5058ed3dc1a97a8c 3,74-75
+.private/fengshen/mobile-table.css
+  5058ed3dc1a97a8c 18-21
+.private/fengshen/README.md
+  5058ed3dc1a97a8c 1-27
+scripts/test-fengshen-interaction.mjs
+  5058ed3dc1a97a8c 60,83-84
+.private/fengshen/combat.css
+  5058ed3dc1a97a8c 70,132,143,149
+.private/fengshen/generate-voice.py
+  5058ed3dc1a97a8c 26,32,34,41,43-44
+.private/fengshen/art-prompts.mjs
+  5058ed3dc1a97a8c 2-3
+scripts/test-fengshen.mjs
+  5058ed3dc1a97a8c 8,11-14,61,67-68
+.private/fengshen/gods.mjs
+  5058ed3dc1a97a8c 1-29
+scripts/test-gods.mjs
+  5058ed3dc1a97a8c 1-66
+.private/fengshen/table.css
+  5058ed3dc1a97a8c 45-47,67,84,90
+.private/fengshen/toolbar.css
+  5058ed3dc1a97a8c 12-15
+.private/fengshen/style.css
+  5058ed3dc1a97a8c 4-6
+scripts/test-balatro.mjs
+  5058ed3dc1a97a8c 63-64
+.private/fengshen/qa.mjs
+  5058ed3dc1a97a8c 5,23-28,82
+blogs/other/games.md
+  5058ed3dc1a97a8c 80,82-83
+.private/fengshen/theme.mjs
+  5058ed3dc1a97a8c 3,5-6,30,33,40,42-43,53-61
+.private/fengshen/index.html
+  5058ed3dc1a97a8c 8
+.vuepress/components/sanguo/engine.mjs
+  5058ed3dc1a97a8c 18-19,501,506,533
+.private/fengshen/setup.css
+  5058ed3dc1a97a8c 5
+.vuepress/components/sanguo/ai.mjs
+  5058ed3dc1a97a8c 1-2,41,46,77,81-83,86,107,136-137
+.private/fengshen/audio-manifest.mjs
+  5058ed3dc1a97a8c 1,5-6,8
+.private/fengshen/QA.md
+  5058ed3dc1a97a8c 101-106,108
+.private/fengshen/engine.mjs
+  5058ed3dc1a97a8c 3-4,8,12,15,20,23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.8",
+  "base_commit_sha": "ace0371224746abb88a6e6e45ef6a4932bc5418f",
+  "prompts": {
+    "005cae9c1dbc73d5": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a7d220af85496fd0502022c",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 16,
+      "overriden_lines": 0
+    },
+    "056992989d58fd24": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a38e6391d55a586f6a882f6",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 885,
+      "overriden_lines": 0
+    },
+    "076cd075fc982088": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6ab094a9d2a55b0267c03982",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 13,
+      "overriden_lines": 0
+    },
+    "1efb2cdd1e5a75ab": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6aac9e69d2a55b0267c00651",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 98,
+      "overriden_lines": 0
+    },
+    "26c5942801a23ac1": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6ab1d3e7d2a55b0267c0460f",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 23,
+      "overriden_lines": 0
+    },
+    "29e508154762f283": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6abc734f090dc5dc92347902",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 131,
+      "overriden_lines": 0
+    },
+    "2f1af447cbbb2318": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a9a6a0f994bdfd3aac25077",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 261,
+      "overriden_lines": 0
+    },
+    "32a9729784f18ef1": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6aa0c0f23a379370e56fccd6",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 809,
+      "overriden_lines": 0
+    },
+    "49bd55c166d50799": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6ab0980ad2a55b0267c039fc",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1196,
+      "overriden_lines": 0
+    },
+    "4a68a259acc17f46": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a7152c27fd21251a8b13b6c",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 228,
+      "overriden_lines": 0
+    },
+    "5058ed3dc1a97a8c": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6ac848ce090dc5dc9234c7bc",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 803,
+      "total_deletions": 157,
+      "accepted_lines": 774,
+      "overriden_lines": 0
+    },
+    "5f2ae642c403f7ed": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6aa371d13a379370e56fda4b",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 200,
+      "overriden_lines": 0
+    },
+    "82fbbf65aa138f10": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d615-f1ff-7841-8409-3884dbb9c23b",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 9,
+      "overriden_lines": 0
+    },
+    "a1cd53983a2dd32f": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a9a80e2994bdfd3aac25415",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 225,
+      "overriden_lines": 0
+    },
+    "b0d20b6344c73b1d": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6ab88c0ed2a55b0267c0a4ac",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 246,
+      "overriden_lines": 0
+    },
+    "bfcf2812a5394d1a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ffe24-0691-79c0-9329-ff854e9d5202",
+        "model": "gpt-6-luna"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 103,
+      "overriden_lines": 0
+    },
+    "c56a32e809737a22": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a82d2b6f85496fd05021002",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 584,
+      "overriden_lines": 0
+    },
+    "c8c57fc2ff498eb1": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6ab251edd2a55b0267c056e6",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 2076,
+      "overriden_lines": 0
+    },
+    "cc00914bf98624a9": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6ab1e26dd2a55b0267c048f9",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 342,
+      "overriden_lines": 0
+    },
+    "f58fab71a540773a": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a97c6b8b6e5888c03083198",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    },
+    "f80830a51a6eab6f": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a9faac33a379370e56fc8c3",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 148,
+      "overriden_lines": 0
+    },
+    "ff6feec799719add": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06bd4-83e2-7680-a983-22c87f9788d0",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 10,
+      "overriden_lines": 0
+    }
+  },
+  "commit_stats": {
+    "git_diff_added_lines": 792,
+    "git_diff_deleted_lines": 145,
+    "ai_additions": 773,
+    "ai_accepted": 773,
+    "BYMC": 19,
+    "mixed_additions": 0,
+    "BYAC": 773,
+    "BYRC": 0,
+    "per_file": {
+      ".private/fengshen/QA.md": {
+        "BYMC": [
+          "107",
+          "109"
+        ],
+        "BYAC": [
+          "101-106",
+          "108"
+        ],
+        "BYRC": []
+      },
+      ".private/fengshen/README.md": {
+        "BYMC": [],
+        "BYAC": [
+          "1-27"
+        ],
+        "BYRC": []
+      },
+      ".private/fengshen/app.js": {
+        "BYMC": [
+          "1",
+          "4",
+          "247",
+          "255",
+          "267",
+          "272-273"
+        ],
+        "BYAC": [
+          "29-35",
+          "48",
+          "51",
+          "107-114",
+          "308"
+        ],
+        "BYRC": []
+      },
+      ".private/fengshen/arena-table.css": {
+        "BYMC": [],
+        "BYAC": [
+          "3",
+          "7-9",
+          "15",
+          "20-21",
+          "26",
+          "30",
+          "34",
+          "39-40"
+        ],
+        "BYRC": []
+      },
+      ".private/fengshen/art-prompts.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "2-3"
+        ],
+        "BYRC": []
+      },
+      ".private/fengshen/assets/audio/manifest.json": {
+        "BYMC": [
+          "527"
+        ],
+        "BYAC": [
+          "195-350",
+          "401-439",
+          "486-525"
+        ],
+        "BYRC": []
+      },
+      ".private/fengshen/assets/gods-art-manifest.json": {
+        "BYMC": [],
+        "BYAC": [
+          "1-182"
+        ],
+        "BYRC": []
+      },
+      ".private/fengshen/audio-manifest.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "1",
+          "5-6",
+          "8"
+        ],
+        "BYRC": []
+      },
+      ".private/fengshen/combat.css": {
+        "BYMC": [],
+        "BYAC": [
+          "70",
+          "132",
+          "143",
+          "149"
+        ],
+        "BYRC": []
+      },
+      ".private/fengshen/engine.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "3-4",
+          "8",
+          "12",
+          "15",
+          "20",
+          "23"
+        ],
+        "BYRC": []
+      },
+      ".private/fengshen/generate-music.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "1-4",
+          "6-55",
+          "58-59",
+          "61-62"
+        ],
+        "BYRC": []
+      },
+      ".private/fengshen/generate-voice.py": {
+        "BYMC": [],
+        "BYAC": [
+          "26",
+          "32",
+          "34",
+          "41",
+          "43-44"
+        ],
+        "BYRC": []
+      },
+      ".private/fengshen/gods.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "1-29"
+        ],
+        "BYRC": []
+      },
+      ".private/fengshen/index.html": {
+        "BYMC": [],
+        "BYAC": [
+          "8"
+        ],
+        "BYRC": []
+      },
+      ".private/fengshen/mobile-table.css": {
+        "BYMC": [],
+        "BYAC": [
+          "18-21"
+        ],
+        "BYRC": []
+      },
+      ".private/fengshen/presentation.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "10"
+        ],
+        "BYRC": []
+      },
+      ".private/fengshen/qa.html": {
+        "BYMC": [],
+        "BYAC": [
+          "2"
+        ],
+        "BYRC": []
+      },
+      ".private/fengshen/qa.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "5",
+          "23-28",
+          "82"
+        ],
+        "BYRC": []
+      },
+      ".private/fengshen/setup-ui.mjs": {
+        "BYMC": [
+          "1",
+          "7-8",
+          "17",
+          "19"
+        ],
+        "BYAC": [
+          "18"
+        ],
+        "BYRC": []
+      },
+      ".private/fengshen/setup.css": {
+        "BYMC": [
+          "11-12"
+        ],
+        "BYAC": [
+          "5"
+        ],
+        "BYRC": []
+      },
+      ".private/fengshen/setup.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "4",
+          "16",
+          "69"
+        ],
+        "BYRC": []
+      },
+      ".private/fengshen/style.css": {
+        "BYMC": [],
+        "BYAC": [
+          "4-6"
+        ],
+        "BYRC": []
+      },
+      ".private/fengshen/table.css": {
+        "BYMC": [],
+        "BYAC": [
+          "45-47",
+          "67",
+          "84",
+          "90"
+        ],
+        "BYRC": []
+      },
+      ".private/fengshen/table.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "16",
+          "36",
+          "45-55",
+          "71",
+          "83-85",
+          "100-103",
+          "108-109"
+        ],
+        "BYRC": []
+      },
+      ".private/fengshen/theme.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "3",
+          "5-6",
+          "30",
+          "33",
+          "40",
+          "42-43",
+          "53-61"
+        ],
+        "BYRC": []
+      },
+      ".private/fengshen/toolbar.css": {
+        "BYMC": [],
+        "BYAC": [
+          "12-15"
+        ],
+        "BYRC": []
+      },
+      ".private/fengshen/voice.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "3",
+          "74-75"
+        ],
+        "BYRC": []
+      },
+      ".vuepress/components/sanguo/ai.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "1-2",
+          "41",
+          "46",
+          "77",
+          "81-83",
+          "86",
+          "107",
+          "136-137"
+        ],
+        "BYRC": []
+      },
+      ".vuepress/components/sanguo/engine.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "18-19",
+          "501",
+          "506",
+          "533"
+        ],
+        "BYRC": []
+      },
+      "blogs/other/games.md": {
+        "BYMC": [],
+        "BYAC": [
+          "80",
+          "82-83"
+        ],
+        "BYRC": []
+      },
+      "scripts/test-balatro.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "63-64"
+        ],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-browser.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "4"
+        ],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-interaction.mjs": {
+        "BYMC": [
+          "105-106"
+        ],
+        "BYAC": [
+          "60",
+          "83-84"
+        ],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-setup.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "6",
+          "24",
+          "37",
+          "40",
+          "56",
+          "70"
+        ],
+        "BYRC": []
+      },
+      "scripts/test-fengshen.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "8",
+          "11-14",
+          "61",
+          "67-68"
+        ],
+        "BYRC": []
+      },
+      "scripts/test-gods.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "1-66"
+        ],
+        "BYRC": []
+      }
+    }
+  },
+  "commit_timestamp": 1791604886,
+  "requirement_id": ""
+}
