@@ -1,0 +1,194 @@
+[
+  {
+    "scene": "hand30",
+    "choiceInside": true,
+    "controlsInside": true,
+    "playersInside": true,
+    "rootOverflow": false,
+    "scrollbar": "none",
+    "viewport": [
+      844,
+      390
+    ]
+  },
+  {
+    "scene": "equipped",
+    "choiceInside": true,
+    "controlsInside": true,
+    "playersInside": true,
+    "rootOverflow": false,
+    "scrollbar": "none",
+    "viewport": [
+      844,
+      390
+    ]
+  },
+  {
+    "scene": "harvest",
+    "choiceInside": true,
+    "controlsInside": true,
+    "playersInside": true,
+    "rootOverflow": false,
+    "scrollbar": "none",
+    "viewport": [
+      844,
+      390
+    ]
+  },
+  {
+    "scene": "counter",
+    "choiceInside": true,
+    "controlsInside": true,
+    "playersInside": true,
+    "rootOverflow": false,
+    "scrollbar": "none",
+    "viewport": [
+      844,
+      390
+    ]
+  },
+  {
+    "scene": "hand30",
+    "choiceInside": true,
+    "controlsInside": true,
+    "playersInside": true,
+    "rootOverflow": false,
+    "scrollbar": "none",
+    "viewport": [
+      667,
+      375
+    ]
+  },
+  {
+    "scene": "equipped",
+    "choiceInside": true,
+    "controlsInside": true,
+    "playersInside": true,
+    "rootOverflow": false,
+    "scrollbar": "none",
+    "viewport": [
+      667,
+      375
+    ]
+  },
+  {
+    "scene": "harvest",
+    "choiceInside": true,
+    "controlsInside": true,
+    "playersInside": true,
+    "rootOverflow": false,
+    "scrollbar": "none",
+    "viewport": [
+      667,
+      375
+    ]
+  },
+  {
+    "scene": "counter",
+    "choiceInside": true,
+    "controlsInside": true,
+    "playersInside": true,
+    "rootOverflow": false,
+    "scrollbar": "none",
+    "viewport": [
+      667,
+      375
+    ]
+  },
+  {
+    "scene": "hand30",
+    "choiceInside": true,
+    "controlsInside": true,
+    "playersInside": true,
+    "rootOverflow": false,
+    "scrollbar": "none",
+    "viewport": [
+      390,
+      844
+    ]
+  },
+  {
+    "scene": "equipped",
+    "choiceInside": true,
+    "controlsInside": true,
+    "playersInside": true,
+    "rootOverflow": false,
+    "scrollbar": "none",
+    "viewport": [
+      390,
+      844
+    ]
+  },
+  {
+    "scene": "harvest",
+    "choiceInside": true,
+    "controlsInside": true,
+    "playersInside": true,
+    "rootOverflow": false,
+    "scrollbar": "none",
+    "viewport": [
+      390,
+      844
+    ]
+  },
+  {
+    "scene": "counter",
+    "choiceInside": true,
+    "controlsInside": true,
+    "playersInside": true,
+    "rootOverflow": false,
+    "scrollbar": "none",
+    "viewport": [
+      390,
+      844
+    ]
+  },
+  {
+    "scene": "hand30",
+    "choiceInside": true,
+    "controlsInside": true,
+    "playersInside": true,
+    "rootOverflow": false,
+    "scrollbar": "none",
+    "viewport": [
+      320,
+      568
+    ]
+  },
+  {
+    "scene": "equipped",
+    "choiceInside": true,
+    "controlsInside": true,
+    "playersInside": true,
+    "rootOverflow": false,
+    "scrollbar": "none",
+    "viewport": [
+      320,
+      568
+    ]
+  },
+  {
+    "scene": "harvest",
+    "choiceInside": true,
+    "controlsInside": true,
+    "playersInside": true,
+    "rootOverflow": false,
+    "scrollbar": "none",
+    "viewport": [
+      320,
+      568
+    ]
+  },
+  {
+    "scene": "counter",
+    "choiceInside": true,
+    "controlsInside": true,
+    "playersInside": true,
+    "rootOverflow": false,
+    "scrollbar": "none",
+    "viewport": [
+      320,
+      568
+    ]
+  }
+]

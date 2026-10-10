@@ -1,0 +1,293 @@
+{
+  "provider": "Edge TTS",
+  "voices": {
+    "male": "zh-CN-YunxiNeural",
+    "female": "zh-CN-XiaoxiaoNeural"
+  },
+  "entries": [
+    {
+      "key": "card-sha",
+      "text": "杀"
+    },
+    {
+      "key": "card-shan",
+      "text": "闪"
+    },
+    {
+      "key": "card-tao",
+      "text": "仙桃"
+    },
+    {
+      "key": "card-duel",
+      "text": "斗法"
+    },
+    {
+      "key": "card-dismantle",
+      "text": "破阵"
+    },
+    {
+      "key": "card-snatch",
+      "text": "摄宝"
+    },
+    {
+      "key": "card-draw",
+      "text": "天机显化"
+    },
+    {
+      "key": "card-savage",
+      "text": "万妖袭营"
+    },
+    {
+      "key": "card-arrows",
+      "text": "飞剑齐发"
+    },
+    {
+      "key": "card-garden",
+      "text": "瑶池仙宴"
+    },
+    {
+      "key": "card-harvest",
+      "text": "仙山采宝"
+    },
+    {
+      "key": "card-collateral",
+      "text": "借宝诛敌"
+    },
+    {
+      "key": "card-nullify",
+      "text": "破法"
+    },
+    {
+      "key": "card-indulgence",
+      "text": "迷魂阵"
+    },
+    {
+      "key": "card-lightning",
+      "text": "天雷劫"
+    },
+    {
+      "key": "card-crossbow",
+      "text": "火尖枪"
+    },
+    {
+      "key": "card-dualsword",
+      "text": "阴阳双剑"
+    },
+    {
+      "key": "card-qinggang",
+      "text": "斩仙飞刀"
+    },
+    {
+      "key": "card-blade",
+      "text": "打神鞭"
+    },
+    {
+      "key": "card-spear",
+      "text": "混天绫"
+    },
+    {
+      "key": "card-axe",
+      "text": "番天印"
+    },
+    {
+      "key": "card-halberd",
+      "text": "金蛟剪"
+    },
+    {
+      "key": "card-bow",
+      "text": "五色神光"
+    },
+    {
+      "key": "card-ice",
+      "text": "乾坤圈"
+    },
+    {
+      "key": "card-bagua",
+      "text": "戊己杏黄旗"
+    },
+    {
+      "key": "card-renwang",
+      "text": "紫绶仙衣"
+    },
+    {
+      "key": "card-chitu",
+      "text": "风火轮"
+    },
+    {
+      "key": "card-dayuan",
+      "text": "金睛兽"
+    },
+    {
+      "key": "card-zixing",
+      "text": "墨麒麟"
+    },
+    {
+      "key": "card-jueying",
+      "text": "五色神牛"
+    },
+    {
+      "key": "card-dilu",
+      "text": "青鸾"
+    },
+    {
+      "key": "card-zhuahuang",
+      "text": "白鹤"
+    },
+    {
+      "key": "skill-rende",
+      "text": "仁君"
+    },
+    {
+      "key": "skill-jijiang",
+      "text": "伐纣"
+    },
+    {
+      "key": "skill-paoxiao",
+      "text": "风火"
+    },
+    {
+      "key": "skill-longdan",
+      "text": "九转"
+    },
+    {
+      "key": "skill-mashu",
+      "text": "风翼"
+    },
+    {
+      "key": "skill-tieji",
+      "text": "雷袭"
+    },
+    {
+      "key": "skill-jianxiong",
+      "text": "帝威"
+    },
+    {
+      "key": "skill-hujia",
+      "text": "王卫"
+    },
+    {
+      "key": "skill-luoyi",
+      "text": "剑威"
+    },
+    {
+      "key": "skill-yingzi",
+      "text": "仙姿"
+    },
+    {
+      "key": "skill-fanjian",
+      "text": "试心"
+    },
+    {
+      "key": "skill-zhiheng",
+      "text": "炼化"
+    },
+    {
+      "key": "skill-jiuyuan",
+      "text": "护道"
+    },
+    {
+      "key": "skill-jizhi",
+      "text": "仙机"
+    },
+    {
+      "key": "skill-qicai",
+      "text": "通法"
+    }
+  ],
+  "files": [
+    "male/card-sha.mp3",
+    "male/card-shan.mp3",
+    "male/card-tao.mp3",
+    "male/card-duel.mp3",
+    "male/card-dismantle.mp3",
+    "male/card-snatch.mp3",
+    "male/card-draw.mp3",
+    "male/card-savage.mp3",
+    "male/card-arrows.mp3",
+    "male/card-garden.mp3",
+    "male/card-harvest.mp3",
+    "male/card-collateral.mp3",
+    "male/card-nullify.mp3",
+    "male/card-indulgence.mp3",
+    "male/card-lightning.mp3",
+    "male/card-crossbow.mp3",
+    "male/card-dualsword.mp3",
+    "male/card-qinggang.mp3",
+    "male/card-blade.mp3",
+    "male/card-spear.mp3",
+    "male/card-axe.mp3",
+    "male/card-halberd.mp3",
+    "male/card-bow.mp3",
+    "male/card-ice.mp3",
+    "male/card-bagua.mp3",
+    "male/card-renwang.mp3",
+    "male/card-chitu.mp3",
+    "male/card-dayuan.mp3",
+    "male/card-zixing.mp3",
+    "male/card-jueying.mp3",
+    "male/card-dilu.mp3",
+    "male/card-zhuahuang.mp3",
+    "male/skill-rende.mp3",
+    "male/skill-jijiang.mp3",
+    "male/skill-paoxiao.mp3",
+    "male/skill-longdan.mp3",
+    "male/skill-mashu.mp3",
+    "male/skill-tieji.mp3",
+    "male/skill-jianxiong.mp3",
+    "male/skill-hujia.mp3",
+    "male/skill-luoyi.mp3",
+    "male/skill-yingzi.mp3",
+    "male/skill-fanjian.mp3",
+    "male/skill-zhiheng.mp3",
+    "male/skill-jiuyuan.mp3",
+    "male/skill-jizhi.mp3",
+    "male/skill-qicai.mp3",
+    "female/card-sha.mp3",
+    "female/card-shan.mp3",
+    "female/card-tao.mp3",
+    "female/card-duel.mp3",
+    "female/card-dismantle.mp3",
+    "female/card-snatch.mp3",
+    "female/card-draw.mp3",
+    "female/card-savage.mp3",
+    "female/card-arrows.mp3",
+    "female/card-garden.mp3",
+    "female/card-harvest.mp3",
+    "female/card-collateral.mp3",
+    "female/card-nullify.mp3",
+    "female/card-indulgence.mp3",
+    "female/card-lightning.mp3",
+    "female/card-crossbow.mp3",
+    "female/card-dualsword.mp3",
+    "female/card-qinggang.mp3",
+    "female/card-blade.mp3",
+    "female/card-spear.mp3",
+    "female/card-axe.mp3",
+    "female/card-halberd.mp3",
+    "female/card-bow.mp3",
+    "female/card-ice.mp3",
+    "female/card-bagua.mp3",
+    "female/card-renwang.mp3",
+    "female/card-chitu.mp3",
+    "female/card-dayuan.mp3",
+    "female/card-zixing.mp3",
+    "female/card-jueying.mp3",
+    "female/card-dilu.mp3",
+    "female/card-zhuahuang.mp3",
+    "female/skill-rende.mp3",
+    "female/skill-jijiang.mp3",
+    "female/skill-paoxiao.mp3",
+    "female/skill-longdan.mp3",
+    "female/skill-mashu.mp3",
+    "female/skill-tieji.mp3",
+    "female/skill-jianxiong.mp3",
+    "female/skill-hujia.mp3",
+    "female/skill-luoyi.mp3",
+    "female/skill-yingzi.mp3",
+    "female/skill-fanjian.mp3",
+    "female/skill-zhiheng.mp3",
+    "female/skill-jiuyuan.mp3",
+    "female/skill-jizhi.mp3",
+    "female/skill-qicai.mp3"
+  ]
+}

@@ -8,6 +8,10 @@ node_modules/
 # 语音合成等第三方服务的密钥（不入 git）
 .private/doubao-tts.json
 
+# Fengshen remains an internal prototype: art and preview output are not public.
+.private/fengshen/dist/
+.private/fengshen/qa-dist/
+
 # 本地排查用的诊断截图（横竖屏 / CDP 抓图），不入库
 /diag-*.png
 

@@ -1,0 +1,10 @@
+{
+  "visibility": "internal-only",
+  "background": {
+    "file": "heavenly-arena.jpg",
+    "source": "Built-in image_gen, original generation",
+    "prompt": "Use case: stylized-concept. Asset type: original widescreen background for a mobile Chinese mythological turn-based card duel. Primary request: 天庭斗法场景，作为封神题材牌桌的背景。 Scene: a vast celestial jade-and-bronze circular dueling platform suspended above layered clouds, distant imperial heavenly palaces, austere sculpted stone railings, faint flowing spiritual energy, cool teal mist and muted warm gold sunlight. Composition: wide landscape 16:9, cinematic slightly elevated viewpoint, spacious quiet central stone platform suitable for cards and combat notices; architecture and magical light concentrated at the perimeter. Painterly polished Chinese fantasy game environment, dignified atmosphere of divine confrontation. No humans or portraits, no game interface, no text, no logos, no watermark, no recognizable copyrighted game imagery. Keep overall contrast controlled so large card titles and avatars remain readable over this image."
+  },
+  "music": {"file": "audio/sfx/heavenly-duel.mp3", "source": "Original offline synthesis, generate-music.mjs", "seconds": 48, "loop": true, "volume": 0.15},
+  "damage": {"file": "audio/sfx/damage.wav", "source": "Original offline synthesis, generate-sfx.mjs", "seconds": 0.28}
+}

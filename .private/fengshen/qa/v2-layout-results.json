@@ -1,0 +1,42 @@
+[
+  {
+    "size": [
+      390,
+      844
+    ],
+    "portraitsDoNotOverlap": true,
+    "selectionCardsFullyVisible": true
+  },
+  {
+    "size": [
+      844,
+      390
+    ],
+    "portraitsDoNotOverlap": true,
+    "selectionCardsFullyVisible": true
+  },
+  {
+    "size": [
+      667,
+      375
+    ],
+    "portraitsDoNotOverlap": true,
+    "selectionCardsFullyVisible": true
+  },
+  {
+    "size": [
+      320,
+      568
+    ],
+    "portraitsDoNotOverlap": true,
+    "selectionCardsFullyVisible": true
+  },
+  {
+    "size": [
+      1280,
+      900
+    ],
+    "portraitsDoNotOverlap": true,
+    "selectionCardsFullyVisible": true
+  }
+]

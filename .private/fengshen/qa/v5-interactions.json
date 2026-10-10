@@ -1,0 +1,331 @@
+{
+  "taps": [
+    {
+      "i": 0,
+      "expected": "c0",
+      "selected": [
+        "c0"
+      ],
+      "faceInside": true,
+      "handTop": 658,
+      "left": 10,
+      "right": 86,
+      "scrollLeft": 0,
+      "top": 661
+    },
+    {
+      "i": 14,
+      "expected": "c14",
+      "selected": [
+        "c14"
+      ],
+      "faceInside": true,
+      "handTop": 658,
+      "left": 304,
+      "right": 380,
+      "scrollLeft": 322,
+      "top": 661
+    },
+    {
+      "i": 29,
+      "expected": "c29",
+      "selected": [
+        "c29"
+      ],
+      "faceInside": true,
+      "handTop": 658,
+      "left": 304,
+      "right": 380,
+      "scrollLeft": 982,
+      "top": 661
+    }
+  ],
+  "forcedResponses": [
+    {
+      "scene": "slash-empty",
+      "state": {
+        "pending": null,
+        "revision": 2,
+        "hp": [
+          5,
+          2,
+          3,
+          4,
+          4
+        ],
+        "hand": [],
+        "selected": [],
+        "targets": [],
+        "damage": [
+          {
+            "kind": "damage",
+            "source": 0,
+            "target": 1,
+            "amount": 1
+          }
+        ],
+        "auto": false,
+        "clockDuration": 60000
+      }
+    },
+    {
+      "scene": "duel-empty",
+      "state": {
+        "pending": null,
+        "revision": 2,
+        "hp": [
+          5,
+          2,
+          3,
+          4,
+          4
+        ],
+        "hand": [],
+        "selected": [],
+        "targets": [],
+        "damage": [
+          {
+            "kind": "damage",
+            "source": 0,
+            "target": 1,
+            "amount": 1
+          }
+        ],
+        "auto": false,
+        "clockDuration": 60000
+      }
+    }
+  ],
+  "restoredJudgment": {
+    "before": {
+      "id": 1,
+      "kind": "reveal",
+      "actor": 0,
+      "target": 0,
+      "context": {
+        "type": "judgeApply",
+        "target": 0
+      },
+      "card": {
+        "id": "c8",
+        "type": "blade",
+        "suit": "spade",
+        "rank": 5
+      },
+      "delayType": "indulgence",
+      "hit": true
+    },
+    "after": {
+      "id": 1,
+      "kind": "reveal",
+      "actor": 0,
+      "target": 0,
+      "context": {
+        "type": "judgeApply",
+        "target": 0
+      },
+      "card": {
+        "id": "c8",
+        "type": "blade",
+        "suit": "spade",
+        "rank": 5
+      },
+      "delayType": "indulgence",
+      "hit": true
+    }
+  },
+  "layouts": [
+    {
+      "scene": "hand30",
+      "choiceInside": true,
+      "controlsInside": true,
+      "playersInside": true,
+      "rootOverflow": false,
+      "scrollbar": "none",
+      "viewport": [
+        844,
+        390
+      ]
+    },
+    {
+      "scene": "equipped",
+      "choiceInside": true,
+      "controlsInside": true,
+      "playersInside": true,
+      "rootOverflow": false,
+      "scrollbar": "none",
+      "viewport": [
+        844,
+        390
+      ]
+    },
+    {
+      "scene": "harvest",
+      "choiceInside": true,
+      "controlsInside": true,
+      "playersInside": true,
+      "rootOverflow": false,
+      "scrollbar": "none",
+      "viewport": [
+        844,
+        390
+      ]
+    },
+    {
+      "scene": "counter",
+      "choiceInside": true,
+      "controlsInside": true,
+      "playersInside": true,
+      "rootOverflow": false,
+      "scrollbar": "none",
+      "viewport": [
+        844,
+        390
+      ]
+    },
+    {
+      "scene": "hand30",
+      "choiceInside": true,
+      "controlsInside": true,
+      "playersInside": true,
+      "rootOverflow": false,
+      "scrollbar": "none",
+      "viewport": [
+        667,
+        375
+      ]
+    },
+    {
+      "scene": "equipped",
+      "choiceInside": true,
+      "controlsInside": true,
+      "playersInside": true,
+      "rootOverflow": false,
+      "scrollbar": "none",
+      "viewport": [
+        667,
+        375
+      ]
+    },
+    {
+      "scene": "harvest",
+      "choiceInside": true,
+      "controlsInside": true,
+      "playersInside": true,
+      "rootOverflow": false,
+      "scrollbar": "none",
+      "viewport": [
+        667,
+        375
+      ]
+    },
+    {
+      "scene": "counter",
+      "choiceInside": true,
+      "controlsInside": true,
+      "playersInside": true,
+      "rootOverflow": false,
+      "scrollbar": "none",
+      "viewport": [
+        667,
+        375
+      ]
+    },
+    {
+      "scene": "hand30",
+      "choiceInside": true,
+      "controlsInside": true,
+      "playersInside": true,
+      "rootOverflow": false,
+      "scrollbar": "none",
+      "viewport": [
+        390,
+        844
+      ]
+    },
+    {
+      "scene": "equipped",
+      "choiceInside": true,
+      "controlsInside": true,
+      "playersInside": true,
+      "rootOverflow": false,
+      "scrollbar": "none",
+      "viewport": [
+        390,
+        844
+      ]
+    },
+    {
+      "scene": "harvest",
+      "choiceInside": true,
+      "controlsInside": true,
+      "playersInside": true,
+      "rootOverflow": false,
+      "scrollbar": "none",
+      "viewport": [
+        390,
+        844
+      ]
+    },
+    {
+      "scene": "counter",
+      "choiceInside": true,
+      "controlsInside": true,
+      "playersInside": true,
+      "rootOverflow": false,
+      "scrollbar": "none",
+      "viewport": [
+        390,
+        844
+      ]
+    },
+    {
+      "scene": "hand30",
+      "choiceInside": true,
+      "controlsInside": true,
+      "playersInside": true,
+      "rootOverflow": false,
+      "scrollbar": "none",
+      "viewport": [
+        320,
+        568
+      ]
+    },
+    {
+      "scene": "equipped",
+      "choiceInside": true,
+      "controlsInside": true,
+      "playersInside": true,
+      "rootOverflow": false,
+      "scrollbar": "none",
+      "viewport": [
+        320,
+        568
+      ]
+    },
+    {
+      "scene": "harvest",
+      "choiceInside": true,
+      "controlsInside": true,
+      "playersInside": true,
+      "rootOverflow": false,
+      "scrollbar": "none",
+      "viewport": [
+        320,
+        568
+      ]
+    },
+    {
+      "scene": "counter",
+      "choiceInside": true,
+      "controlsInside": true,
+      "playersInside": true,
+      "rootOverflow": false,
+      "scrollbar": "none",
+      "viewport": [
+        320,
+        568
+      ]
+    }
+  ]
+}

@@ -1,0 +1,411 @@
+{
+  "tool": "built-in imagegen",
+  "visibility": "internal-only",
+  "promptSet": "../art-prompts.mjs",
+  "assets": [
+    {
+      "id": "jiangziya",
+      "kind": "heroes",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-bf5a3d05-bba5-4b73-8311-11c79e176543.png",
+      "image": "heroes/jiangziya.jpg",
+      "thumbnail": "heroes/jiangziya-thumb.jpg",
+      "thumbnailMaxEdge": 320,
+      "maxEdge": 1024
+    },
+    {
+      "id": "yangjian",
+      "kind": "heroes",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-3316d153-807f-4a35-89e6-9f81dacd910b.png",
+      "image": "heroes/yangjian.jpg",
+      "thumbnail": "heroes/yangjian-thumb.jpg",
+      "thumbnailMaxEdge": 320,
+      "maxEdge": 1024
+    },
+    {
+      "id": "jifa",
+      "kind": "heroes",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-02b38831-e83f-4a3f-8912-7709dff046d6.png",
+      "image": "heroes/jifa.jpg",
+      "thumbnail": "heroes/jifa-thumb.jpg",
+      "thumbnailMaxEdge": 320,
+      "maxEdge": 1024
+    },
+    {
+      "id": "leizhenzi",
+      "kind": "heroes",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-82819170-55ff-4231-b0a9-02bc431421bc.png",
+      "image": "heroes/leizhenzi.jpg",
+      "thumbnail": "heroes/leizhenzi-thumb.jpg",
+      "thumbnailMaxEdge": 320,
+      "maxEdge": 1024
+    },
+    {
+      "id": "nezha",
+      "kind": "heroes",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-60d5b6df-8521-4a8d-961f-7d7ebf79ddc2.png",
+      "image": "heroes/nezha.jpg",
+      "thumbnail": "heroes/nezha-thumb.jpg",
+      "thumbnailMaxEdge": 320,
+      "maxEdge": 1024
+    },
+    {
+      "id": "daji",
+      "kind": "heroes",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-f15bcedc-8651-4f3e-8416-d5b6688e53e7.png",
+      "image": "heroes/daji.jpg",
+      "thumbnail": "heroes/daji-thumb.jpg",
+      "thumbnailMaxEdge": 320,
+      "maxEdge": 1024
+    },
+    {
+      "id": "dixin",
+      "kind": "heroes",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-f421e702-98df-4d51-9c50-8326a54ae037.png",
+      "image": "heroes/dixin.jpg",
+      "thumbnail": "heroes/dixin-thumb.jpg",
+      "thumbnailMaxEdge": 320,
+      "maxEdge": 1024
+    },
+    {
+      "id": "shengongbao",
+      "kind": "heroes",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-9738e026-5a1b-4c34-bd81-62ab498b4a6c.png",
+      "image": "heroes/shengongbao.jpg",
+      "thumbnail": "heroes/shengongbao-thumb.jpg",
+      "thumbnailMaxEdge": 320,
+      "maxEdge": 1024
+    },
+    {
+      "id": "wenzhong",
+      "kind": "heroes",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-de7c7c37-c680-4430-88f5-be60f11aac39.png",
+      "image": "heroes/wenzhong.jpg",
+      "thumbnail": "heroes/wenzhong-thumb.jpg",
+      "thumbnailMaxEdge": 320,
+      "maxEdge": 1024
+    },
+    {
+      "id": "moliqing",
+      "kind": "heroes",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-17f104e8-0981-4c77-a6bc-0418729b34e5.png",
+      "image": "heroes/moliqing.jpg",
+      "thumbnail": "heroes/moliqing-thumb.jpg",
+      "thumbnailMaxEdge": 320,
+      "maxEdge": 1024
+    },
+    {
+      "id": "taiyi",
+      "kind": "heroes",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-001150da-0dd2-44d7-9164-4705980aee82.png",
+      "image": "heroes/taiyi.jpg",
+      "thumbnail": "heroes/taiyi-thumb.jpg",
+      "thumbnailMaxEdge": 320,
+      "maxEdge": 1024
+    },
+    {
+      "id": "yuding",
+      "kind": "heroes",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-752d0575-64c2-4a28-91ec-115d432a173d.png",
+      "image": "heroes/yuding.jpg",
+      "thumbnail": "heroes/yuding-thumb.jpg",
+      "thumbnailMaxEdge": 320,
+      "maxEdge": 1024
+    },
+    {
+      "id": "guangchengzi",
+      "kind": "heroes",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-f9c716c5-87cf-4b34-a3cc-6208a1cf68c0.png",
+      "image": "heroes/guangchengzi.jpg",
+      "thumbnail": "heroes/guangchengzi-thumb.jpg",
+      "thumbnailMaxEdge": 320,
+      "maxEdge": 1024
+    },
+    {
+      "id": "yunzhongzi",
+      "kind": "heroes",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-8a767a11-af3b-4698-8a5c-dc4a5b2bdac3.png",
+      "image": "heroes/yunzhongzi.jpg",
+      "thumbnail": "heroes/yunzhongzi-thumb.jpg",
+      "thumbnailMaxEdge": 320,
+      "maxEdge": 1024
+    },
+    {
+      "id": "longji",
+      "kind": "heroes",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-75d4e4b2-7dd6-4812-a572-ac8aaeba3f1f.png",
+      "image": "heroes/longji.jpg",
+      "thumbnail": "heroes/longji-thumb.jpg",
+      "thumbnailMaxEdge": 320,
+      "maxEdge": 1024
+    },
+    {
+      "id": "yunxiao",
+      "kind": "heroes",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-c476c246-4ff8-4e69-8229-de3d35da5063.png",
+      "image": "heroes/yunxiao.jpg",
+      "thumbnail": "heroes/yunxiao-thumb.jpg",
+      "thumbnailMaxEdge": 320,
+      "maxEdge": 1024
+    },
+    {
+      "id": "tongtian",
+      "kind": "heroes",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-f173a986-f5ef-4975-860a-02a65fbdc815.png",
+      "image": "heroes/tongtian.jpg",
+      "thumbnail": "heroes/tongtian-thumb.jpg",
+      "thumbnailMaxEdge": 320,
+      "maxEdge": 1024
+    },
+    {
+      "id": "zhaogongming",
+      "kind": "heroes",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-c883e286-9318-405b-9bc0-fc5ad533c1a4.png",
+      "image": "heroes/zhaogongming.jpg",
+      "thumbnail": "heroes/zhaogongming-thumb.jpg",
+      "thumbnailMaxEdge": 320,
+      "maxEdge": 1024
+    },
+    {
+      "id": "jinling",
+      "kind": "heroes",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-adeb5e8e-49d7-48da-8bfa-d36528df065c.png",
+      "image": "heroes/jinling.jpg",
+      "thumbnail": "heroes/jinling-thumb.jpg",
+      "thumbnailMaxEdge": 320,
+      "maxEdge": 1024
+    },
+    {
+      "id": "duobao",
+      "kind": "heroes",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-150a2efe-54b2-4d7f-afc6-85b3921ec4a1.png",
+      "image": "heroes/duobao.jpg",
+      "thumbnail": "heroes/duobao-thumb.jpg",
+      "thumbnailMaxEdge": 320,
+      "maxEdge": 1024
+    },
+    {
+      "id": "sha",
+      "kind": "cards",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-268ff4bc-bcb4-4816-8c71-bdbe0789e1c6.png",
+      "image": "cards/sha.jpg",
+      "maxEdge": 576
+    },
+    {
+      "id": "shan",
+      "kind": "cards",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-a0527afc-db3c-4fdb-a2a4-281dfd98b221.png",
+      "image": "cards/shan.jpg",
+      "maxEdge": 576
+    },
+    {
+      "id": "tao",
+      "kind": "cards",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-9ef60c85-5a1f-4781-85f8-f00c5b7ab703.png",
+      "image": "cards/tao.jpg",
+      "maxEdge": 576
+    },
+    {
+      "id": "duel",
+      "kind": "cards",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-b685b658-244a-4576-8759-0a8a8cff71d5.png",
+      "image": "cards/duel.jpg",
+      "maxEdge": 576
+    },
+    {
+      "id": "dismantle",
+      "kind": "cards",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-eb851073-e54c-402f-900b-4c4acb634a5d.png",
+      "image": "cards/dismantle.jpg",
+      "maxEdge": 576
+    },
+    {
+      "id": "snatch",
+      "kind": "cards",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-144d93c4-7ad7-484b-aea7-456756cde03c.png",
+      "image": "cards/snatch.jpg",
+      "maxEdge": 576
+    },
+    {
+      "id": "draw",
+      "kind": "cards",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-b519df45-396f-4740-a5fb-a74c1a185c6e.png",
+      "image": "cards/draw.jpg",
+      "maxEdge": 576
+    },
+    {
+      "id": "savage",
+      "kind": "cards",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-7aff2ff6-2d06-4c34-a239-ac516aa2a9ce.png",
+      "image": "cards/savage.jpg",
+      "maxEdge": 576
+    },
+    {
+      "id": "arrows",
+      "kind": "cards",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-d17289ce-51a6-4247-a356-70fa62b756ab.png",
+      "image": "cards/arrows.jpg",
+      "maxEdge": 576
+    },
+    {
+      "id": "garden",
+      "kind": "cards",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-19307fec-c532-45e3-b29a-45eabbfd4e00.png",
+      "image": "cards/garden.jpg",
+      "maxEdge": 576
+    },
+    {
+      "id": "harvest",
+      "kind": "cards",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-17689422-4565-40c2-a0e4-1b3808aaf738.png",
+      "image": "cards/harvest.jpg",
+      "maxEdge": 576
+    },
+    {
+      "id": "collateral",
+      "kind": "cards",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-40aecd06-952f-4264-9603-302cb23c143a.png",
+      "image": "cards/collateral.jpg",
+      "maxEdge": 576
+    },
+    {
+      "id": "nullify",
+      "kind": "cards",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-fa066e46-3e0e-4e6c-8f8d-7e98e08087a4.png",
+      "image": "cards/nullify.jpg",
+      "maxEdge": 576
+    },
+    {
+      "id": "indulgence",
+      "kind": "cards",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-c665d7be-325e-48dd-9e0d-7b981084126a.png",
+      "image": "cards/indulgence.jpg",
+      "maxEdge": 576
+    },
+    {
+      "id": "lightning",
+      "kind": "cards",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-7c90e594-e16b-412d-89cf-cb213957a108.png",
+      "image": "cards/lightning.jpg",
+      "maxEdge": 576
+    },
+    {
+      "id": "crossbow",
+      "kind": "cards",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-c879d076-c159-42d8-ae50-cb2d99d30abd.png",
+      "image": "cards/crossbow.jpg",
+      "maxEdge": 576
+    },
+    {
+      "id": "dualsword",
+      "kind": "cards",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-e1233dfb-e859-4d78-9cdf-ccc88cc3f047.png",
+      "image": "cards/dualsword.jpg",
+      "maxEdge": 576
+    },
+    {
+      "id": "qinggang",
+      "kind": "cards",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-7ec27543-02ff-4373-b89a-c3f21cfd5a99.png",
+      "image": "cards/qinggang.jpg",
+      "maxEdge": 576
+    },
+    {
+      "id": "spear",
+      "kind": "cards",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-2dfdfb52-b4d3-4240-8669-0938ef73a5f6.png",
+      "image": "cards/spear.jpg",
+      "maxEdge": 576
+    },
+    {
+      "id": "blade",
+      "kind": "cards",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-794c1708-d2c1-4634-9d12-7950f81668ad.png",
+      "image": "cards/blade.jpg",
+      "maxEdge": 576
+    },
+    {
+      "id": "axe",
+      "kind": "cards",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-8cf2dae5-67b8-47c0-b6d2-3990323ff212.png",
+      "image": "cards/axe.jpg",
+      "maxEdge": 576
+    },
+    {
+      "id": "bow",
+      "kind": "cards",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-d975a8e0-bc5f-4f3d-bdc3-5183c8d0c899.png",
+      "image": "cards/bow.jpg",
+      "maxEdge": 576
+    },
+    {
+      "id": "halberd",
+      "kind": "cards",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-0d027d17-9632-41b6-828a-5baf80907efe.png",
+      "image": "cards/halberd.jpg",
+      "maxEdge": 576
+    },
+    {
+      "id": "bagua",
+      "kind": "cards",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-caff5b54-d1ff-49c0-9f01-68f98720bf84.png",
+      "image": "cards/bagua.jpg",
+      "maxEdge": 576
+    },
+    {
+      "id": "ice",
+      "kind": "cards",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-f5215b93-4d9b-4cce-9485-69c709637ed5.png",
+      "image": "cards/ice.jpg",
+      "maxEdge": 576
+    },
+    {
+      "id": "renwang",
+      "kind": "cards",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-0a816c33-2710-469a-a441-b17e2f201e32.png",
+      "image": "cards/renwang.jpg",
+      "maxEdge": 576
+    },
+    {
+      "id": "chitu",
+      "kind": "cards",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-b594ebc2-c418-4f07-a1ab-c9146c125b85.png",
+      "image": "cards/chitu.jpg",
+      "maxEdge": 576
+    },
+    {
+      "id": "dayuan",
+      "kind": "cards",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-8cb38091-55c7-4f09-ab49-404f38e40b37.png",
+      "image": "cards/dayuan.jpg",
+      "maxEdge": 576
+    },
+    {
+      "id": "zixing",
+      "kind": "cards",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-ba18c00b-6ff7-4f48-842e-7a5fe4ced69f.png",
+      "image": "cards/zixing.jpg",
+      "maxEdge": 576
+    },
+    {
+      "id": "zhuahuang",
+      "kind": "cards",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-0db096a1-946d-480f-b2fe-f2b673cc1e43.png",
+      "image": "cards/zhuahuang.jpg",
+      "maxEdge": 576
+    },
+    {
+      "id": "jueying",
+      "kind": "cards",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-4e534935-1af9-4580-82e0-1fcfdf4cde59.png",
+      "image": "cards/jueying.jpg",
+      "maxEdge": 576
+    },
+    {
+      "id": "dilu",
+      "kind": "cards",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-fe749c0f-bb0f-425d-84d4-60d085361267.png",
+      "image": "cards/dilu.jpg",
+      "maxEdge": 576
+    }
+  ]
+}

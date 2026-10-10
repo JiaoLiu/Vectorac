@@ -1,0 +1,36 @@
+/* The card is a miniature, not a responsive document. All content scales as
+   one 100 × 144 design, including names, rank, suit and illustration. */
+.fs-app .fs-clean-card{position:relative;overflow:hidden}
+.fs-app .fs-card-design{position:absolute;left:50%;top:50%;width:100px;height:144px;display:block;transform:translate(-50%,-50%) scale(var(--face-scale,.7));transform-origin:center;pointer-events:none;background:#f0eadb;color:var(--ink)}
+.fs-app .fs-card-design>img{position:absolute;left:0;top:47px;width:100px;height:97px;object-fit:cover;filter:saturate(.8)}
+.fs-app .fs-card-design>.fs-rank{position:absolute;top:6px;left:5px;background:none;box-shadow:none;min-width:0;padding:0;font:700 16px/1 Georgia,serif;color:#283a39;text-shadow:none}
+.fs-app .red .fs-card-design>.fs-rank{color:#a03939}
+.fs-app .fs-card-design>.fs-rank i{display:block;font:17px/1 serif;margin-top:3px}
+.fs-app .fs-card-design>strong{position:absolute;top:5px;left:24px;right:3px;height:38px;display:flex;align-items:center;justify-content:center;font:700 var(--title-size)/1 "Songti SC",serif;letter-spacing:0;white-space:nowrap;word-break:normal;overflow-wrap:normal;writing-mode:horizontal-tb;text-shadow:none;color:var(--ink)}
+.fs-app .fs-clean-card[data-type=sha] .fs-card-design{background:#f4e7dc}
+.fs-app .fs-clean-card[data-type=shan] .fs-card-design{background:#e6eee0}
+.fs-playing .fs-played{display:flex!important;flex:none;align-items:center;justify-content:center;gap:7px}
+.fs-playing .fs-played>.fs-clean-card{width:65px;height:94px;flex:none;transform:none}
+.fs-playing .fs-table-center{display:flex!important;overflow:hidden}
+.fs-playing .fs-table-caption{max-width:100%;flex-shrink:0}
+.fs-playing .fs-table-caption p{display:none}
+.fs-playing .fs-battle-link{flex:none;font-size:10px;gap:2px}
+.fs-playing .fs-battle-link>span{font-size:11px;letter-spacing:0}
+.fs-card-play{display:flex;flex-direction:column;align-items:center;gap:3px;flex:none}
+.fs-card-play>.fs-clean-card{width:65px;height:94px;flex:none}
+.fs-card-play>small{font-size:9px;line-height:1.2;color:#f0dcaf;white-space:nowrap}
+.fs-playing .fs-operation small{max-height:2.8em;overflow:auto}
+@media(max-width:699px) and (orientation:portrait){.fs-card-play>.fs-clean-card,.fs-playing .fs-played>.fs-clean-card{width:53px;height:77px}.fs-playing .fs-table-caption>b{font-size:9px}}
+@media(max-height:559px) and (orientation:landscape){
+ .fs-playing .fs-table-center{inset:3px 35% 3px;gap:3px}
+ .fs-card-play>.fs-clean-card,.fs-playing .fs-played>.fs-clean-card{width:43px;height:62px}
+ .fs-card-play>small{font-size:8px}.fs-playing .fs-table-caption>b{font-size:8px}.fs-playing .fs-battle-link{font-size:8px;gap:3px;flex-direction:row;max-width:100%}.fs-playing .fs-battle-link>b{max-width:72px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.fs-playing .fs-battle-link>span{font-size:9px;white-space:nowrap}
+}
+@media(max-height:700px) and (orientation:portrait){
+ .fs-playing .fs-table-center{inset:115px 8px 3px;gap:3px;flex-direction:row;align-items:center;justify-content:center}
+ .fs-playing .fs-table-center .fs-played{display:flex!important}
+ .fs-playing .fs-table-center .fs-battle-link{max-width:85px;flex-shrink:1}
+ .fs-card-play>.fs-clean-card,.fs-playing .fs-played>.fs-clean-card{width:43px;height:62px}
+ .fs-playing .fs-table-caption{max-width:70px;font-size:8px}.fs-playing .fs-table-caption>b{font-size:8px}
+ .fs-playing .fs-deck-stack{left:auto;right:10px;top:auto;bottom:3px;width:24px;height:34px;font-size:7px}.fs-playing .fs-deck-stack>b{font-size:6px}.fs-playing .fs-deck-stack>span{font-size:9px}
+}

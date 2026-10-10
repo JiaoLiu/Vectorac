@@ -1,0 +1,22 @@
+[
+  {
+    "key": "card-draw",
+    "sex": "female",
+    "status": "queued"
+  },
+  {
+    "key": "skill-jizhi",
+    "sex": "female",
+    "status": "queued"
+  },
+  {
+    "key": "card-draw",
+    "sex": "female",
+    "status": "played"
+  },
+  {
+    "key": "skill-jizhi",
+    "sex": "female",
+    "status": "played"
+  }
+]

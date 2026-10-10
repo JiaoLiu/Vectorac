@@ -1,0 +1,352 @@
+[
+  {
+    "size": [
+      390,
+      844
+    ],
+    "scene": "draft-lord",
+    "passed": true,
+    "rects": {
+      "buttonBottom": 834,
+      "cards": [
+        {
+          "bottom": 452.671875,
+          "top": 252
+        },
+        {
+          "bottom": 452.671875,
+          "top": 252
+        },
+        {
+          "bottom": 452.671875,
+          "top": 252
+        },
+        {
+          "bottom": 662.34375,
+          "top": 461.671875
+        },
+        {
+          "bottom": 662.34375,
+          "top": 461.671875
+        }
+      ],
+      "grid": {
+        "bottom": 690.703125,
+        "top": 248
+      },
+      "h": 844,
+      "scroll": 390,
+      "templateLiteral": false,
+      "w": 390
+    }
+  },
+  {
+    "size": [
+      390,
+      844
+    ],
+    "scene": "draft-other",
+    "passed": true,
+    "rects": {
+      "buttonBottom": 834,
+      "cards": [
+        {
+          "bottom": 452.671875,
+          "top": 252
+        },
+        {
+          "bottom": 452.671875,
+          "top": 252
+        }
+      ],
+      "grid": {
+        "bottom": 690.703125,
+        "top": 248
+      },
+      "h": 844,
+      "scroll": 390,
+      "templateLiteral": false,
+      "w": 390
+    }
+  },
+  {
+    "size": [
+      844,
+      390
+    ],
+    "scene": "draft-lord",
+    "passed": true,
+    "rects": {
+      "buttonBottom": 384,
+      "cards": [
+        {
+          "bottom": 315.140625,
+          "top": 192.5
+        },
+        {
+          "bottom": 315.140625,
+          "top": 192.5
+        },
+        {
+          "bottom": 315.140625,
+          "top": 192.5
+        },
+        {
+          "bottom": 315.140625,
+          "top": 192.5
+        },
+        {
+          "bottom": 315.140625,
+          "top": 192.5
+        }
+      ],
+      "grid": {
+        "bottom": 336,
+        "top": 189.5
+      },
+      "h": 390,
+      "scroll": 844,
+      "templateLiteral": false,
+      "w": 844
+    }
+  },
+  {
+    "size": [
+      844,
+      390
+    ],
+    "scene": "draft-other",
+    "passed": true,
+    "rects": {
+      "buttonBottom": 384,
+      "cards": [
+        {
+          "bottom": 315.140625,
+          "top": 192.5
+        },
+        {
+          "bottom": 315.140625,
+          "top": 192.5
+        }
+      ],
+      "grid": {
+        "bottom": 336,
+        "top": 189.5
+      },
+      "h": 390,
+      "scroll": 844,
+      "templateLiteral": false,
+      "w": 844
+    }
+  },
+  {
+    "size": [
+      667,
+      375
+    ],
+    "scene": "draft-lord",
+    "passed": true,
+    "rects": {
+      "buttonBottom": 369,
+      "cards": [
+        {
+          "bottom": 315.140625,
+          "top": 192.5
+        },
+        {
+          "bottom": 315.140625,
+          "top": 192.5
+        },
+        {
+          "bottom": 315.140625,
+          "top": 192.5
+        },
+        {
+          "bottom": 315.140625,
+          "top": 192.5
+        },
+        {
+          "bottom": 315.140625,
+          "top": 192.5
+        }
+      ],
+      "grid": {
+        "bottom": 321,
+        "top": 189.5
+      },
+      "h": 375,
+      "scroll": 667,
+      "templateLiteral": false,
+      "w": 667
+    }
+  },
+  {
+    "size": [
+      667,
+      375
+    ],
+    "scene": "draft-other",
+    "passed": true,
+    "rects": {
+      "buttonBottom": 369,
+      "cards": [
+        {
+          "bottom": 315.140625,
+          "top": 192.5
+        },
+        {
+          "bottom": 315.140625,
+          "top": 192.5
+        }
+      ],
+      "grid": {
+        "bottom": 321,
+        "top": 189.5
+      },
+      "h": 375,
+      "scroll": 667,
+      "templateLiteral": false,
+      "w": 667
+    }
+  },
+  {
+    "size": [
+      320,
+      568
+    ],
+    "scene": "draft-lord",
+    "passed": true,
+    "rects": {
+      "buttonBottom": 561,
+      "cards": [
+        {
+          "bottom": 377.796875,
+          "top": 219
+        },
+        {
+          "bottom": 377.796875,
+          "top": 219
+        },
+        {
+          "bottom": 377.796875,
+          "top": 219
+        },
+        {
+          "bottom": 543.59375,
+          "top": 384.796875
+        },
+        {
+          "bottom": 543.59375,
+          "top": 384.796875
+        }
+      ],
+      "grid": {
+        "bottom": 431.40625,
+        "top": 215
+      },
+      "h": 568,
+      "scroll": 320,
+      "templateLiteral": false,
+      "w": 320
+    }
+  },
+  {
+    "size": [
+      320,
+      568
+    ],
+    "scene": "draft-other",
+    "passed": true,
+    "rects": {
+      "buttonBottom": 561,
+      "cards": [
+        {
+          "bottom": 409.375,
+          "top": 243
+        },
+        {
+          "bottom": 409.375,
+          "top": 243
+        }
+      ],
+      "grid": {
+        "bottom": 431.40625,
+        "top": 239
+      },
+      "h": 568,
+      "scroll": 320,
+      "templateLiteral": false,
+      "w": 320
+    }
+  },
+  {
+    "size": [
+      1280,
+      900
+    ],
+    "scene": "draft-lord",
+    "passed": true,
+    "rects": {
+      "buttonBottom": 882,
+      "cards": [
+        {
+          "bottom": 578.390625,
+          "top": 302
+        },
+        {
+          "bottom": 578.390625,
+          "top": 302
+        },
+        {
+          "bottom": 578.390625,
+          "top": 302
+        },
+        {
+          "bottom": 578.390625,
+          "top": 302
+        },
+        {
+          "bottom": 578.390625,
+          "top": 302
+        }
+      ],
+      "grid": {
+        "bottom": 739,
+        "top": 297
+      },
+      "h": 900,
+      "scroll": 1280,
+      "templateLiteral": false,
+      "w": 1280
+    }
+  },
+  {
+    "size": [
+      1280,
+      900
+    ],
+    "scene": "draft-other",
+    "passed": true,
+    "rects": {
+      "buttonBottom": 882,
+      "cards": [
+        {
+          "bottom": 578.390625,
+          "top": 302
+        },
+        {
+          "bottom": 578.390625,
+          "top": 302
+        }
+      ],
+      "grid": {
+        "bottom": 739,
+        "top": 297
+      },
+      "h": 900,
+      "scroll": 1280,
+      "templateLiteral": false,
+      "w": 1280
+    }
+  }
+]

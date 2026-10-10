@@ -1,0 +1,11 @@
+/* Consistent vector tools, like the compact Dou Dizhu toolbar. */
+.fs-app .fs-header nav{align-items:center;gap:6px;min-width:0}
+.fs-app .fs-header nav .fs-tool{display:flex;align-items:center;justify-content:center;flex:none;width:38px;height:38px;min-height:38px;padding:0;border-radius:8px;border:1px solid #91aaa532;background:#21363880;color:#cbd9d1}
+.fs-app .fs-tool>svg{display:block;width:20px;height:20px;pointer-events:none;flex:none}
+.fs-app .fs-header nav .fs-tool.is-on{color:#e8c984;border-color:#d4b56866;background:#b7944820}
+.fs-app .fs-header nav .fs-tool.is-off[data-action=voice],.fs-app .fs-header nav .fs-tool.is-off[data-action=music]{color:#8b9d9f;background:#18292d}
+.fs-app .fs-tool .fs-icon-slash{stroke:#d69a86;stroke-width:2.3}
+@media(hover:hover){.fs-app .fs-header nav .fs-tool:hover{background:#375149;border-color:#d4bb87}}
+@media(max-width:699px){.fs-app .fs-header nav{gap:3px}.fs-app .fs-header nav .fs-tool{width:32px;height:34px;min-height:34px;border-radius:6px}.fs-app .fs-tool>svg{width:18px;height:18px}}
+@media(max-height:559px) and (orientation:landscape){.fs-app .fs-header nav .fs-tool{width:32px;height:29px;min-height:29px;border-radius:5px}.fs-app .fs-tool>svg{width:17px;height:17px}}
+@media(max-width:359px) and (orientation:portrait){.fs-app .fs-header nav{gap:2px}.fs-app .fs-header nav .fs-tool{width:27px;height:32px;min-height:32px}.fs-app .fs-tool>svg{width:17px;height:17px}}

@@ -44,6 +44,7 @@ function slashResources(view) {
 }
 function response(view) {
   const pending=view.pending,opts=view.legal,pass=opts.find(o=>o.type==='pass')
+  if(pending.kind==='reveal')return opts.find(o=>o.type==='ack')
   const answers=opts.filter(o=>o.type==='respond').sort((a,b)=>cost(view,a.ids)-cost(view,b.ids))
   if(pending.kind==='discard')return {type:'discard',ids:orderByValue(view).slice(0,pending.count).map(c=>c.id)}
   if(pending.kind==='guess')return opts[(view.revision*7+view.seat)%opts.length]
