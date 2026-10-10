@@ -74,8 +74,8 @@ export function cuesForAction(before,action,after){
   if(['play','respond'].includes(action.type)&&['indulgence','tao'].includes(action.as)&&action.ids?.length===1){const c=before.players[seat].hand.concat(Object.values(before.players[seat].equip).filter(Boolean)).find(c=>c.id===action.ids[0]);if(c&&c.type!==action.as)cues.push({key:skillAudioKey(before.players[seat].heroId,action.as==='tao'?'jijiu':'guose'),sex:displaySex(before,seat)})}
   if(action.type==='skill')cues.push({key:skillAudioKey(before.players[seat].heroId,action.skill),sex:displaySex(before,seat)})
   if(action.type==='play'&&action.as==='dismantle'&&action.ids?.length===1){const c=before.players[seat].hand.concat(Object.values(before.players[seat].equip).filter(Boolean)).find(c=>c.id===action.ids[0]);if(c&&c.type!=='dismantle')cues.push({key:skillAudioKey(before.players[seat].heroId,'qixi'),sex:displaySex(before,seat)})}
-  if(action.type==='respond'&&before.pending?.as==='shan'&&action.ids?.length===1){const c=before.players[seat].hand.find(c=>c.id===action.ids[0]),h=heroForBase(before.players[seat].heroId);if(c&&c.type!=='shan'&&h?.skillNames.qingguo&&['spade','club'].includes(c.suit))cues.push({key:skillAudioKey(before.players[seat].heroId,'qingguo'),sex:displaySex(before,seat)})}
+  if(action.type==='respond'&&before.pending?.as==='shan'&&action.ids?.length===1){const p=before.players[seat],c=p.hand.find(c=>c.id===action.ids[0]),h=heroForBase(p.incarnation?.activeHero||p.heroId);if(c&&c.type!=='shan'&&h?.skillNames.qingguo&&['spade','club'].includes(c.suit))cues.push({key:skillAudioKey(p.heroId,'qingguo'),sex:displaySex(before,seat)})}
   for(const line of after.logs.filter(l=>l.id>before.eventId).slice().reverse())if(line.cue?.kind==='skill'&&after.players[line.cue.seat])cues.push({key:skillAudioKey(after.players[line.cue.seat].heroId,line.cue.skill),sex:displaySex(after,line.cue.seat)})
   return cues
 }
-function displaySex(state,seat){return heroForBase(state.players[seat].heroId)?.sex||'male'}
+function displaySex(state,seat){const p=state.players[seat];return p.effectiveSex||heroForBase(p.incarnation?.activeHero||p.heroId)?.sex||'male'}

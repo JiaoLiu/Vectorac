@@ -8,7 +8,7 @@ export const THEME_VERSION='fengshen-classic-original-v2'
 const heroes=PLAYABLE_HEROES.map(h=>({...baseline.HERO_BY_ID[h.baseHero],id:h.engineId,name:h.name,hp:h.hp,sex:h.sex,skills:Object.keys(h.skillNames),faction:h.mechanicalFaction}))
 export const catalog={...baseline,theme:THEME_VERSION,HEROES:heroes,HERO_BY_ID:Object.fromEntries(heroes.map(h=>[h.id,h])),CARDS:CARDS_BY_TYPE,
   makeDeck:baseline.makeDeck,deckVersion:1,
-  individualHandChoices:true,trackBattle:true,animatedJudgments:true,automaticSkills:['jizhi','yingzi','jianxiong','tieji','xiaoji','lianying','tiandu','yiji','biyue'],
+  individualHandChoices:true,trackBattle:true,animatedJudgments:true,automaticSkills:['xinsheng','jizhi','yingzi','jianxiong','tieji','xiaoji','lianying','tiandu','yiji','biyue'],
   skillNames:Object.assign({},...PLAYABLE_HEROES.map(h=>h.skillNames)),
   skillName,
 }

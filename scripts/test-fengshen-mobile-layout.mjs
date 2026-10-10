@@ -13,7 +13,7 @@ test('all seat counts fit inside safe geometry with no overlapping opponents on 
   const landscape=width>height,g=arenaGeometry({width:width-(landscape?118:0),height,seats,safeTop:landscape?0:47,safeBottom:landscape?21:34}),p=Object.values(g.positions)
   for(const r of p){assert.ok(r.x>=0&&r.y>=0&&r.x+r.width<=g.width+.01&&r.y+r.height<=height+.01,JSON.stringify({width,height,seats,r}))}
   for(let i=0;i<p.length;i++)for(let j=i+1;j<p.length;j++)assert.ok(!overlap(p[i],p[j]),JSON.stringify({width,height,seats,a:p[i],b:p[j]}))
-  if(landscape&&seats>2){const own={x:0,y:height-g.heroHeight,width:g.heroWidth,height:g.heroHeight};assert.ok(!overlap(own,g.positions[1]));assert.ok(g.center.bottom>g.center.top)}
+  if(landscape&&seats>2){const own={x:0,y:height-21-g.heroHeight,width:g.heroWidth,height:g.heroHeight};assert.ok(!overlap(own,g.positions[1]));assert.ok(g.center.bottom>g.center.top)}
  }
 })
 test('large iPhone landscape keeps heroes large and top row compact, not percentage-spread',()=>{const g=arenaGeometry({width:932-118,height:430,seats:8});assert.ok(g.heroWidth>100);for(let seat=2;seat<6;seat++)assert.ok(Math.abs(g.positions[seat+1].x-g.positions[seat].x-g.heroWidth-g.gap)<.001);assert.equal(g.positions[2].y,0)})

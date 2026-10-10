@@ -292,6 +292,14 @@
     {
       "key": "skill-qingguo",
       "text": "磐影"
+    },
+    {
+      "key": "skill-huashen",
+      "text": "七十二变"
+    },
+    {
+      "key": "skill-xinsheng",
+      "text": "再化"
     }
   ],
   "files": [
@@ -438,6 +446,10 @@
     "female/skill-kurou.mp3",
     "female/skill-tuxi.mp3",
     "female/skill-luoshen.mp3",
-    "female/skill-qingguo.mp3"
+    "female/skill-qingguo.mp3",
+    "male/skill-huashen.mp3",
+    "female/skill-huashen.mp3",
+    "male/skill-xinsheng.mp3",
+    "female/skill-xinsheng.mp3"
   ]
 }

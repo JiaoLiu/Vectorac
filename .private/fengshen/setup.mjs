@@ -5,7 +5,7 @@ export const LORD_HEROES=['jifa','dixin','yunzhongzi']
 // 玩法模式：身份局隐藏身份；对抗局（1v1/2v2/3v3）只有敌友两队，
 // 0 号席固定为友方（本地），1 号席敌方，此后交替穿插，先手由开局掷骰决定。
 export const MODES={
- identity5:{id:'identity5',name:'五人身份局',menu:'5人身份',players:5,roles:['lord','loyal','rebel','rebel','renegade'],teams:null,blurb:'1主1忠2反1内 · 经典隐藏身份'},
+ identity5:{id:'identity5',name:'五人身份局',menu:'5人身份',players:5,roles:['lord','loyal','rebel','rebel','renegade'],teams:null,blurb:'1主1忠2反1内 · 隐藏身份对决'},
  identity8:{id:'identity8',name:'八人身份局',menu:'8人身份',players:8,roles:['lord','loyal','loyal','rebel','rebel','rebel','rebel','renegade'],teams:null,blurb:'1主2忠4反1内 · 大战场'},
  '3v3':{id:'3v3',name:'3v3 两军对垒',menu:'3v3',players:6,roles:null,teams:[['lord','loyal','loyal'],['rebel','rebel','rebel']],blurb:'友敌各3人穿插落座 · 掷骰定先手'},
  '2v2':{id:'2v2',name:'2v2 并肩作战',menu:'2v2',players:4,roles:null,teams:[['lord','loyal'],['rebel','rebel']],blurb:'双人搭档穿插落座 · 掷骰定先手'},

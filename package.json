@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "author": "reco_luan",
   "scripts": {
-    "test:fengshen": "node --test scripts/test-fengshen.mjs scripts/test-gods.mjs scripts/test-fengshen-expansion.mjs scripts/test-fengshen-interaction.mjs scripts/test-fengshen-combat.mjs scripts/test-fengshen-setup.mjs scripts/test-fengshen-table-visuals.mjs scripts/test-fengshen-toolbar.mjs scripts/test-fengshen-canonical-roster.mjs scripts/test-fengshen-classic-skills.mjs scripts/test-sunshangxiang-classic.mjs scripts/test-fengshen-modes.mjs scripts/test-fengshen-mobile-layout.mjs scripts/test-fengshen-screen-mode.mjs scripts/test-fengshen-target-layout.mjs",
+    "test:fengshen": "node --test scripts/test-fengshen.mjs scripts/test-gods.mjs scripts/test-fengshen-expansion.mjs scripts/test-fengshen-interaction.mjs scripts/test-fengshen-combat.mjs scripts/test-fengshen-setup.mjs scripts/test-fengshen-table-visuals.mjs scripts/test-fengshen-toolbar.mjs scripts/test-fengshen-canonical-roster.mjs scripts/test-fengshen-classic-skills.mjs scripts/test-sunshangxiang-classic.mjs scripts/test-fengshen-modes.mjs scripts/test-fengshen-mobile-layout.mjs scripts/test-fengshen-screen-mode.mjs scripts/test-fengshen-target-layout.mjs scripts/test-fengshen-sunwukong.mjs",
     "test:fengshen:browser": "node scripts/test-fengshen-browser.mjs",
     "test:sanguo": "npm run test:fengshen",
     "test:sanguo:browser": "npm run test:fengshen:browser",

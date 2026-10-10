@@ -1,6 +1,7 @@
 import * as defaultCatalog from './catalog.mjs'
 export function createAI(catalog=defaultCatalog){
 const {CARDS,HERO_BY_ID,isRed}=catalog
+const viewHero=p=>({...HERO_BY_ID[p.heroId],skills:p.effectiveSkills||HERO_BY_ID[p.heroId].skills,sex:p.effectiveSex||HERO_BY_ID[p.heroId].sex,faction:p.effectiveFaction||HERO_BY_ID[p.heroId].faction})
 
 // This module receives playerView only: no deck, concealed identities, opponent
 // hands or engine reference. Decisions use visible actions and public suspicion.
@@ -54,12 +55,17 @@ const ownCards = view => {const p=view.players[view.seat];return p.hand.concat(O
 const cost = (view,ids=[]) => ids.reduce((n,id)=>n+cardValue(ownCards(view).find(c=>c.id===id),view),0)
 const orderByValue = view => view.players[view.seat].hand.slice().sort((a,b)=>cardValue(a,view)-cardValue(b,view))
 function slashResources(view,HERO_BY_ID,isRed) {
-  const p=view.players[view.seat],skills=HERO_BY_ID[p.heroId].skills
+  const p=view.players[view.seat],skills=viewHero(p).skills
   const cards=ownCards(view),singles=cards.filter(c=>p.hand.some(h=>h.id===c.id)&&(c.type==='sha'||CARDS[c.type]?.attackNature)||skills.includes('wusheng')&&isRed(c)||skills.includes('longdan')&&p.hand.some(h=>h.id===c.id)&&c.type==='shan')
   return singles.length+(p.equip.weapon?.type==='spear'?Math.floor(p.hand.filter(c=>!singles.some(s=>s.id===c.id)).length/2):0)
 }
 function response(view,HERO_BY_ID,isRed) {
   const pending=view.pending,opts=view.legal,pass=opts.find(o=>o.type==='pass')
+  if(pending.kind==='incarnation'){
+    const p=view.players[view.seat],rank={jizhi:8,yingzi:8,luoshen:7,zhiheng:7,qingguo:5,longdan:5,wusheng:5,paoxiao:4,qicai:3,mashu:3,qianxun:5,jijiu:6,yiji:7,tiandu:4}
+    const score=a=>(rank[a.skill]||4)+(a.skill==='kongcheng'&&!p.hand.length?8:0)+(a.skill==='qingnang'&&p.hp<p.maxHp?5:0)+(a.skill==='keji'&&p.hand.length>p.hp?5:0)+(a.skill==='xiaoji'&&Object.values(p.equip).some(Boolean)?3:0)
+    return opts.filter(a=>a.type==='transform').sort((a,b)=>score(b)-score(a))[0]||pass
+  }
   if(pending.kind==='reveal')return opts.find(o=>o.type==='ack')
   const answers=opts.filter(o=>o.type==='respond').sort((a,b)=>cost(view,a.ids)-cost(view,b.ids))
   if(pending.kind==='discard')return {type:'discard',ids:orderByValue(view).slice(0,pending.count).map(c=>c.id)}
@@ -125,7 +131,7 @@ const chooseAI=function chooseAI(view) {
   let chosen
   if(view.pending)chosen=response(view,HERO_BY_ID,isRed)
   else {
-    const self=view.players[view.seat],h=HERO_BY_ID[self.heroId]
+    const self=view.players[view.seat],h=viewHero(self)
     const scored=[]
     for(const action of view.legal) {
       let score=0, candidate=action
@@ -165,12 +171,12 @@ const chooseAI=function chooseAI(view) {
           const enemy=view.players.filter(p=>p.alive&&p.seat!==view.seat).sort((a,b)=>hostility(view,b.seat)-hostility(view,a.seat))[0]
           candidate={...action,target:enemy.seat};score=hostility(view,enemy.seat)>0&&self.hand.length?6:-3
         } else if(action.skill==='jieyin'){
-          const target=view.players.filter(p=>p.alive&&p.seat!==view.seat&&HERO_BY_ID[p.heroId].sex==='male'&&p.hp<p.maxHp&&hostility(view,p.seat)<0).sort((a,b)=>a.hp-b.hp)[0]
+          const target=view.players.filter(p=>p.alive&&p.seat!==view.seat&&viewHero(p).sex==='male'&&p.hp<p.maxHp&&hostility(view,p.seat)<0).sort((a,b)=>a.hp-b.hp)[0]
           const cards=orderByValue(view).slice(0,2);candidate={...action,target:target?.seat,ids:cards.map(c=>c.id)}
           score=target&&cards.length===2&&self.role!=='renegade'?(self.hp<self.maxHp?14:7)-cost(view,candidate.ids)*.3:-3
         } else if(action.skill==='lijian'){
-          const males=view.players.filter(p=>p.alive&&p.seat!==view.seat&&HERO_BY_ID[p.heroId].sex==='male'),pairs=[]
-          for(const source of males)for(const victim of males)if(source.seat!==victim.seat&&!(HERO_BY_ID[victim.heroId].skills.includes('kongcheng')&&!victim.handCount))pairs.push({source:source.seat,target:victim.seat,score:hostility(view,source.seat)+hostility(view,victim.seat)*2})
+          const males=view.players.filter(p=>p.alive&&p.seat!==view.seat&&viewHero(p).sex==='male'),pairs=[]
+          for(const source of males)for(const victim of males)if(source.seat!==victim.seat&&!(viewHero(victim).skills.includes('kongcheng')&&!victim.handCount))pairs.push({source:source.seat,target:victim.seat,score:hostility(view,source.seat)+hostility(view,victim.seat)*2})
           const pair=pairs.sort((a,b)=>b.score-a.score)[0],cheap=ownCards(view).slice().sort((a,b)=>cardValue(a,view)-cardValue(b,view))[0];candidate={...action,ids:cheap?[cheap.id]:[],targets:pair?[pair.source,pair.target]:[]};score=pair&&cheap?pair.score*2-cost(view,candidate.ids)*.3:-3
         } else if(action.skill==='qingnang'){
           const target=view.players.filter(p=>p.alive&&p.hp<p.maxHp&&hostility(view,p.seat)<0).sort((a,b)=>a.hp-b.hp)[0],cards=orderByValue(view).slice(0,1)

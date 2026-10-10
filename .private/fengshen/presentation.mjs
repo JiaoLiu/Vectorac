@@ -1,7 +1,7 @@
 import {CARDS_BY_TYPE,heroForBase} from './theme.mjs'
 import {SUITS,isRed,rankName} from './core/catalog.mjs'
 export const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))
-export const display=p=>heroForBase(p.heroId)
+export const display=p=>{const h=heroForBase(p.heroId),i=p.incarnation,b=i?.activeHero&&heroForBase(i.activeHero);return b?{...h,sex:p.effectiveSex||b.sex,mechanicalFaction:p.effectiveFaction||b.mechanicalFaction,skillNames:{...h.skillNames,[i.activeSkill]:b.skillNames[i.activeSkill]}}:h}
 export const portrait=(h,extra='',full=false)=>`<img class="fs-portrait ${extra}" src="${full?h.image:h.thumbnail}" alt="${esc(h.name)}原创形象" draggable="false" loading="${full?'eager':'lazy'}">`
 export const hp=p=>`<span class="fs-hp" aria-label="体力 ${p.hp}/${p.maxHp}">${Array.from({length:p.maxHp},(_,i)=>`<i class="${i<p.hp?'full':''}">◆</i>`).join('')}<b>${p.hp}/${p.maxHp}</b></span>`
 export const cardTitle=type=>CARDS_BY_TYPE[type].name

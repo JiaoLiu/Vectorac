@@ -11,8 +11,8 @@ const sideBadge=(view,seat,extra='')=>{
 export function renderHome(ui){
   const h=HERO_BY_THEME_ID.sunwukong,session=ui.resumeSession,mode=modeById(ui.mode),team=!!mode.teams
   const steps=team?['随机分配敌友','各自从候选中选将','掷骰，点数最高者先手','发牌，由先手开始行动']:['随机抽取身份','主公先选将并亮出','其余玩家从各自候选中选将','发牌，从主公开始行动']
-  const tag=team?'TEAM BATTLE · 单机 / AI':'CLASSIC IDENTITY · 单机 / AI'
-  const legacy=ui.legacySave?'<p class="fs-legacy-notice" role="status">旧混搭规则存档已保留，不会覆盖；本轮经典原版需新开一局，不能把旧技能直接迁入。</p>':''
+  const tag=team?'两军对垒 · 单机 / AI':'众神身份 · 单机 / AI'
+  const legacy=ui.legacySave?'<p class="fs-legacy-notice" role="status">上一版存档已保留，不会覆盖；本次更新需要新开一局。</p>':''
   return `${ui.header()}<main class="fs-entry"><div class="fs-entry-art">${portrait(h,'',true)}<span></span></div><section class="fs-entry-copy"><small>${tag}</small><h1>众神斗法</h1><p>诸天神话，同桌斗法</p><ol>${steps.map((s,i)=>`<li><b>0${i+1}</b>${s}</li>`).join('')}</ol><div class="fs-mode-row" role="group" aria-label="玩法模式">${MODE_LIST.map(m=>`<button class="fs-mode-chip ${ui.mode===m.id?'selected':''}" data-action="mode" data-id="${m.id}" aria-pressed="${ui.mode===m.id}"><b>${m.menu}</b><small>${m.blurb}</small></button>`).join('')}</div><div class="fs-entry-actions">${session?`<button class="fs-secondary" data-action="resume">${session.kind==='setup'?'继续选将':'继续上局'}</button>`:''}<button class="fs-primary" data-action="start">开始${mode.name} →</button></div>${legacy}<button class="fs-entry-catalog" data-action="heroes">查看人物图鉴 ↗</button><small class="fs-entry-note">${mode.name} · ${PLAYABLE_HEROES.length} 名可用武将 · ${team?'敌友公开，掷骰定先手':'身份不可自选'}</small></section></main>`
 }
 // 掷骰动画：每席一枚骰子，滚动后定格在点数；点数最高者（view.first）标「先手」。
@@ -53,5 +53,5 @@ export function renderSetup(ui){
     </footer></main>`
 }
 export function heroGallery(){
-  return `<p>人物图鉴只用于查看，实际开局从随机发到手中的候选武将中选择。</p><div class="fs-collection-grid">${Object.values(HERO_BY_THEME_ID).map(h=>`<button data-action="hero-detail" data-id="${h.id}" class="${h.playable?'':'not-ready'}">${portrait(h)}<strong>${h.name}</strong><small>${h.playable?'技能可用':'技能待接入'}</small></button>`).join('')}</div>`
+  return `<p>查看诸天角色与技能。开局时，从发给你的随机候选中选择出战角色。</p><div class="fs-collection-grid">${Object.values(HERO_BY_THEME_ID).map(h=>`<button data-action="hero-detail" data-id="${h.id}" class="${h.playable?'':'not-ready'}">${portrait(h)}<strong>${h.name}</strong><small>${h.playable?'已开放':'开发中'}</small></button>`).join('')}</div>`
 }

@@ -8,6 +8,8 @@ export const ROLES = {
 }
 export const FACTIONS = { shu: '蜀', wei: '魏', wu: '吴', qun: '群' }
 export const SKILLS = {
+  huashen:['化身','开局获得两张未上场角色的变身牌，展示一张并借用其中一个非主公、非限定、非觉醒技能；自己的回合开始和结束后可更换。性别与同盟随形态改变，体力上限不变。','trigger'],
+  xinsheng:['新生','每受到一点伤害并存活后，可获得一张新的变身牌；不会立即改变当前形态。','trigger'],
   guanxing:['观星','准备阶段观看牌堆顶X张牌，X为存活人数且至多五；可按任意顺序将它们放回牌堆顶或底。','trigger'],
   guose:['国色','方块手牌或装备可以当乐不思蜀使用；不能与已经存在的同类延时牌重复。','convert'],
   liuli:['流离','成为杀的目标时，可弃一张手牌或装备，将杀转给弃牌后仍在自己攻击范围内的其他角色，不能转回杀的使用者。','trigger'],
@@ -76,7 +78,8 @@ export const HEROES = [
   { id: 'xuchu', name: '许褚', title: '虎痴', faction: 'wei', hp: 4, sex: 'male', skills: ['luoyi'], emblem: '虎', source: 'https://x.sanguosha.com/hero/20.html' },
   { id: 'lvbu', name: '吕布', title: '无双飞将', faction: 'qun', hp: 4, sex: 'male', skills: ['wushuang'], emblem: '战', source: 'https://x.sanguosha.com/hero/24.html' }
 ]
-export const HERO_BY_ID = Object.fromEntries(HEROES.map(hero => [hero.id, hero]))
+export const ADDITIONAL_HEROES=[{id:'zuoci',name:'左慈',title:'幻化之身',faction:'qun',hp:3,sex:'male',skills:['huashen','xinsheng'],emblem:'变'}]
+export const HERO_BY_ID = Object.fromEntries(HEROES.concat(ADDITIONAL_HEROES).map(hero => [hero.id, hero]))
 const card = (name, category, symbol, help, extra = {}) => ({ name, category, symbol, help, ...extra })
 export const CARDS = {
   sha: card('杀', 'basic', '戈', '攻击范围内的一名其他角色，需闪抵消，否则受到一点伤害。'),

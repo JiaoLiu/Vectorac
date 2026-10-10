@@ -1,0 +1,1 @@
+export function modalReturnEntry(modal,detail,{scroll=0,focus=null}={}){return modal&&['heroes','gallery'].includes(modal.kind)&&['hero-detail','card-detail'].includes(detail)?{modal:{...modal},scroll,focus}:null}

@@ -67,9 +67,9 @@ const rows=[
  ['yijiang2013','guanyinping','关银屏','artemis','阿尔忒弥斯',3,'female','shu','xueji huxiao wuji','血祭 虎啸 武继'],
  ['yijiang2013','fuhuanghou','伏皇后','qiongxiao','琼霄',3,'female','qun','zhuikong qiuyuan','惴恐 求援'],
 ]
-// Only the Standard batch has implementation + focused timing + AI/save tests.
+// Standard + Zuoci have implementation, focused timing and AI/save tests.
 // Expansion references remain disabled until they have the same evidence.
-export const CANONICAL_ROSTER=rows.map(([pack,referenceId,referenceName,id,name,hp,sex,mechanicalFaction,skills,skillNames])=>({pack,referenceId,referenceName,id,name,hp,sex,mechanicalFaction,skills:skills.split(' '),sourceSkillNames:skillNames.split(' '),ruleset:'classic-identity-original',verification:pack==='standard'?'verified':'pending-full-text-review'}))
+export const CANONICAL_ROSTER=rows.map(([pack,referenceId,referenceName,id,name,hp,sex,mechanicalFaction,skills,skillNames])=>({pack,referenceId,referenceName,id,name,hp,sex,mechanicalFaction,skills:skills.split(' '),sourceSkillNames:skillNames.split(' '),ruleset:'classic-identity-original',verification:pack==='standard'||id==='sunwukong'?'verified':'pending-full-text-review'}))
 export const CANONICAL_BY_ID=Object.fromEntries(CANONICAL_ROSTER.map(h=>[h.id,h]))
 export const PACK_NAMES={standard:'标准',wind:'风',fire:'火',forest:'林',mountain:'山',yijiang2011:'一将成名2011',yijiang2012:'一将成名2012',yijiang2013:'一将成名2013'}
 export function auditCanonicalRoster(heroes,alliances){

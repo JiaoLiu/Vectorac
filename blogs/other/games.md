@@ -71,7 +71,7 @@
     <div class="game-card-cover"><img src="/img/games/thumbs/fengshen.webp?v=782e57bc705f" alt="众神斗法：六位神话英雄与中央斗法牌的对决封面" loading="lazy"></div>
     <div class="game-card-body">
       <div class="game-card-title">众神斗法</div>
-      <div class="game-card-desc">五人／八人身份 · 25 位神话角色 · 108 张牌 · 单机 AI · 手机横竖屏</div>
+      <div class="game-card-desc">五人／八人身份 · 26 位神话角色 · 108 张牌 · 单机 AI · 手机横竖屏</div>
       <span class="game-card-btn">入局斗法</span>
     </div>
   </a>

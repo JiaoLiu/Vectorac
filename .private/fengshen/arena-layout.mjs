@@ -20,7 +20,7 @@ export function arenaGeometry({width,height,seats=5,safeTop=0,safeBottom=0}){
  const heroWidth=heroHeight/1.46,block=topSeats.length*heroWidth+(topSeats.length-1)*gap,start=(width-block)/2,top=landscape?0:safeTop+28
  topSeats.forEach((seat,i)=>positions[seat]={x:start+i*(heroWidth+gap),y:top,width:heroWidth,height:heroHeight})
  if(seats!==2){
-   const sideY=landscape?Math.max(30,height-2*heroHeight-gap):top+heroHeight+gap
+   const sideY=landscape?Math.max(30,height-safeBottom-2*heroHeight-gap):top+heroHeight+gap
    positions[1]={x:0,y:sideY,width:heroWidth,height:heroHeight}
    positions[seats-1]={x:width-heroWidth,y:sideY,width:heroWidth,height:heroHeight}
    if(!landscape&&seats===8){positions[2]={x:0,y:sideY,width:heroWidth,height:heroHeight};positions[1].y+=heroHeight+gap;positions[6]={x:width-heroWidth,y:sideY,width:heroWidth,height:heroHeight};positions[7].y+=heroHeight+gap}
@@ -40,6 +40,7 @@ export function layoutArena(root){
  root.style.setProperty('--pool-card-height',Math.max(32,Math.min(120,g.height-g.dockHeight-60))+'px')
  const pool=root.querySelector('.fs-pool-choice'),list=pool?.querySelector('.fs-center-card-list')
  if(list)pool.style.setProperty('--pool-card-height',poolCardHeight({width:list.clientWidth,height:g.height-g.dockHeight-60,count:list.querySelectorAll('.fs-choice-card').length})+'px')
+ for(const name of root.querySelectorAll('.fs-player-info>strong,.fs-own-hero strong')){const own=name.closest('.fs-own-hero'),available=own&&!g.landscape?own.clientHeight-34:g.heroHeight-(own?(own.closest('.fs-own-panel')?.dataset.skillCount==='3'?80:64):50);name.style.setProperty('--hero-name-size',Math.max(8,Math.min(15,available/[...name.textContent].length))+'px')}
  for(const p of root.querySelectorAll('.fs-player')){const r=g.positions[p.dataset.player];if(r)Object.assign(p.style,{left:r.x+'px',top:r.y+'px',right:'auto',bottom:'auto',width:r.width+'px',height:r.height+'px',transform:'none'})}
  for(const zone of root.querySelectorAll('.fs-star-zone')){
    const list=zone.querySelector('.fs-center-card-list'),fit=(list.clientWidth-32)/5*1.44

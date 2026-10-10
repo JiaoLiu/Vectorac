@@ -108,12 +108,65 @@
 .fs-star-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:5px}
 .fs-star-actions button{min-height:34px;padding:4px 10px;font-size:11px}
 .fs-star-ghost{position:absolute;pointer-events:none;z-index:50;width:70px;height:101px;opacity:.88;transform:translate(-50%,-50%)}
+/* Vertical name strips leave a dedicated bottom equipment/skill rail. */
+.fs-playing .fs-player-info{inset:0;display:block;pointer-events:none}
+.fs-playing .fs-player-info>strong{position:absolute;left:3px;top:5px;bottom:auto;writing-mode:vertical-rl;text-orientation:upright;white-space:nowrap;font-size:var(--hero-name-size,14px);line-height:1.05;padding:3px 2px;background:#132c36b8;border-radius:2px}
+.fs-playing .fs-player-info>.fs-hp{position:absolute;left:3px;bottom:3px}
+.fs-playing .fs-player-info>.fs-hp i{display:none}
+.fs-playing .fs-player-info>.fs-hp b{font-size:11px}
+.fs-playing .fs-player-info>span:last-child{position:absolute;right:3px;bottom:3px;max-width:65%;overflow:hidden;white-space:nowrap}
+.fs-playing .fs-player[data-equip-count="4"] .fs-player-info>strong{font-size:var(--hero-name-size,14px)}
+.fs-playing .fs-player[data-equip-count="4"] .fs-player-info>span:last-child{display:block}
+.fs-playing .fs-player-main>.fs-identity{left:auto;right:2px;top:3px;min-width:22px;min-height:20px;font-size:11px}
+.fs-playing .fs-seat{left:25px;right:26px;max-height:12px;overflow:hidden}
+.fs-playing .fs-opponent-equipment{bottom:21px;height:26px;max-height:26px}
+.fs-playing :is(.fs-opponent-equipment,.fs-own-equipment) .fs-equip{height:26px}
+@media(orientation:landscape){
+ .fs-playing .fs-own-panel{height:calc(var(--hero-height) + var(--fs-safe-bottom))}
+ .fs-playing .fs-own-hero{inset:auto 0 var(--fs-safe-bottom);height:var(--hero-height)}
+ .fs-playing .fs-own-skills{bottom:calc(1px + var(--fs-safe-bottom))}
+ .fs-playing .fs-own-hero>div{inset:0;display:block}
+ .fs-playing .fs-own-hero strong{position:absolute;left:3px;top:5px;writing-mode:vertical-rl;text-orientation:upright;white-space:nowrap;font-size:var(--hero-name-size,14px);line-height:1.05;padding:3px 2px;background:#132c36b8;border-radius:2px}
+ .fs-playing .fs-own-role-button{top:3px;left:auto;right:2px;bottom:auto;min-height:20px}
+ .fs-playing .fs-own-hero .fs-hp{position:absolute;bottom:60px;left:24px;margin:0}
+ .fs-playing .fs-own-hero .fs-hp i{display:none}
+ .fs-playing .fs-own-hero .fs-hp b{font-size:10px}
+ .fs-playing .fs-own-equipment{bottom:calc(31px + var(--fs-safe-bottom));height:26px;max-height:26px}
+}
+.fs-playing .fs-own-skills .fs-skill{flex:0 0 auto;min-width:42px;max-width:90px}
+.fs-playing .fs-own-hero .fs-hp{background:#132c36df;border-radius:3px;padding:1px 3px}
+@media(orientation:landscape){
+ .fs-playing .fs-own-panel[data-skill-count="3"] .fs-own-skills{display:grid;grid-template-columns:1fr 1fr;height:43px;gap:2px;overflow:hidden}
+ .fs-playing .fs-own-panel[data-skill-count="3"] .fs-skill{min-width:0;min-height:19px;padding:1px;max-width:none}
+ .fs-playing .fs-own-panel[data-skill-count="3"] .fs-skill b{font-size:8px}
+ .fs-playing .fs-own-panel[data-skill-count="3"] .fs-skill small{display:none}
+ .fs-playing .fs-own-panel[data-skill-count="3"] .fs-skill:last-child{grid-column:1/-1}
+ .fs-playing .fs-own-panel[data-skill-count="3"] .fs-skill:last-child b{font-size:11px}
+ .fs-playing .fs-own-panel[data-skill-count="3"] .fs-own-equipment{bottom:calc(47px + var(--fs-safe-bottom))}
+ .fs-playing .fs-own-panel[data-skill-count="3"] .fs-own-hero .fs-hp{bottom:76px}
+}
+.fs-form-mark{position:absolute;right:2px;top:25px;max-width:70%;padding:2px 3px;background:#18383ed9;color:#edda9c;font-size:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;pointer-events:none}
+.fs-incarnation-choice{display:flex;flex-direction:column;z-index:15}
+.fs-incarnation-choice>header,.fs-incarnation-choice>footer{flex:none}
+.fs-incarnation-options{min-height:0;overflow:auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px}
+.fs-incarnation-entry{display:flex;align-items:flex-start;gap:8px;padding:6px;background:#203d43;border:1px solid #b59c6655;border-radius:5px;min-width:0}
+.fs-incarnation-entry>.fs-portrait{width:54px;height:80px;flex:none;object-fit:cover;border-radius:3px}
+.fs-incarnation-entry>div{min-width:0;flex:1}.fs-incarnation-entry strong{font-size:12px;color:#f0d49c}
+.fs-incarnation-entry button{display:block;width:100%;min-height:38px;margin:3px 0;padding:5px;border:1px solid #bda57588;text-align:left;border-radius:4px;background:#183038}
+.fs-incarnation-entry button b{font-size:12px}.fs-incarnation-entry button small{display:block;font-size:10px;line-height:1.4;color:#b5c8be}
+.fs-form-collection{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}
+.fs-form-collection>article{display:flex;gap:10px;padding:8px;border:1px solid #b7a17055;border-radius:5px;min-width:0;background:#203840}
+.fs-form-collection>article.active{border-color:#ebcb87;background:#25413f}
+.fs-form-collection img{width:58px;height:86px;object-fit:cover;flex:none;border-radius:3px}
+.fs-form-collection strong{font-size:14px;color:#f0d59f}.fs-form-collection b{font-size:12px}.fs-form-collection p{font-size:11px;line-height:1.5}
 .fs-playing[data-layout=portrait] .fs-dock{grid-template-columns:1fr;grid-template-rows:76px minmax(0,1fr);padding:3px 8px var(--fs-safe-bottom);gap:5px}
 .fs-playing[data-layout=portrait] .fs-own-panel{height:76px;display:grid;grid-template-columns:150px minmax(0,1fr);grid-template-rows:1fr}
 .fs-playing[data-layout=portrait] .fs-own-hero{width:146px;height:76px;overflow:visible;border:0;background:none}
 .fs-playing[data-layout=portrait] .fs-own-hero>button{width:50px;height:76px;border:1px solid #b69a67;border-radius:4px}
 .fs-playing[data-layout=portrait] .fs-own-hero>div{left:58px;right:0;bottom:0;top:0;display:flex;flex-direction:column;justify-content:center}
 .fs-playing[data-layout=portrait] .fs-own-hero strong{font-size:17px}
+.fs-playing[data-layout=portrait] .fs-own-hero strong{position:absolute;left:-55px;top:5px;writing-mode:vertical-rl;text-orientation:upright;font-size:var(--hero-name-size,11px);padding:2px;background:#132c36b8;line-height:1.05}
+.fs-playing[data-layout=portrait] .fs-own-hero .fs-form-mark{left:0;right:auto;top:2px;max-width:100%}
 .fs-playing[data-layout=portrait] .fs-own-role-button{position:static;margin:2px 0}
 .fs-playing[data-layout=portrait] .fs-own-skills{position:static;grid-column:2;align-self:center}
 .fs-playing[data-layout=portrait] .fs-own-equipment{left:0;right:auto;width:50px;bottom:0;height:21px}

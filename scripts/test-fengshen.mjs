@@ -8,9 +8,9 @@ import {HERO_BY_ID,CARDS,makeDeck} from '../.private/fengshen/core/catalog.mjs'
 import {chooseAI} from '../.private/fengshen/engine.mjs'
 import {ART_PROMPTS} from '../.private/fengshen/art-prompts.mjs'
 
-test('54 unique portraits, Standard 25 playable; complete profiles only',()=>{
+test('54 unique portraits, 26 complete playable profiles',()=>{
   assert.equal(HEROES.length,54);assert.equal(new Set(HEROES.map(h=>h.id)).size,54)
-  assert.equal(PLAYABLE_HEROES.length,25)
+  assert.equal(PLAYABLE_HEROES.length,26)
   for(const h of HEROES){if(h.playable){assert.ok(catalog.HERO_BY_ID[h.engineId]);assert.deepEqual(Object.keys(h.skillNames),catalog.HERO_BY_ID[h.engineId].skills)}else assert.throws(()=>createGame({heroId:h.id}))}
   assert.equal(HEROES.find(h=>h.baseHero==='xiaoqiao').name,'龙吉公主');assert.equal(HEROES.find(h=>h.baseHero==='xiaoqiao').sex,'female')
 })

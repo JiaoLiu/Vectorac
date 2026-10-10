@@ -66,13 +66,13 @@ export function displayText(text) {
   const result=String(text??'').replace(displayPattern,word=>replacements.get(word))
   return result.replace(/其他蜀将/g,'其他青盟角色').replace(/其他魏将/g,'其他赤盟角色').replace(/其他吴将/g,'其他金盟角色')
 }
-export function skillName(heroId,skill){return heroForBase(heroId)?.skillNames[skill]||SKILLS[skill]?.[0]||skill}
+export function skillName(heroId,skill){const p=typeof heroId==='object'?heroId:null,id=p?(p.incarnation?.activeSkill===skill?p.incarnation.activeHero:p.heroId):heroId;return heroForBase(id)?.skillNames[skill]||PLAYABLE_HEROES.find(h=>h.skillNames[skill])?.skillNames[skill]||'技能'}
 export function skillHelp(h,skill){
  let text=displayText(SKILLS[skill]?.[1]||'技能待接入')
  if(skill==='jijiang')text='主公技：需要杀时，可请其他青盟角色提供。'
  if(skill==='hujia')text='主公技：需要闪时，可请其他赤盟角色提供。'
  if(skill==='jiuyuan')text='主公技：其他金盟角色救你时，一张仙桃回复两点体力。'
- return text+(h?.playable&&['jizhi','yingzi','jianxiong','tieji'].includes(skill)?' 有效条件满足时自动发动。':'')
+ return text.replaceAll('经典原版','')+(h?.playable&&['xinsheng','jizhi','yingzi','jianxiong','tieji'].includes(skill)?' 有效条件满足时自动发动。':'')
 }
 export const ALLIANCE_NAMES={shu:'青盟',wei:'赤盟',wu:'金盟',qun:'玄盟'}
 export function manifest(){return {codeName:'众神斗法',visibility:'free-demo',rules:'classic-identity-original',heroes:HEROES,cards:CARDS_BY_TYPE,plannedEquipment:PLANNED_EQUIPMENT,deckSize:makeDeck().length}}

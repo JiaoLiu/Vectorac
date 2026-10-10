@@ -24,6 +24,8 @@ import {layoutArena,revealHandCard} from './arena-layout.mjs'
 import {bindGameViewport} from './viewport.mjs'
 import {localPoint} from './screen-mode.mjs'
 import {cardTargetCandidates,selectingTargets,replaceTarget,boundedTargets} from './target-selection.mjs'
+import {heroDetails,gameRules,formCollection}from './player-guide.mjs'
+import {modalReturnEntry}from './modal-navigation.mjs'
 import {bindStarDrag} from './star-drag.mjs'
 import {advanceUnavailable,DecisionClock} from './flow.mjs'
 import {BackgroundMusic} from './music.mjs'
@@ -51,7 +53,7 @@ export class FengshenUI {
     this.root=root;this.state=null;this.setup=null;this.draftHero=null;this.lobby=true;this.selected=[];this.targets=[];this.skill=null;this.as=null;this.modal=null;this.paused=false;this.timer=null;this.toast='';this.destroyed=false
     const preferences=load(PREFS,{pace:650,voice:true});this.hints=tutorialEnabled(preferences);this.pace=preferences.pace;if(![250,650,1100].includes(this.pace))this.pace=650
     this.mode=MODE_LIST.some(m=>m.id===preferences.mode)?preferences.mode:'identity5'
-    this.choiceIndex=null;this.choiceZone='hand';this.hits=[];this.transfer=null;this.draws=[];this.auto=false;this.clock=new DecisionClock();this.music=new BackgroundMusic({enabled:preferences.music!==false});this.voice=new CardVoice({enabled:preferences.voice!==false,onIdle:()=>{if(!this.destroyed)this.schedule()}})
+    this.modalStack=[];this.choiceIndex=null;this.choiceZone='hand';this.hits=[];this.transfer=null;this.draws=[];this.auto=false;this.clock=new DecisionClock();this.music=new BackgroundMusic({enabled:preferences.music!==false});this.voice=new CardVoice({enabled:preferences.voice!==false,onIdle:()=>{if(!this.destroyed)this.schedule()}})
     this.resumeSession=restoreSession(load(SAVE,null));this.resumeState=this.resumeSession?.kind==='game'?this.resumeSession.game:null;this.legacySave=load('vectorac.fengshen.internal.save.v1',null)!=null;root.className='fs-app'
     this.onClick=e=>this.click(e);this.onKey=e=>this.key(e)
     this.onVisibility=()=>{clearTimeout(this.timer);if(document.hidden){this.voice.stop();this.music.pause()}else{if(!this.lobby)this.music.unlock();this.schedule()}this.syncClock()}
@@ -181,15 +183,17 @@ export class FengshenUI {
     this.timer=setTimeout(()=>{if(this.destroyed||document.hidden||this.modal||this.paused||this.state.revision!==revision)return;const action=chooseAI(playerView(this.state,seat));if(action&&!this.act(action)){this.paused=true;this.inform('AI动作未通过校验，已暂停对局')}},this.pace)
   }
   matching(view){return view.legal.filter(a=>a.type==='play'&&equal(a.ids,this.selected))}
+  openModal(kind,id){const e=document.activeElement,back=modalReturnEntry(this.modal,kind,{scroll:this.root.querySelector('.fs-modal-body')?.scrollTop||0,focus:e?.dataset?.id});if(back)this.modalStack.push(back);else this.modalStack=[];this.modal={kind,id};this.render()}
+  closeModal(){const back=this.modalStack.pop();this.modal=back?.modal||null;this.render();if(back){const body=this.root.querySelector('.fs-modal-body');if(body)body.scrollTop=back.scroll;this.root.querySelector(`[data-id="${back.focus}"]`)?.focus({preventScroll:true})}}
   currentAs(view){const opts=this.matching(view),natural=view.players[0].hand.find(c=>c.id===this.selected[0])?.type;return this.as||opts.find(a=>a.as===natural)?.as||opts[0]?.as}
   targetable(view){
     if(view.pending?.kind==='liuli'&&view.pending.actor===0)return [...new Set(view.legal.filter(a=>a.type==='redirect'&&equal(a.ids,this.selected)).map(a=>a.target))]
     if(view.pending?.kind==='yiji'&&view.pending.actor===0)return [...new Set(view.legal.filter(a=>a.type==='give').map(a=>a.target))]
     if(view.pending?.kind==='tuxi'&&view.pending.actor===0)return [...new Set(view.legal.flatMap(a=>a.targets||[]))]
     if(this.skill==='rende'||this.skill==='fanjian')return view.players.filter(p=>p.alive&&p.seat!==0).map(p=>p.seat)
-    if(this.skill==='jieyin')return view.players.filter(p=>p.alive&&p.seat!==0&&catalog.HERO_BY_ID[p.heroId].sex==='male'&&p.hp<p.maxHp).map(p=>p.seat)
+    if(this.skill==='jieyin')return view.players.filter(p=>p.alive&&p.seat!==0&&display(p).sex==='male'&&p.hp<p.maxHp).map(p=>p.seat)
     if(this.skill==='qingnang')return view.players.filter(p=>p.alive&&p.hp<p.maxHp).map(p=>p.seat)
-    if(this.skill==='lijian')return view.players.filter(p=>p.alive&&p.seat!==0&&catalog.HERO_BY_ID[p.heroId].sex==='male'&&(!this.targets.length||p.seat===this.targets[0]||!(catalog.HERO_BY_ID[p.heroId].skills.includes('kongcheng')&&!p.handCount))).map(p=>p.seat)
+    if(this.skill==='lijian')return view.players.filter(p=>p.alive&&p.seat!==0&&display(p).sex==='male'&&(!this.targets.length||p.seat===this.targets[0]||!((p.effectiveSkills||catalog.HERO_BY_ID[p.heroId].skills).includes('kongcheng')&&!p.handCount))).map(p=>p.seat)
     if(this.skill==='jijiang')return view.legal.filter(a=>a.type==='skill'&&a.skill==='jijiang').map(a=>a.target)
     let opts=this.matching(view).filter(a=>a.as===this.currentAs(view))
     return cardTargetCandidates(opts,this.currentAs(view),this.targets)
@@ -239,9 +243,9 @@ export class FengshenUI {
     if(action==='start'){this.start();return}
     if(action==='mode'&&this.lobby){this.mode=modeById(id).id;this.savePreferences();this.render();return}
     if(action==='resume'){this.resume();return}
-    if(action==='close'){this.modal=null;this.render();return}
+    if(action==='close'){this.closeModal();return}
     if(action==='hand'){this.modal={kind:'hand'};this.render();return}
-    if(['rules','heroes','gallery','report','hero-detail','card-detail','new'].includes(action)){this.modal={kind:action,id};this.render();return}
+    if(['rules','heroes','gallery','forms','report','hero-detail','card-detail','new'].includes(action)){this.openModal(action,id);return}
     if(action==='new-confirm'){this.clearEffects();this.voice.stop();this.music.pause();this.auto=false;this.resumeSession=restoreSession(load(SAVE,null));this.resumeState=this.resumeSession?.kind==='game'?this.resumeSession.game:null;this.setup=null;this.state=null;this.draftHero=null;this.lobby=true;this.modal=null;this.paused=false;this.reset();this.render();return}
     if(action==='pause'){this.paused=!this.paused;this.render();return}
     if(action==='pace'){this.pace=this.pace===650?250:this.pace===250?1100:650;this.savePreferences();this.render();return}
@@ -287,22 +291,22 @@ export class FengshenUI {
   }
   key(event){
     if(!this.modal)return
-    if(event.key==='Escape'){event.preventDefault();this.modal=null;this.render();return}
+    if(event.key==='Escape'){event.preventDefault();this.closeModal();return}
     if(event.key==='Tab'){
       const controls=[...this.root.querySelectorAll('.fs-modal button:not(:disabled),.fs-modal a[href]')],first=controls[0],last=controls.at(-1)
       if(controls.length&&(event.shiftKey&&document.activeElement===first||!event.shiftKey&&document.activeElement===last||!this.root.querySelector('.fs-modal').contains(document.activeElement))){event.preventDefault();(event.shiftKey?last:first).focus()}
     }
   }
-  header(){const label=this.lobby?'准备大厅':this.setup?(setupView(this.setup,0).teamMode?'选将':'身份选将'):(this.state?.teamMode?'两军对垒':'经典身份');return `<header class="fs-header"><div class="fs-brand">众神<span>斗法</span><small>内部原型 / ${label}</small></div>${renderToolbar({lobby:this.lobby,setup:this.setup,paused:this.paused,voice:this.voice.enabled,music:this.music.enabled})}</header>`}
+  header(){const label=this.lobby?'准备大厅':this.setup?(setupView(this.setup,0).teamMode?'选将':'身份选将'):(this.state?.teamMode?'两军对垒':'身份对决');return `<header class="fs-header"><div class="fs-brand">众神<span>斗法</span><small>单机对局 / ${label}</small></div>${renderToolbar({lobby:this.lobby,setup:this.setup,paused:this.paused,voice:this.voice.enabled,music:this.music.enabled})}</header>`}
   renderLobby(){return renderHome(this)}
   equipment(p,own=false){return Object.entries(p.equip).filter(([,c])=>c).map(([slot,c])=>`<button class="fs-equip ${this.selected.includes(c.id)?'selected':''}" data-action="${own?'card':'card-detail'}" data-id="${c.id}" data-slot="${slot}" aria-label="${{weapon:'武器',armor:'防具',offenseHorse:'进攻坐骑',defenseHorse:'防御坐骑'}[slot]}：${CARDS_BY_TYPE[c.type].name}" title="${esc(displayText(CARDS_BY_TYPE[c.type].help))}"><img src="${CARDS_BY_TYPE[c.type].image}" alt="" loading="lazy">${equipmentSlot(slot)}<span>${CARDS_BY_TYPE[c.type].name}</span><small>${CARDS_BY_TYPE[c.type].range?'距'+CARDS_BY_TYPE[c.type].range:CARDS_BY_TYPE[c.type].slot==='offenseHorse'?'−1':CARDS_BY_TYPE[c.type].slot==='defenseHorse'?'+1':'防'}</small></button>`).join('')||'<small class="fs-no-equip">法宝栏为空</small>'}
-  skills(p,view){const h=display(p);return Object.keys(h.skillNames).filter(s=>SKILLS[s][2]!=='lord'||(!view.teamMode&&p.role==='lord')).map(s=>{const active=p.seat===0&&view.legal.some(a=>a.type==='skill'&&a.skill===s);return `<button data-action="${active?'skill':'hero-detail'}" data-value="${s}" data-id="${h.id}" class="fs-skill ${this.skill===s&&p.seat===0?'selected':''}"><b>${h.skillNames[s]}</b><small>${active?'发动':catalog.automaticSkills.includes(s)?'自动':{lord:'主公技',locked:'锁定',convert:'转化',trigger:'触发'}[SKILLS[s][2]]||'技能'}</small></button>`}).join('')}
+  skills(p,view){const h=display(p);return Object.keys(h.skillNames).filter(s=>SKILLS[s][2]!=='lord'||(!view.teamMode&&p.role==='lord')).map(s=>{const active=p.seat===0&&view.legal.some(a=>a.type==='skill'&&a.skill===s);return `<button data-action="${p.seat===0&&s==='huashen'?'forms':active?'skill':'hero-detail'}" data-value="${s}" data-id="${h.id}" class="fs-skill ${this.skill===s&&p.seat===0?'selected':''}"><b>${h.skillNames[s]}</b><small>${active?'发动':catalog.automaticSkills.includes(s)?'自动':{lord:'主公技',locked:'锁定',convert:'转化',trigger:'触发'}[SKILLS[s][2]]||'技能'}</small></button>`}).join('')}
   opponent(p,view){return renderOpponent(this,p,view)}
   pendingText(view){const p=view.pending;if(!p)return '';const source=p.source==null?'法术':display(view.players[p.source]).name,target=p.target==null?'目标':display(view.players[p.target]).name;return {
     response:combatContext(view)?.hint||`${source} → ${target}：请打出${p.remaining>1?p.remaining+' 张':''}${CARDS_BY_TYPE[p.as]?.name||''}`,
     rescue:`${target}濒死：是否使用仙桃救援？`,counter:`${p.negated?'反制破法':'使用破法'}：${CARDS_BY_TYPE[p.cardType]?.name||''} → ${target}`,
-    guanxing:'推演：排列牌顶与牌底，然后确认',liuli:'移劫：弃一张牌，选择转移目标',yiji:'传道：分配本次获得的牌，或保留',tuxi:'地行：选择一至两名角色，或正常摸牌','judge-replace':'天眼：用一张手牌改判，或放弃',
-    discard:`弃牌：请选 ${p.count} 张手牌`,guess:`${skillName(view.players[p.actor]?.heroId,'fanjian')}：猜测花色`,pick:'仙山采宝：选择一张牌',take:`选择${target}的一张牌`,axe:'番天印：弃两张牌，令杀命中',blade:'打神鞭：是否再出一张杀？',support:`${p.requester==null?'主公':display(view.players[p.requester]).name}请求${CARDS_BY_TYPE[p.as]?.name||''}援助`,choice:`${SKILLS[p.skill]?skillName(view.players[p.actor]?.heroId,p.skill):displayText({dualsword:'阴阳双剑',dualTarget:'阴阳双剑',ice:'乾坤圈',bow:'五色神光'}[p.skill]||'法宝')}：请选择`,
+    incarnation:'七十二变：在中央选择形态与技能',guanxing:'推演：排列牌顶与牌底，然后确认',liuli:'移劫：弃一张牌，选择转移目标',yiji:'传道：分配本次获得的牌，或保留',tuxi:'地行：选择一至两名角色，或正常摸牌','judge-replace':'天眼：用一张手牌改判，或放弃',
+    discard:`弃牌：请选 ${p.count} 张手牌`,guess:`${skillName(view.players[p.actor],'fanjian')}：猜测花色`,pick:'仙山采宝：选择一张牌',take:`选择${target}的一张牌`,axe:'番天印：弃两张牌，令杀命中',blade:'打神鞭：是否再出一张杀？',support:`${p.requester==null?'主公':display(view.players[p.requester]).name}请求${CARDS_BY_TYPE[p.as]?.name||''}援助`,choice:`${SKILLS[p.skill]?skillName(view.players[p.actor],p.skill):displayText({dualsword:'阴阳双剑',dualTarget:'阴阳双剑',ice:'乾坤圈',bow:'五色神光'}[p.skill]||'法宝')}：请选择`,
   }[p.kind]||'等待响应'}
   renderActions(view){return renderControls(this,view)}
   won(){const s=this.state;if(s.teamMode)return s.winner===String(s.sides[0]);const role=s.players[0].role;return role===s.winner||role==='loyal'&&s.winner==='lord'}
@@ -312,19 +316,20 @@ export class FengshenUI {
     const {kind,id}=this.modal;let title='',body=''
     // 牌桌「菜单」收纳（英雄杀式）：不常用功能全部收进这里，顶栏只留菜单按钮。
     if(kind==='menu'){title='菜单';body=renderMenu({inGame:!!this.state,paused:this.paused,voice:this.voice.enabled,music:this.music.enabled,hints:this.hints!==false,pace:this.pace===250?'快':this.pace===1100?'慢':'标准',auto:this.auto})}
-    if(kind==='heroes'){title='人物图鉴 · 不用于自由选将';body=heroGallery()}
-    if(kind==='hand'&&this.state){const v=playerView(this.state,0);title='展开手牌 · '+v.players[0].hand.length+' 张';body=`<p>点击选牌，选中后点“完成选择”回到牌桌确认。这里不会自动出牌。</p><div class="fs-expanded-hand">${v.players[0].hand.map(c=>`<button data-action="card" data-id="${c.id}" class="${this.selected.includes(c.id)?'selected':''}" aria-label="${CARDS_BY_TYPE[c.type].baseName} ${SUITS[c.suit]}${c.rank}" aria-pressed="${this.selected.includes(c.id)}">${cardFace(c)}</button>`).join('')}</div><button data-action="close" class="fs-primary fs-hand-done">完成选择${this.selected.length?' · '+this.selected.length+' 张':''}</button>`}
+    if(kind==='heroes'){title='人物图鉴';body=heroGallery()}
+    if(kind==='forms'&&this.state){title='七十二变 · 你的变身牌';body=formCollection(playerView(this.state,0).players[0])}
+    if(kind==='hand'&&this.state){const v=playerView(this.state,0);title='展开手牌 · '+v.players[0].hand.length+' 张';body=`<p>点击选牌，选中后点“完成选择”回到牌桌确认。这里不会自动出牌。</p><div class="fs-expanded-hand">${v.players[0].hand.map(c=>`<button data-action="card" data-id="${c.id}" class="${this.selected.includes(c.id)?'selected':''}" aria-label="${CARDS_BY_TYPE[c.type].name} ${SUITS[c.suit]}${c.rank}" aria-pressed="${this.selected.includes(c.id)}">${cardFace(c)}</button>`).join('')}</div><button data-action="close" class="fs-primary fs-hand-done">完成选择${this.selected.length?' · '+this.selected.length+' 张':''}</button>`}
     if(kind==='identity'&&this.setup){const r=ROLES[setupView(this.setup,0).role];title='你的身份：'+r.name;body=`<h3>${r.name}的胜利条件</h3><p>${r.goal}。</p><p>身份已随机分配且锁定，主公先选将，再由其他玩家选将。</p>`}
     if(kind==='identity'&&this.state){const v=playerView(this.state,0),p=v.players[0]
       if(v.teamMode){const ally=v.sides[0]===0;title='你的阵营';body=`<section class="fs-identity-help"><strong class="fs-identity ${ally?'role-ally':'role-enemy'}">${ally?'友方':'敌方'}</strong><h3>胜利条件</h3><p>消灭敌方全部角色即获胜；我方全部阵亡则失败。</p><p>座位穿插：你之后依次是敌方、队友、敌方循环。开局掷骰，点数最高者先手。</p></section>`}
       else{const r=ROLES[p.role];title='你的身份：'+r.name;body=`<section class="fs-identity-help"><strong class="fs-identity role-${p.role}">${r.name}</strong><h3>你的胜利条件</h3><p>${r.goal}。</p><p>${p.alive?'其他玩家不能看到你的身份，主公除外。':'你已阵亡，身份已公开；仍可在牌桌观看结算。'}</p></section>`}}
-    if(kind==='hero-detail'){const h=HERO_BY_THEME_ID[id];title=h.name+' · '+h.title;body=`<div class="fs-hero-detail">${portrait(h,'',true)}<div><span>${FACTIONS[h.faction]} · ${ALLIANCE_NAMES[h.mechanicalFaction]} · ${h.hp}基础体力 · ${h.sex==='female'?'女性':'男性'}</span><p>完整原型：${esc(h.referenceName)} · ${esc(h.sourcePack)} · 经典原版</p><p>${h.playable?'技能已接入，可在单机局使用':'完整技能尚未接入；人物仅供形象与映射评审'}</p></div></div>${Object.entries(h.skillNames).map(([s,n])=>`<section><h3>${n}<small>${SKILLS[s]?{active:'主动',locked:'锁定',lord:'主公技',trigger:'触发',convert:'转化'}[SKILLS[s][2]]||'技能':'待开发'}</small></h3><p>${SKILLS[s]?esc(skillHelp(h,s)):'映射已记录，当前引擎尚无 '+s+' 完整实现。'}</p></section>`).join('')}`}
-    if(kind==='card-detail'){const c=catalog.makeDeck().find(c=>c.id===id)||catalog.makeDeck().find(c=>c.type===id),d=c&&CARDS_BY_TYPE[c.type];title=d?.name||'卡牌';body=d?`<div class="fs-card-detail">${cardFace(c)}<div><b>${{basic:'基本牌',trick:'即时法术',delay:'延时阵法',equip:'法宝'}[d.category]}</b><p>${esc(displayText(d.help))}</p><small>测试基准：${d.baseName} · 共 ${catalog.makeDeck().filter(c=>c.type===d.type).length} 张</small></div></div>`:''}
-    if(kind==='gallery'){title='法宝与卡牌图鉴';body=`<p>经典标准 108 张牌池 · 53 基本 / 36 锦囊 / 19 装备。旧混搭存档保留在原存储位置，不直接加载到新规则。仅更换表现层，花色、点数、数量与距离不变。</p><div class="fs-gallery">${Object.values(CARDS_BY_TYPE).map(d=>`<button data-action="card-detail" data-id="${d.type}">${cardFace(catalog.makeDeck().find(c=>c.type===d.type))}</button>`).join('')}</div><section><h3>扩展法宝 · 未加入当前牌堆</h3><p>${PLANNED_EQUIPMENT.map(d=>d.name).join('、')}已制作素材或规则草稿；完整军争包尚未核定，暂不进入经典标准牌池。</p></section>`}
+    if(kind==='hero-detail'){const p=this.state&&playerView(this.state,0).players.find(p=>display(p).id===id),h=p?display(p):HERO_BY_THEME_ID[id];title=h.name+' · '+h.title;body=heroDetails(h)}
+    if(kind==='card-detail'){const c=catalog.makeDeck().find(c=>c.id===id)||catalog.makeDeck().find(c=>c.type===id),d=c&&CARDS_BY_TYPE[c.type];title=d?.name||'卡牌';body=d?`<div class="fs-card-detail">${cardFace(c)}<div><b>${{basic:'基本牌',trick:'即时法术',delay:'延时阵法',equip:'法宝'}[d.category]}</b><p>${esc(displayText(d.help))}</p><small>牌库中共有 ${catalog.makeDeck().filter(c=>c.type===d.type).length} 张</small></div></div>`:''}
+    if(kind==='gallery'){title='法宝与卡牌图鉴';body=`<p>牌库共 108 张：53 张基本牌、36 张法术与阵法、19 张法宝。点击卡牌查看用途，返回图鉴后可以继续浏览。</p><div class="fs-gallery">${Object.values(CARDS_BY_TYPE).map(d=>`<button data-action="card-detail" data-id="${d.type}">${cardFace(catalog.makeDeck().find(c=>c.type===d.type))}</button>`).join('')}</div><section><h3>扩展法宝 · 未加入当前牌堆</h3><p>${PLANNED_EQUIPMENT.map(d=>d.name).join('、')}将在后续版本逐步开放，当前对局只使用上方列出的卡牌。</p></section>`}
     if(kind==='report'){title=this.state?.winner?(playerView(this.state,0).teamMode?'终局 · 胜负一览':'终局 · 身份揭晓'):'战场记录';if(this.state){const v=playerView(this.state,0);body=`${v.winner?`<div class="fs-role-reveal">${v.players.map(p=>`<span>${display(p).name}<b>${v.teamMode?(v.sides[p.seat]===v.sides[v.seat]?'友方':'敌方'):ROLES[p.role].name}</b></span>`).join('')}</div>`:''}<ol class="fs-report">${v.logs.map(l=>`<li>${esc(displayText(l.text))}</li>`).join('')}</ol>`}}
     if(kind==='new'){title='返回准备大厅？';body='<p>当前牌局或选将进度已保存。你可以继续上次进度，也可以新开身份局重新随机分配身份。</p><button data-action="new-confirm" class="fs-primary">返回准备大厅</button>'}
-    if(kind==='rules'){title='众神身份局 · 试玩规则';body=`<section><h3>身份不变</h3>${Object.values(ROLES).map(r=>`<p><b>${r.name}</b>：${r.goal}。</p>`).join('')}<p>五人身份局：1主1忠2反1内；八人身份局：1主2忠4反1内。主公额外一点体力；只公开主公，其他角色阵亡或终局才亮身份。1v1／2v2／3v3为本项目简化队伍对抗，不是官方竞技模式：全员先选将、掷骰定先手，按席位轮转。没有身份主公加血与主公技。联机尚未接入。</p></section><section><h3>操作与回合</h3><p>主公先行，按席位循环。准备 → 判定 → 摸牌 → 出牌 → 弃牌 → 结束。通常摸两张牌，出牌阶段限一次杀；风火与火尖枪可以解除次数限制。弃牌到当前体力值。</p><p>先选牌，再点亮目标，最后确认出牌。响应时选牌后确认，或主动放弃。两张闪按提示分次打出。混天绫选择两张手牌；借宝诛敌先选持武器者，再选被攻击者。转化牌显示“当杀 / 当闪”，须确认其用途。</p></section><section><h3>主公技与阵营适配</h3><p>机械同盟严格对应原版：青盟=蜀、赤盟=魏、金盟=吴、玄盟=群。神话势力只负责人物背景，不改变主公技响应阵营。每个人物绑定完整原武将技能组，不混搭。</p><p>龙吉公主替代慈航道人对应小乔，保留女性判定语义；阴阳双剑等性别相关装备仍按明确的人物性别结算。</p></section><section><h3>当前完成边界</h3><p>${HEROES.length} 人主题图鉴，${PLAYABLE_HEROES.length} 人完整原武将技能可用，${Object.keys(CARDS_BY_TYPE).length}类插画卡牌，108张物理牌。尚未实现完整原型技能的人物只能看图鉴，不进入选将。AI 只接收玩家视图，不能读取隐藏手牌和身份。</p><p>没有灵蕴、神位积分或封神争榜。不新增法宝冷却与耐久。这是免费的单机试玩版，不代表商业版或完成原创性审核。</p></section>`}
-    return `<div class="fs-modal-overlay"><section class="fs-modal" role="dialog" aria-modal="true" aria-labelledby="fs-dialog-title" tabindex="-1"><header><small>众神斗法 / INTERNAL</small><h2 id="fs-dialog-title">${title}</h2><button data-action="close" aria-label="关闭弹窗">×</button></header><div class="fs-modal-body">${body}</div></section></div>`
+    if(kind==='rules'){title='众神斗法 · 游戏规则';body=gameRules()}
+    return `<div class="fs-modal-overlay"><section class="fs-modal" role="dialog" aria-modal="true" aria-labelledby="fs-dialog-title" tabindex="-1"><header><small>众神斗法</small><h2 id="fs-dialog-title">${title}</h2><button data-action="close" aria-label="${this.modalStack.length?'返回图鉴':'关闭弹窗'}">${this.modalStack.length?'←':'×'}</button></header><div class="fs-modal-body">${body}</div></section></div>`
   }
   render(){
     if(this.destroyed)return
@@ -344,7 +349,7 @@ export class FengshenUI {
       }
     }
     // 大厅主视觉与详情大图在渲染时直接出原图（见 renderHome/modalContent 的 full=true）。
-    if(RELEASE){const label=this.root.querySelector('.fs-brand>small');if(label)label.textContent=label.textContent.replace('内部原型','单机试玩');if(this.modal?.kind==='rules'){const body=this.root.querySelector('.fs-modal-body');if(body)body.innerHTML=body.innerHTML.replace('此为本机内部原型，不代表商业发行或完成原创性审核。','当前为免费单机试玩版，部分人物技能仍在开发；名称、主题与玩法仍需在商业发行前另行审核。')}}
+    // Player-facing copy is native to the game in preview and release alike.
     layoutArena(this.root);layoutHand(this.root)
     for(const [key,v]of Object.entries(scrolls)){const e=this.root.querySelector(`[data-scroll="${key}"]`);if(e){e.scrollLeft=v.left;e.scrollTop=v.top}}
     if(this.selected.length)revealHandCard(this.root,this.selected.at(-1));this.decorateBattle()

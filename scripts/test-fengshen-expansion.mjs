@@ -25,7 +25,7 @@ function act(s,a){const r=dispatch(s,{seat:s.pending?.actor??s.current,revision:
 function passAll(s){let i=0;while(s.pending&&i++<25)s=act(s,{type:s.pending.kind==='reveal'?'ack':'pass'});return s}
 function slash(s,type='sha'){const c=give(s,0,type);return act(s,{type:'play',as:'sha',ids:[c.id],targets:[1]})}
 test('draft expansion definitions stay isolated; shipped Standard profiles and legacy physical IDs stable',()=>{
- assert.equal(FENGSHEN_EXPANSION.length,12);assert.equal(PLAYABLE_HEROES.length,25);assert.equal(Object.keys(EXPANSION_CARDS).length,7)
+ assert.equal(FENGSHEN_EXPANSION.length,12);assert.equal(PLAYABLE_HEROES.length,26);assert.equal(Object.keys(EXPANSION_CARDS).length,7)
  assert.ok(HERO_BY_THEME_ID.zhaogongming.playable);assert.ok(HERO_BY_THEME_ID.duobao.playable)
  assert.deepEqual(makeExpandedDeck().slice(0,108),legacyDeck());assert.equal(makeExpandedDeck().length,121)
 })
