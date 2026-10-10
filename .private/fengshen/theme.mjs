@@ -1,6 +1,7 @@
 // Internal prototype: aliases do not constitute a cleared commercial design.
-import { HERO_BY_ID, CARDS, SKILLS, makeDeck } from '../../.vuepress/components/sanguo/catalog.mjs'
+import { HERO_BY_ID, CARDS, SKILLS, makeDeck } from './core/catalog.mjs'
 import {GODS,GOD_FACTIONS,GOD_ALLIANCES} from './gods.mjs'
+import {FENGSHEN_EXPANSION,EXPANSION_CARDS,expandedDeck} from './fengshen-expansion.mjs'
 
 export const FACTIONS = { zhou:'周', shang:'商', chan:'阐', jie:'截',...GOD_FACTIONS }
 export const ALLIANCES = { zhou:'shu', shang:'wei', chan:'wu', jie:'qun',...GOD_ALLIANCES }
@@ -30,7 +31,7 @@ export const HEROES = rows.map(([id,name,title,faction,baseHero,hp,sex,skillName
   id,name,title,faction,baseHero,engineId:baseHero,hp,sex,skillNames,artDirection,
   playable:!!HERO_BY_ID[baseHero], missingSkills:HERO_BY_ID[baseHero]?[]:Object.keys(skillNames),
   image:`assets/heroes/${id}.jpg`, thumbnail:`assets/heroes/${id}-thumb.jpg`,
-})).concat(GODS)
+})).concat(GODS,FENGSHEN_EXPANSION)
 export const HERO_BY_THEME_ID=Object.fromEntries(HEROES.map(h=>[h.id,h]))
 export const PLAYABLE_HEROES=HEROES.filter(h=>h.playable)
 export const SECOND_BATCH=[['huangfeihu','黄飞虎','lvbu'],['shiji','石矶娘娘','zhenji'],['tuxingsun','土行孙','zhangliao'],['jinzha','金吒','guanyu'],['muzha','木吒','huangzhong']]
@@ -38,7 +39,9 @@ export const SECOND_BATCH=[['huangfeihu','黄飞虎','lvbu'],['shiji','石矶娘
 // All baseline physical cards retain their IDs, quantities, suit, rank and stats.
 const cardNames={sha:'杀',shan:'闪',tao:'仙桃',duel:'斗法',dismantle:'破阵',snatch:'摄宝',draw:'天机显化',savage:'万妖袭营',arrows:'飞剑齐发',garden:'瑶池仙宴',harvest:'仙山采宝',collateral:'借宝诛敌',nullify:'破法',indulgence:'迷魂阵',lightning:'天雷劫',crossbow:'火尖枪',dualsword:'阴阳双剑',qinggang:'斩仙飞刀',blade:'打神鞭',spear:'混天绫',axe:'番天印',halberd:'金蛟剪',bow:'五色神光',ice:'乾坤圈',bagua:'戊己杏黄旗',renwang:'紫绶仙衣',chitu:'风火轮',dayuan:'金睛兽',zixing:'墨麒麟',jueying:'五色神牛',dilu:'青鸾',zhuahuang:'白鹤'}
 export const CARDS_BY_TYPE=Object.fromEntries(Object.entries(CARDS).map(([type,base])=>[type,{...base,type,baseName:base.name,name:cardNames[type],image:`assets/cards/${type}.jpg`,thumb:`assets/cards/${type}-thumb.webp`,help:base.help}]))
-export const PLANNED_EQUIPMENT=[{type:'guding',name:'化血神刀',baseName:'古锭刀'},{type:'fan',name:'五火七禽扇',baseName:'朱雀羽扇'},{type:'silverlion',name:'莲花宝甲',baseName:'白银狮子'}]
+for(const [type,base]of Object.entries(EXPANSION_CARDS))CARDS_BY_TYPE[type]={...base,type,image:`assets/cards/${type}.jpg`,thumb:`assets/cards/${type}-thumb.webp`}
+export const PLANNED_EQUIPMENT=[]
+export const makeExpandedDeck=()=>expandedDeck(makeDeck)
 export function heroForBase(id){return PLAYABLE_HEROES.find(h=>h.engineId===id)||null}
 const aliases=[...PLAYABLE_HEROES.filter(h=>h.baseHero).map(h=>[HERO_BY_ID[h.baseHero].name,h.name]),...Object.values(CARDS_BY_TYPE).map(c=>[c.baseName,c.name]),...HEROES.filter(h=>h.baseHero).flatMap(h=>Object.entries(h.skillNames).filter(([id])=>SKILLS[id]).map(([id,n])=>[SKILLS[id][0],n])),['八卦','杏黄旗'],['青龙刀','打神鞭']]
 const replacements=new Map(aliases)
@@ -58,4 +61,4 @@ export function skillHelp(h,skill){
  return text+(h?.playable&&['jizhi','yingzi','jianxiong','tieji'].includes(skill)?' 有效条件满足时自动发动。':'')
 }
 export const ALLIANCE_NAMES={shu:'青盟',wei:'赤盟',wu:'金盟',qun:'玄盟'}
-export function manifest(){return {codeName:'众神斗法',visibility:'free-demo',rules:'classic-identity-5',heroes:HEROES,cards:CARDS_BY_TYPE,plannedEquipment:PLANNED_EQUIPMENT,deckSize:makeDeck().length}}
+export function manifest(){return {codeName:'众神斗法',visibility:'free-demo',rules:'classic-identity-5',heroes:HEROES,cards:CARDS_BY_TYPE,plannedEquipment:PLANNED_EQUIPMENT,deckSize:makeExpandedDeck().length}}

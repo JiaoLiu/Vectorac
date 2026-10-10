@@ -3,14 +3,14 @@ import assert from 'node:assert/strict'
 import {readFile,stat} from 'node:fs/promises'
 import {HEROES,PLAYABLE_HEROES,CARDS_BY_TYPE,PLANNED_EQUIPMENT,ALLIANCES,heroForBase,displayText} from '../.private/fengshen/theme.mjs'
 import {catalog,createGame,dispatch,playerView,restoreGame,allCards,THEME_VERSION} from '../.private/fengshen/engine.mjs'
-import {createGame as classicGame,restoreGame as classicRestore,hero as classicHero} from '../.vuepress/components/sanguo/engine.mjs'
-import {HERO_BY_ID,CARDS,makeDeck} from '../.vuepress/components/sanguo/catalog.mjs'
+import {createGame as classicGame,restoreGame as classicRestore,hero as classicHero} from '../.private/fengshen/core/engine.mjs'
+import {HERO_BY_ID,CARDS,makeDeck} from '../.private/fengshen/core/catalog.mjs'
 import {chooseAI} from '../.private/fengshen/engine.mjs'
 import {ART_PROMPTS} from '../.private/fengshen/art-prompts.mjs'
 
-test('40 unique portraits, 29 playable heroes; every enabled primitive exists',()=>{
-  assert.equal(HEROES.length,40);assert.equal(new Set(HEROES.map(h=>h.id)).size,40)
-  assert.equal(PLAYABLE_HEROES.length,29)
+test('52 unique portraits, 43 playable heroes; every enabled primitive exists',()=>{
+  assert.equal(HEROES.length,52);assert.equal(new Set(HEROES.map(h=>h.id)).size,52)
+  assert.equal(PLAYABLE_HEROES.length,43)
   for(const h of HEROES){if(h.playable){assert.ok(catalog.HERO_BY_ID[h.engineId]);assert.deepEqual(Object.keys(h.skillNames),catalog.HERO_BY_ID[h.engineId].skills)}else assert.throws(()=>createGame({heroId:h.id}))}
   assert.equal(HEROES.find(h=>h.baseHero==='xiaoqiao').name,'龙吉公主');assert.equal(HEROES.find(h=>h.baseHero==='xiaoqiao').sex,'female')
 })
@@ -22,20 +22,20 @@ test('theme and classic catalogs do not mutate each other',()=>{
   assert.equal(catalog.HERO_BY_ID.huangyueying.name,'金灵圣母')
 })
 test('deck physical identities and all equipment stats remain unchanged',()=>{
-  assert.equal(Object.keys(CARDS_BY_TYPE).length,32)
-  for(const [type,c] of Object.entries(CARDS_BY_TYPE)){assert.equal(c.range,CARDS[type].range);assert.equal(c.slot,CARDS[type].slot);assert.equal(c.category,CARDS[type].category)}
-  for(const h of PLAYABLE_HEROES){const s=createGame({heroId:h.id,seed:33});assert.deepEqual(allCards(s).sort((a,b)=>a.id.localeCompare(b.id)),makeDeck().sort((a,b)=>a.id.localeCompare(b.id)))}
+  assert.equal(Object.keys(CARDS_BY_TYPE).length,39)
+  for(const [type,c] of Object.entries(CARDS)){assert.equal(CARDS_BY_TYPE[type].range,c.range);assert.equal(CARDS_BY_TYPE[type].slot,c.slot);assert.equal(CARDS_BY_TYPE[type].category,c.category)}
+  for(const h of PLAYABLE_HEROES){const s=createGame({heroId:h.id,seed:33});assert.deepEqual(allCards(s).sort((a,b)=>a.id.localeCompare(b.id)),catalog.makeDeck().sort((a,b)=>a.id.localeCompare(b.id)))}
   for(const p of PLANNED_EQUIPMENT)assert.equal(CARDS_BY_TYPE[p.type],undefined)
 })
 test('lord support uses the mapped alliance, not Huang Yueying original Shu faction',()=>{
   const s=createGame({heroId:'jifa',role:'lord',seed:7})
-  s.deck=makeDeck();s.discard=[];s.processing=[];s.harvestPool=[];s.queue=[];s.pending=null;s.phase='play';s.current=0
+  s.deck=catalog.makeDeck();s.discard=[];s.processing=[];s.harvestPool=[];s.queue=[];s.pending=null;s.phase='play';s.current=0
   const ids=['liubei','huangyueying','zhangfei','zhaoyun','machao']
   for(const p of s.players){p.heroId=ids[p.seat];p.hp=p.maxHp=catalog.HERO_BY_ID[p.heroId].hp+(p.role==='lord'?1:0);p.hand=[];p.judgment=[];p.equip={weapon:null,armor:null,offenseHorse:null,defenseHorse:null};p.marks={sha:0}}
   const r=dispatch(s,{seat:0,type:'skill',skill:'jijiang',target:1})
   assert.ok(r.ok,r.error);assert.equal(r.state.pending.kind,'support');assert.equal(r.state.pending.actor,2)
   assert.deepEqual(r.state.pending.candidates,[2,3,4]);assert.equal(r.state.pending.candidates.includes(1),false)
-  assert.ok(restoreGame(r.state));assert.equal(allCards(r.state).length,108)
+  assert.ok(restoreGame(r.state));assert.equal(allCards(r.state).length,121)
 })
 test('save themes reject cross-loads and unsupported generals',()=>{
   const a=createGame({heroId:'yangjian',seed:5}),b=classicGame({seed:5})
@@ -59,13 +59,13 @@ test('180 seeded matches complete legally across every enabled character and rol
   const winners={lord:0,rebel:0,renegade:0}
   for(let seed=1;seed<=180;seed++){
     let s=createGame({heroId:PLAYABLE_HEROES[(seed-1)%PLAYABLE_HEROES.length].id,role:['lord','loyal','rebel','renegade','random'][seed%5],seed}),actions=0
-    while(!s.winner&&actions++<3500){const actor=s.pending?.actor??s.current,v=playerView(s,actor),a=chooseAI(v);assert.ok(a,`seed ${seed} actor ${actor}`);const r=dispatch(s,a);assert.ok(r.ok,`seed ${seed}: ${r.error} ${JSON.stringify(a)}`);s=r.state;if(actions%71===0){assert.equal(allCards(s).length,108);assert.ok(restoreGame(s))}}
-    assert.ok(s.winner,`seed ${seed} failed to finish`);winners[s.winner]++;assert.equal(allCards(s).length,108)
+    while(!s.winner&&actions++<3500){const actor=s.pending?.actor??s.current,v=playerView(s,actor),a=chooseAI(v);assert.ok(a,`seed ${seed} actor ${actor}`);const r=dispatch(s,a);assert.ok(r.ok,`seed ${seed}: ${r.error} ${JSON.stringify(a)}`);s=r.state;if(actions%71===0){assert.equal(allCards(s).length,121);assert.ok(restoreGame(s))}}
+    assert.ok(s.winner,`seed ${seed} failed to finish`);winners[s.winner]++;assert.equal(allCards(s).length,121)
   }
   console.log('Fengshen prototype simulations (not a balance result):',winners)
 })
-test('72 independent artwork prompts are complete and workspace assets exist',async()=>{
-  assert.equal(ART_PROMPTS.length,72);assert.equal(new Set(ART_PROMPTS.map(a=>a.kind+'/'+a.id)).size,72)
+test('91 independent artwork prompts are complete and workspace assets exist',async()=>{
+  assert.equal(ART_PROMPTS.length,91);assert.equal(new Set(ART_PROMPTS.map(a=>a.kind+'/'+a.id)).size,91)
   for(const a of ART_PROMPTS){assert.ok(a.prompt.includes('no watermark'));const s=await stat(new URL(`../.private/fengshen/assets/${a.kind}/${a.id}.jpg`,import.meta.url));assert.ok(s.size>1000)}
   for(const h of HEROES){const full=await stat(new URL(`../.private/fengshen/${h.image}`,import.meta.url)),thumb=await stat(new URL(`../.private/fengshen/${h.thumbnail}`,import.meta.url));assert.ok(thumb.size>1000&&thumb.size<full.size)}
 })

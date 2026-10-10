@@ -16,18 +16,18 @@
 .fs-playing .fs-arena{position:relative;display:block;flex:1;min-height:160px;width:min(1240px,100%);padding:0;overflow:hidden;background:radial-gradient(ellipse at 50% 57%,#47625a55 0%,#243e3c88 40%,#142a2b 80%),repeating-linear-gradient(75deg,#a1ad7830 0px,#a1ad7810 1px,transparent 1px,transparent 8px);box-shadow:inset 0 0 75px #081d2499,inset 0 0 0 1px #b2a17a30;border-radius:0 0 14px 14px}
 .fs-playing .fs-arena:before{content:'';position:absolute;inset:24px 90px;border:1px solid #c3af7920;border-radius:50%;pointer-events:none;box-shadow:0 0 0 13px #ac98650a,inset 0 0 0 11px #a4b17708}
 .fs-playing .fs-players{display:contents}
-.fs-playing .fs-player{position:absolute;width:112px;border:1px solid #abb49c60;border-radius:6px;background:#172c2c;box-shadow:0 5px 16px #00121c88;overflow:visible}
+.fs-playing .fs-player{position:absolute;width:106px;border:1px solid #abb49c60;border-radius:6px;background:#172c2c;box-shadow:0 5px 16px #00121c88;overflow:visible}
 .fs-playing .fs-player[data-player="1"]{left:16px;bottom:15%}
 .fs-playing .fs-player[data-player="2"]{left:28%;top:15px;transform:translateX(-50%)}
 .fs-playing .fs-player[data-player="3"]{right:28%;top:15px;transform:translateX(50%)}
 .fs-playing .fs-player[data-player="4"]{right:16px;bottom:15%}
-.fs-playing .fs-player-main{height:148px;min-height:0;display:block;position:relative;overflow:hidden;border-radius:5px 5px 0 0;padding:0;width:100%}
+.fs-playing .fs-player-main{height:156px;min-height:0;display:block;position:relative;overflow:hidden;border-radius:5px 5px 0 0;padding:0;width:100%}
 .fs-playing .fs-player-main>.fs-portrait{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 14%;border:0;border-radius:0}
 .fs-portrait-shade{position:absolute;inset:0;background:linear-gradient(0deg,#0b2125fa 0%,#0b2125d0 24%,transparent 68%);pointer-events:none}
 .fs-playing .fs-player-main>.fs-identity{position:absolute;right:-1px;top:-1px;z-index:3;min-height:24px;min-width:31px;border-radius:0 4px 0 4px;font-size:10px}
 .fs-seat{position:absolute;left:4px;top:6px;font-size:7px;color:#f6e8bd;text-shadow:0 1px 4px #000;background:#091e2777;padding:2px 3px;border-radius:3px}
 .fs-playing .fs-player-info{position:absolute;left:6px;right:5px;bottom:5px;display:flex;flex-direction:column;gap:4px;text-align:center;align-items:center}
-.fs-playing .fs-player-info>strong{font:700 18px "Songti SC",serif;letter-spacing:1px;color:#f5e5c4;text-shadow:0 1px 4px #000}
+.fs-playing .fs-player-info>strong{font:700 18px "Ma Shan Zheng","Xingkai SC","Kaiti SC","KaiTi","Songti SC",serif;letter-spacing:1px;color:#f5e5c4;text-shadow:0 1px 4px #000}
 .fs-playing .fs-player-info .fs-hp{justify-content:center;font-size:9px;gap:2px;color:#739387}
 .fs-playing .fs-hp .full{color:#cbd989}.fs-playing .fs-player-info>span:last-child{font-size:8px;color:#d8ddc7}
 .fs-playing .fs-opponent-equipment{height:26px;padding:3px 3px;gap:3px;border-top:1px solid #768d7250;justify-content:center}
@@ -96,6 +96,17 @@
 @media(max-height:700px) and (orientation:portrait){.fs-center-choice{height:min(215px,calc(100% - 10px))}}
 @media(max-height:559px) and (orientation:landscape){.fs-center-choice{height:calc(100% - 10px)}}
 @media(max-width:359px) and (orientation:portrait){.fs-playing .fs-player[data-player="2"]{left:34%}.fs-playing .fs-player[data-player="3"]{right:34%}}
+/* 牌桌「菜单」收纳面板：两列带图标的大按钮，开关项右侧亮出当前状态。 */
+.fs-menu-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.fs-menu-item{display:flex;align-items:center;gap:9px;min-height:46px;padding:8px 11px;border:1px solid #8aa19833;border-radius:7px;background:#1c2f33;color:#e3d9bd;font-size:12px;text-align:left}
+.fs-menu-item>svg{width:19px;height:19px;flex:none}
+.fs-menu-item>span{flex:1}
+.fs-menu-item>small{color:#93a8a1;font-size:10px}
+.fs-menu-item.is-on{border-color:#ceb66588;color:#f0d89a}
+.fs-menu-item.is-on>small{color:#ceb665}
+/* 多人出牌整排展示（基准，横竖屏的左右放宽在各媒体块里）。 */
+.fs-playing .fs-exchange{flex-wrap:wrap;justify-content:center;align-content:center;row-gap:4px}
+.fs-playing .fs-table-center.fs-exchange-view{left:18%;right:18%}
 @media(max-height:559px) and (orientation:landscape){
   .fs-counter-choice{display:grid;grid-template-columns:minmax(140px,1fr) minmax(90px,1fr);grid-template-rows:auto minmax(0,1fr)}
   .fs-counter-choice>header{grid-column:1/-1;grid-row:1}

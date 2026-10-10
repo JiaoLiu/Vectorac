@@ -3,19 +3,19 @@ import assert from 'node:assert/strict'
 import {readFile,stat} from 'node:fs/promises'
 import {spawnSync} from 'node:child_process'
 import {createGame,dispatch,playerView,restoreGame,allCards,catalog,THEME_VERSION} from '../.private/fengshen/engine.mjs'
-import {createEngine} from '../.vuepress/components/sanguo/engine.mjs'
-import {makeDeck} from '../.vuepress/components/sanguo/catalog.mjs'
+import {createEngine} from '../.private/fengshen/core/engine.mjs'
+import {makeDeck} from '../.private/fengshen/core/catalog.mjs'
 import {hand,equipment,judgeTop} from './fixtures/sanguo.mjs'
 import {renderBattle,renderCenter} from '../.private/fengshen/table.mjs'
 import {AUDIO_ENTRIES,VOICES} from '../.private/fengshen/audio-manifest.mjs'
 import {CardVoice,cuesForAction} from '../.private/fengshen/voice.mjs'
 
 function fixture(heroId='yangjian',role='lord',current=0){
-  const s=createGame({heroId,role,seed:17});s.deck=makeDeck();s.discard=[];s.processing=[];s.harvestPool=[];s.queue=[];s.pending=null;s.phase='play';s.current=current;s.logs=[];s.lastPlayed=null;s.lastEvent=null
+  const s=createGame({heroId,role,seed:17});s.deck=catalog.makeDeck();s.discard=[];s.processing=[];s.harvestPool=[];s.queue=[];s.pending=null;s.phase='play';s.current=current;s.logs=[];s.lastPlayed=null;s.lastEvent=null
   for(const p of s.players){p.hand=[];p.equip={weapon:null,armor:null,offenseHorse:null,defenseHorse:null};p.judgment=[];p.marks={sha:0,rende:0};p.hp=p.maxHp;p.alive=true}
   return s
 }
-const step=(s,a)=>{const r=dispatch(s,{seat:s.pending?.actor??s.current,...a});assert.ok(r.ok,r.error);assert.equal(allCards(r.state).length,108);assert.equal(new Set(allCards(r.state).map(c=>c.id)).size,108);return r.state}
+const step=(s,a)=>{const r=dispatch(s,{seat:s.pending?.actor??s.current,...a});assert.ok(r.ok,r.error);assert.equal(allCards(r.state).length,121);assert.equal(new Set(allCards(r.state).map(c=>c.id)).size,121);return r.state}
 const play=(s,c,target)=>step(s,{type:'play',as:c.type,ids:[c.id],targets:target==null?[]:[target]})
 const ui=s=>({state:s,paused:false,selected:[],targets:[],skill:null,choiceIndex:null,choiceZone:'hand',pace:650,voice:{enabled:true},header:()=>'<header></header>',targetable:()=>[],matching:()=>[],currentAs:()=>null,equipment:()=>'',skills:()=>'',won:()=>false,pendingText:()=>''})
 
@@ -49,7 +49,7 @@ test('counter places the spell, target and own response cards in the center; cha
 test('played Sha and actual Shan remain illustrated side by side, with responder attribution',()=>{
   let s=fixture('yangjian','lord',1),[sha]=hand(s,1,'sha'),[shan]=hand(s,0,'shan')
   s=play(s,sha,0);s=step(s,{type:'respond',ids:[shan.id]})
-  const center=renderCenter(ui(s),playerView(s,0));assert.ok(center.includes('data-type="sha"'));assert.ok(center.includes('data-type="shan"'));assert.ok(center.includes('杨戬（你） · 响应'));assert.equal((center.match(/fs-card-design/g)||[]).length,2)
+  const center=renderCenter(ui(s),playerView(s,0));assert.ok(center.includes('data-type="sha"'));assert.ok(center.includes('data-type="shan"'));assert.ok(center.includes('杨戬（你）'));assert.equal(s.lastResponse.source,0);assert.equal(s.lastResponse.as,'shan');assert.equal((center.match(/fs-card-design/g)||[]).length,2)
 })
 test('converted Sha uses the same illustrated card UI without changing the physical card',()=>{
   let s=fixture(),[shan]=hand(s,0,'shan');hand(s,1,'shan');s=step(s,{type:'play',as:'sha',ids:[shan.id],targets:[1]})
@@ -72,7 +72,7 @@ test('Jianxiong and Tieji are automatic in this theme, without changing classic 
 })
 test('old optional Jizhi save restores, auto-confirms, and retains all physical cards',()=>{
   const legacy=createEngine({...catalog,automaticSkills:[]});let s=fixture('jinling');const [draw]=hand(s,0,'draw');const r=legacy.dispatch(s,{seat:0,type:'play',as:'draw',ids:[draw.id],targets:[]});assert.ok(r.ok)
-  assert.equal(r.state.pending.skill,'jizhi');const restored=restoreGame(r.state);assert.ok(restored);assert.equal(restored.players[0].hand.length,3);assert.equal(restored.pending,null);assert.equal(restored.theme,THEME_VERSION);assert.equal(allCards(restored).length,108)
+  assert.equal(r.state.pending.skill,'jizhi');const restored=restoreGame(r.state);assert.ok(restored);assert.equal(restored.players[0].hand.length,3);assert.equal(restored.pending,null);assert.equal(restored.theme,THEME_VERSION);assert.equal(allCards(restored).length,121)
 })
 test('dead identities are revealed and own identity persists through death and endgame',()=>{
   let s=fixture('yangjian','loyal');const dead=s.players[1];dead.alive=false;dead.hp=0
@@ -103,7 +103,7 @@ test('blocked autoplay and disabling audio do not spin or block gameplay',async(
   voice.setEnabled(false);assert.equal(voice.speak('card-shan','female'),false);voice.destroy()
 })
 test('all generated MP3s are present and decodable, with verified male/female voices',async()=>{
-  const manifest=JSON.parse(await readFile(new URL('../.private/fengshen/assets/audio/manifest.json',import.meta.url),'utf8'));assert.deepEqual(manifest.voices,VOICES);assert.equal(manifest.files.length,AUDIO_ENTRIES.length*2);assert.equal(manifest.files.length,172)
+  const manifest=JSON.parse(await readFile(new URL('../.private/fengshen/assets/audio/manifest.json',import.meta.url),'utf8'));assert.deepEqual(manifest.voices,VOICES);assert.equal(manifest.files.length,AUDIO_ENTRIES.length*2);assert.equal(manifest.files.length,234)
   for(const file of manifest.files){
     const path=new URL('../.private/fengshen/assets/audio/'+file,import.meta.url);assert.ok((await stat(path)).size>1000)
     const result=spawnSync('/opt/homebrew/bin/ffprobe',['-v','error','-show_entries','format=duration','-of','default=noprint_wrappers=1:nokey=1',path.pathname],{encoding:'utf8'});assert.equal(result.status,0,file)

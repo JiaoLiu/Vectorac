@@ -20,8 +20,8 @@
 .fs-target-lines>.fs-beam-glow{stroke:#ffcf6e;stroke-width:5;opacity:.16}
 .fs-target-lines>.fs-beam-core{stroke-width:1.6}
 .fs-player-delays,.fs-own-delays{position:absolute!important;top:3px!important;bottom:auto!important;left:3px!important;right:auto!important;z-index:7;display:flex;gap:3px;max-width:none!important}
-.fs-player-delays .fs-delay-mark,.fs-own-delays .fs-delay-mark{display:flex;align-items:center;justify-content:center;width:23px;height:23px;padding:2px;border-radius:5px;border:1px solid #f0cf82;background:#402e22ee;color:#ffdfa0;box-shadow:0 2px 5px #0008}
-.fs-delay-mark>svg{width:18px;height:18px}.fs-delay-mark[data-delay=lightning]{background:#253557;color:#bddefc;border-color:#b9d8ff}
+.fs-player-delays .fs-delay-mark,.fs-own-delays .fs-delay-mark{display:flex;align-items:center;justify-content:center;width:24px;height:24px;padding:0;border-radius:6px;border:0;background:transparent;color:#ffdfa0;box-shadow:0 2px 6px #000a}
+.fs-delay-mark>svg{width:24px;height:24px;display:block;border-radius:6px}.fs-delay-mark>i{font-style:normal;font:800 13px/1 "Ma Shan Zheng","Xingkai SC","Kaiti SC","Songti SC",serif;display:grid;place-items:center;width:24px;height:24px;border-radius:6px;border:1px solid #f0cf82;background:#402e22ee}.fs-delay-mark[data-delay=lightning]>i{background:#253557;color:#bddefc;border-color:#b9d8ff}
 .fs-judge-stamp{position:absolute;right:-10px;bottom:7px;width:44px;height:44px;display:grid;place-items:center;border:3px solid currentColor;border-radius:50%;transform:rotate(-12deg);background:#f6eddbed;font:800 35px/1 system-ui;box-shadow:0 2px 8px #0007;z-index:8;animation:fs-stamp .2s .5s backwards}
 .fs-judge-stamp.hit{color:#a8392e}.fs-judge-stamp.miss{color:#366d61}.fs-flip-card{position:relative}
 @keyframes fs-stamp{from{opacity:0;scale:1.5}to{opacity:1;scale:1}}

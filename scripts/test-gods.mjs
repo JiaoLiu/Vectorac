@@ -6,20 +6,20 @@ import {catalog,createGame,createAssignedGame,dispatch,playerView,restoreGame,al
 import {createSetup,dispatchSetup,restoreSetup} from '../.private/fengshen/setup.mjs'
 import {cuesForAction} from '../.private/fengshen/voice.mjs'
 import {AUDIO_ENTRIES,skillAudioKey} from '../.private/fengshen/audio-manifest.mjs'
-import {HEROES as CLASSIC,SKILLS,makeDeck} from '../.vuepress/components/sanguo/catalog.mjs'
-import {createGame as classicGame,playerView as classicView} from '../.vuepress/components/sanguo/engine.mjs'
-import {chooseAI as classicAI} from '../.vuepress/components/sanguo/ai.mjs'
+import {HEROES as CLASSIC,SKILLS,makeDeck} from '../.private/fengshen/core/catalog.mjs'
+import {createGame as classicGame,playerView as classicView} from '../.private/fengshen/core/engine.mjs'
+import {chooseAI as classicAI} from '../.private/fengshen/core/ai.mjs'
 const roles=['lord','loyal','rebel','rebel','renegade']
 function fixture(id){
  const s=createAssignedGame({heroIds:[id,...GODS.filter(h=>h.id!==id).slice(0,4).map(h=>h.id)],roles,seed:17})
- s.deck=makeDeck();s.discard=[];s.processing=[];s.harvestPool=[];s.queue=[];s.pending=null;s.phase='play';s.current=0;s.logs=[];s.lastPlayed=null;s.lastEvent=null
+ s.deck=catalog.makeDeck();s.discard=[];s.processing=[];s.harvestPool=[];s.queue=[];s.pending=null;s.phase='play';s.current=0;s.logs=[];s.lastPlayed=null;s.lastEvent=null
  for(const p of s.players){p.hand=[];p.judgment=[];p.equip={weapon:null,armor:null,offenseHorse:null,defenseHorse:null};p.marks={sha:0,rende:0};p.hp=p.maxHp}
  return s
 }
 function give(s,seat,type){const i=s.deck.findIndex(c=>c.type===type);assert.ok(i>=0);const [c]=s.deck.splice(i,1);s.players[seat].hand.push(c);return c}
 function act(s,a){const r=dispatch(s,{seat:s.pending?.actor??s.current,revision:s.revision,promptId:s.pending?.id,...a});assert.ok(r.ok,r.error);return r.state}
 test('20 new independent IDs with unique skill sets; classic catalog untouched',()=>{
- assert.equal(GODS.length,20);assert.equal(PLAYABLE_HEROES.length,29);assert.equal(HEROES.length,40)
+ assert.equal(GODS.length,20);assert.equal(PLAYABLE_HEROES.length,43);assert.equal(HEROES.length,52)
  assert.equal(new Set(GODS.map(h=>Object.keys(h.skillNames).sort().join('|'))).size,20)
  for(const h of GODS){assert.equal(heroForBase(h.id),h);assert.equal(h.engineId,h.id);assert.equal(catalog.HERO_BY_ID[h.id].faction,ALLIANCES[h.faction]);for(const s of Object.keys(h.skillNames))assert.ok(SKILLS[s]);assert.ok(!CLASSIC.some(x=>x.id===h.id))}
 })
@@ -27,8 +27,8 @@ test('every new god can be assigned, restored and run through legal AI turns',()
  for(let seed=0;seed<100;seed++){
   let s=createGame({heroId:GODS[seed%20].id,seed:seed+200,role:['lord','loyal','rebel','renegade'][seed%4]})
   let steps=0
-  while(!s.winner&&steps++<5000){const seat=s.pending?.actor??s.current;const v=playerView(s,seat);for(const p of v.players)if(p.seat!==seat)assert.equal(p.hand.length,0);const a=chooseAI(v);assert.ok(a,`seed ${seed}`);s=act(s,a);if(steps%100===0){assert.ok(restoreGame(s));assert.equal(allCards(s).length,108)}}
-  assert.ok(s.winner,`seed ${seed} stalled`);assert.equal(allCards(s).length,108)
+  while(!s.winner&&steps++<5000){const seat=s.pending?.actor??s.current;const v=playerView(s,seat);for(const p of v.players)if(p.seat!==seat)assert.equal(p.hand.length,0);const a=chooseAI(v);assert.ok(a,`seed ${seed}`);s=act(s,a);if(steps%100===0){assert.ok(restoreGame(s));assert.equal(allCards(s).length,121)}}
+  assert.ok(s.winner,`seed ${seed} stalled`);assert.equal(allCards(s).length,121)
  }
 })
 test('Sun Wukong converts Dodge to Slash and can use Slash repeatedly',()=>{
@@ -51,7 +51,7 @@ test('Hades health-for-cards and Nuwa gifting/healing actually resolve',()=>{
 })
 test('god-specific names and every sex-specific audio key are independent',()=>{
  for(const h of GODS)for(const [skill,name]of Object.entries(h.skillNames)){assert.equal(skillName(h.id,skill),name);assert.ok(skillHelp(h,skill));assert.ok(AUDIO_ENTRIES.some(e=>e.key===skillAudioKey(h.id,skill)&&e.text===name))}
- assert.equal(AUDIO_ENTRIES.length,86);assert.notEqual(skillAudioKey('apollo','jizhi'),skillAudioKey('odin','jizhi'))
+ assert.equal(AUDIO_ENTRIES.length,117);assert.notEqual(skillAudioKey('apollo','jizhi'),skillAudioKey('odin','jizhi'))
 })
 test('old two-candidate drafts remain loadable without rerolling identity or offers',()=>{
  let setup=createSetup({seed:2});setup.offers[setup.lord]=['jifa','dixin','yunzhongzi','nezha','yangjian'];setup.candidateCount=2

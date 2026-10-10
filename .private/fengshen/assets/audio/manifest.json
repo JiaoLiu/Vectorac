@@ -134,6 +134,34 @@
       "text": "白鹤"
     },
     {
+      "key": "card-guding",
+      "text": "化血神刀"
+    },
+    {
+      "key": "card-fan",
+      "text": "五火七禽扇"
+    },
+    {
+      "key": "card-silverlion",
+      "text": "莲花宝甲"
+    },
+    {
+      "key": "card-vine",
+      "text": "青莲宝色旗"
+    },
+    {
+      "key": "card-firesha",
+      "text": "炎杀"
+    },
+    {
+      "key": "card-thundersha",
+      "text": "雷杀"
+    },
+    {
+      "key": "card-wine",
+      "text": "琼浆"
+    },
+    {
       "key": "skill-rende",
       "text": "仁君"
     },
@@ -186,12 +214,20 @@
       "text": "护道"
     },
     {
+      "key": "skill-qixi",
+      "text": "落宝"
+    },
+    {
       "key": "skill-jizhi",
       "text": "仙机"
     },
     {
       "key": "skill-qicai",
       "text": "通法"
+    },
+    {
+      "key": "skill-keji",
+      "text": "藏宝"
     },
     {
       "key": "skill-sunwukong-paoxiao",
@@ -348,6 +384,94 @@
     {
       "key": "skill-tsukuyomi-qicai",
       "text": "夜域"
+    },
+    {
+      "key": "skill-huangfeihu-wushuang",
+      "text": "武成"
+    },
+    {
+      "key": "skill-jinzha-wusheng",
+      "text": "金莲"
+    },
+    {
+      "key": "skill-lijing-keji",
+      "text": "镇塔"
+    },
+    {
+      "key": "skill-lijing-jianxiong",
+      "text": "收镇"
+    },
+    {
+      "key": "skill-dengchanyu-qingguo",
+      "text": "飞石"
+    },
+    {
+      "key": "skill-dengchanyu-longdan",
+      "text": "巧击"
+    },
+    {
+      "key": "skill-huangtianhua-longdan",
+      "text": "攒心"
+    },
+    {
+      "key": "skill-huangtianhua-wusheng",
+      "text": "玉麟"
+    },
+    {
+      "key": "skill-weihu-mashu",
+      "text": "护道"
+    },
+    {
+      "key": "skill-weihu-wushuang",
+      "text": "降魔"
+    },
+    {
+      "key": "skill-kongxuan-qixi",
+      "text": "五色摄宝"
+    },
+    {
+      "key": "skill-kongxuan-qicai",
+      "text": "孔雀明光"
+    },
+    {
+      "key": "skill-luya-qixi",
+      "text": "斩仙"
+    },
+    {
+      "key": "skill-luya-tieji",
+      "text": "钉魂"
+    },
+    {
+      "key": "skill-qiongxiao-qingguo",
+      "text": "云隐"
+    },
+    {
+      "key": "skill-qiongxiao-jizhi",
+      "text": "云机"
+    },
+    {
+      "key": "skill-bixiao-qixi",
+      "text": "剪宝"
+    },
+    {
+      "key": "skill-bixiao-yingzi",
+      "text": "碧云"
+    },
+    {
+      "key": "skill-zhenglun-qingguo",
+      "text": "玄气"
+    },
+    {
+      "key": "skill-zhenglun-keji",
+      "text": "镇魂"
+    },
+    {
+      "key": "skill-chenqi-luoyi",
+      "text": "黄气"
+    },
+    {
+      "key": "skill-chenqi-wushuang",
+      "text": "摄魄"
     }
   ],
   "files": [
@@ -383,6 +507,13 @@
     "male/card-jueying.mp3",
     "male/card-dilu.mp3",
     "male/card-zhuahuang.mp3",
+    "male/card-guding.mp3",
+    "male/card-fan.mp3",
+    "male/card-silverlion.mp3",
+    "male/card-vine.mp3",
+    "male/card-firesha.mp3",
+    "male/card-thundersha.mp3",
+    "male/card-wine.mp3",
     "male/skill-rende.mp3",
     "male/skill-jijiang.mp3",
     "male/skill-paoxiao.mp3",
@@ -396,8 +527,10 @@
     "male/skill-fanjian.mp3",
     "male/skill-zhiheng.mp3",
     "male/skill-jiuyuan.mp3",
+    "male/skill-qixi.mp3",
     "male/skill-jizhi.mp3",
     "male/skill-qicai.mp3",
+    "male/skill-keji.mp3",
     "male/skill-sunwukong-paoxiao.mp3",
     "male/skill-sunwukong-longdan.mp3",
     "male/skill-nuwa-rende.mp3",
@@ -437,6 +570,28 @@
     "male/skill-susanoo-luoyi.mp3",
     "male/skill-tsukuyomi-zhiheng.mp3",
     "male/skill-tsukuyomi-qicai.mp3",
+    "male/skill-huangfeihu-wushuang.mp3",
+    "male/skill-jinzha-wusheng.mp3",
+    "male/skill-lijing-keji.mp3",
+    "male/skill-lijing-jianxiong.mp3",
+    "male/skill-dengchanyu-qingguo.mp3",
+    "male/skill-dengchanyu-longdan.mp3",
+    "male/skill-huangtianhua-longdan.mp3",
+    "male/skill-huangtianhua-wusheng.mp3",
+    "male/skill-weihu-mashu.mp3",
+    "male/skill-weihu-wushuang.mp3",
+    "male/skill-kongxuan-qixi.mp3",
+    "male/skill-kongxuan-qicai.mp3",
+    "male/skill-luya-qixi.mp3",
+    "male/skill-luya-tieji.mp3",
+    "male/skill-qiongxiao-qingguo.mp3",
+    "male/skill-qiongxiao-jizhi.mp3",
+    "male/skill-bixiao-qixi.mp3",
+    "male/skill-bixiao-yingzi.mp3",
+    "male/skill-zhenglun-qingguo.mp3",
+    "male/skill-zhenglun-keji.mp3",
+    "male/skill-chenqi-luoyi.mp3",
+    "male/skill-chenqi-wushuang.mp3",
     "female/card-sha.mp3",
     "female/card-shan.mp3",
     "female/card-tao.mp3",
@@ -469,6 +624,13 @@
     "female/card-jueying.mp3",
     "female/card-dilu.mp3",
     "female/card-zhuahuang.mp3",
+    "female/card-guding.mp3",
+    "female/card-fan.mp3",
+    "female/card-silverlion.mp3",
+    "female/card-vine.mp3",
+    "female/card-firesha.mp3",
+    "female/card-thundersha.mp3",
+    "female/card-wine.mp3",
     "female/skill-rende.mp3",
     "female/skill-jijiang.mp3",
     "female/skill-paoxiao.mp3",
@@ -482,8 +644,10 @@
     "female/skill-fanjian.mp3",
     "female/skill-zhiheng.mp3",
     "female/skill-jiuyuan.mp3",
+    "female/skill-qixi.mp3",
     "female/skill-jizhi.mp3",
     "female/skill-qicai.mp3",
+    "female/skill-keji.mp3",
     "female/skill-sunwukong-paoxiao.mp3",
     "female/skill-sunwukong-longdan.mp3",
     "female/skill-nuwa-rende.mp3",
@@ -522,6 +686,28 @@
     "female/skill-susanoo-wusheng.mp3",
     "female/skill-susanoo-luoyi.mp3",
     "female/skill-tsukuyomi-zhiheng.mp3",
-    "female/skill-tsukuyomi-qicai.mp3"
+    "female/skill-tsukuyomi-qicai.mp3",
+    "female/skill-huangfeihu-wushuang.mp3",
+    "female/skill-jinzha-wusheng.mp3",
+    "female/skill-lijing-keji.mp3",
+    "female/skill-lijing-jianxiong.mp3",
+    "female/skill-dengchanyu-qingguo.mp3",
+    "female/skill-dengchanyu-longdan.mp3",
+    "female/skill-huangtianhua-longdan.mp3",
+    "female/skill-huangtianhua-wusheng.mp3",
+    "female/skill-weihu-mashu.mp3",
+    "female/skill-weihu-wushuang.mp3",
+    "female/skill-kongxuan-qixi.mp3",
+    "female/skill-kongxuan-qicai.mp3",
+    "female/skill-luya-qixi.mp3",
+    "female/skill-luya-tieji.mp3",
+    "female/skill-qiongxiao-qingguo.mp3",
+    "female/skill-qiongxiao-jizhi.mp3",
+    "female/skill-bixiao-qixi.mp3",
+    "female/skill-bixiao-yingzi.mp3",
+    "female/skill-zhenglun-qingguo.mp3",
+    "female/skill-zhenglun-keji.mp3",
+    "female/skill-chenqi-luoyi.mp3",
+    "female/skill-chenqi-wushuang.mp3"
   ]
 }

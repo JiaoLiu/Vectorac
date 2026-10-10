@@ -149,3 +149,8 @@
  .fs-playing .fs-table-center{display:none}
  .fs-judgment-reveal{flex-flow:row wrap;gap:3px 9px;padding:5px;justify-content:center}.fs-judgment-reveal header{width:100%;font-size:11px}.fs-flip-card{width:51px;height:73px}.fs-judgment-reveal>strong{font-size:10px;max-width:170px}.fs-judgment-reveal>small{width:100%;font-size:8px}.fs-flip-card .fs-clean-card>strong{font-size:10px;left:16px;height:24px}.fs-flip-card .fs-clean-card>img{top:30px;height:calc(100% - 30px)}.fs-flip-card .fs-card-purpose{display:none}.fs-flip-card .fs-rank{font-size:10px!important}.fs-flip-card .fs-rank i{font-size:8px!important}
 }
+/* 手牌卡面（英雄杀式）：角落点数花色、插画居中、书法牌名沉底实底条，三者分区不遮挡。
+   选择器带 .fs-hand-card 提高优先级，压过 card-ui/mobile-table 的通用卡面规则。 */
+.fs-playing .fs-hand .fs-hand-card .fs-card-design>img{top:36px;height:72px;opacity:.92}
+.fs-playing .fs-hand .fs-hand-card .fs-card-design>strong{top:auto;bottom:4px;left:4px;right:4px;height:32px;display:flex;align-items:center;justify-content:center;font:700 min(var(--title-size),30px)/1.1 "Ma Shan Zheng","Xingkai SC","Kaiti SC","KaiTi","Songti SC",serif;color:var(--ink);text-shadow:0 1px 2px #fffa}
+.fs-playing .fs-hand .fs-hand-card .fs-card-design>.fs-rank{font-family:Georgia,"Songti SC",serif}

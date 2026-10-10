@@ -1,5 +1,5 @@
 import {HEROES,HERO_BY_THEME_ID,PLAYABLE_HEROES,FACTIONS,ALLIANCES,ALLIANCE_NAMES,CARDS_BY_TYPE,PLANNED_EQUIPMENT,heroForBase,displayText,skillName,skillHelp} from './theme.mjs'
-import {SKILLS,ROLES,SUITS,isRed,rankName,makeDeck} from '../../.vuepress/components/sanguo/catalog.mjs'
+import {SKILLS,ROLES,SUITS,isRed,rankName,makeDeck} from './core/catalog.mjs'
 import {createGame,dispatch,playerView,restoreGame,THEME_VERSION,catalog} from './engine.mjs'
 import {chooseAI} from './engine.mjs'
 import './style.css'
@@ -9,14 +9,14 @@ import './combat.css'
 import './draw.css'
 import './card-ui.css'
 import './toolbar.css'
-import {renderToolbar,toolButton} from './toolbar.mjs'
+import {renderToolbar,renderMenu} from './toolbar.mjs'
 import './mobile-table.css'
 import './arena-table.css'
 import {tutorialEnabled,targetLinks} from './table-visuals.mjs'
 import {createSetup,dispatchSetup,setupView,chooseSetupAI,restoreSession} from './setup.mjs'
 import {renderHome,renderSetup,heroGallery} from './setup-ui.mjs'
 import {CardVoice,cuesForAction} from './voice.mjs'
-import {renderBattle,renderOpponent,renderControls,delayIcons} from './table.mjs'
+import {renderBattle,renderOpponent,renderControls} from './table.mjs'
 import {esc,display,portrait,hp,cardFace,scaleCards} from './presentation.mjs'
 import {combatContext,damageCues,collateralSelection} from './combat.mjs'
 import {layoutHand} from './hand.mjs'
@@ -33,6 +33,13 @@ const prewarmTableArt=()=>{if(prewarmed.length||typeof Image==='undefined')retur
 // 触屏设备上补一块隐形垫层让文档永远可滚；用户上滑即可把导航栏推上去，收起后 visualViewport 触发重测铺满。
 let scrollSpacer=null
 const syncScrollSpacer=()=>{try{if(!matchMedia('(pointer: coarse)').matches)return}catch{return}document.documentElement.classList.add('fs-scrollable');document.body.classList.add('fs-scrollable');if(!scrollSpacer){scrollSpacer=document.createElement('div');scrollSpacer.className='fs-scroll-spacer';scrollSpacer.setAttribute('aria-hidden','true');document.body.append(scrollSpacer)}scrollSpacer.style.height=(innerHeight+120)+'px'}
+// 增量修补（morph）：按位对齐新旧子树，只更新变化的节点与属性，保留未变化
+// 节点的元素身份——img 不销毁重解码、滚动位置与 CSS 动画不中断。此前每次
+// 操作都 innerHTML 整体替换，iOS 上整棵子树销毁后分帧重绘，表现为一选牌全桌闪。
+const patchAttrs=(a,b)=>{for(const name of a.getAttributeNames())if(!b.hasAttribute(name))a.removeAttribute(name);for(const {name,value}of b.attributes)if(a.getAttribute(name)!==value)a.setAttribute(name,value)}
+const patchNode=(a,b)=>{if(a.nodeType!==b.nodeType||a.nodeType===1&&a.tagName!==b.tagName){a.replaceWith(b);return}if(a.nodeType===3){if(a.data!==b.data)a.data=b.data;return}if(a.nodeType!==1)return;patchAttrs(a,b);patchChildren(a,b)}
+const patchChildren=(a,b)=>{const an=[...a.childNodes],bn=[...b.childNodes];for(let i=0;i<bn.length;i++)an[i]?patchNode(an[i],bn[i]):a.append(bn[i]);for(let i=bn.length;i<an.length;i++)an[i].remove()}
+const morph=(host,html)=>{if(!host.firstChild){host.innerHTML=html;return}const tpl=document.createElement('template');tpl.innerHTML=html;patchChildren(host,tpl.content)}
 const equal=(a,b)=>a.length===b.length&&a.every(id=>b.includes(id))
 const load=(key,fallback)=>{try{return JSON.parse(localStorage.getItem(key))??fallback}catch{return fallback}}
 const store=(key,v)=>{try{localStorage.setItem(key,JSON.stringify(v))}catch{}}
@@ -98,7 +105,6 @@ export class FengshenUI {
   decorateBattle(){
     if(!this.state||this.lobby||this.setup)return
     const v=playerView(this.state,0),battle=combatContext(v),anchor=seat=>this.root.querySelector(seat===0?'.fs-own-hero>button':`[data-player="${seat}"] .fs-player-main`)
-    const ownDelay=this.root.querySelector('.fs-own-delays');if(ownDelay)ownDelay.innerHTML=delayIcons(v.players[0],v)
     this.root.querySelectorAll('[data-combat-role]').forEach(e=>{e.removeAttribute('data-combat-role');e.querySelector('.fs-combat-tag')?.remove()})
     this.root.querySelectorAll('.fs-hurt').forEach(e=>{e.classList.remove('fs-hurt');e.querySelector('.fs-damage-number')?.remove()})
     if(battle&&['attack','command','duel','aoe'].includes(battle.kind))for(const [seat,role]of [[battle.source,'攻击者'],[battle.target,'受击者']]){const e=anchor(seat);if(e)e.dataset.combatRole=role}
@@ -186,6 +192,7 @@ export class FengshenUI {
     this.voice.unlock()
     if(!this.lobby&&action!=='music')this.music.unlock()
     if(action==='help'){this.hints=!this.hints;this.savePreferences();this.render();return}
+    if(action==='menu'){this.modal={kind:'menu'};this.render();return}
     if(action==='music'){this.music.setEnabled(!this.music.enabled);this.savePreferences();this.render();return}
     if(action==='screen'){this.toggleScreen();return}
     if(action==='auto'){this.auto=!this.auto;this.reset();this.clock.key=null;this.render();return}
@@ -260,16 +267,18 @@ export class FengshenUI {
   modalContent(){
     if(!this.modal)return ''
     const {kind,id}=this.modal;let title='',body=''
+    // 牌桌「菜单」收纳（英雄杀式）：不常用功能全部收进这里，顶栏只留菜单按钮。
+    if(kind==='menu'){title='菜单';body=renderMenu({inGame:!!this.state,paused:this.paused,voice:this.voice.enabled,music:this.music.enabled,hints:this.hints!==false,pace:this.pace===250?'快':this.pace===1100?'慢':'标准',fullscreen:!!document.fullscreenElement})}
     if(kind==='heroes'){title='人物图鉴 · 不用于自由选将';body=heroGallery()}
     if(kind==='hand'&&this.state){const v=playerView(this.state,0);title='展开手牌 · '+v.players[0].hand.length+' 张';body=`<p>点击选牌，选中后点“完成选择”回到牌桌确认。这里不会自动出牌。</p><div class="fs-expanded-hand">${v.players[0].hand.map(c=>`<button data-action="card" data-id="${c.id}" class="${this.selected.includes(c.id)?'selected':''}" aria-label="${CARDS_BY_TYPE[c.type].baseName} ${SUITS[c.suit]}${c.rank}" aria-pressed="${this.selected.includes(c.id)}">${cardFace(c)}</button>`).join('')}</div><button data-action="close" class="fs-primary fs-hand-done">完成选择${this.selected.length?' · '+this.selected.length+' 张':''}</button>`}
     if(kind==='identity'&&this.setup){const r=ROLES[setupView(this.setup,0).role];title='你的身份：'+r.name;body=`<h3>${r.name}的胜利条件</h3><p>${r.goal}。</p><p>身份已随机分配且锁定，主公先选将，再由其他玩家选将。</p>`}
     if(kind==='identity'&&this.state){const p=this.state.players[0],r=ROLES[p.role];title='你的身份：'+r.name;body=`<section class="fs-identity-help"><strong class="fs-identity role-${p.role}">${r.name}</strong><h3>你的胜利条件</h3><p>${r.goal}。</p><p>${p.alive?'其他玩家不能看到你的身份，主公除外。':'你已阵亡，身份已公开；仍可在牌桌观看结算。'}</p></section>`}
-    if(kind==='hero-detail'){const h=HERO_BY_THEME_ID[id];title=h.name+' · '+h.title;body=`<div class="fs-hero-detail">${portrait(h)}<div><span>${FACTIONS[h.faction]} · ${ALLIANCE_NAMES[ALLIANCES[h.faction]]} · ${h.hp}基础体力 · ${h.sex==='female'?'女性':'男性'}</span><p>${h.playable?'技能已接入，可在单机局使用':'完整技能尚未接入；人物仅供形象与映射评审'}</p></div></div>${Object.entries(h.skillNames).map(([s,n])=>`<section><h3>${n}<small>${SKILLS[s]?{active:'主动',locked:'锁定',lord:'主公技',trigger:'触发',convert:'转化'}[SKILLS[s][2]]||'技能':'待开发'}</small></h3><p>${SKILLS[s]?esc(skillHelp(h,s)):'映射已记录，当前引擎尚无 '+s+' 完整实现。'}</p></section>`).join('')}`}
+    if(kind==='hero-detail'){const h=HERO_BY_THEME_ID[id];title=h.name+' · '+h.title;body=`<div class="fs-hero-detail">${portrait(h,'',true)}<div><span>${FACTIONS[h.faction]} · ${ALLIANCE_NAMES[ALLIANCES[h.faction]]} · ${h.hp}基础体力 · ${h.sex==='female'?'女性':'男性'}</span><p>${h.playable?'技能已接入，可在单机局使用':'完整技能尚未接入；人物仅供形象与映射评审'}</p></div></div>${Object.entries(h.skillNames).map(([s,n])=>`<section><h3>${n}<small>${SKILLS[s]?{active:'主动',locked:'锁定',lord:'主公技',trigger:'触发',convert:'转化'}[SKILLS[s][2]]||'技能':'待开发'}</small></h3><p>${SKILLS[s]?esc(skillHelp(h,s)):'映射已记录，当前引擎尚无 '+s+' 完整实现。'}</p></section>`).join('')}`}
     if(kind==='card-detail'){const c=makeDeck().find(c=>c.id===id)||makeDeck().find(c=>c.type===id),d=c&&CARDS_BY_TYPE[c.type];title=d?.name||'卡牌';body=d?`<div class="fs-card-detail">${cardFace(c)}<div><b>${{basic:'基本牌',trick:'即时法术',delay:'延时阵法',equip:'法宝'}[d.category]}</b><p>${esc(displayText(d.help))}</p><small>测试基准：${d.baseName} · 共 ${makeDeck().filter(c=>c.type===d.type).length} 张</small></div></div>`:''}
-    if(kind==='gallery'){title='法宝与卡牌图鉴';body=`<p>108 张经典牌池 · 53 基本 / 36 锦囊 / 19 装备。仅更换表现层，花色、点数、数量与距离不变。</p><div class="fs-gallery">${Object.values(CARDS_BY_TYPE).map(d=>`<button data-action="card-detail" data-id="${d.type}">${cardFace(makeDeck().find(c=>c.type===d.type))}</button>`).join('')}</div><section><h3>扩展法宝 · 未加入当前牌堆</h3><p>${PLANNED_EQUIPMENT.map(d=>d.name).join('、')}仅已建立映射，原引擎没有这些装备效果，未作为可用牌展示。</p></section>`}
+    if(kind==='gallery'){title='法宝与卡牌图鉴';body=`<p>新版 121 张牌池 · 62 基本 / 36 锦囊 / 23 装备。旧存档仍保留108张，不补塞新牌。仅更换表现层，花色、点数、数量与距离不变。</p><div class="fs-gallery">${Object.values(CARDS_BY_TYPE).map(d=>`<button data-action="card-detail" data-id="${d.type}">${cardFace(makeDeck().find(c=>c.type===d.type))}</button>`).join('')}</div><section><h3>扩展法宝 · 未加入当前牌堆</h3><p>${PLANNED_EQUIPMENT.map(d=>d.name).join('、')}仅已建立映射，原引擎没有这些装备效果，未作为可用牌展示。</p></section>`}
     if(kind==='report'){title=this.state?.winner?'终局 · 身份揭晓':'战场记录';if(this.state){const v=playerView(this.state,0);body=`${v.winner?`<div class="fs-role-reveal">${v.players.map(p=>`<span>${display(p).name}<b>${ROLES[p.role].name}</b></span>`).join('')}</div>`:''}<ol class="fs-report">${v.logs.map(l=>`<li>${esc(displayText(l.text))}</li>`).join('')}</ol>`}}
     if(kind==='new'){title='返回准备大厅？';body='<p>当前牌局或选将进度已保存。你可以继续上次进度，也可以新开身份局重新随机分配身份。</p><button data-action="new-confirm" class="fs-primary">返回准备大厅</button>'}
-    if(kind==='rules'){title='众神身份局 · 试玩规则';body=`<section><h3>身份不变</h3>${Object.values(ROLES).map(r=>`<p><b>${r.name}</b>：${r.goal}。</p>`).join('')}<p>当前复用五人引擎：1 主公、1 忠臣、2 反贼、1 内奸。主公额外一点体力；只公开主公，其他角色阵亡或终局才亮身份。八人局与联机尚未接入，不以界面换名冒充完成。</p></section><section><h3>操作与回合</h3><p>主公先行，按席位循环。准备 → 判定 → 摸牌 → 出牌 → 弃牌 → 结束。通常摸两张牌，出牌阶段限一次杀；风火与火尖枪可以解除次数限制。弃牌到当前体力值。</p><p>先选牌，再点亮目标，最后确认出牌。响应时选牌后确认，或主动放弃。两张闪按提示分次打出。混天绫选择两张手牌；借宝诛敌先选持武器者，再选被攻击者。转化牌显示“当杀 / 当闪”，须确认其用途。</p></section><section><h3>主公技与阵营适配</h3><p>青盟：周、尼罗神域；赤盟：商、奥林匹斯；金盟：阐、高天原；玄盟：截、阿斯加德。主公的召集杀、召集闪、救援加成分别只由同盟响应。新角色组合仍在平衡试玩中。</p><p>龙吉公主替代慈航道人对应小乔，保留女性判定语义；阴阳双剑等性别相关装备仍按明确的人物性别结算。</p></section><section><h3>当前完成边界</h3><p>40 人主题图鉴，29 人完整技能可试玩，32 类插画卡牌，108 张物理牌，四名本地 AI。保留的 11 人有独立形象，但技能未完成时禁止开局。AI 只接收玩家视图，不能读取隐藏手牌和身份。</p><p>没有灵蕴、神位积分或封神争榜。不新增法宝冷却与耐久。这是免费的单机试玩版，不代表商业版或完成原创性审核。</p></section>`}
+    if(kind==='rules'){title='众神身份局 · 试玩规则';body=`<section><h3>身份不变</h3>${Object.values(ROLES).map(r=>`<p><b>${r.name}</b>：${r.goal}。</p>`).join('')}<p>当前复用五人引擎：1 主公、1 忠臣、2 反贼、1 内奸。主公额外一点体力；只公开主公，其他角色阵亡或终局才亮身份。八人局与联机尚未接入，不以界面换名冒充完成。</p></section><section><h3>操作与回合</h3><p>主公先行，按席位循环。准备 → 判定 → 摸牌 → 出牌 → 弃牌 → 结束。通常摸两张牌，出牌阶段限一次杀；风火与火尖枪可以解除次数限制。弃牌到当前体力值。</p><p>先选牌，再点亮目标，最后确认出牌。响应时选牌后确认，或主动放弃。两张闪按提示分次打出。混天绫选择两张手牌；借宝诛敌先选持武器者，再选被攻击者。转化牌显示“当杀 / 当闪”，须确认其用途。</p></section><section><h3>主公技与阵营适配</h3><p>青盟：周、尼罗神域；赤盟：商、奥林匹斯；金盟：阐、高天原；玄盟：截、阿斯加德。主公的召集杀、召集闪、救援加成分别只由同盟响应。新角色组合仍在平衡试玩中。</p><p>龙吉公主替代慈航道人对应小乔，保留女性判定语义；阴阳双剑等性别相关装备仍按明确的人物性别结算。</p></section><section><h3>当前完成边界</h3><p>52 人主题图鉴，43 人完整技能可试玩，39 类插画卡牌，新局121张物理牌，四名本地 AI。保留的 9 人有独立形象，但技能未完成时禁止开局。AI 只接收玩家视图，不能读取隐藏手牌和身份。</p><p>没有灵蕴、神位积分或封神争榜。不新增法宝冷却与耐久。这是免费的单机试玩版，不代表商业版或完成原创性审核。</p></section>`}
     return `<div class="fs-modal-overlay"><section class="fs-modal" role="dialog" aria-modal="true" aria-labelledby="fs-dialog-title" tabindex="-1"><header><small>众神斗法 / INTERNAL</small><h2 id="fs-dialog-title">${title}</h2><button data-action="close" aria-label="关闭弹窗">×</button></header><div class="fs-modal-body">${body}</div></section></div>`
   }
   render(){
@@ -280,10 +289,7 @@ export class FengshenUI {
     if(this.modal&&!wasModal)this.returnFocus={action:prior?.dataset?.action,id:prior?.dataset?.id}
     this.syncClock();this.root.classList.toggle('fs-has-pool',this.state?.pending?.kind==='pick'&&this.state.pending.actor===0)
     this.root.classList.toggle('fs-playing',!this.lobby&&!this.setup)
-    this.root.innerHTML=(this.lobby?this.renderLobby():this.setup?renderSetup(this):this.renderGame())+this.modalContent()+(this.toast?`<div class="fs-toast" role="status">${esc(this.toast)}</div>`:'')
-    this.root.querySelector('.fs-round')?.insertAdjacentHTML('beforeend',toolButton('help','help','教学提示'+(this.hints?'开':'关'),this.hints))
-    const round=this.root.querySelector('.fs-round'),deck=this.root.querySelector('.fs-deck-stack')
-    if(round&&deck){const phase=round.querySelector(':scope>span');if(phase)phase.textContent='第 '+this.state.turns+' 回合';round.insertBefore(deck,round.querySelector('.fs-clock'))}
+    morph(this.root,(this.lobby?this.renderLobby():this.setup?renderSetup(this):this.renderGame())+this.modalContent()+(this.toast?`<div class="fs-toast" role="status">${esc(this.toast)}</div>`:''))
     if(this.modal&&!this.lobby&&(this.state||this.setup)){
       const role=this.setup?setupView(this.setup,0).role:this.state.players[0].role
       this.root.querySelector('.fs-modal header>small').textContent+=' · 你的身份：'+ROLES[role].name
@@ -292,11 +298,7 @@ export class FengshenUI {
         if(p){const info=document.createElement('p');info.className='fs-role-detail';info.textContent=`本局身份：${p.role?ROLES[p.role].name:'隐藏'}${!p.alive?' · 已阵亡，身份已公开':''}`;this.root.querySelector('.fs-modal-body').prepend(info)}
       }
     }
-    // Thumbnail cards load cheaply on phones; large/detail portraits use the
-    // original optimized art before the browser paints the newly rendered DOM.
-    for(const img of this.root.querySelectorAll('.fs-feature>.fs-portrait,.fs-hero-detail>.fs-portrait')){
-      const h=HEROES.find(h=>h.thumbnail===img.getAttribute('src'));if(h){img.src=h.image;img.loading='eager'}
-    }
+    // 大厅主视觉与详情大图在渲染时直接出原图（见 renderHome/modalContent 的 full=true）。
     if(RELEASE){const label=this.root.querySelector('.fs-brand>small');if(label)label.textContent=label.textContent.replace('内部原型','单机试玩');if(this.modal?.kind==='rules'){const body=this.root.querySelector('.fs-modal-body');if(body)body.innerHTML=body.innerHTML.replace('此为本机内部原型，不代表商业发行或完成原创性审核。','当前为免费单机试玩版，部分人物技能仍在开发；名称、主题与玩法仍需在商业发行前另行审核。')}}
     layoutHand(this.root)
     for(const [key,v]of Object.entries(scrolls)){const e=this.root.querySelector(`[data-scroll="${key}"]`);if(e){e.scrollLeft=v.left;e.scrollTop=v.top}}

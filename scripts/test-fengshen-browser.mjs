@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import {openBrowser} from './browser-cdp.mjs'
 import {createGame,dispatch,playerView,allCards} from '../.private/fengshen/engine.mjs'
 import {chooseAI} from '../.private/fengshen/engine.mjs'
-import {makeDeck} from '../.vuepress/components/sanguo/catalog.mjs'
+import {makeDeck} from '../.private/fengshen/core/catalog.mjs'
 import {hand,equipment} from './fixtures/sanguo.mjs'
 const browser=await openBrowser({name:'fengshen',baseUrl:process.env.FENGSHEN_TEST_URL||'http://127.0.0.1:4178',route:'/'})
 const {evaluate,tap,viewport,screenshot}=browser
@@ -65,7 +65,7 @@ try{
     await tap(`[data-action="card"][data-id="${peach.id}"]`);await tap('[data-action="confirm"]');assert.ok(await evaluate('window.__fengshenUI.state.players[0].hp>0'))
   }
   await viewport(390,844);await ready();await tap('[data-action="gallery"]')
-  assert.equal(await evaluate('document.querySelectorAll(".fs-gallery>button").length'),32)
+  assert.equal(await evaluate('document.querySelectorAll(".fs-gallery>button").length'),39)
   await evaluate('[...document.images].forEach(i=>i.loading="eager");true')
   await browser.waitFor('[...document.images].every(i=>i.complete&&i.naturalWidth>0)')
   await screenshot('390-gallery')
@@ -75,7 +75,7 @@ try{
   // Run an entire match through UI timers. Only choose the human seat action.
   let steps=0
   while(steps++<4000){const s=await evaluate('window.__fengshenUI.state');if(s.winner)break;if((s.pending?.actor??s.current)===0){const a=chooseAI(playerView(s,0));assert.ok(a);assert.ok(await evaluate(`window.__fengshenUI.act(${JSON.stringify(a)})`))}else await new Promise(r=>setTimeout(r,3))}
-  const finished=await evaluate('window.__fengshenUI.state');assert.ok(finished.winner);assert.equal(allCards(finished).length,108)
+  const finished=await evaluate('window.__fengshenUI.state');assert.ok(finished.winner);assert.equal(allCards(finished).length,121)
   await tap('[data-action="report"]');assert.equal(await evaluate('document.querySelectorAll(".fs-role-reveal>span").length'),5);await screenshot('390-result')
   // A reload can cancel an intercepted image before CDP's continue arrives.
   // Ignore only that exact transport race, not application exceptions.

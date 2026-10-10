@@ -1,5 +1,5 @@
 import {AUDIO_ENTRIES,audioPath} from './audio-manifest.mjs'
-import {heroForBase} from './theme.mjs'
+import {heroForBase,CARDS_BY_TYPE} from './theme.mjs'
 import {skillAudioKey} from './audio-manifest.mjs'
 const allowed=new Set(AUDIO_ENTRIES.map(e=>e.key))
 export class CardVoice {
@@ -70,8 +70,10 @@ export class CardVoice {
 // used as Slash). Illegal actions and save loading never produce duplicate cues.
 export function cuesForAction(before,action,after){
   const seat=action.seat??0,cues=[],type=action.type==='play'?action.as||before.players[seat].hand.find(c=>c.id===action.ids?.[0])?.type:action.type==='respond'&&before.pending?.kind!=='axe'?before.pending?.as:null
-  if(type)cues.push({key:`card-${type}`,sex:displaySex(before,seat)})
+  if(type){const physical=before.players[seat].hand.concat(Object.values(before.players[seat].equip).filter(Boolean)).find(c=>c.id===action.ids?.[0]);const effective=type==='sha'&&CARDS_BY_TYPE[physical?.type]?.attackNature?physical.type:action.as==='wine'?'wine':type;cues.push({key:`card-${effective}`,sex:displaySex(before,seat)})}
   if(action.type==='skill')cues.push({key:skillAudioKey(before.players[seat].heroId,action.skill),sex:displaySex(before,seat)})
+  if(action.type==='play'&&action.as==='dismantle'&&action.ids?.length===1){const c=before.players[seat].hand.concat(Object.values(before.players[seat].equip).filter(Boolean)).find(c=>c.id===action.ids[0]);if(c&&c.type!=='dismantle')cues.push({key:skillAudioKey(before.players[seat].heroId,'qixi'),sex:displaySex(before,seat)})}
+  if(action.type==='respond'&&before.pending?.as==='shan'&&action.ids?.length===1){const c=before.players[seat].hand.find(c=>c.id===action.ids[0]),h=heroForBase(before.players[seat].heroId);if(c&&c.type!=='shan'&&h?.skillNames.qingguo&&['spade','club'].includes(c.suit))cues.push({key:skillAudioKey(before.players[seat].heroId,'qingguo'),sex:displaySex(before,seat)})}
   for(const line of after.logs.filter(l=>l.id>before.eventId).slice().reverse())if(line.cue?.kind==='skill'&&after.players[line.cue.seat])cues.push({key:skillAudioKey(after.players[line.cue.seat].heroId,line.cue.skill),sex:displaySex(after,line.cue.seat)})
   return cues
 }

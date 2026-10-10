@@ -1,5 +1,5 @@
 import {HERO_BY_THEME_ID,PLAYABLE_HEROES,FACTIONS,ALLIANCES,ALLIANCE_NAMES,displayText,skillHelp} from './theme.mjs'
-import {ROLES,SKILLS} from '../../.vuepress/components/sanguo/catalog.mjs'
+import {ROLES,SKILLS} from './core/catalog.mjs'
 import {setupView,LORD_HEROES} from './setup.mjs'
 import {esc,portrait} from './presentation.mjs'
 const identity=(role,extra='')=>`<span class="fs-identity role-${role} ${extra}">${ROLES[role].name}</span>`

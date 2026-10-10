@@ -5,15 +5,13 @@
     '/blogs/other/mahjong_game.html': '四川麻将',
     '/blogs/other/gomoku.html': '五子棋',
     '/blogs/other/xiangqi.html': '中国象棋',
-    '/blogs/other/cardforge.html': '小丑牌',
-    '/blogs/other/sanguo.html': '三国逐鹿'
+    '/blogs/other/cardforge.html': '小丑牌'
   }
   var gameRoots = {
     '/blogs/other/mahjong_game.html': '#scmjGame',
     '/blogs/other/gomoku.html': '#gomokuGame',
     '/blogs/other/xiangqi.html': '#xiangqiGame',
-    '/blogs/other/cardforge.html': '#balatro-game',
-    '/blogs/other/sanguo.html': '#sanguoGame'
+    '/blogs/other/cardforge.html': '#balatro-game'
   }
   var currentPath = ''
   var currentGame = ''

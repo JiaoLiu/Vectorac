@@ -2,8 +2,9 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {createSetup,setupView,dispatchSetup,chooseSetupAI,restoreSetup,restoreSession,LORD_HEROES} from '../.private/fengshen/setup.mjs'
 import {PLAYABLE_HEROES,HERO_BY_THEME_ID} from '../.private/fengshen/theme.mjs'
-import {createGame,playerView,dispatch,allCards,restoreGame} from '../.private/fengshen/engine.mjs'
+import {createGame,playerView,dispatch,allCards,restoreGame,catalog} from '../.private/fengshen/engine.mjs'
 import {chooseAI} from '../.private/fengshen/engine.mjs'
+const DECK_SIZE=catalog.makeDeck().length
 import {renderHome,renderSetup} from '../.private/fengshen/setup-ui.mjs'
 const step=(s,a)=>{const r=dispatchSetup(s,{revision:s.revision,...a});assert.ok(r.ok,r.error);return r.setup}
 function reveal(s){return step(s,{type:'reveal',seat:0})}
@@ -54,7 +55,7 @@ test('ready draft is handed to the game unchanged; it never rerolls roles or her
     const r=dispatchSetup(ready,{type:'begin',seat:0,revision:ready.revision});assert.ok(r.ok);const game=r.game
     assert.deepEqual(game.players.map(p=>p.role),ready.roles)
     assert.deepEqual(game.players.map(p=>p.heroId),ready.picks.map(id=>HERO_BY_THEME_ID[id].engineId))
-    assert.equal(game.current,ready.lord);assert.equal(game.turns,1);assert.equal(allCards(game).length,108)
+    assert.equal(game.current,ready.lord);assert.equal(game.turns,1);assert.equal(allCards(game).length,DECK_SIZE)
     for(const p of game.players){const h=HERO_BY_THEME_ID[ready.picks[p.seat]];assert.equal(p.maxHp,h.hp+(p.seat===ready.lord?1:0));if(p.seat!==ready.lord)assert.equal(p.hand.length,4)}
     assert.ok(restoreGame(game));assert.deepEqual(dispatchSetup(ready,{type:'begin',seat:0}).game,game)
   }
@@ -81,6 +82,6 @@ test('100 drafted AI matches finish legally after the complete startup workflow'
   for(let seed=1;seed<=100;seed++){
     const ready=finish(createSetup({seed}));let s=dispatchSetup(ready,{type:'begin',seat:0}).game,actions=0
     while(!s.winner&&actions++<3500){const seat=s.pending?.actor??s.current,a=chooseAI(playerView(s,seat)),r=dispatch(s,a);assert.ok(r.ok,`seed ${seed}: ${r.error}`);s=r.state}
-    assert.ok(s.winner,`draft seed ${seed}`);assert.equal(allCards(s).length,108)
+    assert.ok(s.winner,`draft seed ${seed}`);assert.equal(allCards(s).length,DECK_SIZE)
   }
 })

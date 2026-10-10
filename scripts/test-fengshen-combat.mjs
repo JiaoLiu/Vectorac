@@ -2,24 +2,24 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {readFile} from 'node:fs/promises'
 import {createGame,dispatch,playerView,allCards,restoreGame,catalog} from '../.private/fengshen/engine.mjs'
-import {makeDeck} from '../.vuepress/components/sanguo/catalog.mjs'
+import {makeDeck} from '../.private/fengshen/core/catalog.mjs'
 import {hand,equipment} from './fixtures/sanguo.mjs'
 import {combatContext,damageCues,collateralSelection} from '../.private/fengshen/combat.mjs'
 import {handLayout} from '../.private/fengshen/hand.mjs'
 import {cardFace} from '../.private/fengshen/presentation.mjs'
 import {CARDS_BY_TYPE} from '../.private/fengshen/theme.mjs'
 import {CardVoice} from '../.private/fengshen/voice.mjs'
-import {createEngine} from '../.vuepress/components/sanguo/engine.mjs'
+import {createEngine} from '../.private/fengshen/core/engine.mjs'
 import {advanceUnavailable,DecisionClock} from '../.private/fengshen/flow.mjs'
 import {BackgroundMusic} from '../.private/fengshen/music.mjs'
 import {drawEffects} from '../.private/fengshen/draw-effects.mjs'
 function fixture(current=0,heroId='yangjian'){
- const s=createGame({heroId,role:'lord',seed:17});s.deck=makeDeck();s.discard=[];s.processing=[];s.harvestPool=[];s.queue=[];s.pending=null;s.phase='play';s.current=current;s.logs=[];s.lastPlayed=null;s.lastEvent=null
+ const s=createGame({heroId,role:'lord',seed:17});s.deck=catalog.makeDeck();s.discard=[];s.processing=[];s.harvestPool=[];s.queue=[];s.pending=null;s.phase='play';s.current=current;s.logs=[];s.lastPlayed=null;s.lastEvent=null
  for(const p of s.players){p.hand=[];p.equip={weapon:null,armor:null,offenseHorse:null,defenseHorse:null};p.judgment=[];p.marks={sha:0,rende:0};p.hp=p.maxHp}
  if(s.players[1].heroId==='machao'){const other=s.players.slice(2).find(p=>p.heroId!=='machao');[s.players[1].heroId,other.heroId]=[other.heroId,s.players[1].heroId]}
  return s
 }
-const step=(s,a)=>{const r=dispatch(s,{seat:s.pending?.actor??s.current,...a});assert.ok(r.ok,r.error);assert.equal(allCards(r.state).length,108);return r.state}
+const step=(s,a)=>{const r=dispatch(s,{seat:s.pending?.actor??s.current,...a});assert.ok(r.ok,r.error);assert.equal(allCards(r.state).length,121);return r.state}
 test('resolved draw trick emits one actual two-card cue and highlights only local new cards',()=>{
  let s=fixture(),[c]=hand(s,0,'draw');const before=s;s=step(s,{type:'play',as:'draw',ids:[c.id],targets:[]})
  assert.equal(s.players[0].hand.length,2);const effects=drawEffects(before,s);assert.equal(effects.length,1);assert.equal(effects[0].count,2);assert.equal(effects[0].target,0);assert.deepEqual(effects[0].ownIds,s.players[0].hand.map(c=>c.id))

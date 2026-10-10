@@ -1,5 +1,5 @@
 import {CARDS_BY_TYPE,heroForBase} from './theme.mjs'
-import {SUITS,isRed,rankName} from '../../.vuepress/components/sanguo/catalog.mjs'
+import {SUITS,isRed,rankName} from './core/catalog.mjs'
 export const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))
 export const display=p=>heroForBase(p.heroId)
 export const portrait=(h,extra='',full=false)=>`<img class="fs-portrait ${extra}" src="${full?h.image:h.thumbnail}" alt="${esc(h.name)}原创形象" draggable="false" loading="${full?'eager':'lazy'}">`

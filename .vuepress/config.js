@@ -36,15 +36,6 @@ module.exports = {
       '/mahjong-ws': { target: 'ws://127.0.0.1:3032', ws: true, changeOrigin: true }
     }
   },
-  chainWebpack(config, isServer) {
-    // VuePress 1's default JS rule excludes .mjs. Only the new card-game rules
-    // need modern-syntax transpilation; retain the site's existing Babel preset.
-    config.module.rule('sanguo-rules')
-      .test(/\.mjs$/)
-      .include.add(require('path').resolve(__dirname, 'components/sanguo')).end()
-      .use('babel-loader').loader('babel-loader')
-      .options(config.module.rule('js').use('babel-loader').get('options'))
-  },
   head: [
     // defer：不阻塞 HTML 解析（三个脚本内部都处理了 readyState，DOM 未就绪时会等 DOMContentLoaded）
     ['script', { type: 'text/javascript', src: '/js/bdPush.js', defer: true }],

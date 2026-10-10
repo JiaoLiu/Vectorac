@@ -11,27 +11,26 @@ const midi=m=>440*2**((m-69)/12)
 const bar=2 // 2-second bars, 32 bars per loop
 const events=[]
 
-// Chord bed: Dm F Dm G | Dm F C G — all pentatonic-safe voicings.
-const chords=[[50,57,62],[53,60,65],[50,57,62],[55,62,67],[50,57,62],[53,60,65],[48,55,60],[55,59,62]]
+// Chord bed: C G Am F — C-major pentatonic voicings, bright and open.
+const chords=[[48,52,55],[55,59,62],[57,60,64],[53,57,60],[48,52,55],[55,59,62],[53,57,60],[55,59,62]]
 for(let b=0;b<32;b++){
   const chord=chords[b%8],section=Math.floor(b/8)%2 // A,B,A',B'
   for(const [i,m] of chord.entries())events.push({at:b*bar,kind:'pad',freq:midi(m-12),dur:bar,vel:.05-i*.008})
   // Guzheng plucks: root-fifth arpeggio, denser in B sections.
   const steps=section?[0,1,2,1,0,2,1,2]:[0,2,1,2]
   steps.forEach((deg,k)=>events.push({at:b*bar+k*bar/steps.length+(rand()-.5)*.016,kind:'pluck',freq:midi(chord[deg%chord.length]+12),vel:(section?.5:.4)*(0.85+rand()*.3)}))
-  // Hall drums only drive the B sections.
-  if(section){events.push({at:b*bar,kind:'drum',vel:.11});if(b%2)events.push({at:b*bar+1.5,kind:'drum',vel:.07})}
-  // Bell accent at each section start.
-  if(b%8===0)events.push({at:b*bar,kind:'bell',freq:midi(chord[0]+24),vel:.12})
+  // Bell accents mark the bar line in B sections; a soft chime opens each section.
+  if(section&&b%2===0)events.push({at:b*bar+1,kind:'bell',freq:midi(chord[2]+24),vel:.05})
+  if(b%8===0)events.push({at:b*bar,kind:'bell',freq:midi(chord[0]+24),vel:.1})
 }
-// Dizi lead over both B sections: two four-bar phrases answered a register up.
+// Dizi lead over both B sections: rising C-pentatonic phrases answered a register up.
 const phrases=[
-  [16,[62,.9],[64,.3],[67,.8],[69,1.6],[67,.4],[64,.8],[62,2.0]],
+  [16,[64,.9],[67,.4],[69,.8],[72,1.6],[69,.4],[67,.8],[64,2.0]],
   [24,[72,1.0],[69,.5],[67,.9],[69,1.6],[64,.5],[62,.9],[60,.6],[62,2.2]],
-  [48,[62,.9],[64,.3],[67,.8],[69,1.6],[72,.4],[69,.8],[67,2.0]],
+  [48,[67,.9],[69,.4],[72,.8],[74,1.6],[72,.4],[69,.8],[67,2.0]],
   [56,[69,1.0],[67,.5],[64,.9],[62,1.6],[60,.5],[57,.9],[60,.6],[62,2.2]],
 ]
-for(const p of phrases){let at=p[0];for(const [m,d]of p.slice(1)){events.push({at,kind:'dizi',freq:midi(m),dur:d,vel:.15*(0.9+rand()*.2)});at+=d}}
+for(const p of phrases){let at=p[0];for(const [m,d]of p.slice(1)){events.push({at,kind:'dizi',freq:midi(m),dur:d,vel:.14*(0.9+rand()*.2)});at+=d}}
 
 const tail={pad:2,pluck:1.8,dizi:2.4,drum:.5,bell:4}
 const sample=(kind,e,age)=>{

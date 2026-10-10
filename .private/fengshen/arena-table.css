@@ -3,7 +3,7 @@
 .fs-playing{--dock-size:214px;display:grid;grid-template-rows:45px 30px minmax(0,1fr);background:linear-gradient(#102c3440,#102b3555),url('assets/heavenly-arena.jpg') center/cover no-repeat}
 .fs-playing .fs-header{grid-row:1}.fs-playing .fs-round{grid-row:2;background:#142a2ee8}
 .fs-playing .fs-arena{grid-row:3;height:100%;min-height:0;background:none;box-shadow:none;overflow:visible}
-.fs-playing .fs-dock{position:absolute;bottom:env(safe-area-inset-bottom,0px);left:50%;transform:translateX(-50%);width:min(1240px,calc(100% - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px)));height:var(--dock-size);z-index:6;background:linear-gradient(#142b3320,#122b32b0);border-top:0;box-shadow:none}
+.fs-playing .fs-dock{position:absolute;bottom:max(env(safe-area-inset-bottom,0px),10px);left:50%;transform:translateX(-50%);width:min(1240px,calc(100% - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px)));height:var(--dock-size);z-index:6;background:linear-gradient(#142b3320,#122b32b0);border-top:0;box-shadow:none}
 .fs-playing .fs-table-center{top:20px;bottom:calc(var(--dock-size) + 8px);left:30%;right:30%;flex-direction:column;overflow:visible}
 .fs-playing .fs-center-choice{top:calc((100% - var(--dock-size))/2);height:min(310px,calc(100% - var(--dock-size) - 10px))}
 .fs-playing .fs-judgment-reveal{top:5px;bottom:calc(var(--dock-size) + 5px)}
@@ -13,12 +13,12 @@
 .fs-playing .fs-round .fs-deck-stack:before,.fs-playing .fs-round .fs-deck-stack:after{display:none}
 @media(max-height:559px) and (orientation:landscape){
  .fs-playing{--dock-size:160px;grid-template-rows:34px 24px minmax(0,1fr)}
- .fs-playing .fs-player{width:94px;--portrait-height:116px}.fs-playing .fs-player-main{height:var(--portrait-height)}
- .fs-playing .fs-player[data-player="1"],.fs-playing .fs-player[data-player="4"]{top:4px;bottom:auto}.fs-playing .fs-player[data-player="2"],.fs-playing .fs-player[data-player="3"]{top:4px}
+ .fs-playing .fs-player{width:86px;--portrait-height:126px}.fs-playing .fs-player-main{height:var(--portrait-height)}
+ .fs-playing .fs-player[data-player="1"],.fs-playing .fs-player[data-player="4"]{top:32px;bottom:auto}.fs-playing .fs-player[data-player="2"],.fs-playing .fs-player[data-player="3"]{top:32px}
  .fs-playing .fs-player-info>strong{font-size:14px}.fs-playing .fs-player-info .fs-hp{font-size:8px}
- .fs-playing .fs-player[data-equip-count="1"]{--portrait-height:90px}.fs-playing .fs-player[data-equip-count="2"]{--portrait-height:78px}.fs-playing .fs-player[data-equip-count="3"]{--portrait-height:66px}.fs-playing .fs-player[data-equip-count="4"]{--portrait-height:54px}
- .fs-playing .fs-table-center{top:4px;left:34%;right:34%;bottom:calc(var(--dock-size) + 4px)}
- .fs-playing .fs-judgment-reveal{top:3px;left:104px;right:104px;bottom:calc(var(--dock-size) + 3px)}
+ .fs-playing .fs-player[data-equip-count="1"]{--portrait-height:110px}.fs-playing .fs-player[data-equip-count="2"]{--portrait-height:96px}.fs-playing .fs-player[data-equip-count="3"]{--portrait-height:82px}.fs-playing .fs-player[data-equip-count="4"]{--portrait-height:68px}
+ .fs-playing .fs-table-center{top:34px;left:34%;right:34%;bottom:calc(var(--dock-size) + 4px)}
+ .fs-playing .fs-judgment-reveal{top:32px;left:104px;right:104px;bottom:calc(var(--dock-size) + 3px)}
  .fs-playing .fs-round{gap:6px}.fs-playing .fs-round .fs-deck-stack{height:19px;min-width:40px;padding:1px 4px}
 }
 @media(min-height:381px) and (max-height:559px) and (orientation:landscape){.fs-playing{--dock-size:166px}}
@@ -28,6 +28,7 @@
  .fs-playing .fs-player[data-player="2"]{left:35%;top:8px;right:auto;transform:translateX(-50%)}.fs-playing .fs-player[data-player="3"]{right:35%;top:8px;left:auto;transform:translateX(50%)}
  .fs-playing .fs-player[data-player="1"]{left:8px;top:142px;bottom:auto;transform:none}.fs-playing .fs-player[data-player="4"]{right:8px;left:auto;top:142px;bottom:auto;transform:none}
  .fs-playing .fs-table-center{top:140px;left:108px;right:108px;bottom:calc(var(--dock-size) + 6px)}
+ .fs-playing .fs-table-center.fs-exchange-view{left:10px;right:10px}
  .fs-playing .fs-round{gap:5px}.fs-playing .fs-round .fs-deck-stack{height:21px}
 }
 @media(max-height:700px) and (orientation:portrait){
@@ -37,6 +38,7 @@
  .fs-playing .fs-player[data-player="1"]{top:105px;left:6px;right:auto}.fs-playing .fs-player[data-player="4"]{top:105px;right:6px;left:auto}
  .fs-playing .fs-player[data-equip-count="1"]{--portrait-height:80px}.fs-playing .fs-player[data-equip-count="2"]{--portrait-height:68px}.fs-playing .fs-player[data-equip-count="3"]{--portrait-height:56px}.fs-playing .fs-player[data-equip-count="4"]{--portrait-height:44px}
  .fs-playing .fs-table-center{top:105px;left:87px;right:87px;bottom:calc(var(--dock-size) + 4px)}
+ .fs-playing .fs-table-center.fs-exchange-view{left:8px;right:8px}
  .fs-playing .fs-round{gap:4px}.fs-playing .fs-round .fs-deck-stack{min-width:39px;padding:1px 3px;height:20px}
 }
 @media(min-width:430px) and (max-width:699px) and (max-height:700px) and (orientation:portrait){
@@ -45,4 +47,27 @@
  .fs-playing .fs-player-info>strong{font-size:16px}
  .fs-playing .fs-player[data-equip-count="1"]{--portrait-height:110px}.fs-playing .fs-player[data-equip-count="2"]{--portrait-height:98px}.fs-playing .fs-player[data-equip-count="3"]{--portrait-height:86px}.fs-playing .fs-player[data-equip-count="4"]{--portrait-height:72px}
 }
-@media(max-height:370px) and (orientation:landscape){.fs-playing .fs-player[data-equip-count="0"]{--portrait-height:100px}}
+@media(max-height:370px) and (orientation:landscape){.fs-playing .fs-player[data-equip-count="0"]{--portrait-height:104px}}
+/* 横屏：两层顶栏改为一层浮空芯片（透明底、文字投影），桌面纵向空间全给牌面。
+   玩家卡从 top:32px 起排，芯片带高度 26px，两者互不重叠。 */
+@media(orientation:landscape){
+ .fs-playing{grid-template-rows:minmax(0,1fr)!important}
+ .fs-playing .fs-arena{grid-row:1}
+ .fs-playing .fs-header{position:absolute;top:0;left:0;right:0;z-index:12;height:28px;padding:2px 8px;background:none;border:0;pointer-events:none}
+ .fs-playing .fs-header>.fs-brand{display:none}
+ .fs-playing .fs-header nav{margin-left:auto;pointer-events:auto}
+ .fs-playing .fs-header nav button{min-height:24px;padding:1px 7px;background:#10222a99}
+ /* 顶栏通栏：牌堆芯片贴左上角、回合数居中、托管计时贴右上角，三者互不遮挡 */
+ .fs-playing .fs-round{position:absolute;top:3px;left:calc(env(safe-area-inset-left,0px) + 8px);right:calc(env(safe-area-inset-right,0px) + 8px);transform:none;z-index:12;width:auto;height:auto;padding:0;background:none;border:0;pointer-events:none;display:flex;align-items:flex-start;justify-content:center}
+ .fs-playing .fs-round>*{pointer-events:auto;background:#10222a99;border:1px solid #8aa19833;border-radius:5px;min-height:22px;padding:1px 8px;font-size:10px;color:#e8ddba;text-shadow:0 1px 3px #000}
+ .fs-playing .fs-round>span{display:flex;align-items:center}
+ .fs-playing .fs-round .fs-deck-stack{position:absolute;left:0;top:0;display:flex;flex-direction:row;align-items:center;gap:4px;width:auto;min-width:42px;height:22px;transform:none;padding:1px 8px;background:#10222a99}
+ .fs-playing .fs-round .fs-deck-stack:before,.fs-playing .fs-round .fs-deck-stack:after{display:none}
+ .fs-playing .fs-round .fs-clock{position:absolute;right:0;top:0;margin:0;display:flex;align-items:center;height:22px}
+ /* 决斗/南蛮等多人出牌整排展示：中央区放宽并允许换行 */
+ .fs-playing .fs-table-center.fs-exchange-view{left:20%;right:20%}
+ .fs-playing .fs-exchange{flex-wrap:wrap;justify-content:center;align-content:center;row-gap:3px}
+ .fs-playing .fs-player[data-player="1"],.fs-playing .fs-player[data-player="2"],.fs-playing .fs-player[data-player="3"],.fs-playing .fs-player[data-player="4"]{top:32px;bottom:auto}
+ .fs-playing .fs-table-center{top:34px}
+ .fs-playing .fs-judgment-reveal{top:32px}
+}

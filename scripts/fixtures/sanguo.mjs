@@ -1,5 +1,5 @@
-import { createGame, dispatch, allCards } from '../../.vuepress/components/sanguo/engine.mjs'
-import { makeDeck, HERO_BY_ID, HEROES } from '../../.vuepress/components/sanguo/catalog.mjs'
+import { createGame, dispatch, allCards } from '../../.private/fengshen/core/engine.mjs'
+import { makeDeck, HERO_BY_ID, HEROES } from '../../.private/fengshen/core/catalog.mjs'
 import assert from 'node:assert/strict'
 
 export function fixture(heroId='guanyu',role='lord',current=0) {

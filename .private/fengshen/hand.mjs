@@ -14,13 +14,12 @@ export function layoutHand(root){
   const width=hand.clientWidth,height=window.visualViewport?.height||innerHeight
   const l=handLayout({count:buttons.length,width,height,landscape:innerWidth>innerHeight})
   const key=`${buttons.length}:${width}:${height}:${innerWidth>innerHeight}`
-  if(hand.dataset.layoutKey===key)return
-  const scroll=hand.scrollLeft;hand.dataset.layoutKey=key
-  hand.replaceChildren();hand.dataset.rows=l.rows;hand.dataset.scrollable=String(l.scroll)
+  // 模板直接输出 hand-row（renderBattle），morph 按位对齐保留按钮元素；
+  // 这里只更新布局变量与行宽。无 row 属异常结构（如旧存档 DOM），兜底重建一次。
+  let row=hand.firstElementChild?.classList.contains('fs-hand-row')?hand.firstElementChild:null
+  if(!row){row=document.createElement('div');row.className='fs-hand-row';hand.replaceChildren(row);buttons.forEach(b=>row.append(b))}
+  const scroll=hand.scrollLeft;hand.dataset.layoutKey=key;hand.dataset.rows=l.rows;hand.dataset.scrollable=String(l.scroll)
   hand.style.setProperty('--card-width',`${l.cardWidth}px`);hand.style.setProperty('--card-height',`${l.cardHeight}px`);hand.style.setProperty('--card-step',`${l.step}px`);hand.style.setProperty('--edge-font',`${l.edgeFont}px`)
-  for(let i=0;i<l.rows;i++){
-    const row=document.createElement('div');row.className='fs-hand-row';row.style.width=`${Math.max(width,l.span)}px`
-    buttons.slice(i*l.perRow,(i+1)*l.perRow).forEach(b=>row.append(b));hand.append(row)
-  }
+  row.style.width=`${Math.max(width,l.span)}px`
   hand.scrollLeft=scroll
 }

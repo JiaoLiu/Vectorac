@@ -1,0 +1,138 @@
+{
+  "provider": "built-in image_gen",
+  "entries": [
+    {
+      "id": "huangfeihu",
+      "kind": "heroes",
+      "prompt": "Use case: stylized-concept. Asset type: original premium mythology card-game portrait. Subject: 黄飞虎, mature bearded Chinese marshal, ornate jade-green and bronze armor, long polearm, sacred five-colored bull silhouette, commanding honest expression. Single character waist-up, whole head within top 65 percent, large distinctive face. Hand-painted realistic dark Chinese mythology, refined bronze jade fabrics, dramatic chiaroscuro, crisp silhouette. Portrait 2:3. Subordinate mist background, quiet lower 15 percent for labels. No text, logos, borders or watermark. Do not imitate commercial art.",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-6e16c32c-5606-4150-be56-89f2f86f26e2.png",
+      "saved": ".private/fengshen/assets/heroes/huangfeihu.jpg"
+    },
+    {
+      "id": "jinzha",
+      "kind": "heroes",
+      "prompt": "Use case: stylized-concept. Asset type: original premium mythology card-game portrait. Subject: 金吒, young adult Chinese warrior, gold-white armor, twin bronze swords, restrained lotus-gold light, swept-back black hair. Single character waist-up, whole head within top 65 percent, large distinctive face. Hand-painted realistic dark Chinese mythology, refined bronze jade fabrics, dramatic chiaroscuro, crisp silhouette. Portrait 2:3. Subordinate mist background, quiet lower 15 percent for labels. No text, logos, borders or watermark. Do not imitate commercial art.",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-24fffbd3-a4d4-4670-8fe0-aae1d1505359.png",
+      "saved": ".private/fengshen/assets/heroes/jinzha.jpg"
+    },
+    {
+      "id": "lijing",
+      "kind": "heroes",
+      "prompt": "Use case: stylized-concept. Asset type: original premium mythology card-game portrait. Subject: 李靖, stern middle-aged Chinese celestial commander, long neat beard, dark green gold ceremonial armor, a small luminous seven-storey pagoda held in one hand. Single character waist-up, whole head within top 65 percent, large distinctive face. Hand-painted realistic dark Chinese mythology, refined bronze jade fabrics, dramatic chiaroscuro, crisp silhouette. Portrait 2:3. Subordinate mist background, quiet lower 15 percent for labels. No text, logos, borders or watermark. Do not imitate commercial art.",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-cf765793-c54e-4e29-a0dc-6ff5b77f06ad.png",
+      "saved": ".private/fengshen/assets/heroes/lijing.jpg"
+    },
+    {
+      "id": "dengchanyu",
+      "kind": "heroes",
+      "prompt": "Use case: stylized-concept. Asset type: original premium mythology card-game portrait. Subject: 邓婵玉, adult Chinese female general, practical crimson and ivory armor, high tied dark hair, five small colorful glowing stones, confident sharp-eyed expression, fully clothed. Single character waist-up, whole head within top 65 percent, large distinctive face. Hand-painted realistic dark Chinese mythology, refined bronze jade fabrics, dramatic chiaroscuro, crisp silhouette. Portrait 2:3. Subordinate mist background, quiet lower 15 percent for labels. No text, logos, borders or watermark. Do not imitate commercial art.",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-2e576081-5fca-437b-910a-53cf5dad6da9.png",
+      "saved": ".private/fengshen/assets/heroes/dengchanyu.jpg"
+    },
+    {
+      "id": "huangtianhua",
+      "kind": "heroes",
+      "prompt": "Use case: stylized-concept. Asset type: original premium mythology card-game portrait. Subject: 黄天化, young adult Chinese immortal warrior, silver bronze armor, pair of short maces, a tiny golden heart-piercing dart, jade qilin silhouette, youthful resolute face. Single character waist-up, whole head within top 65 percent, large distinctive face. Hand-painted realistic dark Chinese mythology, refined bronze jade fabrics, dramatic chiaroscuro, crisp silhouette. Portrait 2:3. Subordinate mist background, quiet lower 15 percent for labels. No text, logos, borders or watermark. Do not imitate commercial art.",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-f3118ca8-3440-4d1f-bc21-92dfcd5aac42.png",
+      "saved": ".private/fengshen/assets/heroes/huangtianhua.jpg"
+    },
+    {
+      "id": "weihu",
+      "kind": "heroes",
+      "prompt": "Use case: stylized-concept. Asset type: original premium mythology card-game portrait. Subject: 韦护, powerful bald adult Chinese guardian monk, saffron and dark bronze protective robes, long heavy golden vajra staff, disciplined calm face. Single character waist-up, whole head within top 65 percent, large distinctive face. Hand-painted realistic dark Chinese mythology, refined bronze jade fabrics, dramatic chiaroscuro, crisp silhouette. Portrait 2:3. Subordinate mist background, quiet lower 15 percent for labels. No text, logos, borders or watermark. Do not imitate commercial art.",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-5a30579e-40c8-411c-b7aa-5462726cbc32.png",
+      "saved": ".private/fengshen/assets/heroes/weihu.jpg"
+    },
+    {
+      "id": "kongxuan",
+      "kind": "heroes",
+      "prompt": "Use case: stylized-concept. Asset type: original premium mythology card-game portrait. Subject: 孔宣, regal adult Chinese deity with sharp beautiful face, dark turquoise and gold armor, subtle five-colored peacock feather halo, one raised hand drawing an artifact into light. Single character waist-up, whole head within top 65 percent, large distinctive face. Hand-painted realistic dark Chinese mythology, refined bronze jade fabrics, dramatic chiaroscuro, crisp silhouette. Portrait 2:3. Subordinate mist background, quiet lower 15 percent for labels. No text, logos, borders or watermark. Do not imitate commercial art.",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-3a2c2981-032d-4362-84bf-d5be4723bfb0.png",
+      "saved": ".private/fengshen/assets/heroes/kongxuan.jpg"
+    },
+    {
+      "id": "luya",
+      "kind": "heroes",
+      "prompt": "Use case: stylized-concept. Asset type: original premium mythology card-game portrait. Subject: 陆压, lean ancient Chinese wandering immortal, reddish beard, muted crimson and ochre robes, pale jade gourd releasing one tiny silver blade, mysterious piercing eyes. Single character waist-up, whole head within top 65 percent, large distinctive face. Hand-painted realistic dark Chinese mythology, refined bronze jade fabrics, dramatic chiaroscuro, crisp silhouette. Portrait 2:3. Subordinate mist background, quiet lower 15 percent for labels. No text, logos, borders or watermark. Do not imitate commercial art.",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-6676327e-114e-4188-9bc4-e8ba72031e00.png",
+      "saved": ".private/fengshen/assets/heroes/luya.jpg"
+    },
+    {
+      "id": "qiongxiao",
+      "kind": "heroes",
+      "prompt": "Use case: stylized-concept. Asset type: original premium mythology card-game portrait. Subject: 琼霄, adult Chinese immortal woman, dignified pale lilac and midnight blue robes, flowing long hair, jade cloud ornaments, quiet purple silver mist. Single character waist-up, whole head within top 65 percent, large distinctive face. Hand-painted realistic dark Chinese mythology, refined bronze jade fabrics, dramatic chiaroscuro, crisp silhouette. Portrait 2:3. Subordinate mist background, quiet lower 15 percent for labels. No text, logos, borders or watermark. Do not imitate commercial art.",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-7ccbd0a5-1a0c-4762-a14e-b07d9ab52f94.png",
+      "saved": ".private/fengshen/assets/heroes/qiongxiao.jpg"
+    },
+    {
+      "id": "bixiao",
+      "kind": "heroes",
+      "prompt": "Use case: stylized-concept. Asset type: original premium mythology card-game portrait. Subject: 碧霄, adult Chinese female immortal, vivid emerald and antique gold robes, small floating dragon-handled gold scissors, lively resolute face, dark green clouds. Single character waist-up, whole head within top 65 percent, large distinctive face. Hand-painted realistic dark Chinese mythology, refined bronze jade fabrics, dramatic chiaroscuro, crisp silhouette. Portrait 2:3. Subordinate mist background, quiet lower 15 percent for labels. No text, logos, borders or watermark. Do not imitate commercial art.",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-ca9e2577-4c25-42f7-a26c-145adc1cf5fa.png",
+      "saved": ".private/fengshen/assets/heroes/bixiao.jpg"
+    },
+    {
+      "id": "zhenglun",
+      "kind": "heroes",
+      "prompt": "Use case: stylized-concept. Asset type: original premium mythology card-game portrait. Subject: 郑伦, massive adult Chinese armored general, iron and indigo armor, angry bronze face, two narrow streams of white mystical vapor at nostrils, heavy iron pestle. Single character waist-up, whole head within top 65 percent, large distinctive face. Hand-painted realistic dark Chinese mythology, refined bronze jade fabrics, dramatic chiaroscuro, crisp silhouette. Portrait 2:3. Subordinate mist background, quiet lower 15 percent for labels. No text, logos, borders or watermark. Do not imitate commercial art.",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-af895ec2-83c5-4e78-b82a-a3c562f85608.png",
+      "saved": ".private/fengshen/assets/heroes/zhenglun.jpg"
+    },
+    {
+      "id": "chenqi",
+      "kind": "heroes",
+      "prompt": "Use case: stylized-concept. Asset type: original premium mythology card-game portrait. Subject: 陈奇, broad adult Chinese armored general, gold-bronze and red armor, short beard, a controlled golden breath vortex before his face, heavy war pestle. Single character waist-up, whole head within top 65 percent, large distinctive face. Hand-painted realistic dark Chinese mythology, refined bronze jade fabrics, dramatic chiaroscuro, crisp silhouette. Portrait 2:3. Subordinate mist background, quiet lower 15 percent for labels. No text, logos, borders or watermark. Do not imitate commercial art.",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-8129eab1-9afc-4ad6-b097-7a56393f256e.png",
+      "saved": ".private/fengshen/assets/heroes/chenqi.jpg"
+    },
+    {
+      "id": "guding",
+      "kind": "cards",
+      "prompt": "Use case: stylized-concept. Asset type: original Chinese mythology collectible card illustration. Subject: 化血神刀, single curved ancient crimson bronze saber, restrained red spectral aura, no gore. Single focal object, whole object visible. Simple readable composition, bronze jade, painted dark fantasy, dark teal mist, dramatic gold rim light. Portrait 2:3. Quiet upper third and lower strip for code labels. No text, numbers, logos, borders or watermark. Do not imitate commercial art.",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-f35015b4-026f-4661-aeec-1a9cb19e18d0.png",
+      "saved": ".private/fengshen/assets/cards/guding.jpg"
+    },
+    {
+      "id": "fan",
+      "kind": "cards",
+      "prompt": "Use case: stylized-concept. Asset type: original Chinese mythology collectible card illustration. Subject: 五火七禽扇, single elegant seven-feather ancient fan, five small controlled colored flames, bronze jade handle. Single focal object, whole object visible. Simple readable composition, bronze jade, painted dark fantasy, dark teal mist, dramatic gold rim light. Portrait 2:3. Quiet upper third and lower strip for code labels. No text, numbers, logos, borders or watermark. Do not imitate commercial art.",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-c1822457-580f-4fe1-8569-07d8e6b491e6.png",
+      "saved": ".private/fengshen/assets/cards/fan.jpg"
+    },
+    {
+      "id": "silverlion",
+      "kind": "cards",
+      "prompt": "Use case: stylized-concept. Asset type: original Chinese mythology collectible card illustration. Subject: 莲花宝甲, single silver and pale jade breastplate with sculpted lotus petals, warm protective glow. Single focal object, whole object visible. Simple readable composition, bronze jade, painted dark fantasy, dark teal mist, dramatic gold rim light. Portrait 2:3. Quiet upper third and lower strip for code labels. No text, numbers, logos, borders or watermark. Do not imitate commercial art.",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-bd7a3d31-5e5a-4221-9b88-af22eeeec70e.png",
+      "saved": ".private/fengshen/assets/cards/silverlion.jpg"
+    },
+    {
+      "id": "vine",
+      "kind": "cards",
+      "prompt": "Use case: stylized-concept. Asset type: original Chinese mythology collectible card illustration. Subject: 青莲宝色旗, single teal-blue lotus sacred banner with bronze staff, translucent layered protective aura. Single focal object, whole object visible. Simple readable composition, bronze jade, painted dark fantasy, dark teal mist, dramatic gold rim light. Portrait 2:3. Quiet upper third and lower strip for code labels. No text, numbers, logos, borders or watermark. Do not imitate commercial art.",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-fdbf7b11-4c39-4aa9-b7ff-eea2b8bd7586.png",
+      "saved": ".private/fengshen/assets/cards/vine.jpg"
+    },
+    {
+      "id": "firesha",
+      "kind": "cards",
+      "prompt": "Use case: stylized-concept. Asset type: original Chinese mythology collectible card illustration. Subject: 炎杀, one ancient bronze spear enveloped in clear red-gold flame against dark cloud, strong simple silhouette. Single focal object, whole object visible. Simple readable composition, bronze jade, painted dark fantasy, dark teal mist, dramatic gold rim light. Portrait 2:3. Quiet upper third and lower strip for code labels. No text, numbers, logos, borders or watermark. Do not imitate commercial art.",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-47cf64af-b1f6-4566-8359-c2e35c88f0c3.png",
+      "saved": ".private/fengshen/assets/cards/firesha.jpg"
+    },
+    {
+      "id": "thundersha",
+      "kind": "cards",
+      "prompt": "Use case: stylized-concept. Asset type: original Chinese mythology collectible card illustration. Subject: 雷杀, one ancient bronze spear carrying blue-white lightning against dark cloud, strong simple silhouette. Single focal object, whole object visible. Simple readable composition, bronze jade, painted dark fantasy, dark teal mist, dramatic gold rim light. Portrait 2:3. Quiet upper third and lower strip for code labels. No text, numbers, logos, borders or watermark. Do not imitate commercial art.",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-f2569578-26f4-4b67-8b4e-1e5484560740.png",
+      "saved": ".private/fengshen/assets/cards/thundersha.jpg"
+    },
+    {
+      "id": "wine",
+      "kind": "cards",
+      "prompt": "Use case: stylized-concept. Asset type: original Chinese mythology collectible card illustration. Subject: 琼浆, single antique bronze ceremonial wine cup with luminous golden liquid and restrained celestial mist. Single focal object, whole object visible. Simple readable composition, bronze jade, painted dark fantasy, dark teal mist, dramatic gold rim light. Portrait 2:3. Quiet upper third and lower strip for code labels. No text, numbers, logos, borders or watermark. Do not imitate commercial art.",
+      "source": "/Users/Jiao/.codex/generated_images/019ff04e-8a7a-7f23-9f72-f400e68f268d/exec-b4e0e4a6-080f-424e-8918-b91f92a86f02.png",
+      "saved": ".private/fengshen/assets/cards/wine.jpg"
+    }
+  ]
+}

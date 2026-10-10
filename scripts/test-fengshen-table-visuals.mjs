@@ -1,12 +1,12 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {makeDeck} from '../.vuepress/components/sanguo/catalog.mjs'
+import {makeDeck} from '../.private/fengshen/core/catalog.mjs'
 import {createGame,dispatch,playerView,catalog,restoreGame} from '../.private/fengshen/engine.mjs'
-import {createEngine} from '../.vuepress/components/sanguo/engine.mjs'
+import {createEngine} from '../.private/fengshen/core/engine.mjs'
 import {targetLinks,judgmentMark,publicPicks,tutorialEnabled,responsePrompt} from '../.private/fengshen/table-visuals.mjs'
 import {renderCenter,renderBattle,delayIcons} from '../.private/fengshen/table.mjs'
 import {hand} from './fixtures/sanguo.mjs'
-function fixture(){const s=createGame({heroId:'yangjian',role:'lord',seed:17});s.deck=makeDeck();s.discard=[];s.processing=[];s.harvestPool=[];s.queue=[];s.pending=null;s.phase='play';s.current=0;s.logs=[];s.lastPlayed=null;s.lastEvent=null;for(const p of s.players){p.hand=[];p.equip={weapon:null,armor:null,offenseHorse:null,defenseHorse:null};p.judgment=[];p.marks={sha:0,rende:0};p.hp=p.maxHp;p.alive=true}return s}
+function fixture(){const s=createGame({heroId:'yangjian',role:'lord',seed:17});s.deck=catalog.makeDeck();s.discard=[];s.processing=[];s.harvestPool=[];s.queue=[];s.pending=null;s.phase='play';s.current=0;s.logs=[];s.lastPlayed=null;s.lastEvent=null;for(const p of s.players){p.hand=[];p.equip={weapon:null,armor:null,offenseHorse:null,defenseHorse:null};p.judgment=[];p.marks={sha:0,rende:0};p.hp=p.maxHp;p.alive=true}return s}
 const step=(s,a)=>{const r=dispatch(s,{seat:s.pending?.actor??s.current,...a});assert.ok(r.ok,r.error);return r.state}
 const ui=(s,hints=true)=>({state:s,hints,paused:false,selected:[],targets:[],skill:null,choiceIndex:null,pace:650,header:()=>'',targetable:()=>[],matching:()=>[],currentAs:()=>null,equipment:()=>'',skills:()=>'',won:()=>false,pendingText:()=>''})
 test('first visit has hints; disabling survives preference reads',()=>{assert.equal(tutorialEnabled(null),true);assert.equal(tutorialEnabled({}),true);assert.equal(tutorialEnabled({hints:false}),false);assert.equal(tutorialEnabled({hints:true}),true)})
