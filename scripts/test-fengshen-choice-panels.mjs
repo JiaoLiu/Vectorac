@@ -29,9 +29,17 @@ test('harvest selects/highlights before confirmation, cues expose only public fa
  const before=s;s=step(s,panelAction(v,first.selection));const effects=harvestEffects(before,s);assert.equal(effects.length,1);assert.equal(effects[0].target,0);assert.equal(effects[0].card.id,picked.id);assert.ok(s.players[0].hand.some(c=>c.id===picked.id));assert.equal(playerView(s,3).players[0].hand.length,0);assert.deepEqual(harvestEffects(s,s),[])
  assert.equal(harvestSeat(playerView(s,0)),1);assert.equal(panelAction(playerView(s,0),first.selection),null)
 })
-test('harvest counter highlights effect recipient, not the person deciding nullify; pool cannot obscure them',()=>{
+test('harvest counter keeps the public pool visible so the nullify decider can see it; recipient still identified',()=>{
  const s=fixture(),v=playerView(s,0),c=catalog.makeDeck().find(c=>c.type==='harvest');v.lastPlayed={id:4,as:'harvest',source:1,targets:[],turn:v.turns,cards:[c]};v.harvestPool=catalog.makeDeck().slice(0,5);v.pending={id:2,kind:'counter',actor:0,target:3,source:1,cardType:'harvest'}
- assert.equal(harvestSeat(v),3);assert.ok(!renderCenter(model(s),v).includes('fs-pool-choice'));assert.equal(harvestSeat({...v,pending:{...v.pending,cardType:'draw'}}),null)
+ assert.equal(harvestSeat(v),3)
+ // 破法询问期间保留牌池面板（池子是公开信息，持有无懈者要边看边决定），而不是整块藏起来。
+ const html=renderCenter(model(s),v)
+ assert.ok(html.includes('fs-pool-choice'),'pool stays visible while deciding nullify')
+ assert.ok(html.includes('等待破法结算'),'pool panel shows the countering note')
+ assert.equal(harvestSeat({...v,pending:{...v.pending,cardType:'draw'}}),null)
+ // 非五谷的无懈询问仍只显示公开出牌区，不残留牌池面板。
+ const other={...v,lastPlayed:{...v.lastPlayed,as:'draw'},harvestPool:[]}
+ assert.ok(!renderCenter(model(s),other).includes('fs-pool-choice'))
 })
 test('judge replacement has explicit confirm and selected hand follows exact legal response',()=>{
  const s=fixture(),v=playerView(s,0),c=catalog.makeDeck()[0];v.pending={kind:'judge-replace',actor:0,target:1,id:4};v.legal=[{type:'respond',ids:[c.id],as:'judgment'},{type:'pass'}]

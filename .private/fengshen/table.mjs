@@ -1,7 +1,7 @@
 import {FACTIONS,CARDS_BY_TYPE,displayText,skillName,skillHelp} from './theme.mjs'
 import {ROLES,SUITS} from './core/catalog.mjs'
 import {playerView} from './engine.mjs'
-import {esc,display,portrait,hp,cardFace,effectiveCard,cardBack,cardTitle,equipEffect} from './presentation.mjs'
+import {esc,display,portrait,playerResources,cardFace,effectiveCard,cardBack,cardTitle,equipEffect} from './presentation.mjs'
 import {combatContext,seatName} from './combat.mjs'
 import {judgmentMark,publicPicks,responsePrompt,counterAction} from './table-visuals.mjs'
 import {tableTrail,trailCards} from './table-trail.mjs'
@@ -42,7 +42,7 @@ export function renderOpponent(ui,p,view){
   return `<article class="fs-player faction-${h.faction} ${active?'turn-active':''} ${target?'targetable':''} ${ui.targets.includes(p.seat)?'target-selected':''} ${!p.alive?'fallen':''}" data-player="${p.seat}" data-equip-count="${Object.values(p.equip).filter(Boolean).length}" style="--equip-count:${Math.max(1,Object.values(p.equip).filter(Boolean).length)}">
     <button class="fs-player-main" data-action="target" data-value="${p.seat}" aria-label="${target?'选择目标':'查看'}${h.name}${!p.alive?'，已阵亡，'+roleName(p,view):''}">
       ${portrait(h)}${targetSeqBadge(ui,view,p.seat)}${formMarker(p)}${faceMarker(p)}${stateMarkers(p)}<span class="fs-portrait-shade"></span>${roleBadge(p,view)}<span class="fs-seat">${p.seat}号 · ${FACTIONS[h.faction]}</span>${turnBadge(p,view)}
-      <span class="fs-player-info"><strong>${h.name}</strong>${hp(p)}<span>▣ ${p.handCount}${view.pending?.actor===p.seat?' · 响应中':active?' · 出牌中':''}</span></span>
+      <span class="fs-player-info"><strong>${h.name}</strong>${playerResources(p)}</span>
       ${!p.alive?`<span class="fs-death-banner" data-revealed-role="${p.role}">已阵亡 · ${roleName(p,view)}</span>`:''}
       ${delays(p,view).length?`<span class="fs-player-delays">${delayIcons(p,view)}</span>`:''}
     </button>${marker}<div class="fs-opponent-equipment" data-scroll="equip-${p.seat}">${ui.equipment(p)}</div>
@@ -87,17 +87,21 @@ export function renderCenter(ui,view){
   if(view.pending?.actor===0&&view.pending.kind==='take')return takeChoices(ui,view)
   const picks=publicPicks(view)
   if(view.pending?.kind==='ext')return playedCenter(view,ui)
-  // While a recipient's trick is being countered, keep portraits and lines visible.
-  if(view.pending?.kind==='counter')return playedCenter(view,ui)
   if(view.lastPlayed?.as==='harvest'&&(view.harvestPool?.length||picks.length)&&view.lastPlayed.turn===view.turns){
-    // 全部选完后短暂展示结果即自动收起，不再一直占着桌面中央等待
-    if(view.pending?.kind!=='pick'){
+    // 仙山采宝的牌池在打出时即公开：即便正在询问破法（无懈），也保留选牌面板，
+    // 让持有无懈的玩家边看牌池边决定是否抵消，而不是把面板整个藏起来、不发动才恢复。
+    const countering=view.pending?.kind==='counter'
+    // 全部选完后短暂展示结果即自动收起；破法询问期间不收起，避免面板忽隐忽现。
+    if(!countering&&view.pending?.kind!=='pick'){
       if(ui.harvestDoneId!==view.lastPlayed.id){ui.harvestDoneId=view.lastPlayed.id;ui.harvestDoneAt=Date.now();setTimeout(()=>{if(!ui.destroyed)ui.render()},1500)}
       else if(Date.now()-ui.harvestDoneAt>1400)return playedCenter(view,ui)
     }
     const selected=panelAction(view,ui.panelSelection),picking=view.pending?.kind==='pick',own=picking&&view.pending.actor===view.seat
-    return `<section class="fs-center-choice fs-choice-dialog fs-pool-choice" role="group" aria-label="仙山采宝"><header><strong>仙山采宝</strong><small>${picking?(own?'请选择一张牌':display(view.players[view.pending.actor]).name+'正在选牌'):'选牌完成'}</small></header><div class="fs-center-card-list" data-scroll="pool">${(view.harvestPool||[]).map(c=>{const i=view.legal.findIndex(a=>a.type==='choose'&&a.value===c.id);return `<button class="fs-choice-card ${selected?.value===c.id?'selected':''}" data-pool-card="${c.id}" data-action="panel-choice" data-value="${i}" data-prompt="${view.pending?.id}" data-revision="${view.revision}" aria-pressed="${selected?.value===c.id}" ${!own||i<0?'disabled':''} aria-label="${cardTitle(c.type)}">${cardFace(c)}</button>`}).join('')}${picks.map(p=>`<div class="fs-choice-card fs-harvest-picked" data-pool-card="${p.card.id}" data-picked-by="${p.source}">${cardFace(p.card)}<b>${display(view.players[p.source]).name}</b><small>已选 ${cardTitle(p.card.type)}</small></div>`).join('')}</div><footer><span aria-live="polite">${own?(selected?'已选 '+cardTitle(selected.card.type):'选牌后确认；再点已选牌也可直接获取'):picking?'等待选牌':'选牌完成'}</span>${own?`<button class="fs-primary" data-action="panel-confirm" data-prompt="${view.pending.id}" data-revision="${view.revision}" ${!selected?'disabled':''}>获取选中牌</button>`:''}</footer></section>`
+    const note=countering?'等待破法结算':picking?(own?'请选择一张牌':display(view.players[view.pending.actor]).name+'正在选牌'):'选牌完成'
+    return `<section class="fs-center-choice fs-choice-dialog fs-pool-choice" role="group" aria-label="仙山采宝"><header><strong>仙山采宝</strong><small>${note}</small></header><div class="fs-center-card-list" data-scroll="pool">${(view.harvestPool||[]).map(c=>{const i=view.legal.findIndex(a=>a.type==='choose'&&a.value===c.id);return `<button class="fs-choice-card ${selected?.value===c.id?'selected':''}" data-pool-card="${c.id}" data-action="panel-choice" data-value="${i}" data-prompt="${view.pending?.id}" data-revision="${view.revision}" aria-pressed="${selected?.value===c.id}" ${!own||i<0?'disabled':''} aria-label="${cardTitle(c.type)}">${cardFace(c)}</button>`}).join('')}${picks.map(p=>`<div class="fs-choice-card fs-harvest-picked" data-pool-card="${p.card.id}" data-picked-by="${p.source}">${cardFace(p.card)}<b>${display(view.players[p.source]).name}</b><small>已选 ${cardTitle(p.card.type)}</small></div>`).join('')}</div><footer><span aria-live="polite">${own?(selected?'已选 '+cardTitle(selected.card.type):'选牌后确认；再点已选牌也可直接获取'):countering?'先决定是否破法':picking?'等待选牌':'选牌完成'}</span>${own?`<button class="fs-primary" data-action="panel-confirm" data-prompt="${view.pending.id}" data-revision="${view.revision}" ${!selected?'disabled':''}>获取选中牌</button>`:''}</footer></section>`
   }
+  // While a recipient's trick is being countered, keep portraits and lines visible.
+  if(view.pending?.kind==='counter')return playedCenter(view,ui)
   // 公开弃置/拆牌：丢掉的牌短暂摆到牌桌中间（与出牌同一行）看清后自动收起，不用单独弹窗、不用点关闭。
   // 偷牌取走的是暗手牌，不公开，不发线索，因此这里不会出现。
   return playedCenter(view,ui)
@@ -177,6 +181,6 @@ export function renderBattle(ui){
   const ready=new Set(v.pending?.kind==='counter'&&v.pending.actor===0?v.legal.filter(a=>a.type==='respond').flatMap(a=>a.ids):[])
   return `${ui.header()}
     <main class="fs-arena" data-seats="${v.players.length}">${hud}<div class="fs-players" data-seats="${v.players.length}">${v.players.slice(1).map(x=>renderOpponent(ui,x,v)).join('')}</div>${renderCenter(ui,v)}${operation(ui,v)}${selectedCardHint(ui,v)}</main>
-    <section class="fs-dock"><div class="fs-own-panel" data-skill-count="${Object.keys(h.skillNames).length}"><div class="fs-own-hero ${turnActive(p,v)?'turn-active':''} ${p.alive?'':'fs-own-fallen'} ${selfTarget?'targetable':''} ${selfSelected?'target-selected':''}"><button data-action="${selfTarget||selfSelected?'target':'hero-detail'}" data-value="0" data-id="${h.id}" aria-label="${selfTarget?'选择自己作为目标':'查看'+h.name}">${portrait(h)}${targetSeqBadge(ui,v,0)}${stateMarkers(p)}${delays(p,v).length?`<span class="fs-own-delays" aria-label="你的判定区">${delayIcons(p,v)}</span>`:''}</button><div>${formMarker(p)}${turnBadge(p,v)}<small>${FACTIONS[h.faction]} · ${p.alive?h.title:'已阵亡，观战中'}</small><strong>${h.name}</strong><button data-action="identity" class="fs-own-role-button" aria-label="${v.teamMode?'你的阵营：'+roleName(p,v):'你的身份：'+ROLES[p.role].name}">${roleBadge(p,v,true)}<span>${v.teamMode?'你的阵营':'你的身份'}</span></button>${hp(p)}</div></div><div class="fs-own-skills" data-scroll="skills">${ui.skills(p,v)}</div><div class="fs-own-equipment" data-scroll="equipment">${ui.equipment(p,true)}</div></div>
-    <div class="fs-hand-area"><div class="fs-hand-heading"><b>手牌 <i>${p.hand.length}</i></b>${timer}<span>${ui.selected.length?'已选 '+ui.selected.length+' 张':'左右滑动 · 点牌抽起'}</span><button data-action="hand">展开手牌</button></div><div class="fs-hand" data-scroll="hand">${p.hand.length?`<div class="fs-hand-row">${p.hand.map(c=>`<button class="fs-hand-card ${ui.selected.includes(c.id)?'selected':''} ${ready.has(c.id)?'counter-ready':''}" data-action="card" data-id="${c.id}" aria-label="${cardTitle(c.type)} ${SUITS[c.suit]}${c.rank}" aria-pressed="${ui.selected.includes(c.id)}">${cardFace(c)}</button>`).join('')}</div>`:'<div class="fs-empty">手中无牌 · 静观其变</div>'}</div><div class="fs-actions">${renderControls(ui,v)}</div></div></section>`
+    <section class="fs-dock"><div class="fs-own-panel" data-skill-count="${Object.keys(h.skillNames).length}"><div class="fs-own-hero ${turnActive(p,v)?'turn-active':''} ${p.alive?'':'fs-own-fallen'} ${selfTarget?'targetable':''} ${selfSelected?'target-selected':''}"><button data-action="${selfTarget||selfSelected?'target':'hero-detail'}" data-value="0" data-id="${h.id}" aria-label="${selfTarget?'选择自己作为目标':'查看'+h.name}">${portrait(h)}${targetSeqBadge(ui,v,0)}${stateMarkers(p)}${delays(p,v).length?`<span class="fs-own-delays" aria-label="你的判定区">${delayIcons(p,v)}</span>`:''}</button><div>${formMarker(p)}${turnBadge(p,v)}<small>${FACTIONS[h.faction]} · ${p.alive?h.title:'已阵亡，观战中'}</small><strong>${h.name}</strong><button data-action="identity" class="fs-own-role-button" aria-label="${v.teamMode?'你的阵营：'+roleName(p,v):'你的身份：'+ROLES[p.role].name}">${roleBadge(p,v,true)}<span>${v.teamMode?'你的阵营':'你的身份'}</span></button></div></div><div class="fs-own-skills" data-scroll="skills">${ui.skills(p,v)}</div><div class="fs-own-equipment" data-scroll="equipment">${ui.equipment(p,true)}</div></div>
+    <div class="fs-hand-area"><div class="fs-hand-heading">${playerResources(p)}${timer}<span>${ui.selected.length?'已选 '+ui.selected.length+' 张':'左右滑动 · 点牌抽起'}</span><button data-action="hand">展开手牌</button></div><div class="fs-hand" data-scroll="hand">${p.hand.length?`<div class="fs-hand-row">${p.hand.map(c=>`<button class="fs-hand-card ${ui.selected.includes(c.id)?'selected':''} ${ready.has(c.id)?'counter-ready':''}" data-action="card" data-id="${c.id}" aria-label="${cardTitle(c.type)} ${SUITS[c.suit]}${c.rank}" aria-pressed="${ui.selected.includes(c.id)}">${cardFace(c)}</button>`).join('')}</div>`:'<div class="fs-empty">手中无牌 · 静观其变</div>'}</div><div class="fs-actions">${renderControls(ui,v)}</div></div></section>`
 }

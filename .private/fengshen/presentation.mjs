@@ -5,6 +5,12 @@ export const display=p=>{const h=heroForBase(p.heroId),i=p.incarnation,b=i?.acti
 export const effectiveCard=(p,c)=>p.effectiveSkills?.includes('hongyan')&&c.suit==='spade'?{...c,suit:'heart',physicalSuit:c.suit}:c
 export const portrait=(h,extra='',full=false)=>`<img class="fs-portrait ${extra}" src="${full?h.image:h.thumbnail}" alt="${esc(h.name)}原创形象" draggable="false" loading="${full?'eager':'lazy'}"${full?' fetchpriority="high"':''}>`
 export const hp=p=>`<span class="fs-hp" aria-label="体力 ${p.hp}/${p.maxHp}">${Array.from({length:p.maxHp},(_,i)=>`<i class="${i<p.hp?'full':''}">◆</i>`).join('')}<b>${p.hp}/${p.maxHp}</b></span>`
+// Counts are public information; never derive an opponent's count from their
+// redacted hand array. Keep explicit labels, including zero and three digits.
+export function playerResources(p){
+  const count=p.handCount??p.hand?.length??0,tone=p.hp<=1?'critical':p.hp<=p.maxHp/2?'wounded':'healthy',life=Math.max(0,Math.min(100,p.hp/Math.max(1,p.maxHp)*100))
+  return `<span class="fs-resources" data-resources-seat="${p.seat}"><span class="fs-resource-hp" data-resource="hp" data-hp-tone="${tone}" style="--life:${life}%" aria-label="血量 ${p.hp}/${p.maxHp}"><span>血量</span><b>${p.hp}/${p.maxHp}</b></span><span class="fs-resource-hand" data-resource="hand" aria-label="手牌 ${count} 张"><span>手牌</span><b>${count}</b></span></span>`
+}
 export const cardTitle=type=>CARDS_BY_TYPE[type].name
 // 装备效果一句话角标：武器显示攻击范围，坐骑显示 ±1，防具显示「防」。
 // 对手栏与偷牌/拆牌弹窗共用，避免玩家只看到牌名而不知道马是 +1 还是 −1。

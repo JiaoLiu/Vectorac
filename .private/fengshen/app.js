@@ -217,7 +217,7 @@ export class FengshenUI {
     this.root.querySelectorAll('.fs-draw-receiver').forEach(e=>e.classList.remove('fs-draw-receiver'))
     const deck=this.root.querySelector('.fs-deck-stack')?.getBoundingClientRect(),deckPoint=deck&&localPoint(this.root,deck.x,deck.y)
     for(const d of this.draws){
-      const receiver=anchor(d.target),to=(d.target===0?this.root.querySelector('.fs-hand'):receiver?.querySelector('.fs-player-info>span:last-child')||receiver)?.getBoundingClientRect()
+      const receiver=anchor(d.target),to=(d.target===0?this.root.querySelector('.fs-hand'):receiver?.querySelector('[data-resource="hand"]')||receiver)?.getBoundingClientRect()
       if(receiver){receiver.classList.add('fs-draw-receiver');const badge=document.createElement('span');badge.className='fs-draw-count';badge.textContent=`摸牌 +${d.count}`;receiver.append(badge)}
       if(!deck||!to)continue
       for(let i=0;i<d.count;i++){

@@ -129,9 +129,22 @@
 .fs-playing .fs-player-info>span:last-child{position:absolute;right:3px;bottom:3px;max-width:65%;overflow:hidden;white-space:nowrap}
 .fs-playing .fs-player[data-equip-count="4"] .fs-player-info>strong{font-size:var(--hero-name-size,14px)}
 .fs-playing .fs-player[data-equip-count="4"] .fs-player-info>span:last-child{display:block}
+/* Public counters are labeled and readable, not cryptic 9px corner digits. */
+.fs-resources{display:flex;gap:4px;pointer-events:none}
+.fs-resources>[data-resource]{position:relative;display:flex;align-items:center;justify-content:space-between;gap:2px;min-width:0;min-height:18px;padding:1px 2px;border-radius:3px;font:clamp(10px,calc(var(--hero-width)*.12),12px)/1.1 system-ui,sans-serif;color:#fff;text-shadow:none;white-space:nowrap;box-shadow:0 1px 3px #0006}
+.fs-resources>[data-resource]>b{font:700 clamp(14px,calc(var(--hero-width)*.16),16px)/1.1 system-ui,sans-serif;font-variant-numeric:tabular-nums;color:#fff}
+.fs-resource-hp{background:#12382ff5;border:1px solid #83d9bba6;overflow:hidden;padding-bottom:3px!important}
+.fs-resource-hp:after{content:'';position:absolute;bottom:0;left:0;width:var(--life);height:3px;background:#8cf3ba;pointer-events:none}
+.fs-resource-hp[data-hp-tone="wounded"]{background:#523c16f5;border-color:#f5ce82}.fs-resource-hp[data-hp-tone="wounded"]:after{background:#ffd679}
+.fs-resource-hp[data-hp-tone="critical"]{background:#6c202af5;border-color:#ffadac}.fs-resource-hp[data-hp-tone="critical"]:after{background:#ffaaa5}
+.fs-resource-hand{background:#18364cf5;border:1px solid #9fd0f8a6}
+.fs-playing .fs-player .fs-player-info>.fs-resources{position:absolute;left:2px;right:2px;bottom:2px;width:calc(100% - 4px);display:flex!important;flex-direction:column;gap:2px;max-width:none;overflow:visible}
+.fs-playing .fs-player[data-equip-count]:has(.fs-equip) .fs-turn-badge{bottom:80px}
+.fs-playing .fs-hand-heading>.fs-resources{display:flex;flex:none;gap:5px;overflow:visible;max-width:none}
+.fs-playing .fs-hand-heading .fs-resources>[data-resource]{min-height:22px}
 .fs-playing .fs-player-main>.fs-identity{left:auto;right:2px;top:3px;min-width:22px;min-height:20px;font-size:11px}
 .fs-playing .fs-seat{left:25px;right:26px;max-height:12px;overflow:hidden}
-.fs-playing .fs-opponent-equipment{bottom:21px;height:26px;max-height:26px}
+.fs-playing .fs-opponent-equipment{bottom:50px;height:26px;max-height:26px}
 .fs-playing :is(.fs-opponent-equipment,.fs-own-equipment) .fs-equip{height:26px}
  .fs-playing .fs-own-panel{height:calc(var(--own-hero-height) + var(--fs-safe-bottom))}
  .fs-playing .fs-own-hero{inset:auto 0 var(--fs-safe-bottom);height:var(--own-hero-height)}

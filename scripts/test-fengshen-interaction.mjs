@@ -11,6 +11,7 @@ import {renderBattle,renderCenter,renderControls,turnActive} from '../.private/f
 import {takeSelection} from '../.private/fengshen/take-selection.mjs'
 import {AUDIO_ENTRIES,VOICES} from '../.private/fengshen/audio-manifest.mjs'
 import {CardVoice,cuesForAction} from '../.private/fengshen/voice.mjs'
+import {playerResources} from '../.private/fengshen/presentation.mjs'
 
 function fixture(heroId='yangjian',role='lord',current=0){
   const s=stableOpponents(createGame({heroId,role,seed:17}));s.deck=catalog.makeDeck();s.discard=[];s.processing=[];s.harvestPool=[];s.queue=[];s.pending=null;s.phase='play';s.current=current;s.logs=[];s.lastPlayed=null;s.lastEvent=null
@@ -20,6 +21,17 @@ function fixture(heroId='yangjian',role='lord',current=0){
 const step=(s,a)=>{const r=dispatch(s,{seat:s.pending?.actor??s.current,...a});assert.ok(r.ok,r.error);assert.equal(allCards(r.state).length,108);assert.equal(new Set(allCards(r.state).map(c=>c.id)).size,108);return r.state}
 const play=(s,c,target)=>step(s,{type:'play',as:c.type,ids:[c.id],targets:target==null?[]:[target]})
 const ui=s=>({state:s,paused:false,selected:[],targets:[],skill:null,choiceIndex:null,choiceZone:'hand',pace:650,voice:{enabled:true},header:()=>'<header></header>',targetable:()=>[],matching:()=>[],currentAs:()=>null,equipment:()=>'',skills:()=>'',won:()=>false,pendingText:()=>''})
+test('public resource badges label HP and hand count without exposing or miscounting redacted hands',()=>{
+ for(const handCount of [0,7,30,108])for(const hp of [-1,0,1,2,4]){
+  const html=playerResources({seat:3,hp,maxHp:4,handCount,hand:[]})
+  assert.ok(html.includes(`aria-label="血量 ${hp}/4"`));assert.ok(html.includes(`aria-label="手牌 ${handCount} 张"`));assert.ok(html.includes(`<b>${handCount}</b>`))
+  assert.ok(html.includes('data-hp-tone="'+(hp<=1?'critical':hp<=2?'wounded':'healthy')+'"'))
+ }
+ assert.ok(playerResources({seat:0,hp:4,maxHp:4,hand:[{},{}]}).includes('手牌 2 张'))
+ const s=fixture(),held=hand(s,1,'sha','shan','tao'),html=renderBattle(ui(s))
+ assert.ok(html.includes('手牌 3 张'));for(const c of held)assert.ok(!html.includes(`data-id="${c.id}"`),'opponent faces remain hidden')
+ assert.equal((html.match(/data-resource="hp"/g)||[]).length,s.players.length)
+})
 
 test('take selection commits on a second tap only in the same prompt/revision',()=>{
   const input={pending:{kind:'take',actor:0,id:12},revision:7,legal:[{type:'choose',value:'hand:0'},{type:'choose',value:'hand:1'}],index:0,promptId:'12',eventRevision:'7'}
