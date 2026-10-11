@@ -1,12 +1,15 @@
 import {NetClient,loadCredential,saveCredential,clearCredential,loadDisplayName,saveDisplayName,randomName,errorText} from '../../.vuepress/components/mahjong/multiplayer/net-client.js'
-import {CHAT_PHRASES,speakPhrase,chatDockHtml,bindChatDock,VoiceRecorder,enqueueVoice,registerBgm,unregisterBgm} from '../../.vuepress/components/gamehall/chatkit.js'
+import {speakPhrase,chatDockHtml,bindChatDock,VoiceRecorder,enqueueVoice,registerBgm,unregisterBgm} from '../../.vuepress/components/gamehall/chatkit.js'
 import '../../.vuepress/components/gamehall/room.css'
 import {absoluteAction,seatMap} from './network-projection.mjs'
 import {esc} from './presentation.mjs'
 import {localPoint} from './screen-mode.mjs'
 import {cleanRoleMarks} from './panel-selection.mjs'
 import {modeById} from './setup.mjs'
-const effects=['🌹','👏','🤝','🍅','🥚','⚡']
+const effects=['🌹','👏','🤝','🍅','⚡']
+// 牌类专属快捷语：棋类共享表的「好棋」「这步走得漂亮」不适用。序号即服务端白名单 0-7，
+// 语音预生成在 /audio/gamehall/fengshen/phrase-N.mp3（与棋类共享目录分开，避免播报与文案不符）。
+const PHRASES=['快点出牌，我等不及了','别急，让我想想','好牌！','这牌打得漂亮！','哎呀，大意了','稳住，这局能赢','承让承让','痛快，再来一局！']
 export function onlineCredential(){const c=loadCredential();return c?.gameType==='fengshen'?c:null}
 export class OnlineGame{
  constructor(ui,{baseUrl=window.__FENGSHEN_NET_BASE__||''}={}){
@@ -16,7 +19,7 @@ export class OnlineGame{
   ui.root.addEventListener('click',this.capture,true)
   // Keep the shared dock alive across state updates: an in-progress recording/drag must never be morphed away.
   this.commLayer=document.createElement('div');this.commLayer.className='fs-online-comm'
-  this.commLayer.innerHTML=chatDockHtml();this.dock=this.commLayer.firstElementChild
+  this.commLayer.innerHTML=chatDockHtml(PHRASES);this.dock=this.commLayer.firstElementChild
   this.dock.querySelector('[data-chat-panel]').insertAdjacentHTML('beforeend',`<div class="fs-emotes">${effects.map((e,i)=>`<button data-online="effect" data-effect="${i}" aria-label="发送${e}">${e}</button>`).join('')}</div>`)
   this.commLayer.addEventListener('click',this.capture,true)
   this.chat=bindChatDock(this.dock,{onStartRec:()=>this.startRecording(),onStopRec:cancel=>this.recorder?.stop(cancel),onPhrase:phrase=>this.sendPhrase(phrase)})
@@ -106,7 +109,7 @@ export class OnlineGame{
   this.detachedForRender=false
  }
  sendInteraction(local){if(!this.ready||Date.now()-this.lastSent<1100)return;const targetSeat=seatMap(local,this.meta.mySeat,this.ui.state.players.length,true),effect=this.selectedEffect;this.selectedEffect=null;this.lastSent=Date.now();if(this.net.sendInteraction({effect,targetSeat}))this.interaction({seatIndex:this.meta.mySeat,targetSeat,effect});this.ui.render()}
- message(p){if(!p.voice&&(!Number.isInteger(p.phrase)||!CHAT_PHRASES[p.phrase]))return;const until=Date.now()+(p.voice?Math.min(12000,3000+(p.duration||1)*1000):4500);this.messages.push({...p,until});this.messages=this.messages.slice(-4);if(!p.voice&&this.ui.voice.enabled)speakPhrase(p.phrase);this.afterRender();clearTimeout(this.messageTimer);this.messageTimer=setTimeout(()=>this.afterRender(),Math.max(...this.messages.map(m=>m.until))-Date.now()+30)}
+ message(p){if(!p.voice&&(!Number.isInteger(p.phrase)||!PHRASES[p.phrase]))return;const until=Date.now()+(p.voice?Math.min(12000,3000+(p.duration||1)*1000):4500);this.messages.push({...p,until});this.messages=this.messages.slice(-4);if(!p.voice&&this.ui.voice.enabled)speakPhrase(p.phrase,PHRASES[p.phrase],'fengshen');this.afterRender();clearTimeout(this.messageTimer);this.messageTimer=setTimeout(()=>this.afterRender(),Math.max(...this.messages.map(m=>m.until))-Date.now()+30)}
  interaction(p){if(!effects[p.effect])return;this.interactions.push({...p,started:Date.now(),until:Date.now()+1400});this.interactions=this.interactions.slice(-5);this.afterRender();clearTimeout(this.interactionTimer);this.interactionTimer=setTimeout(()=>this.afterRender(),1450)}
  anchor(abs){if(!this.meta||!this.ui.state)return null;const local=seatMap(abs,this.meta.mySeat,this.ui.state.players.length);return this.ui.root.querySelector(local===0?'.fs-own-hero>button':`[data-player="${local}"] .fs-player-main`)}
  socialHtml(){return this.selectedEffect==null?'':`<div class="fs-interaction-hint">点人物发送 ${effects[this.selectedEffect]} <button data-online="cancel">取消</button></div>`}
@@ -117,7 +120,7 @@ export class OnlineGame{
   if(this.pending)root.querySelectorAll('.fs-actions button,.fs-draft-footer button').forEach(b=>b.disabled=true)
   for(const s of this.meta?.seats||[]){const a=this.anchor(s.seatIndex);if(a){const name=document.createElement('small');name.className='fs-online-name';name.textContent=s.displayName+(s.autoPlay?' · 托管':'');a.append(name)}}
   this.commLayer.querySelector('.fs-voice-receipts')?.remove();const receipts=document.createElement('div');receipts.className='fs-voice-receipts'
-  for(const m of this.messages.filter(m=>m.until>Date.now())){const text=m.voice?'🔊 '+Math.round(m.duration||1)+'″':CHAT_PHRASES[m.phrase],a=this.anchor(m.seatIndex);if(a){const e=document.createElement('span');e.className='fs-online-bubble';e.textContent=text;a.append(e)}
+  for(const m of this.messages.filter(m=>m.until>Date.now())){const text=m.voice?'🔊 '+Math.round(m.duration||1)+'″':PHRASES[m.phrase],a=this.anchor(m.seatIndex);if(a){const e=document.createElement('span');e.className='fs-online-bubble';e.textContent=text;a.append(e)}
    const e=document.createElement(m.voice?'button':'span');e.textContent=(this.room?.seats?.[m.seatIndex]?.displayName||'玩家')+' · '+text;if(m.voice){e.setAttribute('aria-label','重播语音');e.onclick=()=>enqueueVoice(m)}receipts.append(e)
   }this.commLayer.append(receipts)
   for(const m of this.interactions.filter(m=>m.until>Date.now())){const a=this.anchor(m.seatIndex)?.getBoundingClientRect(),b=this.anchor(m.targetSeat)?.getBoundingClientRect();if(!a||!b)continue;const ap=localPoint(root,a.x+a.width/2,a.y+a.height/2),bp=localPoint(root,b.x+b.width/2,b.y+b.height/2),e=document.createElement('span');e.className='fs-social-flight';e.textContent=effects[m.effect];e.style.cssText=`--sx:${ap.x}px;--sy:${ap.y}px;--tx:${bp.x}px;--ty:${bp.y}px;animation-delay:${-(Date.now()-m.started)}ms`;root.append(e)}
