@@ -5,6 +5,7 @@
   "scripts": {
     "test:fengshen": "node --test scripts/test-fengshen.mjs scripts/test-gods.mjs scripts/test-fengshen-expansion.mjs scripts/test-fengshen-interaction.mjs scripts/test-fengshen-combat.mjs scripts/test-fengshen-setup.mjs scripts/test-fengshen-table-visuals.mjs scripts/test-fengshen-toolbar.mjs scripts/test-fengshen-canonical-roster.mjs scripts/test-fengshen-classic-skills.mjs scripts/test-sunshangxiang-classic.mjs scripts/test-fengshen-modes.mjs scripts/test-fengshen-mobile-layout.mjs scripts/test-fengshen-screen-mode.mjs scripts/test-fengshen-target-layout.mjs scripts/test-fengshen-sunwukong.mjs scripts/test-fengshen-clean-table.mjs scripts/test-fengshen-choice-panels.mjs scripts/test-fengshen-wind-fire.mjs scripts/test-fengshen-complete.mjs",
     "test:fengshen:browser": "node scripts/test-fengshen-browser.mjs",
+    "test:fengshen:cards:browser": "node scripts/test-fengshen-card-face-browser.mjs",
     "test:fengshen:online": "node --test mahjong-service/test-fengshen.js",
     "test:fengshen:online:browser": "node scripts/test-fengshen-online-browser.mjs",
     "test:sanguo": "npm run test:fengshen",

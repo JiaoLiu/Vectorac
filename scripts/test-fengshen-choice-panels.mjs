@@ -41,6 +41,19 @@ test('damage-triggered take uses the same highlighted card and in-panel confirma
  let s=createAssignedGame({roles:['lord','loyal','rebel','rebel','renegade'],heroIds:['wenzhong','nezha','jifa','yangjian','dixin'],seed:17});s.deck=catalog.makeDeck();s.discard=[];s.processing=[];s.harvestPool=[];s.queue=[];s.pending=null;s.phase='play';s.current=1;for(const p of s.players){p.hand=[];p.equip={weapon:null,armor:null,offenseHorse:null,defenseHorse:null};p.judgment=[];p.marks={sha:0};p.hp=p.maxHp}
  for(const [seat,type]of [[1,'sha'],[1,'shan']]){const i=s.deck.findIndex(c=>c.type===type);s.players[seat].hand.push(s.deck.splice(i,1)[0])}const attack=s.players[1].hand[0];s=step(s,{type:'play',as:'sha',ids:[attack.id],targets:[0]});s=step(s,{type:'pass'});assert.equal(s.pending.kind,'choice');assert.equal(s.pending.skill,'fankui');s=step(s,{type:'choose',value:'yes'});assert.equal(s.pending.kind,'take');const v=playerView(s,0),html=renderCenter({...model(s),choiceIndex:0,choiceZone:'hand'},v);assert.ok(html.includes('fs-choice-dialog fs-take-choice'));assert.ok(html.includes('fs-choice-card selected'));assert.ok(html.slice(html.indexOf('<footer>')).includes('获得选中牌'))
 })
+test('equipment in the take panel shows a range/±1/armor badge so horses are distinguishable',async()=>{
+ const s=fixture(),deck=catalog.makeDeck()
+ const horse=deck.find(c=>c.type==='dilu'),weapon=deck.find(c=>c.type==='qinggang'),armor=deck.find(c=>c.type==='renwang')
+ s.pending={kind:'take',id:4,actor:0,source:0,target:1,mode:'snatch'}
+ const v=playerView(s,0)
+ v.legal=[{type:'choose',value:horse.id,card:horse,zone:'equipment'},{type:'choose',value:weapon.id,card:weapon,zone:'equipment'},{type:'choose',value:armor.id,card:armor,zone:'equipment'}]
+ const html=renderCenter({...model(s),choiceZone:'equipment'},v)
+ assert.ok(html.includes('<b class="fs-choice-effect">+1</b>'),'defensive horse shows +1')
+ assert.ok(html.includes('<b class="fs-choice-effect">距2</b>'),'weapon shows attack range')
+ assert.ok(html.includes('<b class="fs-choice-effect">防</b>'),'armor shows 防')
+ const css=await readFile(new URL('../.private/fengshen/table.css',import.meta.url),'utf8')
+ assert.ok(css.includes('.fs-choice-effect{'),'badge has styling')
+})
 test('private identity guesses cycle without revealing roles or changing AI state; reveal supersedes guess',()=>{
  const s=fixture(),v=playerView(s,0),p=v.players.find(p=>p.seat!==0&&!p.role),original=JSON.stringify(s);let marks={};for(const role of ['loyal','rebel','renegade',undefined]){marks=nextRoleMark(v,marks,p.seat);assert.equal(marks[p.seat],role)}
  marks=nextRoleMark(v,{},p.seat);const html=renderOpponent({...model(s),roleMarks:marks},p,v);assert.ok(html.includes('data-action="role-mark"'));assert.ok(html.includes('身份猜测：忠臣'));assert.ok(html.includes('<i>猜</i>'));assert.equal(JSON.stringify(s),original)

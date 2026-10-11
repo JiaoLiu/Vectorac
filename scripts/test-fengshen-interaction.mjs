@@ -88,6 +88,17 @@ test('selecting a theme card explains its function outside the face',()=>{
   const html=renderBattle(model),rail=html.slice(html.indexOf('class="fs-status"'),html.indexOf('class="fs-dock"'))
   assert.ok(rail.includes('摄宝：'));assert.ok(rail.includes('获得'));assert.ok(html.includes('<strong>摄宝</strong>'));assert.equal(html.includes('<strong>顺手牵羊</strong>'),false)
 })
+test('selection aid is read-only, works in response windows and honors teaching toggle',()=>{
+  const s=fixture(),[c]=hand(s,0,'shan'),model=ui(s);model.selected=[c.id]
+  const before=JSON.stringify(s)
+  assert.ok(renderBattle(model).includes('data-tip-type="shan"'))
+  assert.ok(renderBattle(model).includes('不能主动对他人使用'))
+  model.hints=false;assert.ok(!renderBattle(model).includes('fs-selected-tip'));model.hints=true
+  s.current=1;assert.ok(!renderBattle(model).includes('fs-selected-tip'))
+  s.pending={kind:'response',actor:0,source:1,target:0,as:'shan'};assert.ok(renderBattle(model).includes('data-tip-type="shan"'))
+  s.pending=null;s.current=0;assert.equal(JSON.stringify(s),before)
+  model.selected=[];assert.ok(!renderBattle(model).includes('fs-selected-tip'))
+})
 test('Jizhi and Yingzi draw automatically; Luoyi keeps its real tradeoff prompt',()=>{
   let s=fixture('jinling');const [draw]=hand(s,0,'draw');s=play(s,draw)
   assert.equal(s.players[0].hand.length,3);assert.equal(s.pending,null);assert.ok(s.logs.some(l=>l.cue?.skill==='jizhi'))

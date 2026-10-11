@@ -1,13 +1,14 @@
 import {FACTIONS,CARDS_BY_TYPE,displayText,skillName,skillHelp} from './theme.mjs'
 import {ROLES,SUITS} from './core/catalog.mjs'
 import {playerView} from './engine.mjs'
-import {esc,display,portrait,hp,cardFace,effectiveCard,cardBack,cardTitle} from './presentation.mjs'
+import {esc,display,portrait,hp,cardFace,effectiveCard,cardBack,cardTitle,equipEffect} from './presentation.mjs'
 import {combatContext,seatName} from './combat.mjs'
 import {judgmentMark,publicPicks,responsePrompt,counterAction} from './table-visuals.mjs'
 import {tableTrail,trailCards} from './table-trail.mjs'
 import {panelAction,cleanRoleMarks} from './panel-selection.mjs'
 import {extensionChoice,extensionControls,extensionPrompt,actualResponseControls} from './extension-table.mjs'
 import {EXT_ACTIVE} from './extension-actions.mjs'
+import {selectedCardHint} from './card-hint.mjs'
 const roleBadge=(p,view,own=false)=>{
   // 对抗局只有敌友：按与本地玩家（0 号席）的阵营关系显示友/敌。
   if(view?.teamMode){const ally=view.sides[p.seat]===view.sides[view.seat];return `<span class="fs-identity ${ally?'role-ally':'role-enemy'} ${own?'fs-own-identity':''}" data-role="${ally?'ally':'enemy'}">${ally?'友':'敌'}</span>`}
@@ -53,7 +54,7 @@ function takeChoices(ui,view){
   return `<section class="fs-center-choice fs-choice-dialog fs-take-choice" role="group" aria-label="选择${display(target).name}的区域牌">
     <header><div><small>${mode==='获得'?'摄宝 · 取一张牌':'破阵 · 弃一张牌'}</small><strong>选择${display(target).name}的一张牌</strong></div><span>${mode}</span></header>
     <div class="fs-choice-tabs">${zones.map(z=>`<button data-action="choice-zone" data-value="${z}" aria-pressed="${z===zone}" class="${z===zone?'selected':''}">${names[z]} <b>${options.filter(a=>(a.zone||'hand')===z).length}</b></button>`).join('')}</div>
-    <div class="fs-center-card-list" data-scroll="choice-${zone}">${options.filter(a=>(a.zone||'hand')===zone).map(a=>`<button data-action="take-choice" data-value="${a.index}" data-prompt="${pending.id}" data-revision="${view.revision}" class="fs-choice-card ${ui.choiceIndex===a.index?'selected':''}" aria-pressed="${ui.choiceIndex===a.index}" aria-label="${a.hidden?a.label:CARDS_BY_TYPE[a.card.type].name}">${a.hidden?cardBack(a.label):cardFace(a.card)}</button>`).join('')}</div>
+    <div class="fs-center-card-list" data-scroll="choice-${zone}">${options.filter(a=>(a.zone||'hand')===zone).map(a=>{const eff=!a.hidden&&CARDS_BY_TYPE[a.card.type]?.category==='equip'?equipEffect(CARDS_BY_TYPE[a.card.type]):'';return `<button data-action="take-choice" data-value="${a.index}" data-prompt="${pending.id}" data-revision="${view.revision}" class="fs-choice-card ${ui.choiceIndex===a.index?'selected':''}" aria-pressed="${ui.choiceIndex===a.index}" aria-label="${a.hidden?a.label:CARDS_BY_TYPE[a.card.type].name}">${a.hidden?cardBack(a.label):cardFace(a.card)}${eff?`<b class="fs-choice-effect">${eff}</b>`:''}</button>`}).join('')}</div>
     <footer><span>${zone==='hand'?'暗手牌只显示牌背':'明置牌可查看牌面'} · 再点已选牌或双击直接${mode}</span><button data-action="choose-confirm" data-prompt="${pending.id}" data-revision="${view.revision}" class="fs-primary" ${ui.choiceIndex==null?'disabled':''}>${mode}选中牌</button></footer>
   </section>`
 }
@@ -132,8 +133,6 @@ function operation(ui,v){
   else if(v.pending){title=display(v.players[v.pending.actor]).name+'正在响应…'}
   else if(v.current===0&&v.players[0].alive)title=playInstruction(ui,v)
   else title=display(v.players[v.current]).name+'的回合 · '+(v.players[0].alive?'等待出牌':'你已阵亡，正在观战')
-  const selected=v.players[0].hand.find(c=>c.id===ui.selected[0])||Object.values(v.players[0].equip).find(c=>c?.id===ui.selected[0])
-  if(selected&&!ui.skill&&ui.hints!==false){const as=ui.currentAs(v),d=CARDS_BY_TYPE[as]||CARDS_BY_TYPE[selected.type];hint=d.name+'：'+displayText(d.help)+(as&&as!==selected.type?' · 以'+cardTitle(selected.type)+'转化':'')}
   // 状态提示改为牌面上方的浮空文字，不占布局、不遮挡操作（英雄杀式桌面）。
   return `<div class="fs-status" aria-live="polite"><strong>${esc(title)}</strong>${hint?`<small class="fs-teaching-hint">${esc(hint)}</small>`:''}</div>`
 }
@@ -175,7 +174,7 @@ export function renderBattle(ui){
   const timer=ui.clock?.key?`<span class="fs-timer" aria-label="思考倒计时"><b data-seconds>${ui.clock.seconds}s</b></span>`:''
   const ready=new Set(v.pending?.kind==='counter'&&v.pending.actor===0?v.legal.filter(a=>a.type==='respond').flatMap(a=>a.ids):[])
   return `${ui.header()}
-    <main class="fs-arena" data-seats="${v.players.length}">${hud}<div class="fs-players" data-seats="${v.players.length}">${v.players.slice(1).map(x=>renderOpponent(ui,x,v)).join('')}</div>${renderCenter(ui,v)}${operation(ui,v)}</main>
+    <main class="fs-arena" data-seats="${v.players.length}">${hud}<div class="fs-players" data-seats="${v.players.length}">${v.players.slice(1).map(x=>renderOpponent(ui,x,v)).join('')}</div>${renderCenter(ui,v)}${operation(ui,v)}${selectedCardHint(ui,v)}</main>
     <section class="fs-dock"><div class="fs-own-panel" data-skill-count="${Object.keys(h.skillNames).length}"><div class="fs-own-hero ${turnActive(p,v)?'turn-active':''} ${p.alive?'':'fs-own-fallen'} ${selfTarget?'targetable':''} ${selfSelected?'target-selected':''}"><button data-action="${selfTarget||selfSelected?'target':'hero-detail'}" data-value="0" data-id="${h.id}" aria-label="${selfTarget?'选择自己作为目标':'查看'+h.name}">${portrait(h)}${targetSeqBadge(ui,v,0)}${stateMarkers(p)}${delays(p,v).length?`<span class="fs-own-delays" aria-label="你的判定区">${delayIcons(p,v)}</span>`:''}</button><div>${formMarker(p)}${turnBadge(p,v)}<small>${FACTIONS[h.faction]} · ${p.alive?h.title:'已阵亡，观战中'}</small><strong>${h.name}</strong><button data-action="identity" class="fs-own-role-button" aria-label="${v.teamMode?'你的阵营：'+roleName(p,v):'你的身份：'+ROLES[p.role].name}">${roleBadge(p,v,true)}<span>${v.teamMode?'你的阵营':'你的身份'}</span></button>${hp(p)}</div></div><div class="fs-own-skills" data-scroll="skills">${ui.skills(p,v)}</div><div class="fs-own-equipment" data-scroll="equipment">${ui.equipment(p,true)}</div></div>
     <div class="fs-hand-area"><div class="fs-hand-heading"><b>手牌 <i>${p.hand.length}</i></b>${timer}<span>${ui.selected.length?'已选 '+ui.selected.length+' 张':'左右滑动 · 点牌抽起'}</span><button data-action="hand">展开手牌</button></div><div class="fs-hand" data-scroll="hand">${p.hand.length?`<div class="fs-hand-row">${p.hand.map(c=>`<button class="fs-hand-card ${ui.selected.includes(c.id)?'selected':''} ${ready.has(c.id)?'counter-ready':''}" data-action="card" data-id="${c.id}" aria-label="${cardTitle(c.type)} ${SUITS[c.suit]}${c.rank}" aria-pressed="${ui.selected.includes(c.id)}">${cardFace(c)}</button>`).join('')}</div>`:'<div class="fs-empty">手中无牌 · 静观其变</div>'}</div><div class="fs-actions">${renderControls(ui,v)}</div></div></section>`
 }

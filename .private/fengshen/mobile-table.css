@@ -30,16 +30,14 @@
 .fs-harvest-picked .fs-card-design>img{filter:grayscale(.75) saturate(.4)}
 .fs-playing .fs-pool-choice{gap:5px;padding:7px 10px}.fs-pool-choice header strong{font-size:14px}.fs-pool-choice header small{font-size:10px}.fs-pool-choice .fs-center-card-list{padding:4px;gap:8px}.fs-pool-choice .fs-choice-card{width:68px;height:98px;flex-basis:68px}
 .fs-playing .fs-player[data-equip-count="0"] .fs-opponent-equipment{display:none}
-/* Quiet parchment, ink lettering and a small seal; existing illustration
-   remains below the name. No downloaded font or copied commercial asset. */
-.fs-app .fs-card-design{background:linear-gradient(115deg,#faf4e5,#e7ddc6);box-shadow:inset 0 0 0 2px #938268,inset 0 0 0 4px #f4ecd9}
-.fs-app .fs-card-design>strong{font-family:"Kaiti SC","STKaiti","KaiTi","Songti SC",serif;font-weight:900;text-shadow:.5px 0 currentColor;top:5px;height:36px;left:23px;right:4px}
-.fs-app .fs-hand-card .fs-card-design>strong{justify-content:flex-start;left:20px;font-size:calc(var(--title-size)*.91)}
-.fs-app .fs-card-design>.fs-rank{font-size:15px;letter-spacing:-1px}.fs-app .fs-card-design>.fs-rank i{font-size:15px;letter-spacing:0}
-.fs-app .fs-card-design>img{left:5px;top:45px;width:90px;height:94px;border:1px solid #97897177;border-radius:1px;filter:saturate(.65) contrast(.94)}
-.fs-app .fs-card-design:before{content:'';position:absolute;left:26px;right:8px;top:40px;height:1px;background:linear-gradient(90deg,transparent,#8b7858,transparent)}
-.fs-app .fs-card-design:after{content:'法';position:absolute;bottom:8px;right:8px;padding:2px;border:1px solid #93543b;background:#eee0c5dd;color:#96563d;font:10px/1 "Kaiti SC","STKaiti",serif;border-radius:1px}
-.fs-app [data-category=basic] .fs-card-design:after{content:'封'}.fs-app [data-category=equip] .fs-card-design:after{content:'宝'}.fs-app [data-category=delay] .fs-card-design:after{content:'阵'}
+/* One face everywhere: plain rounded paper, suit/rank, original art and ink
+   name. Hand/table/judgment/flight only change scale, not composition. */
+.fs-app .fs-clean-card{border-radius:4px}
+.fs-app .fs-card-design{background:#f4eddf;box-shadow:none}
+.fs-app .fs-card-design>strong{top:auto;bottom:4px;left:4px;right:4px;height:32px;justify-content:center;font:700 min(var(--title-size),30px)/1.1 "Ma Shan Zheng","Kaiti SC","KaiTi",serif;text-shadow:none}
+.fs-app .fs-card-design>.fs-rank{font:700 16px/1 Georgia,serif;letter-spacing:0}.fs-app .fs-card-design>.fs-rank i{font-size:16px;letter-spacing:0}
+.fs-app .fs-card-design>img{left:0;top:36px;width:100px;height:72px;border:0;border-radius:0;filter:saturate(.85);opacity:.95}
+.fs-app .fs-card-design:before,.fs-app .fs-card-design:after{display:none;content:none}
 @media(max-height:559px) and (orientation:landscape){
  .fs-playing{grid-template-rows:34px 24px minmax(0,1fr) 28px 160px}
  .fs-playing .fs-dock{grid-template-columns:144px minmax(0,1fr);padding:5px 9px;gap:9px}
