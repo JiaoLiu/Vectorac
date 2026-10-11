@@ -1,0 +1,92 @@
+scripts/debug-ironchain.mjs
+  5058ed3dc1a97a8c 1-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.8",
+  "base_commit_sha": "5d64cfb17f5ee4952ab46013d24f73c213ea6a2c",
+  "prompts": {
+    "5058ed3dc1a97a8c": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6ac848ce090dc5dc9234c7bc",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 49,
+      "total_deletions": 27,
+      "accepted_lines": 264,
+      "overriden_lines": 0
+    }
+  },
+  "commit_stats": {
+    "git_diff_added_lines": 117,
+    "git_diff_deleted_lines": 5,
+    "ai_additions": 22,
+    "ai_accepted": 22,
+    "BYMC": 94,
+    "mixed_additions": 0,
+    "BYAC": 22,
+    "BYRC": 0,
+    "per_file": {
+      ".private/fengshen/app.js": {
+        "BYMC": [
+          "15-16",
+          "77",
+          "108",
+          "136",
+          "165-167",
+          "183"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      ".private/fengshen/arena-table.css": {
+        "BYMC": [
+          "227-229"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      ".private/fengshen/target-beams.mjs": {
+        "BYMC": [
+          "1-26"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/debug-ironchain.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "1-22"
+        ],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-beams-browser.mjs": {
+        "BYMC": [
+          "1-27"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-complete-dom.mjs": {
+        "BYMC": [
+          "57-60"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-table-visuals.mjs": {
+        "BYMC": [
+          "9",
+          "42-65"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      }
+    }
+  },
+  "commit_timestamp": 1791710951,
+  "requirement_id": ""
+}
