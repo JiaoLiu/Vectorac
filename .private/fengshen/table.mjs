@@ -79,7 +79,9 @@ export function renderCenter(ui,view){
     // 选好牌后弹窗收成不挡人的提示条，露出全场玩家供点选接收者；点「重选」返回挑牌。
     if(own&&pool.length&&ui.selected.length)return `<section class="fs-center-choice fs-pool-choice fs-yiji-choice fs-yiji-mini" role="status" aria-label="传道分牌"><header><strong>${skillName(view.players[0],'yiji')} · 已选 ${ui.selected.length} 张</strong><small>点亮接收者后点「确认赠牌」；「重选」返回挑牌</small></header></section>`
     if(own&&pool.length)return `<section class="fs-center-choice fs-pool-choice fs-yiji-choice" role="group" aria-label="传道分牌"><header><strong>${skillName(view.players[0],'yiji')} · 分配新摸的 ${pool.length} 张牌</strong><small>翻开的牌只有你能看见，原有手牌不能送出</small></header><div class="fs-center-card-list" data-scroll="pool">${pool.map((c,i)=>`<button class="fs-choice-card ${ui.selected.includes(c.id)?'selected':''}" style="animation-delay:${i*70}ms" data-yiji-card="${c.id}" data-action="card" data-id="${c.id}" aria-pressed="${ui.selected.includes(c.id)}" aria-label="${cardTitle(c.type)}">${cardFace(c)}</button>`).join('')}</div><footer><span aria-live="polite">点选要送出的牌；也可以保留剩余牌</span></footer></section>`
-    return `<section class="fs-center-choice fs-skill-prompt fs-yiji-wait"><header><strong>${skillName(view.players[view.pending.actor],'yiji')} · 分配新获得的牌</strong></header>${view.pending.count?`<div class="fs-yiji-backs">${Array.from({length:view.pending.count},()=>'<span class="fs-card-back fs-yiji-back"><i>封</i><b>暗手牌</b></span>').join('')}</div>`:''}<p>${'等待'+seatName(view,view.pending.actor)+'分配'}</p></section>`
+    // 他人（含 AI）传道：不展示对方的暗牌背——牌背既看不出内容，又会被窄面板裁断；
+    // 给牌去向已由飞牌动画表达，这里只留一句等待提示。
+    return `<section class="fs-center-choice fs-skill-prompt fs-yiji-wait"><header><strong>${skillName(view.players[view.pending.actor],'yiji')} · 分配新获得的牌</strong></header><p>${'等待'+seatName(view,view.pending.actor)+'分配'}</p></section>`
   }
   if(view.pending?.kind==='tuxi')return `<section class="fs-center-choice fs-skill-prompt"><header><strong>${skillName(view.players[view.pending.actor],'tuxi')}</strong></header><p>不从牌堆摸牌，改为取得一至两名其他角色各一张手牌。请点亮人物，再确认；也可以正常摸两张。</p></section>`
   if(view.pending?.actor===0&&view.pending.kind==='take')return takeChoices(ui,view)

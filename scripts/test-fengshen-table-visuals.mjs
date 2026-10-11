@@ -107,7 +107,8 @@ test('yiji pool renders as a private flip-card dialog for the owner and card bac
  model.selected=['t1'];const mini=renderCenter(model,v)
  assert.ok(mini.includes('fs-yiji-mini')&&mini.includes('已选 1 张')&&!mini.includes('data-yiji-card'))
  const other=renderCenter(model,{...v,yijiPool:undefined,pending:{...v.pending,actor:1}})
- assert.ok(other.includes('fs-yiji-wait')&&other.includes('fs-yiji-back')&&!other.includes('data-yiji-card'))
+ // 他人传道不再显示暗牌背（会被窄面板裁断且无信息量），只留等待提示；给牌靠飞牌动画表达。
+ assert.ok(other.includes('fs-yiji-wait')&&other.includes('等待')&&!other.includes('fs-yiji-back')&&!other.includes('data-yiji-card'))
 })
 test('skill virtual Duel is illustrated without forged suit or rank; opponent cannot see Guanxing pool',()=>{
  const s=fixture(),model=ui(s),v=playerView(s,0);v.lastPlayed={id:1,source:0,targets:[1,2],as:'duel',cards:[],virtualType:'duel',label:'魅惑'}

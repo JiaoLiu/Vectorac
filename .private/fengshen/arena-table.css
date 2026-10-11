@@ -93,8 +93,6 @@
 /* 选好牌后收成提示条，落在上方人物之下，不挡玩家，方便点选接收者。 */
 .fs-playing .fs-center-choice.fs-pool-choice.fs-yiji-mini{top:calc(var(--center-top) + 4px);bottom:auto;height:auto;max-height:46px;justify-content:center;pointer-events:none;background:#142b32e6;z-index:8}
 .fs-yiji-mini>header{min-height:0}
-.fs-yiji-wait .fs-yiji-backs{display:flex;flex-wrap:wrap;justify-content:center;gap:5px;margin:6px 0}
-.fs-yiji-wait .fs-yiji-back{flex:none;width:calc(var(--pool-card-height,72px)/1.44);height:var(--pool-card-height,72px)}
 @media(prefers-reduced-motion:reduce){.fs-playing .fs-yiji-choice .fs-choice-card{animation:none}}
 /* Complete CJK name face; the card calligraphy font is only a subset. */
 .fs-app :is(.fs-player-info>strong,.fs-own-hero strong,.fs-hero-pick strong){font-family:"PingFang SC","Microsoft YaHei","Noto Sans CJK SC",sans-serif;font-weight:700}

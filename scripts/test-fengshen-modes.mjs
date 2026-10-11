@@ -4,6 +4,7 @@ import {createSetup,setupView,dispatchSetup,chooseSetupAI,restoreSetup,MODES,MOD
 import {PLAYABLE_HEROES,HERO_BY_THEME_ID} from '../.private/fengshen/theme.mjs'
 import {playerView,dispatch,allCards,restoreGame,catalog,chooseAI} from '../.private/fengshen/engine.mjs'
 import {renderHome} from '../.private/fengshen/setup-ui.mjs'
+import {roomTeam,roomTeamBadge,roomTeamsGuide} from '../.private/fengshen/room-teams.mjs'
 const DECK_SIZE=catalog.makeDeck().length
 const step=(s,a)=>{const r=dispatchSetup(s,{revision:s.revision,...a});assert.ok(r.ok,r.error);return r.setup}
 const sorted=a=>a.slice().sort()
@@ -14,6 +15,22 @@ test('mode registry covers five playable modes and falls back to identity5',()=>
   assert.deepEqual(MODE_LIST.map(m=>m.players),[5,8,6,4,2])
   for(const m of MODE_LIST){assert.equal(modeById(m.id),m);assert.ok(m.name&&m.menu&&m.blurb)}
   assert.equal(modeById('9v9'),MODES.identity5);assert.equal(modeById(null),MODES.identity5);assert.equal(modeById(undefined),MODES.identity5)
+})
+test('waiting-room team labels match fixed absolute sides, including nonzero seats and empty slots',()=>{
+ for(const mode of MODE_LIST){
+  const setup=createSetup({mode:mode.id,seed:12})
+  for(let me=0;me<mode.players;me++)for(let seat=0;seat<mode.players;seat++){
+   const team=roomTeam(mode.id,seat,me)
+   if(!mode.teams){assert.equal(team,null);assert.equal(roomTeamBadge(mode.id,seat,me),'');assert.equal(roomTeamsGuide(mode.id,me),'');continue}
+   assert.equal(team.side,setup.sides[seat]);assert.deepEqual(team.seats,setup.sides.flatMap((side,i)=>side===team.side?[i+1]:[]))
+   assert.equal(team.relation,seat===me?'你':setup.sides[seat]===setup.sides[me]?'与你同队':'对方队伍')
+   assert.ok(roomTeamBadge(mode.id,seat,me).includes(`data-team-side="${team.side}"`))
+  }
+ }
+ assert.ok(roomTeamsGuide('2v2',1).includes('青龙队 · 1、3 号'));assert.ok(roomTeamsGuide('2v2',1).includes('你在朱雀队'))
+ assert.ok(roomTeamsGuide('3v3',4).includes('朱雀队 · 2、4、6 号'));assert.ok(roomTeamsGuide('3v3',4).includes('你在青龙队'))
+ assert.equal(roomTeam('3v3',6,0),null);assert.equal(roomTeam('3v3',-1,0),null)
+ assert.equal(roomTeam('2v2',2,undefined).relation,'')
 })
 test('every mode deals its declared roles; team modes interleave friend/enemy seats from seat 0',()=>{
   for(const mode of MODE_LIST){
