@@ -1,0 +1,68 @@
+.private/fengshen/online.css
+  5058ed3dc1a97a8c 10
+scripts/test-fengshen-online-browser.mjs
+  5058ed3dc1a97a8c 52
+.private/fengshen/online.mjs
+  5058ed3dc1a97a8c 9,22,112,123
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.8",
+  "base_commit_sha": "0166df70e6052b09938dc1796422f185b65546fc",
+  "prompts": {
+    "5058ed3dc1a97a8c": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6ac848ce090dc5dc9234c7bc",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 10,
+      "total_deletions": 7,
+      "accepted_lines": 336,
+      "overriden_lines": 0
+    }
+  },
+  "commit_stats": {
+    "git_diff_added_lines": 10,
+    "git_diff_deleted_lines": 7,
+    "ai_additions": 6,
+    "ai_accepted": 6,
+    "BYMC": 4,
+    "mixed_additions": 0,
+    "BYAC": 6,
+    "BYRC": 0,
+    "per_file": {
+      ".private/fengshen/online.css": {
+        "BYMC": [],
+        "BYAC": [
+          "10"
+        ],
+        "BYRC": []
+      },
+      ".private/fengshen/online.mjs": {
+        "BYMC": [
+          "2",
+          "10-12"
+        ],
+        "BYAC": [
+          "9",
+          "22",
+          "112",
+          "123"
+        ],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-online-browser.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "52"
+        ],
+        "BYRC": []
+      }
+    }
+  },
+  "commit_timestamp": 1791726697,
+  "requirement_id": ""
+}
