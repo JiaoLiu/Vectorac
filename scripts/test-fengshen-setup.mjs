@@ -73,6 +73,7 @@ test('malformed drafts reject duplicate packets, leaked publication, unsupported
 })
 test('home removes role/free-hero picking; draft shows only the local assigned candidates',()=>{
   const home=renderHome({header:()=>'',resumeSession:null,mode:'identity5'});assert.ok(home.includes('开始五人身份局'));assert.equal(home.includes('data-action="role"'),false);assert.equal(home.includes('data-action="hero"'),false)
+  assert.ok(home.includes('href="/blogs/other/games.html"'),'home offers a direct route back to the game list')
   let s=reveal(createSetup({seed:1}));const user={header:()=>'',setup:s,draftHero:null}
   let html=renderSetup(user),v=setupView(s,0);assert.equal((html.match(/class="fs-draft-pick"/g)||[]).length,v.candidates.length)
   s=step(s,chooseSetupAI(setupView(s,s.lord)));user.setup=s;v=setupView(s,0);html=renderSetup(user);assert.equal((html.match(/class="fs-draft-pick"/g)||[]).length,v.candidates.length)
