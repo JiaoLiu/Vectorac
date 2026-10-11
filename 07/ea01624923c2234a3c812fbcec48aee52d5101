@@ -1,0 +1,135 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.8",
+  "base_commit_sha": "07ea01624923c2234a3c812fbcec48aee52d5101",
+  "prompts": {
+    "5058ed3dc1a97a8c": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6ac848ce090dc5dc9234c7bc",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 330,
+      "overriden_lines": 0
+    }
+  },
+  "commit_stats": {
+    "git_diff_added_lines": 283,
+    "git_diff_deleted_lines": 195,
+    "ai_additions": 0,
+    "ai_accepted": 0,
+    "BYMC": 283,
+    "mixed_additions": 0,
+    "BYAC": 0,
+    "BYRC": 0,
+    "per_file": {
+      ".private/fengshen/app.js": {
+        "BYMC": [
+          "442-443",
+          "447"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      ".private/fengshen/online.css": {
+        "BYMC": [
+          "1-19"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      ".private/fengshen/online.mjs": {
+        "BYMC": [
+          "2-3",
+          "8",
+          "16-25",
+          "39",
+          "43",
+          "47",
+          "52",
+          "73-79",
+          "85-86",
+          "89-106",
+          "109",
+          "112",
+          "114-115",
+          "119-122",
+          "126"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      ".private/fengshen/smoke-online.mjs": {
+        "BYMC": [
+          "10-11"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      ".vuepress/components/gamehall/chatkit.js": {
+        "BYMC": [
+          "854-855"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      ".vuepress/components/gamehall/hall.js": {
+        "BYMC": [
+          "14"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      ".vuepress/components/gamehall/room.css": {
+        "BYMC": [
+          "1-167"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "mahjong-service/rooms/room.js": {
+        "BYMC": [
+          "527-530"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "mahjong-service/test-fengshen.js": {
+        "BYMC": [
+          "48-50"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/browser-cdp.mjs": {
+        "BYMC": [
+          "9",
+          "19"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-online-browser.mjs": {
+        "BYMC": [
+          "19-20",
+          "23-25",
+          "27-31",
+          "33",
+          "52-53",
+          "55-62",
+          "65-69",
+          "71"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      }
+    }
+  },
+  "commit_timestamp": 1791724237,
+  "requirement_id": ""
+}
