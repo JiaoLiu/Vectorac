@@ -6,7 +6,7 @@ import { readFile, writeFile, mkdtemp } from 'node:fs/promises'
 import { join, resolve, extname } from 'node:path'
 import { tmpdir } from 'node:os'
 const require=createRequire(import.meta.url),WebSocket=require('ws')
-export async function openBrowser({name='game',baseUrl=null,route='/'}={}) {
+export async function openBrowser({name='game',baseUrl=null,route='/',extraArgs=[]}={}) {
   const output=await mkdtemp(join(tmpdir(),`${name}-browser-`)),root=resolve('public')
   const mime={'.html':'text/html','.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.webp':'image/webp','.mp3':'audio/mpeg'}
   const server=createServer(async(req,res)=>{
@@ -16,7 +16,7 @@ export async function openBrowser({name='game',baseUrl=null,route='/'}={}) {
   })
   await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(0,'127.0.0.1',resolve)})
   const origin=(baseUrl||`http://127.0.0.1:${server.address().port}`).replace(/\/$/,'')
-  const chrome=spawn(process.env.CHROME_PATH||'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',['--headless=new','--remote-debugging-port=0',`--user-data-dir=${join(output,'profile')}`,'--no-first-run','--no-default-browser-check','about:blank'],{stdio:['ignore','ignore','pipe']})
+  const chrome=spawn(process.env.CHROME_PATH||'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',['--headless=new','--remote-debugging-port=0',`--user-data-dir=${join(output,'profile')}`,'--no-first-run','--no-default-browser-check',...extraArgs,'about:blank'],{stdio:['ignore','ignore','pipe']})
   let socket,session,serial=0
   const pending=new Map(),errors=[]
   const close=async()=>{if(socket)socket.close();for(const task of pending.values())clearTimeout(task.timer);chrome.kill();await new Promise(resolve=>server.close(resolve))}

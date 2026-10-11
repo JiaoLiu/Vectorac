@@ -45,6 +45,9 @@ test('real room/WS: private windows, ordered draft, actions, reconnect, social r
   const {room,player:p0}=service.manager.createRoom({gameType:'fengshen',rules:{mode:'1v1'},displayName:'A'}),{player:p1}=await service.manager.joinRoom({roomCode:room.roomCode,displayName:'B'});assert.equal(room.turnTimeoutSeconds,60)
   const outsider=service.manager.createRoom({gameType:'fengshen',rules:{mode:'1v1'},displayName:'Outside'})
   for(const p of [p0,p1,outsider.player]){const c=client(url);clients.push(c);await new Promise(r=>c.ws.once('open',r));c.send({type:'RECONNECT',roomId:p.roomId,resumeToken:p.resumeToken});await c.wait(m=>m.type==='RECONNECTED')}
+  await assert.rejects(room.startGame(p0.playerId),/准备/)
+  await room.setReady(p0.playerId,true);await assert.rejects(room.startGame(p0.playerId),/准备/)
+  await room.setReady(p1.playerId,true)
   await room.startGame(p0.playerId);for(const c of clients.slice(0,2)){const m=await c.wait(m=>m.type==='ACTION_WINDOW_OPENED');assert.equal(m.payload.legalActionsBySeat,undefined)}
   while(room.gameSession.state.setup){const gs=room.gameSession,version=gs.gameVersion,seat=gs.adapter.eligibleSeatsOf(gs.state)[0],pick=gs.adapter.legalActions(gs.state,seat)[0];clients[seat].send({type:'PLAYER_ACTION',requestId:'draft-'+version,gameId:gs.gameId,windowId:gs.window.windowId,action:{...pick,seat:1-seat}});await clients[seat].wait(m=>m.type==='GAME_STATE_CHANGED'&&m.gameVersion>version)}
   const gs=room.gameSession;assert.equal(gs.state.s.players.length,2);const seat=gs.state.s.pending?.actor??gs.state.s.current,other=1-seat,oldWindow=gs.window.windowId

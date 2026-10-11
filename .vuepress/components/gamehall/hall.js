@@ -11,6 +11,7 @@
 //   · 刷新 / 断线凭 resumeToken 回到原座位（net-client 自动重连）。
 // ============================================================
 
+import './room.css'
 import {
   NetClient,
   loadDisplayName,

@@ -851,6 +851,8 @@ export function bindChatDock(dock, { onStartRec, onStopRec, onPhrase } = {}) {
   let suppressClick = false
   toggle.addEventListener('pointerdown', ev => {
     if (ev.pointerType === 'mouse' && ev.button !== 0) return
+    // A dragged touch may produce no synthetic click. Never swallow the next real gesture.
+    suppressClick = false
     const rect = dock.getBoundingClientRect()
     dragStart = { x: ev.clientX, y: ev.clientY, dl: rect.left, dt: rect.top }
     dragged = false

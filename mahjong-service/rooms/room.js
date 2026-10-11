@@ -524,6 +524,10 @@ export class Room {
       if (this.status === ROOM_STATUS.FINISHED) fail(ERR.GAME_ALREADY_FINISHED)
       if (this.status === ROOM_STATUS.DESTROYED) fail(ERR.ROOM_DESTROYED)
       if (humanCount(this.seats) < 1) fail(ERR.ROOM_NOT_FOUND, '房间已无真人')
+      // 众神斗法先在房间准备齐，再进入原有身份/选将流程；不改变其他游戏开局约定。
+      if (this.gameType === 'fengshen' && humanSeats(this.seats).some(s => !s.connected || !s.ready)) {
+        fail(ERR.INVALID_ACTION, '请等待所有真人连接并准备后再开始')
+      }
       return { gameId: this._launchRound().gameId }
     })
   }

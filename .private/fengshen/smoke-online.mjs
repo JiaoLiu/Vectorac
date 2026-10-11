@@ -7,6 +7,8 @@ function connect(p){const ws=new WebSocket(base.replace(/^http/,'ws')+'/mahjong-
 try{
  const created=await http('/api/rooms',{gameType:'fengshen',rules:{mode:'1v1'},displayName:'发布自测甲',turnTimeoutSeconds:60});creds.push(created.player);const joined=await http('/api/rooms/join',{roomCode:created.room.roomCode,displayName:'发布自测乙'});creds.push(joined.player)
  for(const p of creds){const c=connect(p);clients.push(c);await new Promise((r,j)=>{c.ws.once('open',r);c.ws.once('error',j)});c.send({type:'RECONNECT',roomId:p.roomId,resumeToken:p.resumeToken});await c.wait(m=>m.type==='RECONNECTED')}
+ for(const c of clients)c.send({type:'TOGGLE_READY',ready:true,requestId:'smoke-ready'})
+ await clients[0].wait(m=>m.type==='READY_CHANGED'&&m.payload.seats.filter(s=>s.occupantType==='HUMAN').every(s=>s.ready))
  clients[0].send({type:'START_GAME',requestId:'smoke-start'})
  for(const c of clients){const m=await c.wait(m=>m.type==='GAME_STATE_CHANGED'&&m.payload.setup);const v=m.payload.setup;c.send({type:'PLAYER_ACTION',requestId:'smoke-pick-'+v.seat+'-'+m.payload.meta.mySeat,gameId:m.gameId,windowId:m.payload.meta.windowId,action:{type:'pick',heroId:v.candidates[0]}})}
  for(const c of clients){const m=await c.wait(m=>m.type==='GAME_STATE_CHANGED'&&m.payload.game);assert.equal(m.payload.game.players[1].hand.length,0);assert.ok(m.payload.game.players[0].hand.length>0);for(const w of c.messages.filter(m=>m.type==='ACTION_WINDOW_OPENED'))assert.equal(w.payload.legalActionsBySeat,undefined)}

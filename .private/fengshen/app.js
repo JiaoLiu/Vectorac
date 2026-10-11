@@ -439,10 +439,12 @@ export class FengshenUI {
     const wasModal=!!this.root.querySelector('.fs-modal'),prior=document.activeElement
     if(this.state&&!this.setup){const v=playerView(this.state,0),choice=counterSelection(v,this.counterKey,this.selected);this.counterKey=choice.key;this.selected=choice.selected;this.tableTrail=updateTableTrail(this.tableTrail||[],v)}
     if(this.modal&&!wasModal)this.returnFocus={action:prior?.dataset?.action,id:prior?.dataset?.id}
-    this.viewport.setImmersive(!this.lobby);this.syncClock()
+    this.viewport.setImmersive(!this.lobby&&!this.online?.waiting);this.syncClock()
+    this.root.classList.toggle('fs-network-room',!!this.online?.waiting)
     this.root.classList.toggle('fs-playing',!this.lobby&&!this.setup&&!this.online?.waiting)
     const feedback=this.feedback?.modal,keepFeedback=feedback?.parentNode===this.root
     if(keepFeedback)feedback.remove()
+    this.online?.beforeRender()
     morph(this.root,(this.online?.waiting?this.online.waitingHtml():this.lobby?this.renderLobby():this.setup?renderSetup(this):this.renderGame())+(this.online?.socialHtml()||'')+this.modalContent()+(this.toast?`<div class="fs-toast" role="status">${esc(this.toast)}</div>`:''))
     if(keepFeedback){this.root.append(feedback);this.feedback.moveToDisplayRoot()}
     if(this.modal&&!this.lobby&&(this.state||this.setup)){
