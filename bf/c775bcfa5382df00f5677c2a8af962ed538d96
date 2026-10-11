@@ -1,0 +1,50 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.8",
+  "base_commit_sha": "bfc775bcfa5382df00f5677c2a8af962ed538d96",
+  "prompts": {},
+  "commit_stats": {
+    "git_diff_added_lines": 37,
+    "git_diff_deleted_lines": 2,
+    "ai_additions": 0,
+    "ai_accepted": 0,
+    "BYMC": 37,
+    "mixed_additions": 0,
+    "BYAC": 0,
+    "BYRC": 0,
+    "per_file": {
+      ".private/fengshen/README.md": {
+        "BYMC": [
+          "5-6"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      ".private/fengshen/core/ai.mjs": {
+        "BYMC": [
+          "123-126"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      ".private/fengshen/deploy-online-service.sh": {
+        "BYMC": [
+          "5"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-combat.mjs": {
+        "BYMC": [
+          "5",
+          "25-53"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      }
+    }
+  },
+  "commit_timestamp": 1791736994,
+  "requirement_id": ""
+}
