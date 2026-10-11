@@ -176,7 +176,8 @@ export class FengshenUI {
     const judge=judgingSeat(v);if(judge!=null)anchor(judge)?.classList.add('fs-judging')
     // 被动抉择者淡黄色边框：轮到某人做响应/选牌等被动决定时提示（万妖/飞剑出杀闪、借刀、濒死求桃、五谷选牌…）。
     // 排除纯公开展示（判定翻开、ext 展示阶段）——那些只需自动 ack，不是抉择，否则会两人轮流闪黄框。
-    const responder=responderHighlight(v);if(responder!=null)anchor(responder)?.classList.add('fs-responding')
+    // 与回合提示一样挂在人物外框；内层头像的光晕会被 overflow:hidden 裁掉，自己的按钮还会被 border:0 覆盖。
+    const responder=responderHighlight(v);if(responder!=null)this.root.querySelector(responder===0?'.fs-own-hero':`[data-player="${responder}"]`)?.classList.add('fs-responding')
     for(const link of links){anchor(link.source)?.classList.add('fs-effect-source');anchor(link.target)?.classList.add('fs-effect-target')}
     if(v.pending?.kind==='counter')anchor(v.pending.target)?.classList.add('fs-effect-focus')
     // 五谷选牌轮到的用泛黄边框提示（与被动抉择统一，见下方 fs-responding）；

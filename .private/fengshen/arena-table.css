@@ -219,8 +219,8 @@
 .fs-playing .fs-effect-focus{box-shadow:inset 0 0 0 4px #ffe18b,inset 0 0 18px #ffdb7955}
 /* 被动抉择者（万妖/飞剑出杀闪、借刀、濒死求桃、五谷选牌等轮到谁做决定）：
    与回合中的蓝绿边框同款、换成淡黄色边框高亮，一眼看出现在轮到谁响应。 */
-.fs-playing .fs-responding{border:3px solid #ffe08a;box-shadow:0 0 0 2px #4a3a12,0 0 16px #ffd76faa;animation:fs-respond-pulse 1.1s ease-in-out infinite}
-.fs-playing .fs-responding:after{content:'';position:absolute;inset:0;box-shadow:inset 0 0 12px #ffe08a88;pointer-events:none;z-index:9;animation:fs-respond-pulse 1.1s ease-in-out infinite}
+.fs-playing :is(.fs-player,.fs-own-hero).fs-responding{border:3px solid #ffe08a;box-shadow:0 0 0 2px #4a3a12,0 0 16px #ffd76faa;animation:fs-respond-pulse 1.1s ease-in-out infinite}
+.fs-playing :is(.fs-player,.fs-own-hero).fs-responding:after{content:'';position:absolute;inset:0;box-shadow:inset 0 0 12px #ffe08a88;pointer-events:none;z-index:9}
 @keyframes fs-respond-pulse{50%{box-shadow:0 0 0 2px #6b5520,0 0 22px #ffe49dcc}}
 .fs-target-lines>.fs-beam-glow{stroke-width:7;opacity:.3}
 .fs-target-lines>.fs-beam-core{stroke-width:2.3}
