@@ -26,6 +26,7 @@ import {localPoint} from './screen-mode.mjs'
 import {cardTargetCandidates,selectingTargets,replaceTarget,boundedTargets} from './target-selection.mjs'
 import {heroDetails,gameRules,formCollection}from './player-guide.mjs'
 import {modalReturnEntry}from './modal-navigation.mjs'
+import {takeSelection}from './take-selection.mjs'
 import {bindStarDrag} from './star-drag.mjs'
 import {advanceUnavailable,DecisionClock} from './flow.mjs'
 import {BackgroundMusic} from './music.mjs'
@@ -64,7 +65,7 @@ export class FengshenUI {
     root.addEventListener('click',this.onClick);root.addEventListener('keydown',this.onKey);document.addEventListener('visibilitychange',this.onVisibility);
     this.clockTimer=setInterval(()=>this.tickClock(),250);this.onViewport();this.render();prewarmTableArt()
   }
-  reset(){this.selected=[];this.targets=[];this.skill=null;this.as=null;this.choiceIndex=null;this.choiceZone='hand';this.star=null}
+  reset(){this.selected=[];this.targets=[];this.skill=null;this.as=null;this.choiceIndex=null;this.choiceSelection=null;this.choiceZone='hand';this.star=null}
   savePreferences(){store(PREFS,{pace:this.pace,voice:this.voice.enabled,music:this.music.enabled,hints:this.hints,mode:this.mode})}
   start(){
     if(!this.lobby)return
@@ -256,9 +257,13 @@ export class FengshenUI {
       if(!this.star||this.star.id!==view.pending.id)this.star={id:view.pending.id,top:pool.map(c=>c.id),bottom:[]}
       const from=this.star.top.includes(id)?'top':'bottom',to=from==='top'?'bottom':'top';this.star[from]=this.star[from].filter(x=>x!==id);this.star[to].push(id);this.render();return
     }
-    if(action==='choice-zone'&&view.pending?.kind==='take'&&view.pending.actor===0){this.choiceZone=value;this.render();return}
-    if(action==='take-choice'&&view.pending?.kind==='take'&&view.pending.actor===0){const index=Number(value);if(view.legal[index]?.type==='choose'){this.choiceIndex=index;this.render()}return}
-    if(action==='choose-confirm'&&view.pending?.kind==='take'&&view.pending.actor===0){const choice=view.legal[this.choiceIndex];if(choice?.type==='choose')this.act(choice);return}
+    if(action==='choice-zone'&&view.pending?.kind==='take'&&view.pending.actor===0){this.choiceZone=value;this.choiceIndex=null;this.choiceSelection=null;this.render();return}
+    if(['take-choice','choose-confirm'].includes(action)&&view.pending?.kind==='take'&&view.pending.actor===0){
+      const result=takeSelection({pending:view.pending,revision:view.revision,legal:view.legal,selection:this.choiceSelection,index:action==='take-choice'?Number(value):this.choiceIndex,promptId:b.dataset.prompt,eventRevision:b.dataset.revision})
+      if(result.kind==='commit')this.act(result.action)
+      else if(action==='take-choice'&&result.kind==='select'){this.choiceSelection=result.selection;this.choiceIndex=result.selection.index;this.render()}
+      return
+    }
     if(action==='card'){
       if(view.pending?.kind==='yiji'&&view.pending.actor===0&&!view.legal.some(a=>a.type==='give'&&a.ids.includes(id))){this.inform('只能分配本次传道获得的牌');return}
       const available=view.pending?view.pending.actor===0:view.current===0&&view.phase==='play'

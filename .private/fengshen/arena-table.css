@@ -121,9 +121,8 @@
 .fs-playing .fs-seat{left:25px;right:26px;max-height:12px;overflow:hidden}
 .fs-playing .fs-opponent-equipment{bottom:21px;height:26px;max-height:26px}
 .fs-playing :is(.fs-opponent-equipment,.fs-own-equipment) .fs-equip{height:26px}
-@media(orientation:landscape){
- .fs-playing .fs-own-panel{height:calc(var(--hero-height) + var(--fs-safe-bottom))}
- .fs-playing .fs-own-hero{inset:auto 0 var(--fs-safe-bottom);height:var(--hero-height)}
+ .fs-playing .fs-own-panel{height:calc(var(--own-hero-height) + var(--fs-safe-bottom))}
+ .fs-playing .fs-own-hero{inset:auto 0 var(--fs-safe-bottom);height:var(--own-hero-height)}
  .fs-playing .fs-own-skills{bottom:calc(1px + var(--fs-safe-bottom))}
  .fs-playing .fs-own-hero>div{inset:0;display:block}
  .fs-playing .fs-own-hero strong{position:absolute;left:3px;top:5px;writing-mode:vertical-rl;text-orientation:upright;white-space:nowrap;font-size:var(--hero-name-size,14px);line-height:1.05;padding:3px 2px;background:#132c36b8;border-radius:2px}
@@ -132,10 +131,8 @@
  .fs-playing .fs-own-hero .fs-hp i{display:none}
  .fs-playing .fs-own-hero .fs-hp b{font-size:10px}
  .fs-playing .fs-own-equipment{bottom:calc(31px + var(--fs-safe-bottom));height:26px;max-height:26px}
-}
 .fs-playing .fs-own-skills .fs-skill{flex:0 0 auto;min-width:42px;max-width:90px}
 .fs-playing .fs-own-hero .fs-hp{background:#132c36df;border-radius:3px;padding:1px 3px}
-@media(orientation:landscape){
  .fs-playing .fs-own-panel[data-skill-count="3"] .fs-own-skills{display:grid;grid-template-columns:1fr 1fr;height:43px;gap:2px;overflow:hidden}
  .fs-playing .fs-own-panel[data-skill-count="3"] .fs-skill{min-width:0;min-height:19px;padding:1px;max-width:none}
  .fs-playing .fs-own-panel[data-skill-count="3"] .fs-skill b{font-size:8px}
@@ -144,7 +141,6 @@
  .fs-playing .fs-own-panel[data-skill-count="3"] .fs-skill:last-child b{font-size:11px}
  .fs-playing .fs-own-panel[data-skill-count="3"] .fs-own-equipment{bottom:calc(47px + var(--fs-safe-bottom))}
  .fs-playing .fs-own-panel[data-skill-count="3"] .fs-own-hero .fs-hp{bottom:76px}
-}
 .fs-form-mark{position:absolute;right:2px;top:25px;max-width:70%;padding:2px 3px;background:#18383ed9;color:#edda9c;font-size:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;pointer-events:none}
 .fs-incarnation-choice{display:flex;flex-direction:column;z-index:15}
 .fs-incarnation-choice>header,.fs-incarnation-choice>footer{flex:none}
@@ -159,22 +155,33 @@
 .fs-form-collection>article.active{border-color:#ebcb87;background:#25413f}
 .fs-form-collection img{width:58px;height:86px;object-fit:cover;flex:none;border-radius:3px}
 .fs-form-collection strong{font-size:14px;color:#f0d59f}.fs-form-collection b{font-size:12px}.fs-form-collection p{font-size:11px;line-height:1.5}
-.fs-playing[data-layout=portrait] .fs-dock{grid-template-columns:1fr;grid-template-rows:76px minmax(0,1fr);padding:3px 8px var(--fs-safe-bottom);gap:5px}
-.fs-playing[data-layout=portrait] .fs-own-panel{height:76px;display:grid;grid-template-columns:150px minmax(0,1fr);grid-template-rows:1fr}
-.fs-playing[data-layout=portrait] .fs-own-hero{width:146px;height:76px;overflow:visible;border:0;background:none}
-.fs-playing[data-layout=portrait] .fs-own-hero>button{width:50px;height:76px;border:1px solid #b69a67;border-radius:4px}
-.fs-playing[data-layout=portrait] .fs-own-hero>div{left:58px;right:0;bottom:0;top:0;display:flex;flex-direction:column;justify-content:center}
-.fs-playing[data-layout=portrait] .fs-own-hero strong{font-size:17px}
-.fs-playing[data-layout=portrait] .fs-own-hero strong{position:absolute;left:-55px;top:5px;writing-mode:vertical-rl;text-orientation:upright;font-size:var(--hero-name-size,11px);padding:2px;background:#132c36b8;line-height:1.05}
-.fs-playing[data-layout=portrait] .fs-own-hero .fs-form-mark{left:0;right:auto;top:2px;max-width:100%}
-.fs-playing[data-layout=portrait] .fs-own-role-button{position:static;margin:2px 0}
-.fs-playing[data-layout=portrait] .fs-own-skills{position:static;grid-column:2;align-self:center}
-.fs-playing[data-layout=portrait] .fs-own-equipment{left:0;right:auto;width:50px;bottom:0;height:21px}
+.fs-playing[data-layout=portrait] .fs-dock{grid-template-columns:var(--own-hero-width) minmax(0,1fr);grid-template-rows:1fr;padding:0 6px;gap:6px}
 .fs-playing[data-layout=portrait] .fs-hand-area{grid-template-columns:1fr;grid-template-rows:22px minmax(0,1fr) 38px;gap:3px}
 .fs-playing[data-layout=portrait] .fs-hand{padding-top:var(--hand-top,30px)}
+.fs-playing[data-layout=portrait] .fs-hand-area{padding-bottom:var(--fs-safe-bottom)}
 .fs-playing[data-layout=portrait] .fs-actions{grid-column:1;grid-row:3;padding:0;align-items:stretch}
 .fs-playing[data-layout=portrait] .fs-action-row{flex-direction:row;align-items:stretch}
 .fs-playing[data-layout=portrait] .fs-action-row .fs-primary,.fs-playing[data-layout=portrait] .fs-action-row .fs-secondary{width:auto;flex:1;min-width:0}
 .fs-playing[data-layout=portrait] .fs-action-row .fs-clear{width:40px}
 .fs-playing[data-layout=portrait] .fs-star-rows{grid-template-columns:1fr}
 .fs-playing[data-layout=portrait] .fs-header{top:var(--fs-safe-top)}
+/* Shared take window owns its controls. No footer can be hidden by legacy grids. */
+.fs-playing .fs-center-choice.fs-take-choice{display:flex;flex-direction:column;top:calc(28px + var(--fs-safe-top));bottom:auto;left:8px;right:8px;transform:none;width:auto;height:min(310px,calc(100% - var(--fs-safe-top) - var(--fs-safe-bottom) - 44px));max-height:none;overflow:hidden;z-index:20;gap:6px;padding:8px}
+.fs-playing .fs-take-choice>header{flex:none;min-height:28px}
+.fs-playing .fs-take-choice>header strong{font-size:14px;letter-spacing:0}
+.fs-playing .fs-take-choice>.fs-choice-tabs{display:flex;flex:none;flex-direction:row;justify-content:flex-start;overflow-x:auto;min-height:32px}
+.fs-playing .fs-take-choice>.fs-choice-tabs button{min-height:30px;padding:3px 10px;font-size:11px;flex:none}
+.fs-playing .fs-take-choice>.fs-center-card-list{flex:1;min-height:0;align-items:center;overflow-x:auto;overflow-y:hidden;padding:8px;touch-action:pan-x pinch-zoom}
+.fs-playing .fs-take-choice .fs-choice-card{height:var(--take-card-height,124px);min-height:var(--take-card-height,124px);width:calc(var(--take-card-height,124px)/1.44);flex:0 0 calc(var(--take-card-height,124px)/1.44)}
+.fs-playing .fs-take-choice>footer{display:flex;flex:none;align-items:center;justify-content:space-between;gap:8px;min-height:38px;font-size:10px}
+.fs-playing .fs-take-choice>footer button{flex:none;min-height:36px;padding:4px 10px;font-size:12px;margin:0}
+/* Cyan marks the turn owner; gold remains reserved for selected targets. */
+.fs-playing :is(.fs-player,.fs-own-hero).turn-active{border:3px solid #77ffdc;box-shadow:0 0 0 2px #123e39,0 0 16px #48f6cba8}
+.fs-playing :is(.fs-player,.fs-own-hero).turn-active:after{content:'';position:absolute;inset:0;border:1px solid #e2fff3;box-shadow:inset 0 0 10px #43ffd86b;pointer-events:none;z-index:9;animation:fs-turn-pulse 1.5s ease-in-out infinite}
+.fs-playing :is(.fs-player,.fs-own-hero).turn-active.target-selected{border-color:#ffe09c}
+.fs-turn-badge{position:absolute;right:3px;top:46%;padding:2px 4px;background:#104d43f2;border:1px solid #86ffda;color:#edfff7;font:700 10px/1.2 "PingFang SC",sans-serif;border-radius:3px;z-index:6;pointer-events:none;white-space:nowrap}
+.fs-playing .fs-player:not([data-equip-count="0"]) .fs-turn-badge{top:auto;bottom:49px}
+.fs-own-hero .fs-turn-badge{top:28px;right:2px;font-size:9px}
+.fs-own-hero:has(.fs-form-mark) .fs-turn-badge{top:45px}
+@keyframes fs-turn-pulse{50%{box-shadow:inset 0 0 14px #43ffd8c4}}
+@media(prefers-reduced-motion:reduce){.fs-playing :is(.fs-player,.fs-own-hero).turn-active:after{animation:none}}

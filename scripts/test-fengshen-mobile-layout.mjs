@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {arenaGeometry,handScrollForCard} from '../.private/fengshen/arena-layout.mjs'
+import {arenaGeometry,handScrollForCard,takeCardHeight} from '../.private/fengshen/arena-layout.mjs'
 import {handLayout,HAND_LIFT,HAND_TOP,HAND_BOTTOM} from '../.private/fengshen/hand.mjs'
 import {viewportFrame,bindGameViewport} from '../.private/fengshen/viewport.mjs'
 import {moveStarCard} from '../.private/fengshen/star-drag.mjs'
@@ -13,8 +13,18 @@ test('all seat counts fit inside safe geometry with no overlapping opponents on 
   const landscape=width>height,g=arenaGeometry({width:width-(landscape?118:0),height,seats,safeTop:landscape?0:47,safeBottom:landscape?21:34}),p=Object.values(g.positions)
   for(const r of p){assert.ok(r.x>=0&&r.y>=0&&r.x+r.width<=g.width+.01&&r.y+r.height<=height+.01,JSON.stringify({width,height,seats,r}))}
   for(let i=0;i<p.length;i++)for(let j=i+1;j<p.length;j++)assert.ok(!overlap(p[i],p[j]),JSON.stringify({width,height,seats,a:p[i],b:p[j]}))
-  if(landscape&&seats>2){const own={x:0,y:height-21-g.heroHeight,width:g.heroWidth,height:g.heroHeight};assert.ok(!overlap(own,g.positions[1]));assert.ok(g.center.bottom>g.center.top)}
+  const safeBottom=landscape?21:34,own={x:0,y:height-safeBottom-g.ownHeroHeight,width:g.ownHeroWidth,height:g.ownHeroHeight}
+  for(const other of p)assert.ok(!overlap(own,other),JSON.stringify({width,height,seats,own,other}))
+  if(landscape&&seats>2)assert.ok(g.center.bottom>g.center.top)
  }
+})
+test('portrait own hero stays upright, fits full equipment/skill rail, while hand keeps scroll budget',()=>{
+ for(const [width,height]of [[320,568],[390,844],[430,932]]){
+  const g=arenaGeometry({width,height,seats:8,safeTop:47,safeBottom:34});assert.ok(g.ownHeroHeight>=132);assert.ok(g.ownHeroWidth>=90);assert.ok(g.ownHeroHeight+34<=g.dockHeight);assert.ok(g.dockHeight<=height*.5);assert.ok(g.center.bottom>g.center.top)
+ }
+})
+test('take cards fit the measured row, with clearance for selected lift and check badge',()=>{
+ for(const rowHeight of [64,88,116,150,220]){const height=takeCardHeight(rowHeight);assert.ok(height+24<=rowHeight);assert.ok(height<=124)}
 })
 test('large iPhone landscape keeps heroes large and top row compact, not percentage-spread',()=>{const g=arenaGeometry({width:932-118,height:430,seats:8});assert.ok(g.heroWidth>100);for(let seat=2;seat<6;seat++)assert.ok(Math.abs(g.positions[seat+1].x-g.positions[seat].x-g.heroWidth-g.gap)<.001);assert.equal(g.positions[2].y,0)})
 test('pinch frame stays in unzoomed coordinates, recovers offsets and handles zero/inactive samples',()=>{

@@ -6,7 +6,8 @@ import {createGame,dispatch,playerView,restoreGame,allCards,catalog,THEME_VERSIO
 import {createEngine} from '../.private/fengshen/core/engine.mjs'
 import {makeDeck} from '../.private/fengshen/core/catalog.mjs'
 import {hand,equipment,judgeTop} from './fixtures/sanguo.mjs'
-import {renderBattle,renderCenter} from '../.private/fengshen/table.mjs'
+import {renderBattle,renderCenter,renderControls,turnActive} from '../.private/fengshen/table.mjs'
+import {takeSelection} from '../.private/fengshen/take-selection.mjs'
 import {AUDIO_ENTRIES,VOICES} from '../.private/fengshen/audio-manifest.mjs'
 import {CardVoice,cuesForAction} from '../.private/fengshen/voice.mjs'
 
@@ -18,6 +19,32 @@ function fixture(heroId='yangjian',role='lord',current=0){
 const step=(s,a)=>{const r=dispatch(s,{seat:s.pending?.actor??s.current,...a});assert.ok(r.ok,r.error);assert.equal(allCards(r.state).length,108);assert.equal(new Set(allCards(r.state).map(c=>c.id)).size,108);return r.state}
 const play=(s,c,target)=>step(s,{type:'play',as:c.type,ids:[c.id],targets:target==null?[]:[target]})
 const ui=s=>({state:s,paused:false,selected:[],targets:[],skill:null,choiceIndex:null,choiceZone:'hand',pace:650,voice:{enabled:true},header:()=>'<header></header>',targetable:()=>[],matching:()=>[],currentAs:()=>null,equipment:()=>'',skills:()=>'',won:()=>false,pendingText:()=>''})
+
+test('take selection commits on a second tap only in the same prompt/revision',()=>{
+  const input={pending:{kind:'take',actor:0,id:12},revision:7,legal:[{type:'choose',value:'hand:0'},{type:'choose',value:'hand:1'}],index:0,promptId:'12',eventRevision:'7'}
+  const first=takeSelection(input);assert.equal(first.kind,'select')
+  assert.deepEqual(takeSelection({...input,selection:first.selection}),{kind:'commit',action:input.legal[0]})
+  assert.equal(takeSelection({...input,index:1,selection:first.selection}).kind,'select')
+  for(const changed of [{pending:{kind:'take',actor:0,id:13}},{revision:8},{pending:{kind:'take',actor:1,id:12}},{pending:{kind:'pick',actor:0,id:12}},{index:-1},{index:NaN}])assert.equal(takeSelection({...input,selection:first.selection,...changed}).kind,'ignore')
+  const next=takeSelection({...input,pending:{kind:'take',actor:0,id:13},promptId:13,selection:first.selection});assert.equal(next.kind,'select','next victim needs a fresh selection')
+})
+test('snatch and dismantle repeat-tap use only public legal backs and conserve all cards',()=>{
+  for(const type of ['snatch','dismantle']){
+    let s=fixture();const [spell]=hand(s,0,type),held=hand(s,1,'shan','tao');s=play(s,spell,1)
+    const v=playerView(s,0),input={pending:v.pending,revision:v.revision,legal:v.legal,index:1,promptId:v.pending.id,eventRevision:v.revision},first=takeSelection(input),second=takeSelection({...input,selection:first.selection})
+    assert.equal(second.kind,'commit');assert.equal(second.action.card,undefined);s=step(s,second.action)
+    assert.ok(type==='snatch'?s.players[0].hand.some(c=>c.id===held[1].id):s.discard.some(c=>c.id===held[1].id))
+    const center=renderCenter({...ui(s),state:{...s,pending:{mode:type}},choiceIndex:1},{...v});assert.ok(center.includes('data-prompt="'+v.pending.id+'"'));assert.ok(center.includes('data-revision="'+v.revision+'"'));assert.ok(center.includes('再点已选牌或双击'))
+    assert.ok(center.slice(center.indexOf('<footer>')).includes('data-action="choose-confirm"'));assert.ok(!renderControls({...ui(s),state:{...s,pending:{mode:type}}},v).includes('choose-confirm'))
+  }
+})
+test('turn badge identifies the turn owner, not a responding or selected player, and disappears at death/end',()=>{
+  const s=fixture('yangjian','lord',1),v=playerView(s,0),model=ui(s);v.pending={kind:'response',actor:2};model.targets=[2]
+  assert.equal(turnActive(v.players[1],v),true);assert.equal(turnActive(v.players[2],v),false)
+  const html=renderBattle(model);assert.ok(html.includes('data-turn-seat="1"'));assert.ok(!html.includes('data-turn-seat="0"'));assert.equal((html.match(/data-turn-seat=/g)||[]).length,1)
+  assert.equal(turnActive({...v.players[1],alive:false},v),false);assert.equal(turnActive(v.players[1],{...v,winner:'rebel'}),false)
+  s.current=0;assert.ok(renderBattle(ui(s)).includes('fs-own-hero turn-active'))
+})
 
 test('indexed hidden choices expose neither card IDs nor faces; selected back is the actual card',()=>{
   let s=fixture();const [snatch]=hand(s,0,'snatch'),held=hand(s,1,'shan','tao','sha');s=play(s,snatch,1)
