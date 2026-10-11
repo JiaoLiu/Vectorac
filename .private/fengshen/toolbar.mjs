@@ -16,7 +16,8 @@ const paths={
  quietMusic:'<path d="M9 18V5l11-2v13M9 8l11-2"/><ellipse cx="6" cy="18" rx="3" ry="2.5"/><ellipse cx="17" cy="16" rx="3" ry="2.5"/><path class="fs-icon-slash" d="m3 2 19 20"/>',
  screen:'<path d="M9 3H3v6M15 3h6v6M3 15v6h6M21 15v6h-6"/>',
  shrink:'<path d="M3 9h6V3M15 3v6h6M9 21v-6H3M21 15h-6v6"/>',
- bot:'<rect x="4" y="9" width="16" height="10" rx="2.5"/><path d="M12 9V5.5M9 13h.01M15 13h.01M9.5 16h5"/><circle cx="12" cy="4" r="1.2"/>'
+ bot:'<rect x="4" y="9" width="16" height="10" rx="2.5"/><path d="M12 9V5.5M9 13h.01M15 13h.01M9.5 16h5"/><circle cx="12" cy="4" r="1.2"/>',
+ feedback:'<path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9.6 9.6 0 0 1-3-.5L3 21l1.7-4.6A8.3 8.3 0 0 1 3.6 11.5a8.4 8.4 0 0 1 8.4-8.4h.6a8.4 8.4 0 0 1 8.4 8.4Z"/><path d="M8.5 10.5h7M8.5 13.5h4"/>'
 }
 export {paths}
 export function toolButton(action,icon,label,pressed){return `<button type="button" class="fs-tool ${pressed===true?'is-on':pressed===false?'is-off':''}" data-action="${action}" title="${esc(label)}" aria-label="${esc(label)}"${pressed==null?'':` aria-pressed="${pressed}"`}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" data-icon="${icon}">${paths[icon]}</svg></button>`}
@@ -27,7 +28,9 @@ export function renderToolbar({lobby,setup,paused,voice,music}){
  return `<nav aria-label="牌桌工具">${toolButton('rules','rules','规则')}${toolButton('gallery','gallery','图鉴')}${setup?toolButton('quit','back','返回'):''}${toolButton('voice',voice?'voice':'muted','报牌及音效'+(voice?'开':'关'),voice)}${toolButton('music',music?'music':'quietMusic','背景音乐'+(music?'开':'关'),music)}</nav>`
 }
 // 牌桌菜单面板内容：不常用功能全部收纳，开关项右侧显示当前状态。
+// 意见反馈入口：打开内置的 Valine 反馈弹窗（与其他棋牌游戏的 game-feedback 插件同款表单）。
+const feedbackItem=()=>`<button data-action="feedback" class="fs-menu-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-icon="feedback">${paths.feedback}</svg><span>意见反馈</span><small>↗</small></button>`
 export function renderMenu({inGame,paused,voice,music,hints,pace,auto}){
  const item=(action,icon,label,state)=>`<button data-action="${action}" class="fs-menu-item ${state===true?'is-on':state===false?'is-off':''}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-icon="${icon}">${paths[icon]}</svg><span>${label}</span>${state==null?'':`<small>${state===true?'开':state===false?'关':state}</small>`}</button>`
- return `<div class="fs-menu-grid">${item('rules','rules','规则')+item('gallery','gallery','图鉴')+(inGame?item('report','report','战报')+item('auto','bot','AI 托管',auto)+item('quit','back','退出游戏'):'')+item('voice',voice?'voice':'muted','报牌及音效',voice)+item('music',music?'music':'quietMusic','背景音乐',music)+item('help','help','教学提示',hints)+item('pace','clock','出牌节奏',pace)}</div>`
+ return `<div class="fs-menu-grid">${item('rules','rules','规则')+item('gallery','gallery','图鉴')+(inGame?item('report','report','战报')+item('auto','bot','AI 托管',auto)+item('quit','back','退出游戏'):'')+item('voice',voice?'voice':'muted','报牌及音效',voice)+item('music',music?'music':'quietMusic','背景音乐',music)+item('help','help','教学提示',hints)+item('pace','clock','出牌节奏',pace)+feedbackItem()}</div>`
 }

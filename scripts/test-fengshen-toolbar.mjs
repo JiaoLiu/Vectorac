@@ -5,8 +5,8 @@ const state={lobby:false,setup:null,paused:false,voice:true,music:true}
 test('battle toolbar collapses to a single menu entry; menu holds every tool',()=>{
  const html=renderToolbar(state);assert.equal((html.match(/<button /g)||[]).length,1);assert.ok(html.includes('data-action="menu"'));assert.ok(html.includes('aria-label="菜单"'))
  const menu=renderMenu({inGame:true,paused:false,voice:true,music:true,hints:true,pace:'标准',auto:false})
- for(const action of ['rules','gallery','report','quit','auto','voice','music','help','pace'])assert.ok(menu.includes(`data-action="${action}"`))
- for(const label of ['规则','图鉴','战报','退出游戏','AI 托管','报牌及音效','背景音乐','教学提示','出牌节奏'])assert.ok(menu.includes(`<span>${label}</span>`))
+ for(const action of ['rules','gallery','report','quit','auto','voice','music','help','pace','feedback'])assert.ok(menu.includes(`data-action="${action}"`))
+ for(const label of ['规则','图鉴','战报','退出游戏','AI 托管','报牌及音效','背景音乐','教学提示','出牌节奏','意见反馈'])assert.ok(menu.includes(`<span>${label}</span>`))
  for(const removed of ['data-action="pause"','data-action="new"','暂停对局','新局'])assert.ok(!menu.includes(removed))
  assert.ok(menu.includes('<small>开</small>'));assert.ok(menu.includes('<small>标准</small>'))
 })

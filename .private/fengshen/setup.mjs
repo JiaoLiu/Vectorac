@@ -50,6 +50,7 @@ export function createSetup({seed=Date.now()>>>0,mode:modeId='identity5'}={}){
   return s
 }
 export function setupView(s,seat=0){
+  if(s?.networkSetup)return clone(s.networkSetup)
   // 骰子只在选将完成（ready）后才掷出并公开；在此之前 dice/first 均为空。
   const rolled=s.sides&&Array.isArray(s.dice)
   return {stage:s.stage,revision:s.revision,seat,mode:s.mode||'identity5',role:s.roles[seat],lord:s.lord,teamMode:!!s.sides,sides:s.sides?s.sides.slice():null,dice:rolled?s.dice.slice():null,first:rolled?s.first:0,candidateCount:s.candidateCount,

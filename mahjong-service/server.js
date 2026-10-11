@@ -141,7 +141,7 @@ export function createServer({ logger } = {}) {
   })
 
   const server = http.createServer(app)
-  const wss = new WebSocketServer({ server, path: config.wsPath })
+  const wss = new WebSocketServer({ server, path: config.wsPath, maxPayload:384*1024 })
 
   // ---------------- WebSocket ----------------
 
@@ -238,7 +238,13 @@ export function createServer({ logger } = {}) {
 
       case 'VOICE_MSG':
       case 'CHAT_MSG':
-        return handleChatRelay(ws, msg)
+      case 'INTERACT_MSG':
+        try{return handleChatRelay(ws, msg)}catch(err){return safeSend(ws,{type:'ERROR',...toErrorPayload(err),requestId:msg.requestId||null})}
+      case 'SET_AUTOPLAY': {
+        const {playerId,room}=requireBound(ws)
+        await room.setAutoPlay(playerId,msg.autoPlay)
+        return safeSend(ws,{type:'AUTOPLAY_SET',requestId:msg.requestId})
+      }
 
       default:
         return safeSend(ws, {
@@ -265,7 +271,10 @@ export function createServer({ logger } = {}) {
     }
 
     let payload
-    if (isVoice) {
+    if(msg.type==='INTERACT_MSG'){
+      if(room.gameType!=='fengshen'||!Number.isInteger(msg.effect)||msg.effect<0||msg.effect>5||!Number.isInteger(msg.targetSeat)||!room.seats[msg.targetSeat]||room.seats[msg.targetSeat].occupantType===OCCUPANT.EMPTY)fail(ERR.INVALID_ACTION,'互动对象或效果无效')
+      payload={seatIndex:ws.seatIndex,effect:msg.effect,targetSeat:msg.targetSeat}
+    }else if (isVoice) {
       const { mime, data, duration } = msg
       if (typeof mime !== 'string' || !/^audio\/[\w.+-]+(;\s*codecs=[\w.+-]+)?$/.test(mime) || mime.length > 64) {
         fail(ERR.INVALID_ACTION, '语音格式不支持')
@@ -325,7 +334,7 @@ export function createServer({ logger } = {}) {
         type: room.gameSession.window ? room.gameSession.window.type : null,
         eligibleSeats: room.gameSession.window ? room.gameSession.window.eligibleSeats : [],
         deadlineAt: room.gameSession.window ? room.gameSession.window.deadlineAt : null,
-        legalActionsBySeat: room.gameSession.window ? room.gameSession.window.legalActionsBySeat : {}
+        ...(room.adapter.privateActions?{}:{legalActionsBySeat: room.gameSession.window ? room.gameSession.window.legalActionsBySeat : {}})
       })
     }
     log('ws-reconnect', {

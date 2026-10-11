@@ -140,7 +140,7 @@ export class GameSession {
         type: this.window.type,
         eligibleSeats: this.window.eligibleSeats,
         deadlineAt: this.window.deadlineAt,
-        legalActionsBySeat: this.window.legalActionsBySeat
+        ...(adapter.privateActions?{}:{legalActionsBySeat: this.window.legalActionsBySeat})
       })
     }
     this.armTimers()
@@ -161,6 +161,7 @@ export class GameSession {
 
   /** 真 AI 座位的出招节奏（纯表现，不是超时配置） */
   aiPaceMs(seat) {
+    if(this.adapter.aiPaceMs)return this.adapter.aiPaceMs(this.state,seat)
     return 350 + (seat % this.room.seats.length) * 120
   }
 
@@ -186,7 +187,7 @@ export class GameSession {
       const s = this.room.seats[seat]
       let delay = Math.max(1, w.deadlineAt - Date.now())
       let source = SOURCE.TIMEOUT_AI
-      if (s.occupantType === OCCUPANT.AI) {
+      if (s.occupantType === OCCUPANT.AI || s.occupantType===OCCUPANT.HUMAN&&s.connected&&s.autoPlay) {
         delay = this.aiPaceMs(seat)
         source = SOURCE.AI
       } else if (s.occupantType === OCCUPANT.HUMAN && !s.connected) {
@@ -297,6 +298,7 @@ export class GameSession {
 
   /** 统一落子入口：补 actionId / stateVersion → 适配器裁决 → 推进窗口 → 广播 */
   applyAction({ seat, action, source, requestId }) {
+    const automatic=this.adapter.isAutomaticWindow?.(this.state)
     const payload = {
       ...action,
       seat,
@@ -309,6 +311,7 @@ export class GameSession {
       return res
     }
     this.state = res.state
+    if(this.adapter.gameId==='fengshen'&&source===SOURCE.TIMEOUT_AI&&!automatic)this.room.seats[seat].autoPlay=true
     this.logger('action', {
       gameId: this.gameId,
       seat,

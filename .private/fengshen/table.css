@@ -150,7 +150,7 @@
 @media(max-width:359px) and (orientation:portrait){.fs-playing .fs-player[data-player="2"]{left:34%}.fs-playing .fs-player[data-player="3"]{right:34%}}
 /* 牌桌「菜单」收纳面板：两列带图标的大按钮，开关项右侧亮出当前状态。 */
 .fs-menu-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.fs-menu-item{display:flex;align-items:center;gap:9px;min-height:46px;padding:8px 11px;border:1px solid #8aa19833;border-radius:7px;background:#1c2f33;color:#e3d9bd;font-size:12px;text-align:left}
+.fs-menu-item{display:flex;align-items:center;gap:9px;min-height:46px;padding:8px 11px;border:1px solid #8aa19833;border-radius:7px;background:#1c2f33;color:#e3d9bd;font-size:12px;text-align:left;text-decoration:none}
 .fs-menu-item>svg{width:19px;height:19px;flex:none}
 .fs-menu-item>span{flex:1}
 .fs-menu-item>small{color:#93a8a1;font-size:10px}

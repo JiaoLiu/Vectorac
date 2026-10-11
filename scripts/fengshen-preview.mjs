@@ -1,7 +1,7 @@
 // This preview is deliberately outside VuePress/public. Bind only to loopback.
 import {build} from 'esbuild'
 import {createServer} from 'node:http'
-import {mkdir,copyFile,cp,readFile,stat,writeFile} from 'node:fs/promises'
+import {mkdir,copyFile,cp,readFile,readdir,rm,stat,writeFile} from 'node:fs/promises'
 import {resolve,extname} from 'node:path'
 const qa=process.argv.includes('--qa'),release=process.argv.includes('--release'),source=resolve('.private/fengshen'),output=release?resolve('public/games/fengshen'):resolve('.private/fengshen',qa?'qa-dist':'dist')
 if(qa&&release)throw new Error('QA fixtures must never be published')
@@ -12,9 +12,13 @@ if(release){
  if(issues.length)throw new Error('发布暂停：完整武将一对一映射检查未通过。'+issues.slice(0,4).join('；'))
 }
 await mkdir(output,{recursive:true})
-const result=await build({entryPoints:[resolve(source,qa?'qa.mjs':'app.js')],...(release?{outdir:output,entryNames:'app-[hash]',metafile:true}:{outfile:resolve(output,qa?'qa.js':'app.js')}),bundle:true,format:'esm',target:['safari15','chrome100'],external:['assets/*'],minify:true,define:{__FENGSHEN_RELEASE__:JSON.stringify(release)}})
+// 反馈弹窗按需动态加载 Valine（约 130KB），用 splitting 拆成独立 chunk，不拖慢游戏首屏。
+// 清理上一轮的顶层 js/css（入口 + chunk），避免旧 hash 残留被误引用。
+if(release){for(const name of await readdir(output))if(/\.(js|css)$/.test(name))await rm(resolve(output,name))}
+const result=await build({entryPoints:[resolve(source,qa?'qa.mjs':'app.js')],...(release?{outdir:output,entryNames:'app-[hash]',chunkNames:'chunk-[hash]',splitting:true,metafile:true}:{outfile:resolve(output,qa?'qa.js':'app.js')}),bundle:true,format:'esm',target:['safari15','chrome100'],external:['assets/*'],minify:true,define:{__FENGSHEN_RELEASE__:JSON.stringify(release)}})
 if(release){
- const entry=Object.keys(result.metafile.outputs).find(p=>p.endsWith('.js')),css=result.metafile.outputs[entry].cssBundle
+ // 有 splitting 时输出含多个 .js，必须按 entryPoint 定位真正的入口，不能取第一个。
+ const entry=Object.entries(result.metafile.outputs).find(([,v])=>v.entryPoint)?.[0],css=result.metafile.outputs[entry].cssBundle
  const html=(await readFile(resolve(source,'index.html'),'utf8')).replace('src="app.js"',`src="${entry.split('/').pop()}"`).replace('href="app.css"',`href="${css.split('/').pop()}"`)
  await writeFile(resolve(output,'index.html'),html)
  // Runtime-only allowlist: no QA pages, prompts, manifests, docs or secrets.

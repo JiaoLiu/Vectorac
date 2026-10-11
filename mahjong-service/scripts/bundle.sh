@@ -73,6 +73,9 @@ cp "$SRC_DDZ/engine.mjs" "$WORK/mahjong-service/engine/doudizhu/engine.js"
 cp "$SRC_DDZ/ai.js" "$WORK/mahjong-service/engine/doudizhu/ai.js"
 sed -i '' "s|'./engine.mjs'|'./engine.js'|g" "$WORK/mahjong-service/engine/doudizhu/ai.js"
 
+# 众神斗法：编译同一份规则、选将和视图投影为独立服务端模块，不带美术/文档/密钥。
+"$HERE/../node_modules/.bin/esbuild" "$HERE/engine/fengshen/engine.js" --bundle --platform=node --format=esm --target=node18 --outfile="$WORK/mahjong-service/engine/fengshen/engine.js"
+
 # 不打包开发期文件
 rm -f "$WORK/mahjong-service/test.js"
 rm -f "$WORK/mahjong-service/test-gomoku.js"
@@ -107,5 +110,5 @@ echo "    scp $OUT <user>@<server>:/home/www/vectorac/.deploy/"
 echo "    ssh <user>@<server>"
 echo "    cd /home/www/vectorac/.deploy && rm -rf mahjong-service"
 echo "    tar -xzf $(basename "$OUT")   # 解出 .deploy/mahjong-service/"
-echo "    cd mahjong-service && sudo ADMIN_TOKEN=\$(openssl rand -hex 16) bash scripts/install.sh"
+echo "    cd mahjong-service && sudo bash scripts/install.sh  # 升级保留已有 .env 和 ADMIN_TOKEN"
 echo "    # 安装目录：/home/www/vectorac/mahjong-service（与官网 dist/ 平级）"

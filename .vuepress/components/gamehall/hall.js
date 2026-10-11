@@ -39,7 +39,8 @@ const GAMES = {
   gomoku: { name: '五子棋', icon: '⚫', seats: 2 },
   xiangqi: { name: '中国象棋', icon: '<span class="gh-ico-xq">♞</span>', seats: 2 },
   junqi: { name: '四国军棋', icon: '🎖', seats: 4 },
-  doudizhu: { name: '斗地主', icon: '🃏', seats: 3 }
+  doudizhu: { name: '斗地主', icon: '🃏', seats: 3 },
+  fengshen: { name: '众神斗法',icon:'⚡',seats:8 }
 }
 // 就地进房（不跳页）的游戏 → 房间入口
 const ENTER = { gomoku: enterGomokuRoom, xiangqi: enterXiangqiRoom, junqi: enterJunqiRoom, doudizhu: enterDoudizhuRoom }
@@ -151,6 +152,7 @@ export default class GameHall {
       '      <button type="button" data-cgame="xiangqi"><span class="gh-ico-xq">♞</span> 中国象棋</button>' +
       '      <button type="button" data-cgame="junqi">🎖 四国军棋</button>' +
       '      <button type="button" data-cgame="doudizhu">🃏 斗地主</button>' +
+      '      <button type="button" data-cgame="fengshen">⚡ 众神斗法</button>' +
       '      <button type="button" data-cgame="mahjong">🀄 四川麻将</button>' +
       '    </div>' +
       '    <div class="gh-create-opts" data-gh-opts-gomoku>' +
@@ -179,6 +181,7 @@ export default class GameHall {
       '      <span class="gh-field">AI 提示 ' + segHtml('assist', ON_OFF, 'on') + '</span>' +
       '      <span class="gh-field">封顶 ' + stepperHtml('capFan', CAP_VALUES, 3, fmtCap) + '</span>' +
       '    </div>' +
+      '    <div class="gh-create-opts" data-gh-opts-fengshen hidden><span class="gh-field">玩法 '+segHtml('mode',[{value:'identity8',label:'8人身份'},{value:'identity5',label:'5人身份'},{value:'3v3',label:'3v3'},{value:'2v2',label:'2v2'},{value:'1v1',label:'1v1'}],'identity8')+'</span><span class="gh-field">思考时长 '+stepperHtml('turnTimeoutSeconds',TIMEOUT_VALUES,60,fmtTimeout)+'</span><div class="gh-hint">随机身份、主公先选将；空位可由 AI 补齐，支持语音与互动。</div></div>' +
       '    <div class="gh-create-btns">' +
       '      <button type="button" class="gh-btn gh-btn-primary" data-gh="create-go">创建</button>' +
       '      <button type="button" class="gh-btn" data-gh="create-cancel">取消</button>' +
@@ -368,7 +371,7 @@ export default class GameHall {
   async _createRoom() {
     if (this.createGame === 'mahjong') return this._createMahjongRoom()
     const gameType = this.createGame
-    if (!ENTER[gameType]) return this._toast('该游戏暂未开放在线房间')
+    if (!ENTER[gameType]&&gameType!=='fengshen') return this._toast('该游戏暂未开放在线房间')
     const btn = this.root.querySelector('[data-gh="create-go"]')
     btn.disabled = true
     try {
@@ -383,6 +386,7 @@ export default class GameHall {
         turnTimeoutSeconds: Number(val('turnTimeoutSeconds'))
       }
       if (val('hostSide')) payload.hostSide = val('hostSide')
+      if(gameType==='fengshen')payload.rules={mode:val('mode')}
       const data = await this.http.createRoom(payload)
       await this._enterOnline(data, gameType)
     } catch (e) {
@@ -448,6 +452,7 @@ export default class GameHall {
   async _sit(code, gameType, el) {
     // 目标就是自己凭据所在的房 → 不重复入座，直接续上（避免同房出现两个自己）
     const cred = loadCredential()
+    if(gameType==='fengshen'&&cred?.roomCode===String(code).toUpperCase()){location.href='/games/fengshen/?room='+encodeURIComponent(code);return}
     if (cred && cred.roomCode === String(code).toUpperCase()) {
       if (gameType === 'mahjong') {
         location.href = MAHJONG_PAGE + '?room=' + encodeURIComponent(code)
@@ -460,7 +465,7 @@ export default class GameHall {
       location.href = MAHJONG_PAGE + '?room=' + encodeURIComponent(code)
       return
     }
-    if (!ENTER[gameType]) return this._toast('该游戏暂未开放在线房间')
+    if (!ENTER[gameType]&&gameType!=='fengshen') return this._toast('该游戏暂未开放在线房间')
     if (el) el.disabled = true
     try {
       await this._leaveStaleRoom(code)
@@ -485,6 +490,7 @@ export default class GameHall {
       displayName: player.displayName,
       gameType
     }
+    if(gameType==='fengshen'){saveCredential(cred);location.href='/games/fengshen/?room='+encodeURIComponent(cred.roomCode);return}
     this.$lobby.hidden = true
     this.$room.hidden = false
     this.$room.innerHTML = ''
@@ -574,6 +580,7 @@ export default class GameHall {
   async _resume() {
     const cred = loadCredential()
     if (!cred) return
+    if(cred.gameType==='fengshen'){location.href='/games/fengshen/?room='+encodeURIComponent(cred.roomCode);return}
     if (!ENTER[cred.gameType]) {
       location.href = MAHJONG_PAGE + '?room=' + encodeURIComponent(cred.roomCode || '')
       return

@@ -410,6 +410,7 @@ export class NetClient {
   sendChat({ phrase } = {}) {
     return this._sendRaw({ type: 'CHAT_MSG', requestId: randomId(), phrase })
   }
+  sendInteraction({effect,targetSeat}={}){return this._sendRaw({type:'INTERACT_MSG',requestId:randomId(),effect,targetSeat})}
 
   /** 主动退出（永久）：作废 resumeToken */
   leaveRoom(reason = 'LEAVE_ROOM') {

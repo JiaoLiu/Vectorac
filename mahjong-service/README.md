@@ -1,6 +1,20 @@
-# Vectorac 联机麻将服务（好友房）
+# Vectorac 通用联机房间服务（好友房）
 
 四川麻将「血战到底」好友房的服务器权威后端：房间管理 + WebSocket 实时同步 + 规则裁决。
+
+现已通过适配器同时承载麻将、五子棋、象棋、四国军棋、斗地主、众神斗法，沿用同一套房号、鉴权、串行队列、重连和 AI 补位。服务名仍是 `mahjong`，安装目录仍是 `/home/www/vectorac/mahjong-service`，不要另起一个众神斗法服务。
+
+## 众神斗法接入
+
+- 大厅地址：`https://vectorac.com/blogs/other/gamehall.html?game=fengshen`；邀请页：`https://vectorac.com/games/fengshen/?room=房号`。
+- `gameType=fengshen`，`rules.mode` 为 `identity8`（默认）、`identity5`、`3v3`、`2v2` 或 `1v1`。房间席位数按模式固定，不能在已建房内改变人数；默认 60 秒思考。开局会自动补 AI 空位。
+- 选将和卡牌结算均是服务端权威状态；客户端只收到自己的候选将／手牌／私有技能牌。众神房间的行动窗口广播不包含其他座位的合法动作表。
+- 快捷语音继续走现有 `CHAT_MSG`（0–7）；定向互动走 `INTERACT_MSG`（effect 0–5、绝对 targetSeat），均校验已绑定连接、同房成员与发送速率。语音素材由官网提供，不需要在服务端生成。
+- `SET_AUTOPLAY` 只允许众神斗法对局中的真人设置本席托管；取消后重新给行动时间。临时断线恢复原席，主动离开转 AI。
+- `bundle.sh` 会在本地将共享的众神规则编译成自包含模块；线上无需 npm／Python／C++ 编译。必须同时更新房间服务和官网静态站。
+- **升级前检查 `/api/rooms`：服务在内存中保存房间，重启会结束所有旧房间。只在房间为空时升级，或先取得正在游玩者同意。** 保留现有 `.env` 和密钥，不重新生成 `ADMIN_TOKEN`。
+
+验收：`node --test test-fengshen.js`；仓库根目录可运行 `npm run test:fengshen:online:browser`，真实 iPhone Safari 验收另做。
 
 - **服务器权威**：所有碰/杠/胡/番数由服务端引擎裁决（`engine/` 与前端同一份规则，打包时覆盖进来），前端只渲染快照
 - **零外部依赖**：不需要 MySQL / Redis / 消息队列，房间全在内存里

@@ -53,7 +53,7 @@ export class RoomManager {
       if (!this._reapIdleFinishedRoom()) fail(ERR.ROOM_CAPACITY_REACHED)
     }
 
-    const adapter = resolveAdapter(gameType)
+    const adapter = resolveAdapter(gameType,rules)
     const roomId = randomUUID()
     const roomCode = this._allocRoomCode()
     const room = new Room({
@@ -62,7 +62,7 @@ export class RoomManager {
       adapter,
       hostSide,
       rules,
-      turnTimeoutSeconds,
+      turnTimeoutSeconds:adapter.gameId==='fengshen'&&turnTimeoutSeconds==null?60:turnTimeoutSeconds,
       manager: this,
       sessions: this.sessions,
       hub: this.hub,

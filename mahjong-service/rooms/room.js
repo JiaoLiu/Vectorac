@@ -486,6 +486,18 @@ export class Room {
     })
   }
 
+  async setAutoPlay(playerId,autoPlay){
+    this._guardAlive()
+    return this.queue.push(()=>{
+      if(this.gameType!=='fengshen'||this.status!==ROOM_STATUS.PLAYING||!this.gameSession?.state.s||typeof autoPlay!=='boolean')fail(ERR.INVALID_ACTION)
+      const seat=seatOfPlayer(this.seats,playerId);if(!seat)fail(ERR.PLAYER_ALREADY_LEFT)
+      if(seat.autoPlay===autoPlay)return
+      seat.autoPlay=autoPlay;this.touch();this.bumpVersion()
+      if(!autoPlay&&this.gameSession.window?.eligibleSeats.includes(seat.seatIndex))this.gameSession.window.deadlineAt=Date.now()+this.turnTimeoutSeconds*1000
+      this.gameSession.onSeatChanged(seat.seatIndex);this.hub.pushGameState(this,this.gameSession)
+    })
+  }
+
   /**
    * 全员就绪 → 自动开下一局。仅对「已经打过至少一局」的房间生效：
    * 首局仍由房主点「开始游戏」（否则刚建房就会直接开局）。

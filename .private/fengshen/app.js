@@ -14,6 +14,8 @@ import './mobile-table.css'
 import './arena-table.css'
 import {tutorialEnabled,judgingSeat,counterSelection,counterAction,responderHighlight} from './table-visuals.mjs'
 import {TargetBeams} from './target-beams.mjs'
+import {mountOnline,onlineCredential} from './online.mjs'
+import './online.css'
 import {tableTrail as updateTableTrail,counterTrail} from './table-trail.mjs'
 import {createSetup,dispatchSetup,setupView,chooseSetupAI,restoreSession,MODE_LIST,modeById} from './setup.mjs'
 import {renderHome,renderSetup,heroGallery} from './setup-ui.mjs'
@@ -37,6 +39,7 @@ import {bindStarDrag} from './star-drag.mjs'
 import {advanceUnavailable,DecisionClock} from './flow.mjs'
 import {BackgroundMusic} from './music.mjs'
 import {drawEffects,judgmentEffects,harvestEffects,yijiEffects,transferEffects,rescueEffects,discardEffects} from './draw-effects.mjs'
+import {FeedbackModal} from './feedback.mjs'
 
 // Keep the old mixed-playtest save intact; never reinterpret its hero rules.
 const SAVE='vectorac.fengshen.classic-original.save.v2',PREFS='vectorac.fengshen.internal.prefs.v1'
@@ -61,7 +64,7 @@ const patchNode=(a,b)=>{if(a.nodeType!==b.nodeType||a.nodeType===1&&a.tagName!==
 const patchChildren=(a,b)=>{const an=[...a.childNodes],bn=[...b.childNodes];for(let i=0;i<bn.length;i++)an[i]?patchNode(an[i],bn[i]):a.append(bn[i]);for(let i=bn.length;i<an.length;i++)an[i].remove()}
 const morph=(host,html)=>{if(!host.firstChild){host.innerHTML=html;return}const tpl=document.createElement('template');tpl.innerHTML=html;patchChildren(host,tpl.content)}
 const equal=(a,b)=>a.length===b.length&&a.every(id=>b.includes(id))
-const isRevealing=s=>s?.pending?.kind==='reveal'||s?.pending?.kind==='ext'&&s.pending.stage==='reveal'
+const isRevealing=s=>s?.pending?.kind==='reveal'||s?.pending?.kind==='ext'&&(s.pending.stage==='reveal'||s.extension?.stage==='reveal')
 const sampleCard=type=>catalog.makeDeck().find(c=>c.type===type)||{type,virtual:true}
 const load=(key,fallback)=>{try{return JSON.parse(localStorage.getItem(key))??fallback}catch{return fallback}}
 const store=(key,v)=>{try{localStorage.setItem(key,JSON.stringify(v))}catch{}}
@@ -73,10 +76,11 @@ export class FengshenUI {
     this.mode=MODE_LIST.some(m=>m.id===preferences.mode)?preferences.mode:'identity5'
     this.modalStack=[];this.choiceIndex=null;this.choiceZone='hand';this.hits=[];this.transfer=null;this.draws=[];this.auto=false;this.clock=new DecisionClock();this.music=new BackgroundMusic({enabled:preferences.music!==false});this.voice=new CardVoice({enabled:preferences.voice!==false,onIdle:()=>{if(!this.destroyed)this.schedule()}})
     this.resumeSession=restoreSession(load(SAVE,null));this.resumeState=this.resumeSession?.kind==='game'?this.resumeSession.game:null;this.legacySave=load('vectorac.fengshen.internal.save.v1',null)!=null;root.className='fs-app'
+    this.feedback=new FeedbackModal()
     this.onClick=e=>this.click(e);this.onKey=e=>this.key(e)
     this.moves=[];this.discards=null;this.recoveries=[];this.beams=new TargetBeams()
     this.onVisibility=()=>{clearTimeout(this.timer);if(document.hidden){this.voice.stop();this.music.pause()}else{if(this.transfer?.until<Date.now())this.transfer=null;if(this.draws?.every(d=>(d.started||0)+1300<Date.now()))this.draws=[];if(this.moves?.every(m=>m.until<Date.now()))this.moves=[];this.recoveries=this.recoveries.filter(h=>h.until>Date.now());this.decorateBattle();if(!this.lobby)this.music.unlock();this.schedule()}this.syncClock()}
-    this.onViewport=()=>{layoutArena(root);layoutHand(root);if(this.selected.length)revealHandCard(root,this.selected.at(-1));this.decorateBattle();scaleCards(root)}
+    this.onViewport=()=>{layoutArena(root);layoutHand(root);if(this.selected.length)revealHandCard(root,this.selected.at(-1));this.decorateBattle();scaleCards(root);this.online?.afterRender()}
     this.viewport=bindGameViewport(root,this.onViewport)
     this.starGesture=bindStarDrag(root,{getState:()=>this.state?.pending?.kind==='guanxing'?this.star:null,onMove:state=>{this.star=state;this.render()},onInteraction:active=>{this.draggingStars=active;this.syncClock()}})
     this.onScreen=()=>{if(!document.fullscreenElement)screen.orientation?.unlock?.();this.onViewport();this.render()};document.addEventListener('fullscreenchange',this.onScreen)
@@ -89,13 +93,14 @@ export class FengshenUI {
     if(!this.lobby)return
     this.requestGameScreen();this.clearEffects();this.voice.stop();this.music.unlock();this.auto=false;this.state=null;this.setup=createSetup({mode:this.mode});this.draftHero=null;this.lobby=false;this.paused=false;this.reset();this.save();this.render()
   }
-  save(){if(this.setup)store(SAVE,{kind:'setup',setup:this.setup});else if(this.state){this.roleMarks=cleanRoleMarks(playerView(this.state,0),this.roleMarks);store(SAVE,{kind:'game',game:this.state,roleMarks:this.roleMarks})}}
+  save(){if(this.online){if(this.state)this.roleMarks=cleanRoleMarks(playerView(this.state,0),this.roleMarks);this.online.saveNotes();return}if(this.setup)store(SAVE,{kind:'setup',setup:this.setup});else if(this.state){this.roleMarks=cleanRoleMarks(playerView(this.state,0),this.roleMarks);store(SAVE,{kind:'game',game:this.state,roleMarks:this.roleMarks})}}
   resume(){
     const raw=load(SAVE,null),session=restoreSession(raw);if(!session)return
     this.roleMarks=session.kind==='game'?cleanRoleMarks(playerView(session.game,0),raw?.roleMarks):{}
     this.requestGameScreen();this.clearEffects();this.voice.stop();this.music.unlock();this.auto=false;this.setup=session.kind==='setup'?session.setup:null;this.state=session.kind==='game'?advanceUnavailable(session.game,dispatch,playerView):null;if(this.state)this.beams.restore(playerView(this.state,0));this.draftHero=null;this.lobby=false;this.paused=false;this.reset();this.save();this.render()
   }
   actSetup(action){
+    if(this.online)return this.online.send(action)
     if(!this.setup)return false
     const before=this.setup,result=dispatchSetup(before,{...action,revision:before.revision})
     if(!result.ok){this.inform(result.error);return false}
@@ -104,25 +109,26 @@ export class FengshenUI {
     this.save();this.render();return true
   }
   inform(message){this.toast=displayText(message);clearTimeout(this.toastTimer);this.toastTimer=setTimeout(()=>{this.toast='';if(!this.destroyed)this.render()},2800);this.render()}
-  act(action){if(!this.state)return false;const before=this.state,r=dispatch(before,{...action,seat:action.seat??0,revision:before.revision,promptId:before.pending?.id});if(!r.ok){this.inform(r.error);return false}this.state=advanceUnavailable(r.state,dispatch,playerView);for(const cue of cuesForAction(before,action,this.state))this.voice.speak(cue.key,cue.sex);const hits=damageCues(before,this.state);if(hits.length){this.hits=hits.map(h=>({...h,until:Date.now()+900}));for(const h of hits)this.voice.hurt(h.amount);clearTimeout(this.hitTimer);this.hitTimer=setTimeout(()=>{this.hits=[];if(!this.destroyed)this.decorateBattle()},920)}
+  act(action){if(this.online)return this.online.send(action);if(!this.state)return false;const before=this.state,r=dispatch(before,{...action,seat:action.seat??0,revision:before.revision,promptId:before.pending?.id});if(!r.ok){this.inform(r.error);return false}this.state=advanceUnavailable(r.state,dispatch,playerView);return this.present(before,action)}
+  present(before,action){for(const cue of cuesForAction(before,action,this.state))this.voice.speak(cue.key,cue.sex);const hits=damageCues(before,this.state);if(hits.length){this.hits=hits.map(h=>({...h,until:Date.now()+900}));for(const h of hits)this.voice.hurt(h.amount);clearTimeout(this.hitTimer);this.hitTimer=setTimeout(()=>{this.hits=[];if(!this.destroyed)this.decorateBattle()},920)}
     this.beams.record(playerView(this.state,0))
     const recovered=recoveryCues(before,this.state)
     if(recovered.length){const started=Date.now();this.recoveries=this.recoveries.filter(h=>h.until>started).concat(recovered.map(h=>({...h,started,until:started+RECOVERY_DURATION})));clearTimeout(this.recoveryTimer);this.recoveryTimer=setTimeout(()=>{this.recoveries=[];if(!this.destroyed)this.decorateBattle()},RECOVERY_DURATION+20)}
     if(before.pending?.kind==='take'&&action.type==='choose'){
       const pending=playerView(before,before.pending.actor).pending,option=playerView(before,before.pending.actor).legal.find(a=>a.value===action.value),hidden=option?.hidden||action.value==='hand'
-      this.transfer={from:pending.target,to:before.pending.actor,mode:before.pending.mode,card:hidden?null:option?.card,until:Date.now()+1050}
+      this.transfer={from:pending.target,to:before.pending.actor,mode:before.pending.mode,card:hidden?null:option?.card,started:Date.now(),until:Date.now()+1050}
       clearTimeout(this.transferTimer);this.transferTimer=setTimeout(()=>{this.transfer=null;if(!this.destroyed)this.render()},1100)
     }
     if(before.pending?.kind==='counter'&&action.type==='respond'){this.tableTrail=counterTrail(this.tableTrail||[],playerView(before,0));if(action.seat==null||action.seat===0){this.counterLockUntil=Date.now()+700;clearTimeout(this.counterLockTimer);this.counterLockTimer=setTimeout(()=>{if(!this.destroyed)this.render()},720)}}
     const judged=judgmentEffects(before,this.state).at(-1)
-    if(judged){this.transfer={from:judged.target,to:judged.target,mode:'judgment',card:judged.card,until:Date.now()+1050};clearTimeout(this.transferTimer);this.transferTimer=setTimeout(()=>{this.transfer=null;if(!this.destroyed)this.render()},1100)}
+    if(judged){this.transfer={from:judged.target,to:judged.target,mode:'judgment',card:judged.card,started:Date.now(),until:Date.now()+1050};clearTimeout(this.transferTimer);this.transferTimer=setTimeout(()=>{this.transfer=null;if(!this.destroyed)this.render()},1100)}
     const picked=harvestEffects(before,this.state).at(-1)
-    if(picked){const r=this.root.querySelector(`[data-pool-card="${picked.card.id}"]`)?.getBoundingClientRect(),origin=r&&localPoint(this.root,r.x+r.width/2,r.y+r.height/2);this.transfer={from:picked.target,to:picked.target,mode:'harvest',card:picked.card,origin,until:Date.now()+1050};clearTimeout(this.transferTimer);this.transferTimer=setTimeout(()=>{this.transfer=null;if(!this.destroyed)this.render()},1100)}
+    if(picked){const r=this.root.querySelector(`[data-pool-card="${picked.card.id}"]`)?.getBoundingClientRect(),origin=r&&localPoint(this.root,r.x+r.width/2,r.y+r.height/2);this.transfer={from:picked.target,to:picked.target,mode:'harvest',card:picked.card,origin,started:Date.now(),until:Date.now()+1050};clearTimeout(this.transferTimer);this.transferTimer=setTimeout(()=>{this.transfer=null;if(!this.destroyed)this.render()},1100)}
     const gifted=yijiEffects(before,this.state).at(-1)
-    if(gifted){const r=(this.root.querySelector(`[data-yiji-card="${gifted.cards.at(-1)}"]`)||this.root.querySelector('.fs-yiji-choice'))?.getBoundingClientRect(),origin=r&&localPoint(this.root,r.x+r.width/2,r.y+r.height/2);this.transfer={from:gifted.seat,to:gifted.target,mode:'yiji',card:null,count:gifted.count,origin,until:Date.now()+1050};clearTimeout(this.transferTimer);this.transferTimer=setTimeout(()=>{this.transfer=null;if(!this.destroyed)this.render()},1100)}
+    if(gifted){const r=(this.root.querySelector(`[data-yiji-card="${gifted.cards.at(-1)}"]`)||this.root.querySelector('.fs-yiji-choice'))?.getBoundingClientRect(),origin=r&&localPoint(this.root,r.x+r.width/2,r.y+r.height/2);this.transfer={from:gifted.seat,to:gifted.target,mode:'yiji',card:null,count:gifted.count,origin,started:Date.now(),until:Date.now()+1050};clearTimeout(this.transferTimer);this.transferTimer=setTimeout(()=>{this.transfer=null;if(!this.destroyed)this.render()},1100)}
     // 濒死救援：桃/酒从救援者飞向濒死者，让所有人看清是谁把谁救起。
     const rescued=rescueEffects(before,this.state).at(-1)
-    if(rescued){this.transfer={from:rescued.source,to:rescued.target,mode:'rescue',card:rescued.card||null,origin:null,until:Date.now()+1050};clearTimeout(this.transferTimer);this.transferTimer=setTimeout(()=>{this.transfer=null;if(!this.destroyed)this.render()},1100)}
+    if(rescued){this.transfer={from:rescued.source,to:rescued.target,mode:'rescue',card:rescued.card||null,origin:null,started:Date.now(),until:Date.now()+1050};clearTimeout(this.transferTimer);this.transferTimer=setTimeout(()=>{this.transfer=null;if(!this.destroyed)this.render()},1100)}
     // 公开弃置/拆牌：丢掉的牌在牌桌中间内联展示一会再自动收起，让人看清丢了什么（自己弃牌无需提示）。
     const discarded=discardEffects(before,this.state).at(-1)
     if(discarded&&discarded.seat!==0){this.discards={seat:discarded.seat,by:discarded.by??null,cards:discarded.cards||[],until:Date.now()+2200};clearTimeout(this.discardTimer);this.discardTimer=setTimeout(()=>{this.discards=null;if(!this.destroyed)this.render()},2250)}
@@ -135,6 +141,7 @@ export class FengshenUI {
     this.reset();this.save();this.render();return true}
   clearEffects(){clearTimeout(this.hitTimer);clearTimeout(this.beamTimer);this.beams.clear();clearTimeout(this.recoveryTimer);clearTimeout(this.transferTimer);clearTimeout(this.drawTimer);clearTimeout(this.moveTimer);clearTimeout(this.discardTimer);clearTimeout(this.counterLockTimer);this.hits=[];this.recoveries=[];this.transfer=null;this.draws=[];this.moves=[];this.discards=null;this.tableTrail=[];this.counterKey=null;this.counterLockUntil=0}
   syncClock(){
+    if(this.online){const m=this.online.meta,s=this.state,human=s&&!s.winner&&(s.pending?.actor??s.current)===0&&!this.auto&&!isRevealing(s);this.clock.running=false;this.clock.key=human?'online:'+m?.windowId:null;this.clock.left=Math.max(0,(m?.deadlineAt||0)-Date.now()+(this.online.offset||0));return}
     const s=this.state,human=!this.lobby&&!this.setup&&s&&!s.winner&&(s.pending?.actor??s.current)===0&&!isRevealing(s)&&(s.players[0].alive||s.pending?.kind==='ext'&&s.pending.skill==='zhuiyi')
     const key=human?`${s.revision}:${s.pending?.id||s.phase}`:null
     this.clock.sync(key,!!human&&!this.draggingStars&&!this.auto&&!this.paused&&!document.hidden&&!this.transfer&&!this.draws.length&&!this.moves.length)
@@ -193,7 +200,10 @@ export class FengshenUI {
     this.root.querySelector('.fs-transfer-flight')?.remove()
     if(this.transfer&&this.transfer.until>Date.now()){
       const f=this.transfer,a=(f.mode==='harvest'?this.root.querySelector(`[data-pool-card="${f.card.id}"]`)||this.root.querySelector('.fs-pool-choice'):f.mode==='judgment'?this.root.querySelector(`[data-judge-card="${f.card.id}"]`)||this.root.querySelector('.fs-table-center'):anchor(f.from))?.getBoundingClientRect(),to=(['judgment','harvest','yiji','rescue'].includes(f.mode)?(f.to===0?this.root.querySelector('.fs-hand'):anchor(f.to)):f.mode==='snatch'?anchor(f.to):this.root.querySelector('.fs-table-center,.fs-center-choice'))?.getBoundingClientRect()
-      if((a||f.origin)&&to){const ap=f.origin||localPoint(this.root,a.x+a.width/2,a.y+a.height/2),tp=localPoint(this.root,to.x+to.width/2,to.y+to.height/2);const e=document.createElement('div');e.className='fs-transfer-flight';e.dataset.transferMode=f.mode;e.innerHTML=(f.card?cardFace(f.card):'<span class="fs-card-back"><i>封</i><b>暗手牌</b></span>')+(['judgment','harvest'].includes(f.mode)?'':`<span>${f.mode==='yiji'?`赠予${f.count>1?'×'+f.count:''}`:f.mode==='rescue'?'救援':f.mode==='snatch'?'取走':'弃置'}</span>`);e.style.setProperty('--from-x',`${ap.x-27}px`);e.style.setProperty('--from-y',`${ap.y-38}px`);e.style.setProperty('--to-x',`${tp.x-27}px`);e.style.setProperty('--to-y',`${tp.y-38}px`);this.root.append(e)}
+      if((a||f.origin)&&to){const ap=f.origin||localPoint(this.root,a.x+a.width/2,a.y+a.height/2),tp=localPoint(this.root,to.x+to.width/2,to.y+to.height/2);const e=document.createElement('div');e.className='fs-transfer-flight';e.dataset.transferMode=f.mode;e.innerHTML=(f.card?cardFace(f.card):'<span class="fs-card-back"><i>封</i><b>暗手牌</b></span>')+(['judgment','harvest'].includes(f.mode)?'':`<span>${f.mode==='yiji'?`赠予${f.count>1?'×'+f.count:''}`:f.mode==='rescue'?'救援':f.mode==='snatch'?'取走':'弃置'}</span>`);e.style.setProperty('--from-x',`${ap.x-27}px`);e.style.setProperty('--from-y',`${ap.y-38}px`);e.style.setProperty('--to-x',`${tp.x-27}px`);e.style.setProperty('--to-y',`${tp.y-38}px`);
+        // 每次重渲染都会重建飞牌节点；用负延迟对齐已流逝的时间，避免 AI 连续行动时同一张牌从起点反复飞（看起来像飞出 2-3 张）。
+        if(f.started)e.style.animationDelay=`${Math.min(0,f.started-Date.now())}ms`
+        this.root.append(e)}
     }
     this.root.querySelectorAll('.fs-draw-flight,.fs-draw-count').forEach(e=>e.remove())
     this.root.querySelectorAll('.fs-move-flight,.fs-move-count').forEach(e=>e.remove())
@@ -219,6 +229,7 @@ export class FengshenUI {
   }
   schedule(){
     clearTimeout(this.timer)
+    if(this.online)return
     if(this.destroyed||this.lobby||this.paused||this.modal||document.hidden)return
     if(this.setup){
       const draft=this.setup
@@ -309,7 +320,7 @@ export class FengshenUI {
     if(action==='help'){this.hints=!this.hints;this.savePreferences();this.render();return}
     if(action==='menu'){this.modal={kind:'menu'};this.render();return}
     if(action==='music'){this.music.setEnabled(!this.music.enabled);this.savePreferences();this.render();return}
-    if(action==='auto'){this.auto=!this.auto;this.reset();this.clock.key=null;this.render();return}
+    if(action==='auto'){if(this.online){this.online.net.sendAdmin('SET_AUTOPLAY',{autoPlay:!this.auto});return}this.auto=!this.auto;this.reset();this.clock.key=null;this.render();return}
     if(action==='voice'){this.voice.setEnabled(!this.voice.enabled);this.savePreferences();this.render();return}
     if(action==='identity'){this.modal={kind:'identity'};this.render();return}
     if(action==='hero'){if(this.setup){const v=setupView(this.setup,0);if(v.candidates.includes(id)&&!v.picked){this.draftHero=id;this.render()}}return}
@@ -320,10 +331,11 @@ export class FengshenUI {
     if(action==='mode'&&this.lobby){this.mode=modeById(id).id;this.savePreferences();this.render();return}
     if(action==='resume'){this.resume();return}
     if(action==='close'){this.closeModal();return}
+    if(action==='feedback'){this.feedback.open();return}
     if(action==='hand'){this.modal={kind:'hand'};this.render();return}
     if(['rules','heroes','gallery','forms','report','hero-detail','card-detail','quit'].includes(action)){this.openModal(action,id);return}
-    if(action==='quit-confirm'){this.clearEffects();this.voice.stop();this.music.pause();this.auto=false;this.resumeSession=restoreSession(load(SAVE,null));this.resumeState=this.resumeSession?.kind==='game'?this.resumeSession.game:null;this.setup=null;this.state=null;this.draftHero=null;this.lobby=true;this.modal=null;this.paused=false;this.reset();this.render();return}
-    if(action==='pause'){this.paused=!this.paused;this.render();return}
+    if(action==='quit-confirm'){if(this.online){this.online.leave();return}this.clearEffects();this.voice.stop();this.music.pause();this.auto=false;this.resumeSession=restoreSession(load(SAVE,null));this.resumeState=this.resumeSession?.kind==='game'?this.resumeSession.game:null;this.setup=null;this.state=null;this.draftHero=null;this.lobby=true;this.modal=null;this.paused=false;this.reset();this.render();return}
+    if(action==='pause'){if(this.online){this.inform('联机牌局不能暂停其他玩家');return}this.paused=!this.paused;this.render();return}
     if(action==='pace'){this.pace=this.pace===650?250:this.pace===250?1100:650;this.savePreferences();this.render();return}
     if(!this.state||this.paused||this.auto||this.transfer||this.draws.length||this.moves.length||isRevealing(this.state)||this.modal&&!(this.modal.kind==='hand'&&action==='card'))return
     const view=playerView(this.state,0),own=view.players[0]
@@ -384,8 +396,8 @@ export class FengshenUI {
       if(controls.length&&(event.shiftKey&&document.activeElement===first||!event.shiftKey&&document.activeElement===last||!this.root.querySelector('.fs-modal').contains(document.activeElement))){event.preventDefault();(event.shiftKey?last:first).focus()}
     }
   }
-  header(){const label=this.lobby?'准备大厅':this.setup?(setupView(this.setup,0).teamMode?'选将':'身份选将'):(this.state?.teamMode?'两军对垒':'身份对决');return `<header class="fs-header"><div class="fs-brand">众神<span>斗法</span><small>单机对局 / ${label}</small></div>${renderToolbar({lobby:this.lobby,setup:this.setup,paused:this.paused,voice:this.voice.enabled,music:this.music.enabled})}</header>`}
-  renderLobby(){return renderHome(this)}
+  header(){const label=this.lobby?'准备大厅':this.setup?(setupView(this.setup,0).teamMode?'选将':'身份选将'):(this.state?.teamMode?'两军对垒':'身份对决');return `<header class="fs-header"><div class="fs-brand">众神<span>斗法</span><small>${this.online?'好友联机':'单机对局'} / ${label}</small></div>${renderToolbar({lobby:this.lobby,setup:this.setup,paused:this.paused,voice:this.voice.enabled,music:this.music.enabled})}</header>`}
+  renderLobby(){this.networkCredential=onlineCredential();return renderHome(this)}
   equipment(p,own=false){return Object.entries(p.equip).filter(([,c])=>c).map(([slot,c])=>`<button class="fs-equip ${this.selected.includes(c.id)?'selected':''}" data-action="${own?'card':'card-detail'}" data-id="${c.id}" data-slot="${slot}" aria-label="${{weapon:'武器',armor:'防具',offenseHorse:'进攻坐骑',defenseHorse:'防御坐骑'}[slot]}：${CARDS_BY_TYPE[c.type].name}" title="${esc(displayText(CARDS_BY_TYPE[c.type].help))}"><img src="${CARDS_BY_TYPE[c.type].image}" alt="" loading="lazy">${equipmentSlot(slot)}<span>${CARDS_BY_TYPE[c.type].name}</span><small>${CARDS_BY_TYPE[c.type].range?'距'+CARDS_BY_TYPE[c.type].range:CARDS_BY_TYPE[c.type].slot==='offenseHorse'?'−1':CARDS_BY_TYPE[c.type].slot==='defenseHorse'?'+1':'防'}</small></button>`).join('')||'<small class="fs-no-equip">法宝栏为空</small>'}
   skills(p,view){const h=display(p);return Object.keys(h.skillNames).filter(s=>SKILLS[s][2]!=='lord'||(!view.teamMode&&p.role==='lord')).map(s=>{const active=p.seat===0&&view.legal.some(a=>a.type==='skill'&&a.skill===s),guhuo=p.seat===0&&s==='guhuo'&&view.legal.some(a=>a.type==='play'||a.type==='respond');return `<button data-action="${guhuo?'guhuo':p.seat===0&&s==='huashen'?'forms':active?'skill':'hero-detail'}" data-value="${s}" data-id="${h.id}" class="fs-skill ${(this.skill===s||guhuo&&this.guhuoMode)&&p.seat===0?'selected':''}"><b>${h.skillNames[s]}</b><small>${guhuo?(this.guhuoMode?'已扣置':'扣置声明'):active?'发动':catalog.automaticSkills.includes(s)?'自动':{lord:'主公技',locked:'锁定',convert:'转化',trigger:'触发',limited:'限定',wake:'觉醒'}[SKILLS[s][2]]||'技能'}</small></button>`}).join('')}
   opponent(p,view){return renderOpponent(this,p,view)}
@@ -415,7 +427,7 @@ export class FengshenUI {
     if(kind==='card-detail'){const c=catalog.makeDeck().find(c=>c.id===id)||catalog.makeDeck().find(c=>c.type===id)||(CARDS_BY_TYPE[id]?sampleCard(id):null),d=c&&CARDS_BY_TYPE[c.type];title=d?.name||'卡牌';body=d?`<div class="fs-card-detail">${cardFace(c)}<div><b>${{basic:'基本牌',trick:'即时法术',delay:'延时阵法',equip:'法宝'}[d.category]}</b><p>${esc(displayText(d.help))}</p><small>${d.virtualOnly?'仅由技能生成，不增加实体牌数量':'牌库中共有 '+catalog.makeDeck().filter(c=>c.type===d.type).length+' 张'}</small></div></div>`:''}
     if(kind==='gallery'){title='法宝与卡牌图鉴';body=`<p>实体牌库共 108 张；焚天焰、缚神索、琼浆由技能生成。点击卡牌查看用途，返回图鉴后可以继续浏览。</p><div class="fs-gallery">${Object.values(CARDS_BY_TYPE).map(d=>`<button data-action="card-detail" data-id="${d.type}">${cardFace(sampleCard(d.type))}</button>`).join('')}</div><section><h3>扩展法宝 · 未加入当前牌堆</h3><p>${PLANNED_EQUIPMENT.map(d=>d.name).join('、')}将在后续版本逐步开放，当前对局只使用上方列出的卡牌。</p></section>`}
     if(kind==='report'){title=this.state?.winner?(playerView(this.state,0).teamMode?'终局 · 胜负一览':'终局 · 身份揭晓'):'战场记录';if(this.state){const v=playerView(this.state,0);body=`${v.winner?`<div class="fs-role-reveal">${v.players.map(p=>`<span>${display(p).name}<b>${v.teamMode?(v.sides[p.seat]===v.sides[v.seat]?'友方':'敌方'):ROLES[p.role].name}</b></span>`).join('')}</div>`:''}<ol class="fs-report">${v.logs.map(l=>`<li>${esc(displayText(l.text))}</li>`).join('')}</ol>`}}
-    if(kind==='quit'){title='退出游戏？';body='<p>当前牌局或选将进度已保存，回到大厅后可以继续上次进度。</p><button data-action="quit-confirm" class="fs-primary">退出游戏</button>'}
+    if(kind==='quit'){title='退出游戏？';body=`<p>${this.online?'退出房间会放弃本席，进行中的对局由 AI 继续；暂时断网或切后台可自动重连。':'当前牌局或选将进度已保存，回到大厅后可以继续上次进度。'}</p><button data-action="quit-confirm" class="fs-primary">退出游戏</button>`}
     if(kind==='rules'){title='众神斗法 · 游戏规则';body=gameRules()}
     return `<div class="fs-modal-overlay"><section class="fs-modal" role="dialog" aria-modal="true" aria-labelledby="fs-dialog-title" tabindex="-1"><header><small>众神斗法</small><h2 id="fs-dialog-title">${title}</h2><button data-action="close" aria-label="${this.modalStack.length?'返回图鉴':'关闭弹窗'}">${this.modalStack.length?'←':'×'}</button></header><div class="fs-modal-body">${body}</div></section></div>`
   }
@@ -427,8 +439,11 @@ export class FengshenUI {
     if(this.state&&!this.setup){const v=playerView(this.state,0),choice=counterSelection(v,this.counterKey,this.selected);this.counterKey=choice.key;this.selected=choice.selected;this.tableTrail=updateTableTrail(this.tableTrail||[],v)}
     if(this.modal&&!wasModal)this.returnFocus={action:prior?.dataset?.action,id:prior?.dataset?.id}
     this.viewport.setImmersive(!this.lobby);this.syncClock()
-    this.root.classList.toggle('fs-playing',!this.lobby&&!this.setup)
-    morph(this.root,(this.lobby?this.renderLobby():this.setup?renderSetup(this):this.renderGame())+this.modalContent()+(this.toast?`<div class="fs-toast" role="status">${esc(this.toast)}</div>`:''))
+    this.root.classList.toggle('fs-playing',!this.lobby&&!this.setup&&!this.online?.waiting)
+    const feedback=this.feedback?.modal,keepFeedback=feedback?.parentNode===this.root
+    if(keepFeedback)feedback.remove()
+    morph(this.root,(this.online?.waiting?this.online.waitingHtml():this.lobby?this.renderLobby():this.setup?renderSetup(this):this.renderGame())+(this.online?.socialHtml()||'')+this.modalContent()+(this.toast?`<div class="fs-toast" role="status">${esc(this.toast)}</div>`:''))
+    if(keepFeedback){this.root.append(feedback);this.feedback.moveToDisplayRoot()}
     if(this.modal&&!this.lobby&&(this.state||this.setup)){
       const role=this.setup?setupView(this.setup,0).role:this.state.players[0].role
       this.root.querySelector('.fs-modal header>small').textContent+=' · 你的身份：'+ROLES[role].name
@@ -450,9 +465,10 @@ export class FengshenUI {
     if(this.transfer||this.draws.length||this.moves.length||isRevealing(this.state))this.root.querySelector('.fs-dock')?.setAttribute('inert','')
     if(this.modal){this.root.querySelectorAll('.fs-header,.fs-lobby,.fs-entry,.fs-setup,.fs-hud,.fs-arena,.fs-status,.fs-dock').forEach(e=>e.inert=true);this.root.querySelector('[data-action="close"]')?.focus()}
     else if(wasModal&&this.returnFocus?.action){const s=`[data-action="${this.returnFocus.action}"]${this.returnFocus.id?`[data-id="${this.returnFocus.id}"]`:''}`;this.root.querySelector(s)?.focus()}
-    scaleCards(this.root);this.schedule()
+    scaleCards(this.root);this.online?.afterRender();this.schedule()
   }
-  destroy(){this.destroyed=true;this.voice.destroy();this.music.destroy();this.clearEffects();clearInterval(this.clockTimer);clearTimeout(this.timer);clearTimeout(this.toastTimer);this.root.removeEventListener('click',this.onClick);this.root.removeEventListener('keydown',this.onKey);document.removeEventListener('fullscreenchange',this.onScreen);document.removeEventListener('visibilitychange',this.onVisibility);this.viewport.destroy();this.starGesture.destroy()}
+  destroy(){this.destroyed=true;this.online?.close();this.voice.destroy();this.music.destroy();this.clearEffects();clearInterval(this.clockTimer);clearTimeout(this.timer);clearTimeout(this.toastTimer);this.root.removeEventListener('click',this.onClick);this.root.removeEventListener('keydown',this.onKey);document.removeEventListener('fullscreenchange',this.onScreen);document.removeEventListener('visibilitychange',this.onVisibility);this.viewport.destroy();this.starGesture.destroy()}
 }
 window.__fengshenUI=new FengshenUI(document.getElementById('app'))
+mountOnline(window.__fengshenUI)
 window.__fengshenTheme={version:THEME_VERSION,heroes:HEROES,cards:CARDS_BY_TYPE}

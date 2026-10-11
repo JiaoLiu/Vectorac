@@ -14,7 +14,8 @@ export const catalog={...baseline,theme:THEME_VERSION,HEROES:heroes,HERO_BY_ID:O
 }
 const engine=createEngine(catalog)
 export const chooseAI=createAI(catalog)
-export const {dispatch,playerView,allCards,legalActions,distance,attackRange,hasSkill,hero}=engine
+export const {dispatch,allCards,legalActions,distance,attackRange,hasSkill,hero}=engine
+export function playerView(s,seat){return s?.networkView?JSON.parse(JSON.stringify(s.networkView)):engine.playerView(s,seat)}
 export function createGame({heroId='jifa',...options}={}) {
   const chosen=PLAYABLE_HEROES.find(h=>h.id===heroId)
   if(!chosen)throw new Error('该角色尚未接入完整技能，不能进入对局')

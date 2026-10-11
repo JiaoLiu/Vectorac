@@ -13,7 +13,7 @@ export function renderHome(ui){
   const steps=team?['随机分配敌友','各自从候选中选将','掷骰，点数最高者先手','发牌，由先手开始行动']:['随机抽取身份','主公先选将并亮出','其余玩家从各自候选中选将','发牌，从主公开始行动']
   const tag=team?'两军对垒 · 单机 / AI':'众神身份 · 单机 / AI'
   const legacy=ui.legacySave?'<p class="fs-legacy-notice" role="status">上一版存档已保留，不会覆盖；本次更新需要新开一局。</p>':''
-  return `${ui.header()}<main class="fs-entry"><div class="fs-entry-art">${portrait(h,'',true)}<span></span></div><section class="fs-entry-copy"><small>${tag}</small><h1>众神斗法</h1><p>诸天神话，同桌斗法</p><ol>${steps.map((s,i)=>`<li><b>0${i+1}</b>${s}</li>`).join('')}</ol><div class="fs-mode-row" role="group" aria-label="玩法模式">${MODE_LIST.map(m=>`<button class="fs-mode-chip ${ui.mode===m.id?'selected':''}" data-action="mode" data-id="${m.id}" aria-pressed="${ui.mode===m.id}"><b>${m.menu}</b><small>${m.blurb}</small></button>`).join('')}</div><div class="fs-entry-actions">${session?`<button class="fs-secondary" data-action="resume">${session.kind==='setup'?'继续选将':'继续上局'}</button>`:''}<button class="fs-primary" data-action="start">开始${mode.name} →</button></div>${legacy}<button class="fs-entry-catalog" data-action="heroes">查看人物图鉴 ↗</button><small class="fs-entry-note">${mode.name} · ${PLAYABLE_HEROES.length} 名可用武将 · ${team?'敌友公开，掷骰定先手':'身份不可自选'}</small></section></main>`
+  return `${ui.header()}<main class="fs-entry"><div class="fs-entry-art">${portrait(h,'',true)}<span></span></div><section class="fs-entry-copy"><small>${tag}</small><h1>众神斗法</h1><p>诸天神话，同桌斗法</p><ol>${steps.map((s,i)=>`<li><b>0${i+1}</b>${s}</li>`).join('')}</ol><div class="fs-mode-row" role="group" aria-label="玩法模式">${MODE_LIST.map(m=>`<button class="fs-mode-chip ${ui.mode===m.id?'selected':''}" data-action="mode" data-id="${m.id}" aria-pressed="${ui.mode===m.id}"><b>${m.menu}</b><small>${m.blurb}</small></button>`).join('')}</div><div class="fs-entry-actions">${session?`<button class="fs-secondary" data-action="resume">${session.kind==='setup'?'继续选将':'继续上局'}</button>`:''}<button class="fs-primary" data-action="start">开始${mode.name} →</button><a class="fs-primary fs-online-entry" href="/blogs/other/gamehall.html?game=fengshen">好友联机 →</a>${ui.networkCredential?`<a class="fs-secondary fs-online-entry" href="/games/fengshen/?room=${encodeURIComponent(ui.networkCredential.roomCode)}">继续联机房 ${esc(ui.networkCredential.roomCode)}</a>`:""}</div>${legacy}<div class="fs-entry-links"><button class="fs-entry-catalog" data-action="heroes">查看人物图鉴 ↗</button><button class="fs-entry-catalog fs-entry-feedback" data-action="feedback">意见反馈 ↗</button></div><small class="fs-entry-note">${mode.name} · ${PLAYABLE_HEROES.length} 名可用武将 · ${team?'敌友公开，掷骰定先手':'身份不可自选'}</small></section></main>`
 }
 // 掷骰动画：每席一枚骰子，滚动后定格在点数；点数最高者（view.first）标「先手」。
 const diceStage=view=>{
@@ -32,7 +32,7 @@ export function renderSetup(ui){
   const v=setupView(ui.setup,0),own=ROLES[v.role],lord=v.players[v.lord],lordHero=lord.heroId&&HERO_BY_THEME_ID[lord.heroId],candidate=HERO_BY_THEME_ID[ui.draftHero]
   const stages=['identity','lord','others','ready'],labels=['抽身份','主公先选','其他选将','准备出战'],at=stages.indexOf(v.stage)
   // 对抗局：没有身份，改为敌友；全员同时选将，选完才掷骰定先手。
-  const team=v.teamMode,ally=team&&v.sides[0]===0
+  const team=v.teamMode,ally=team
   const stepLabels=team?['敌友分配','各自选将','掷骰定先手','准备出战']:labels
   const teamAt=team?(v.stage==='identity'?0:v.stage==='lord'?1:2):at
   const firstLabel=team?(v.dice?(v.first===0?'你':'先手在 '+v.first+' 号席'):'选将后掷骰'):(v.lord===0?'你是主公':'主公在 '+v.lord+' 号席')

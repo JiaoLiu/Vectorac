@@ -12,13 +12,15 @@ import { adapter as gomoku } from './gomoku.js'
 import { adapter as xiangqi } from './xiangqi.js'
 import { adapter as junqi } from './junqi.js'
 import { adapter as doudizhu } from './doudizhu.js'
+import { adapter as fengshen,adapterFor as fengshenFor } from './fengshen.js'
 
 const ADAPTERS = {
   mahjong,
   gomoku,
   xiangqi,
   junqi,
-  doudizhu
+  doudizhu,
+  fengshen
 }
 
 export const GAME_IDS = Object.keys(ADAPTERS)
@@ -28,9 +30,9 @@ export const DEFAULT_GAME = 'mahjong'
  * 按 gameType 解析适配器。未传 → 默认麻将（兼容旧客户端）；
  * 传了但未注册 → INVALID_RULES。
  */
-export function resolveAdapter(gameType) {
+export function resolveAdapter(gameType,rules) {
   const id = gameType == null || gameType === '' ? DEFAULT_GAME : String(gameType)
-  const adapter = ADAPTERS[id]
+  const adapter = Object.hasOwn(ADAPTERS,id)?ADAPTERS[id]:null
   if (!adapter) fail(ERR.INVALID_RULES, '不支持的游戏类型：' + id)
-  return adapter
+  return id==='fengshen'?fengshenFor(rules):adapter
 }
