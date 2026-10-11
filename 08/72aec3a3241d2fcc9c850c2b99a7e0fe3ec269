@@ -1,0 +1,312 @@
+scripts/test-fengshen-interaction.mjs
+  5058ed3dc1a97a8c 132-143
+scripts/test-fengshen-toolbar.mjs
+  5058ed3dc1a97a8c 8-10,13,15-16
+.private/fengshen/voice.mjs
+  5058ed3dc1a97a8c 56-58,68
+.private/fengshen/toolbar.mjs
+  5058ed3dc1a97a8c 27,32
+.private/fengshen/table.mjs
+  5058ed3dc1a97a8c 16,32,88,117,124
+.private/fengshen/app.js
+  5058ed3dc1a97a8c 147,215-216,231,278-279,312,348,373
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.8",
+  "base_commit_sha": "0872aec3a3241d2fcc9c850c2b99a7e0fe3ec269",
+  "prompts": {
+    "5058ed3dc1a97a8c": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6ac848ce090dc5dc9234c7bc",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 38,
+      "total_deletions": 15,
+      "accepted_lines": 67,
+      "overriden_lines": 0
+    }
+  },
+  "commit_stats": {
+    "git_diff_added_lines": 299,
+    "git_diff_deleted_lines": 59,
+    "ai_additions": 38,
+    "ai_accepted": 38,
+    "BYMC": 258,
+    "mixed_additions": 0,
+    "BYAC": 38,
+    "BYRC": 0,
+    "per_file": {
+      ".private/fengshen/CANONICAL_MAPPING.md": {
+        "BYMC": [
+          "3",
+          "9"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      ".private/fengshen/CLASSIC_ACCEPTANCE.md": {
+        "BYMC": [
+          "3-4"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      ".private/fengshen/README.md": {
+        "BYMC": [
+          "11",
+          "15-17",
+          "107"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      ".private/fengshen/WIND_FIRE_ACCEPTANCE.md": {
+        "BYMC": [
+          "1-27"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      ".private/fengshen/app.js": {
+        "BYMC": [],
+        "BYAC": [
+          "147",
+          "215-216",
+          "231",
+          "278-279",
+          "312",
+          "348",
+          "373"
+        ],
+        "BYRC": []
+      },
+      ".private/fengshen/arena-table.css": {
+        "BYMC": [
+          "238-239"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      ".private/fengshen/assets/audio/manifest.json": {
+        "BYMC": [
+          "253-271",
+          "289-295",
+          "304-306",
+          "329-330",
+          "395-399",
+          "404-405",
+          "408",
+          "414",
+          "476-480",
+          "485-486",
+          "489",
+          "495",
+          "497"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      ".private/fengshen/audio-manifest.mjs": {
+        "BYMC": [
+          "7",
+          "9"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      ".private/fengshen/canonical-roster.mjs": {
+        "BYMC": [
+          "70",
+          "72-73"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      ".private/fengshen/classic-expansion.mjs": {
+        "BYMC": [
+          "1-10"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      ".private/fengshen/core/ai.mjs": {
+        "BYMC": [
+          "70-73",
+          "113-114",
+          "168-169"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      ".private/fengshen/core/catalog.mjs": {
+        "BYMC": [
+          "11-16"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      ".private/fengshen/core/engine.mjs": {
+        "BYMC": [
+          "43",
+          "146-149",
+          "207",
+          "332-338",
+          "372-376",
+          "454",
+          "457-458",
+          "472",
+          "479-482",
+          "503",
+          "506",
+          "623-626",
+          "703-709",
+          "749-758",
+          "860",
+          "863",
+          "873-874",
+          "881",
+          "901-902",
+          "927"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      ".private/fengshen/draw-effects.mjs": {
+        "BYMC": [
+          "5"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      ".private/fengshen/engine.mjs": {
+        "BYMC": [
+          "11"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      ".private/fengshen/qa.mjs": {
+        "BYMC": [
+          "23-29",
+          "147"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      ".private/fengshen/table.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "16",
+          "32",
+          "88",
+          "117",
+          "124"
+        ],
+        "BYRC": []
+      },
+      ".private/fengshen/target-selection.mjs": {
+        "BYMC": [
+          "9"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      ".private/fengshen/theme.mjs": {
+        "BYMC": [
+          "2-4",
+          "48"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      ".private/fengshen/toolbar.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "27",
+          "32"
+        ],
+        "BYRC": []
+      },
+      ".private/fengshen/voice.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "56-58",
+          "68"
+        ],
+        "BYRC": []
+      },
+      "blogs/other/games.md": {
+        "BYMC": [
+          "74"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "package.json": {
+        "BYMC": [
+          "6"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-expansion.mjs": {
+        "BYMC": [
+          "28"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-interaction.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "132-143"
+        ],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-setup.mjs": {
+        "BYMC": [
+          "71"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-toolbar.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "8-10",
+          "13",
+          "15-16"
+        ],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-wind-fire.mjs": {
+        "BYMC": [
+          "1-62"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-fengshen.mjs": {
+        "BYMC": [
+          "11",
+          "13"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-gods.mjs": {
+        "BYMC": [
+          "8"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      }
+    }
+  },
+  "commit_timestamp": 1791690431,
+  "requirement_id": ""
+}
