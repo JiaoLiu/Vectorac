@@ -2,7 +2,12 @@
 // Public logs hold counts only; local hand IDs never enter other players' cues.
 export function drawEffects(before,after,viewer=0){
   const old=new Set(before.players[viewer].hand.map(c=>c.id)),incoming=after.players[viewer].hand.filter(c=>!old.has(c.id)).map(c=>c.id)
-  return after.logs.filter(l=>l.id>before.eventId&&l.cue?.kind==='draw'&&['card-draw','skill-draw'].includes(l.cue.reason)).slice().reverse().map(l=>({...l.cue,id:l.id,ownIds:l.cue.target===viewer?incoming.slice(-l.cue.count):[]}))
+  const cues=after.logs.filter(l=>l.id>before.eventId&&l.cue?.kind==='draw'&&['card-draw','skill-draw'].includes(l.cue.reason))
+  // 同一窗口可能有多条摸牌（如仙机额外摸 1 张 + 锦囊摸 2 张），按时间顺序依次消费本地新牌，
+  // 避免用 slice(-count) 让先发生的提示错认到后摸的牌。
+  let cursor=0
+  const mapped=cues.map(l=>{const own=l.cue.target===viewer;const ids=own?incoming.slice(cursor,cursor+l.cue.count):[];if(own)cursor+=l.cue.count;return {...l.cue,id:l.id,ownIds:ids}})
+  return mapped.reverse()
 }
 // The face was already revealed to everyone; never read the recipient's hand.
 export function judgmentEffects(before,after){return after.logs.filter(l=>l.id>before.eventId&&l.cue?.kind==='judgment-keep').slice().reverse().map(l=>({...l.cue,id:l.id}))}

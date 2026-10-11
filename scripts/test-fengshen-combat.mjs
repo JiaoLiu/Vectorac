@@ -45,11 +45,11 @@ test('other player draw cue appears only after nullify gate; contains no hidden 
  const v=playerView(s,0),cue=v.logs.find(l=>l.cue?.kind==='draw').cue;assert.deepEqual(Object.keys(cue).sort(),['count','kind','playedId','reason','target']);assert.deepEqual(v.players[2].hand,[])
  for(const hidden of s.players[2].hand)assert.equal(JSON.stringify(effects).includes(hidden.id),false)
 })
-test('cancelled draw trick has no two-card cue, including an independent automatic Jizhi draw',()=>{
+test('cancelled draw trick has no two-card cue, but the independent automatic Jizhi draw still animates',()=>{
  let s=fixture(0,'jinling'),[c]=hand(s,0,'draw'),[counter]=hand(s,1,'nullify');const original=s
  s=step(s,{type:'play',as:'draw',ids:[c.id],targets:[]});assert.equal(s.pending.kind,'counter');assert.equal(s.players[0].hand.length,1)
- s=step(s,{type:'respond',ids:[counter.id]});assert.equal(s.players[0].hand.length,1);assert.deepEqual(drawEffects(original,s),[])
- s=fixture(0,'jinling');[c]=hand(s,0,'draw');const before=s;s=step(s,{type:'play',as:'draw',ids:[c.id],targets:[]});assert.equal(s.players[0].hand.length,3);const effects=drawEffects(before,s);assert.equal(effects[0].count,2);assert.deepEqual(effects[0].ownIds,s.players[0].hand.slice(-2).map(c=>c.id))
+ s=step(s,{type:'respond',ids:[counter.id]});assert.equal(s.players[0].hand.length,1);const afterCancel=drawEffects(original,s);assert.equal(afterCancel.some(e=>e.reason==='card-draw'),false,'cancelled draw trick emits no two-card cue');assert.ok(afterCancel.some(e=>e.reason==='skill-draw'&&e.count===1&&e.target===0),'independent automatic Jizhi draw still animates its single card')
+ s=fixture(0,'jinling');[c]=hand(s,0,'draw');const before=s;s=step(s,{type:'play',as:'draw',ids:[c.id],targets:[]});assert.equal(s.players[0].hand.length,3);const effects=drawEffects(before,s);const trick=effects.find(e=>e.reason==='card-draw'),extra=effects.find(e=>e.reason==='skill-draw');assert.equal(trick.count,2);assert.equal(extra.count,1);assert.deepEqual([...trick.ownIds,...extra.ownIds].sort(),s.players[0].hand.map(c=>c.id).sort(),'trick + Jizhi cues together highlight every new local card exactly once')
 })
 test('exhausted draw uses actual count rather than falsely showing two received cards',()=>{
  for(const available of [0,1]){let s=fixture(),[c]=hand(s,0,'draw');s.players[4].hand.push(...s.deck.splice(available));const before=s;s=step(s,{type:'play',as:'draw',ids:[c.id],targets:[]});while(s.pending?.kind==='counter')s=step(s,{type:'pass'});assert.equal(s.players[0].hand.length,available);const effects=drawEffects(before,s);assert.equal(effects.length,available?1:0);if(available)assert.equal(effects[0].count,1)}

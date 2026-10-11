@@ -364,7 +364,7 @@ export class FengshenUI {
     }
     if(action==='card'){
       if(view.pending?.kind==='yiji'&&view.pending.actor===0&&!view.legal.some(a=>a.type==='give'&&a.ids.includes(id))){this.inform('只能分配本次传道获得的牌');return}
-      const available=view.pending?view.pending.actor===0:view.current===0&&view.phase==='play'
+      const available=!view.winner&&(view.pending?view.pending.actor===0:view.current===0&&view.phase==='play')
       if(!available){this.modal={kind:'card-detail',id};this.render();return}
       if(this.selected.includes(id))this.selected=this.selected.filter(c=>c!==id)
       else{
@@ -434,6 +434,8 @@ export class FengshenUI {
   }
   render(){
     if(this.destroyed)return
+    this.online?.syncWaiting()
+    this.online?.settleReady()
     clearTimeout(this.timer)
     const scrolls=Object.fromEntries([...this.root.querySelectorAll('[data-scroll]')].map(e=>[e.dataset.scroll,{left:e.scrollLeft,top:e.scrollTop}]))
     const wasModal=!!this.root.querySelector('.fs-modal'),prior=document.activeElement

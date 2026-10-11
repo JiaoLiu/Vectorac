@@ -12,6 +12,7 @@ import {takeSelection} from '../.private/fengshen/take-selection.mjs'
 import {AUDIO_ENTRIES,VOICES} from '../.private/fengshen/audio-manifest.mjs'
 import {CardVoice,cuesForAction} from '../.private/fengshen/voice.mjs'
 import {playerResources} from '../.private/fengshen/presentation.mjs'
+import {roundBreakActive,showRoom,endedTableKey,readEndedTable} from '../.private/fengshen/round-break.mjs'
 
 function fixture(heroId='yangjian',role='lord',current=0){
   const s=stableOpponents(createGame({heroId,role,seed:17}));s.deck=catalog.makeDeck();s.discard=[];s.processing=[];s.harvestPool=[];s.queue=[];s.pending=null;s.phase='play';s.current=current;s.logs=[];s.lastPlayed=null;s.lastEvent=null
@@ -21,6 +22,24 @@ function fixture(heroId='yangjian',role='lord',current=0){
 const step=(s,a)=>{const r=dispatch(s,{seat:s.pending?.actor??s.current,...a});assert.ok(r.ok,r.error);assert.equal(allCards(r.state).length,108);assert.equal(new Set(allCards(r.state).map(c=>c.id)).size,108);return r.state}
 const play=(s,c,target)=>step(s,{type:'play',as:c.type,ids:[c.id],targets:target==null?[]:[target]})
 const ui=s=>({state:s,paused:false,selected:[],targets:[],skill:null,choiceIndex:null,choiceZone:'hand',pace:650,voice:{enabled:true},header:()=>'<header></header>',targetable:()=>[],matching:()=>[],currentAs:()=>null,equipment:()=>'',skills:()=>'',won:()=>false,pendingText:()=>''})
+test('online round break keeps the board for either finish-event order and on refresh, without changing room lifecycle',()=>{
+ const ended={game:{winner:'0'},room:{status:'WAITING',hasPlayed:true}},roomFirst={game:{winner:null},room:{status:'WAITING',hasPlayed:true}},gameFirst={game:{winner:'lord'},room:{status:'PLAYING',hasPlayed:false}}
+ for(const v of [ended,roomFirst,gameFirst,{...ended,room:{status:'FINISHED',hasPlayed:true}}]){assert.equal(roundBreakActive(v),true);assert.equal(showRoom(v),false);assert.equal(showRoom({...v,roomView:true}),true)}
+ assert.equal(roundBreakActive({...ended,setup:{stage:'others'}}),false);assert.equal(showRoom({...ended,setup:{stage:'others'}}),false)
+ assert.equal(showRoom({room:{status:'WAITING',hasPlayed:true},game:null}),true,'no local final snapshot yet: show room until it arrives')
+ assert.equal(showRoom({game:{winner:null},room:{status:'WAITING',hasPlayed:false}}),true)
+ assert.equal(showRoom({...ended,preview:true}),true)
+ const model={online:{roundBreak:true,roundControls:()=>'<button data-online="ready">准备下一轮</button>'}},html=renderControls(model,{winner:'lord'})
+ assert.ok(html.includes('准备下一轮'));assert.ok(!html.includes('quit-confirm'),'prepare must never leave the room')
+})
+test('ended-table cache is per room/player and accepted only for the same settled round and original seat',()=>{
+ const cred={roomId:'r',playerId:'p',seatIndex:1},room={hasPlayed:true,status:'WAITING',round:2},v={schema:1,round:2,gameId:'g',version:9,meta:{mySeat:1},game:{winner:'0',players:[{},{}]}},map=new Map([[endedTableKey(cred),JSON.stringify(v)]]),storage={getItem:k=>map.get(k)}
+ assert.deepEqual(readEndedTable(storage,cred,room),v)
+ for(const bad of [{...room,status:'PLAYING'},{...room,round:3},{...room,hasPlayed:false}])assert.equal(readEndedTable(storage,cred,bad),null)
+ for(const other of [{...cred,playerId:'q'},{...cred,roomId:'q'},{...cred,seatIndex:0}])assert.equal(readEndedTable(storage,other,room),null)
+ map.set(endedTableKey(cred),'broken');assert.equal(readEndedTable(storage,cred,room),null)
+ assert.equal(endedTableKey(null),null)
+})
 test('public resource badges label HP and hand count without exposing or miscounting redacted hands',()=>{
  for(const handCount of [0,7,30,108])for(const hp of [-1,0,1,2,4]){
   const html=playerResources({seat:3,hp,maxHp:4,handCount,hand:[]})
@@ -113,7 +132,7 @@ test('selection aid is read-only, works in response windows and honors teaching 
 })
 test('Jizhi and Yingzi draw automatically; Luoyi keeps its real tradeoff prompt',()=>{
   let s=fixture('jinling');const [draw]=hand(s,0,'draw');s=play(s,draw)
-  assert.equal(s.players[0].hand.length,3);assert.equal(s.pending,null);assert.ok(s.logs.some(l=>l.cue?.skill==='jizhi'))
+  assert.equal(s.players[0].hand.length,3);assert.equal(s.pending,null);assert.ok(s.logs.some(l=>l.cue?.skill==='jizhi'));assert.ok(s.logs.some(l=>l.cue?.kind==='draw'&&l.cue.reason==='skill-draw'&&l.cue.target===0),'Jizhi emits a draw cue so the deck-to-hand flight animates')
   s=createGame({heroId:'guangchengzi',role:'lord',seed:8});assert.equal(s.players[0].hand.length,7);assert.notEqual(s.pending?.skill,'yingzi')
   s=createGame({heroId:'moliqing',role:'lord',seed:8});assert.equal(s.pending.skill,'luoyi');assert.equal(playerView(s,0).legal.filter(a=>a.type==='choose').length,2)
 })

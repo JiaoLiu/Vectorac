@@ -585,7 +585,7 @@ function settleEvent(s,event) {
     }break
     case 'jizhi':
       if(!player(s,event.seat).alive)break
-      if(autoSkill('jizhi')){announceSkill(s,event.seat,'jizhi');draw(s,event.seat,1)}
+      if(autoSkill('jizhi')){announceSkill(s,event.seat,'jizhi');draw(s,event.seat,1,'skill-draw')}
       else makePending(s,{kind:'choice',actor:event.seat,skill:'jizhi',choices:[{value:'yes',label:'集智：摸一张'},{value:'no',label:'不发动'}]});break
     case 'take': if(event.handOnly?player(s,event.target).hand.length:event.equipmentOnly?ownedCards(player(s,event.target)).length:targetCardCount(player(s,event.target)))makePending(s,{...event,kind:'take',actor:event.actor??event.source});break
     case 'harvest': {
@@ -687,7 +687,7 @@ function choice(s,pending,value) {
   else if(pending.skill==='xiaoji'&&value==='yes')draw(s,pending.actor,2)
   else if(pending.skill==='lianying'&&value==='yes')draw(s,pending.actor,1)
   else if(pending.skill==='biyue'&&value==='yes')draw(s,pending.actor,1)
-  else if(pending.skill==='jizhi'&&value==='yes')draw(s,pending.actor,1)
+  else if(pending.skill==='jizhi'&&value==='yes')draw(s,pending.actor,1,'skill-draw')
   else if(pending.skill==='jianxiong'&&value==='yes') {
     for(const id of pending.ids)for(const zone of [s.processing,s.discard]) {const index=zone.findIndex(c=>c.id===id);if(index>=0)p.hand.push(...zone.splice(index,1))}
     note(s,`${name(s,pending.actor)}发动奸雄收回牌`)

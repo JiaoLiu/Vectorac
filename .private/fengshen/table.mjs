@@ -126,6 +126,7 @@ function playInstruction(ui,view){
   return `${cardTitle(as)} · ${ui.targetable(view).length?ui.targets.length?'目标已选，请确认':'点击人物选择目标':'对自己或全场使用，请确认'}`
 }
 function operation(ui,v){
+  if(ui.online?.roundBreak)return ''
   if(['guanxing','counter','reveal','judge-replace'].includes(v.pending?.kind))return ''
   if(!ui.paused&&!v.winner&&(ui.transfer||ui.draws?.length||ui.moves?.length||!v.pending&&v.current!==0))return ''
   let title='',hint=''
@@ -143,6 +144,7 @@ function operation(ui,v){
   return `<div class="fs-status" aria-live="polite"><strong>${esc(title)}</strong>${hint?`<small class="fs-teaching-hint">${esc(hint)}</small>`:''}</div>`
 }
 export function renderControls(ui,v){
+  if(ui.online?.roundBreak)return ui.online.roundControls()
   if(ui.paused)return `<div class="fs-action-row"><button data-action="pause" class="fs-primary">继续对局</button></div>`
   if(v.winner)return `<div class="fs-action-row"><button data-action="quit-confirm" class="fs-primary">再开一局</button><button data-action="report" class="fs-secondary">${v.teamMode?'胜负一览':'身份揭晓'}</button></div>`
   if(v.pending?.kind==='reveal'||v.pending?.kind==='ext'&&v.extension.stage==='reveal'||ui.transfer||ui.draws?.length||ui.moves?.length)return `<div class="fs-action-row fs-idle-controls"><span>动画展示中 · 自动继续</span></div>`
@@ -180,7 +182,7 @@ export function renderBattle(ui){
   const timer=ui.clock?.key?`<span class="fs-timer" aria-label="思考倒计时"><b data-seconds>${ui.clock.seconds}s</b></span>`:''
   const ready=new Set(v.pending?.kind==='counter'&&v.pending.actor===0?v.legal.filter(a=>a.type==='respond').flatMap(a=>a.ids):[])
   return `${ui.header()}
-    <main class="fs-arena" data-seats="${v.players.length}">${hud}<div class="fs-players" data-seats="${v.players.length}">${v.players.slice(1).map(x=>renderOpponent(ui,x,v)).join('')}</div>${renderCenter(ui,v)}${operation(ui,v)}${selectedCardHint(ui,v)}</main>
+    <main class="fs-arena" data-seats="${v.players.length}">${hud}<div class="fs-players" data-seats="${v.players.length}">${v.players.slice(1).map(x=>renderOpponent(ui,x,v)).join('')}</div>${renderCenter(ui,v)}${operation(ui,v)}${selectedCardHint(ui,v)}${ui.online?.roundSummaryHtml()||''}</main>
     <section class="fs-dock"><div class="fs-own-panel" data-skill-count="${Object.keys(h.skillNames).length}"><div class="fs-own-hero ${turnActive(p,v)?'turn-active':''} ${p.alive?'':'fs-own-fallen'} ${selfTarget?'targetable':''} ${selfSelected?'target-selected':''}"><button data-action="${selfTarget||selfSelected?'target':'hero-detail'}" data-value="0" data-id="${h.id}" aria-label="${selfTarget?'选择自己作为目标':'查看'+h.name}">${portrait(h)}${targetSeqBadge(ui,v,0)}${stateMarkers(p)}${delays(p,v).length?`<span class="fs-own-delays" aria-label="你的判定区">${delayIcons(p,v)}</span>`:''}</button><div>${formMarker(p)}${turnBadge(p,v)}<small>${FACTIONS[h.faction]} · ${p.alive?h.title:'已阵亡，观战中'}</small><strong>${h.name}</strong><button data-action="identity" class="fs-own-role-button" aria-label="${v.teamMode?'你的阵营：'+roleName(p,v):'你的身份：'+ROLES[p.role].name}">${roleBadge(p,v,true)}<span>${v.teamMode?'你的阵营':'你的身份'}</span></button></div></div><div class="fs-own-skills" data-scroll="skills">${ui.skills(p,v)}</div><div class="fs-own-equipment" data-scroll="equipment">${ui.equipment(p,true)}</div></div>
     <div class="fs-hand-area"><div class="fs-hand-heading">${playerResources(p)}${timer}<span>${ui.selected.length?'已选 '+ui.selected.length+' 张':'左右滑动 · 点牌抽起'}</span><button data-action="hand">展开手牌</button></div><div class="fs-hand" data-scroll="hand">${p.hand.length?`<div class="fs-hand-row">${p.hand.map(c=>`<button class="fs-hand-card ${ui.selected.includes(c.id)?'selected':''} ${ready.has(c.id)?'counter-ready':''}" data-action="card" data-id="${c.id}" aria-label="${cardTitle(c.type)} ${SUITS[c.suit]}${c.rank}" aria-pressed="${ui.selected.includes(c.id)}">${cardFace(c)}</button>`).join('')}</div>`:'<div class="fs-empty">手中无牌 · 静观其变</div>'}</div><div class="fs-actions">${renderControls(ui,v)}</div></div></section>`
 }
