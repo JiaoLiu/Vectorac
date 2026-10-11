@@ -185,3 +185,28 @@
 .fs-own-hero:has(.fs-form-mark) .fs-turn-badge{top:45px}
 @keyframes fs-turn-pulse{50%{box-shadow:inset 0 0 14px #43ffd8c4}}
 @media(prefers-reduced-motion:reduce){.fs-playing :is(.fs-player,.fs-own-hero).turn-active:after{animation:none}}
+/* Non-modal public table: compact rows, no explanatory text over the cards. */
+.fs-sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip-path:inset(50%)!important;white-space:nowrap!important}
+.fs-playing .fs-compact-table{display:flex;justify-content:center;padding:0;pointer-events:none;overflow:visible}
+.fs-playing .fs-played.fs-table-trail{display:grid;grid-template-columns:repeat(var(--table-columns,1),calc(var(--table-card-height,90px)/1.44));gap:5px;justify-content:center;align-items:center;max-width:100%;width:fit-content;flex:none;overflow:visible}
+.fs-playing .fs-compact-table .fs-card-play{position:relative;padding:0;height:var(--table-card-height,90px);width:calc(var(--table-card-height,90px)/1.44);flex:none}
+.fs-playing .fs-compact-table .fs-card-play[hidden]{display:none}
+.fs-playing .fs-compact-table .fs-card-play>.fs-clean-card{height:100%;width:100%;transform:none}
+.fs-table-judgment.is-revealing{animation:fs-reveal .55s ease-out}
+.fs-playing .fs-table-judgment .fs-judge-stamp{right:2px;bottom:4px;width:clamp(22px,calc(var(--table-card-height)*.38),38px);height:clamp(22px,calc(var(--table-card-height)*.38),38px);font-size:clamp(18px,calc(var(--table-card-height)*.3),30px);border-width:2px}
+.fs-table-judgment:not([data-judge-kind=indulgence]):not([data-judge-kind=lightning]) .fs-judge-stamp.hit{color:#238f70}
+.fs-table-judgment:not([data-judge-kind=indulgence]):not([data-judge-kind=lightning]) .fs-judge-stamp.miss{color:#af3934}
+.fs-effect-cancel{position:absolute;right:3px;bottom:4px;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:#f9e8d7ec;color:#b64339;border:2px solid currentColor;font:bold 28px/1 sans-serif;z-index:7}
+.fs-card-play.is-negated>.fs-clean-card{filter:saturate(.35);opacity:.75}
+.fs-playing .fs-hand-card.counter-ready>.fs-clean-card{box-shadow:0 0 0 2px #ffd878,0 0 12px #ffce6955}
+.fs-playing .fs-counter-controls button{font-size:14px;min-height:38px}
+.fs-playing .fs-judging{box-shadow:inset 0 0 0 3px #ffd76f;animation:fs-judging-glow 1.1s ease-in-out infinite}
+.fs-judging:after{content:'判';position:absolute;right:3px;top:25px;width:22px;height:22px;display:grid;place-items:center;border:1px solid #ffe69b;border-radius:50%;background:#655119ef;color:#fff5c6;font:bold 13px/1 sans-serif;pointer-events:none;z-index:10}
+.fs-player:has(.fs-judging) .fs-turn-badge,.fs-own-hero:has(.fs-judging) .fs-turn-badge{display:none}
+.fs-playing .fs-effect-source{box-shadow:inset 0 0 0 2px #ffe5a1}
+.fs-playing .fs-effect-target{box-shadow:inset 0 0 0 2px #f0c55a}
+.fs-playing .fs-effect-focus{box-shadow:inset 0 0 0 4px #ffe18b,inset 0 0 18px #ffdb7955}
+.fs-target-lines>.fs-beam-glow{stroke-width:7;opacity:.3}
+.fs-target-lines>.fs-beam-core{stroke-width:2.3}
+@keyframes fs-judging-glow{50%{box-shadow:inset 0 0 0 3px #ffe49d,inset 0 0 15px #ffd56c66}}
+@media(prefers-reduced-motion:reduce){.fs-playing .fs-judging,.fs-table-judgment.is-revealing{animation:none}}

@@ -65,10 +65,10 @@ test('equipment and judgment are explicit face-up zones, removable independently
     s=step(s,chosen);assert.ok(s.discard.some(c=>c.id===chosen.card.id))
   }
 })
-test('counter places the spell, target and own response cards in the center; chain reversal is retained',()=>{
+test('counter leaves spell on table and response in hand; chain reversal is retained',()=>{
   let s=fixture('jinling','loyal',1);const [spell]=hand(s,1,'dismantle'),[negate]=hand(s,0,'nullify','shan');s=play(s,spell,0)
   assert.equal(s.pending.kind,'counter');assert.equal(s.pending.actor,0)
-  const v=playerView(s,0),center=renderCenter(ui(s),v);assert.ok(center.includes('破法'));assert.equal(center.includes('无懈可击'),false);assert.ok(center.includes('破阵'));assert.ok(center.includes(negate.id))
+  const v=playerView(s,0),center=renderCenter(ui(s),v);assert.ok(!center.includes('fs-center-choice'));assert.equal(center.includes('无懈可击'),false);assert.ok(center.includes('破阵'));assert.ok(!center.includes(negate.id));const model=ui(s);model.selected=[negate.id];const html=renderBattle(model);assert.ok(html.includes('counter-ready'));assert.ok(html.includes('发动破法'));assert.ok(html.includes('不发动'));assert.ok(!html.includes('fs-counter-choice'))
   const beforeCount=s.players[0].hand.length;s=step(s,{type:'respond',ids:[negate.id]})
   assert.equal(s.players[0].hand.length,beforeCount,'one nullify is spent and automatic Jizhi draws one')
   assert.ok(s.logs.some(l=>l.cue?.skill==='jizhi'));assert.notEqual(s.pending?.skill,'jizhi')

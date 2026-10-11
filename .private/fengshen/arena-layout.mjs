@@ -1,5 +1,6 @@
 // One coordinate system for the board, seats and hand. Never use zoomed screen
 // rectangles or equipment count to decide a portrait's dimensions.
+import {tableCardLayout} from './table-trail.mjs'
 const clamp=(n,min,max)=>Math.max(min,Math.min(max,n))
 export function arenaGeometry({width,height,seats=5,safeTop=0,safeBottom=0}){
  const landscape=width>height,gap=clamp(width*.012,6,12),topSeats=seats===2?[1]:!landscape&&seats===8?[3,4,5]:Array.from({length:Math.max(1,seats-3)},(_,i)=>i+2)
@@ -41,6 +42,8 @@ export function layoutArena(root){
  for(const [key,value]of Object.entries({'hero-width':g.heroWidth,'hero-height':g.heroHeight,'own-hero-width':g.ownHeroWidth,'own-hero-height':g.ownHeroHeight,'dock-size':g.dockHeight,'hand-height':g.handHeight,'action-width':g.actionWidth,'seat-gap':g.gap,'center-top':g.center.top,'center-bottom':g.height-g.center.bottom,'center-side':g.center.left}))root.style.setProperty('--'+key,value+'px')
  root.style.setProperty('--take-card-height',Math.max(48,Math.min(124,g.height-top-bottom-176))+'px')
  root.style.setProperty('--center-card-height',centerCardHeight(g.center)+'px')
+ const trail=root.querySelector('.fs-table-trail')
+ if(trail){const cards=[...trail.querySelectorAll('.fs-card-play')],fit=tableCardLayout({width:g.center.right-g.center.left,height:g.center.bottom-g.center.top,count:cards.length}),focus=cards.filter(c=>c.classList.contains('is-current-effect')).slice(-fit.visible),rest=cards.filter(c=>!focus.includes(c)).slice(-Math.max(0,fit.visible-focus.length));trail.style.setProperty('--table-columns',fit.columns);trail.style.setProperty('--table-card-height',fit.cardHeight+'px');cards.forEach(c=>c.hidden=!focus.includes(c)&&!(fit.visible>focus.length&&rest.includes(c)))}
  root.style.setProperty('--pool-card-height',Math.max(32,Math.min(120,g.height-g.dockHeight-60))+'px')
  const pool=root.querySelector('.fs-pool-choice'),list=pool?.querySelector('.fs-center-card-list')
  if(list)pool.style.setProperty('--pool-card-height',poolCardHeight({width:list.clientWidth,height:g.height-g.dockHeight-60,count:list.querySelectorAll('.fs-choice-card').length})+'px')

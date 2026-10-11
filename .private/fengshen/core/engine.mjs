@@ -408,7 +408,7 @@ function judgmentComplete(s,ctx,keep){
   else {makePending(s,{kind:'choice',actor:p.seat,skill:'tiandu',event:{type:'judgmentComplete',ctx},choices:[{value:'yes',label:'天妒：获得最终判定牌'},{value:'no',label:'不获得'}]});return}
  }
  s.processing.splice(i,1)
- if(p.alive&&(keep||ctx.kind==='luoshen'&&!isRed(judge)))p.hand.push(judge);else s.discard.push(judge)
+ if(p.alive&&(keep||ctx.kind==='luoshen'&&!isRed(judge))){p.hand.push(judge);if(catalog.trackBattle)note(s,`${name(s,ctx.owner)}获得公开判定牌`,{kind:'judgment-keep',target:ctx.owner,card:clone(judge)})}else s.discard.push(judge)
  applyFinalJudgment(s,{...ctx,judge:clone(judge)})
 }
 function applyFinalJudgment(s,ctx){

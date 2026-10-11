@@ -20,6 +20,18 @@ function card(s,seat,type){const i=s.deck.findIndex(c=>c.type===type);if(i<0)thr
 function equip(s,seat,type,slot){const c=card(s,seat,type);s.players[seat].hand.pop();s.players[seat].equip[slot]=c;return c}
 function step(s,a){const r=dispatch(s,{seat:s.pending?.actor??s.current,...a});if(!r.ok)throw Error(r.error);return r.state}
 function scenario(name){
+  if(name==='counter-delay'){
+    let s=fixture('yangjian','lord',4),delay=card(s,0,'indulgence');s.players[0].hand.pop();s.players[0].judgment.push(delay);card(s,0,'nullify');return step(s,{type:'end'})
+  }
+  if(name==='counter-arrows'){
+    let s=fixture('yangjian','lord',1),c=card(s,1,'arrows');card(s,0,'nullify');card(s,0,'shan');card(s,2,'shan');return step(s,{type:'play',ids:[c.id],as:'arrows',targets:[]})
+  }
+  if(name==='judge-luoshen'){
+    let s=fixture('shiji','lord',4);const i=s.deck.findIndex(c=>c.suit==='spade'&&c.rank===5),c=s.deck.splice(i,1)[0];s.deck.unshift(c);s=step(s,{type:'end'});return step(s,{type:'choose',value:'yes'})
+  }
+  if(name==='trail-six'){
+    const s=scenario('layout-eight'),cards=s.players[0].hand.splice(0,6);s.discard.push(...cards);s.lastPlayed={id:s.eventId+1,source:0,targets:[],as:cards[0].type,cards:[cards[0]],turn:s.turns};s.exchange=[{source:0,as:cards[0].type,cards:[cards[0]]},...cards.slice(1).map((c,i)=>({source:i+1,as:c.type,cards:[c]}))];return s
+  }
   if(name==='take-tuxi'){
     let s=fixture('tuxingsun','lord',4);card(s,1,'shan');card(s,1,'tao');card(s,2,'shan');card(s,2,'sha');s=step(s,{type:'end'});return s
   }
@@ -143,4 +155,5 @@ const eight=document.createElement('option');eight.value='layout-eight';eight.te
 for(const [value,label]of [['hand60','60张手牌与选中抬升'],['kurou-many','陈奇：30手牌连续苦肉摸牌']]){const o=document.createElement('option');o.value=value;o.textContent=label;tools.querySelector('select').append(o)}
 for(const [value,label]of [['target-switch','目标快速切换与装备点击隔离'],['harvest-eight','八人五谷：完整牌面与选牌者'],['sunwukong-start','孙悟空：真实开局变身']]){const o=document.createElement('option');o.value=value;o.textContent=label;tools.querySelector('select').append(o)}
 for(const [value,label]of [['take-tuxi','土行孙：连续两人取暗手牌'],['turn-eight','八人布局：玉鼎真人出牌高亮']]){const o=document.createElement('option');o.value=value;o.textContent=label;tools.querySelector('select').append(o)}
+for(const [value,label]of [['counter-delay','迷魂阵判定：手牌破法响应'],['counter-arrows','飞剑齐发：全体黄线与手牌破法'],['judge-luoshen','石矶娘娘：公开判定后获得黑牌'],['trail-six','八人牌桌：六张公开出牌紧凑排列']]){const o=document.createElement('option');o.value=value;o.textContent=label;tools.querySelector('select').append(o)}
 document.addEventListener('click',event=>{if(event.target.closest('[data-action="resume"],[data-action="start"]')){tools.hidden=true;tools.style.display='none'}})

@@ -12,7 +12,8 @@ import './toolbar.css'
 import {renderToolbar,renderMenu} from './toolbar.mjs'
 import './mobile-table.css'
 import './arena-table.css'
-import {tutorialEnabled,targetLinks} from './table-visuals.mjs'
+import {tutorialEnabled,targetLinks,judgingSeat,counterSelection,counterAction} from './table-visuals.mjs'
+import {tableTrail as updateTableTrail,counterTrail} from './table-trail.mjs'
 import {createSetup,dispatchSetup,setupView,chooseSetupAI,restoreSession,MODE_LIST,modeById} from './setup.mjs'
 import {renderHome,renderSetup,heroGallery} from './setup-ui.mjs'
 import {CardVoice,cuesForAction} from './voice.mjs'
@@ -30,7 +31,7 @@ import {takeSelection}from './take-selection.mjs'
 import {bindStarDrag} from './star-drag.mjs'
 import {advanceUnavailable,DecisionClock} from './flow.mjs'
 import {BackgroundMusic} from './music.mjs'
-import {drawEffects} from './draw-effects.mjs'
+import {drawEffects,judgmentEffects} from './draw-effects.mjs'
 
 // Keep the old mixed-playtest save intact; never reinterpret its hero rules.
 const SAVE='vectorac.fengshen.classic-original.save.v2',PREFS='vectorac.fengshen.internal.prefs.v1'
@@ -91,12 +92,15 @@ export class FengshenUI {
       this.transfer={from:pending.target,to:before.pending.actor,mode:before.pending.mode,card:hidden?null:option?.card,until:Date.now()+1050}
       clearTimeout(this.transferTimer);this.transferTimer=setTimeout(()=>{this.transfer=null;if(!this.destroyed)this.render()},1100)
     }
+    if(before.pending?.kind==='counter'&&action.type==='respond'){this.tableTrail=counterTrail(this.tableTrail||[],playerView(before,0));if(action.seat==null||action.seat===0){this.counterLockUntil=Date.now()+700;clearTimeout(this.counterLockTimer);this.counterLockTimer=setTimeout(()=>{if(!this.destroyed)this.render()},720)}}
+    const judged=judgmentEffects(before,this.state).at(-1)
+    if(judged){this.transfer={from:judged.target,to:judged.target,mode:'judgment',card:judged.card,until:Date.now()+1050};clearTimeout(this.transferTimer);this.transferTimer=setTimeout(()=>{this.transfer=null;if(!this.destroyed)this.render()},1100)}
     const draws=drawEffects(before,this.state)
     if(draws.length){const started=Date.now();this.draws=draws.map(d=>({...d,started}));clearTimeout(this.drawTimer);this.drawTimer=setTimeout(()=>{this.draws=[];if(!this.destroyed)this.render()},1300)}
     const previousIds=new Set(before.players[0].hand.map(c=>c.id)),received=this.state.players[0].hand.filter(c=>!previousIds.has(c.id))
     this.handRevealId=received.at(-1)?.id||null
     this.reset();this.save();this.render();return true}
-  clearEffects(){clearTimeout(this.hitTimer);clearTimeout(this.transferTimer);clearTimeout(this.drawTimer);this.hits=[];this.transfer=null;this.draws=[]}
+  clearEffects(){clearTimeout(this.hitTimer);clearTimeout(this.transferTimer);clearTimeout(this.drawTimer);clearTimeout(this.counterLockTimer);this.hits=[];this.transfer=null;this.draws=[];this.tableTrail=[];this.counterKey=null;this.counterLockUntil=0}
   syncClock(){
     const s=this.state,human=!this.lobby&&!this.setup&&s&&!s.winner&&(s.pending?.actor??s.current)===0&&s.pending?.kind!=='reveal'&&s.players[0].alive
     const key=human?`${s.revision}:${s.pending?.id||s.phase}`:null
@@ -121,19 +125,23 @@ export class FengshenUI {
     if(battle&&['attack','command','duel','aoe'].includes(battle.kind))for(const [seat,role]of [[battle.source,'攻击者'],[battle.target,'受击者']]){const e=anchor(seat);if(e)e.dataset.combatRole=role}
     this.root.querySelector('.fs-target-lines')?.remove()
     const links=targetLinks(v,{targets:this.targets,as:this.currentAs(v)}),r=this.root.getBoundingClientRect()
+    this.root.querySelectorAll('.fs-judging,.fs-effect-source,.fs-effect-target,.fs-effect-focus').forEach(e=>e.classList.remove('fs-judging','fs-effect-source','fs-effect-target','fs-effect-focus'))
+    const judge=judgingSeat(v);if(judge!=null)anchor(judge)?.classList.add('fs-judging')
+    for(const link of links){anchor(link.source)?.classList.add('fs-effect-source');anchor(link.target)?.classList.add('fs-effect-target')}
+    if(v.pending?.kind==='counter')anchor(v.pending.target)?.classList.add('fs-effect-focus')
     if(links.length){const layer=document.createElementNS('http://www.w3.org/2000/svg','svg');layer.classList.add('fs-target-lines');layer.setAttribute('viewBox',`0 0 ${this.root.clientWidth} ${this.root.clientHeight}`);layer.setAttribute('aria-hidden','true');const defs=document.createElementNS('http://www.w3.org/2000/svg','defs');layer.append(defs)
       // 光束式指向线（参考英雄杀）：细亮芯+柔光晕，源端亮、目标端渐隐，不再用粗箭头。
       for(const [i,link] of links.entries()){const a=anchor(link.source)?.getBoundingClientRect(),b=anchor(link.target)?.getBoundingClientRect();if(!a||!b)continue;const ap=localPoint(this.root,a.x+a.width/2,a.y+a.height/2),bp=localPoint(this.root,b.x+b.width/2,b.y+b.height/2),cx=ap.x,cy=ap.y,bx=bp.x,by=bp.y,length=Math.hypot(bx-cx,by-cy)||1,sa=Math.min(a.width,a.height)*.32,sb=Math.min(b.width,b.height)*.32
         const x=cx+(bx-cx)*sa/length,y=cy+(by-cy)*sa/length,tx=bx-(bx-cx)*sb/length,ty=by-(by-cy)*sb/length,gid=`fs-beam-g${i}`
         const grad=document.createElementNS('http://www.w3.org/2000/svg','linearGradient');grad.id=gid;grad.setAttribute('gradientUnits','userSpaceOnUse');grad.setAttribute('x1',x);grad.setAttribute('y1',y);grad.setAttribute('x2',tx);grad.setAttribute('y2',ty)
-        for(const [o,c,op] of [[0,'#fff6cf',.95],[.55,'#ffd77a',.55],[1,'#ffd77a',0]]){const stop=document.createElementNS('http://www.w3.org/2000/svg','stop');stop.setAttribute('offset',o);stop.setAttribute('stop-color',c);stop.setAttribute('stop-opacity',op);grad.append(stop)}defs.append(grad)
+        for(const [o,c,op] of [[0,'#fff6cf',1],[.55,'#ffd77a',.9],[1,'#ffe99e',.8]]){const stop=document.createElementNS('http://www.w3.org/2000/svg','stop');stop.setAttribute('offset',o);stop.setAttribute('stop-color',c);stop.setAttribute('stop-opacity',op);grad.append(stop)}defs.append(grad)
         const glow=document.createElementNS('http://www.w3.org/2000/svg','path');glow.setAttribute('d',`M${x} ${y} L${tx} ${ty}`);glow.setAttribute('class','fs-beam-glow')
         const line=document.createElementNS('http://www.w3.org/2000/svg','path');line.dataset.source=link.source;line.dataset.target=link.target;line.setAttribute('d',`M${x} ${y} L${tx} ${ty}`);line.setAttribute('class','fs-beam-core');line.setAttribute('stroke',`url(#${gid})`);layer.append(glow,line)}this.root.append(layer)}
     for(const h of this.hits.filter(h=>h.until>Date.now())){const e=anchor(h.target);if(e){e.classList.add('fs-hurt');const badge=document.createElement('span');badge.className='fs-damage-number';badge.textContent='−'+h.amount;e.append(badge)}}
     this.root.querySelector('.fs-transfer-flight')?.remove()
     if(this.transfer&&this.transfer.until>Date.now()){
-      const f=this.transfer,a=anchor(f.from)?.getBoundingClientRect(),to=f.mode==='snatch'?anchor(f.to)?.getBoundingClientRect():this.root.querySelector('.fs-table-center,.fs-center-choice')?.getBoundingClientRect()
-      if(a&&to){const ap=localPoint(this.root,a.x+a.width/2,a.y+a.height/2),tp=localPoint(this.root,to.x+to.width/2,to.y+to.height/2);const e=document.createElement('div');e.className='fs-transfer-flight';e.dataset.transferMode=f.mode;e.innerHTML=(f.card?cardFace(f.card):'<span class="fs-card-back"><i>封</i><b>暗手牌</b></span>')+`<span>${f.mode==='snatch'?'取走':'弃置'}</span>`;e.style.setProperty('--from-x',`${ap.x-27}px`);e.style.setProperty('--from-y',`${ap.y-38}px`);e.style.setProperty('--to-x',`${tp.x-27}px`);e.style.setProperty('--to-y',`${tp.y-38}px`);this.root.append(e)}
+      const f=this.transfer,a=(f.mode==='judgment'?this.root.querySelector(`[data-judge-card="${f.card.id}"]`)||this.root.querySelector('.fs-table-center'):anchor(f.from))?.getBoundingClientRect(),to=(f.mode==='judgment'?(f.to===0?this.root.querySelector('.fs-hand'):anchor(f.to)):f.mode==='snatch'?anchor(f.to):this.root.querySelector('.fs-table-center,.fs-center-choice'))?.getBoundingClientRect()
+      if(a&&to){const ap=localPoint(this.root,a.x+a.width/2,a.y+a.height/2),tp=localPoint(this.root,to.x+to.width/2,to.y+to.height/2);const e=document.createElement('div');e.className='fs-transfer-flight';e.dataset.transferMode=f.mode;e.innerHTML=(f.card?cardFace(f.card):'<span class="fs-card-back"><i>封</i><b>暗手牌</b></span>')+(f.mode==='judgment'?'':`<span>${f.mode==='snatch'?'取走':'弃置'}</span>`);e.style.setProperty('--from-x',`${ap.x-27}px`);e.style.setProperty('--from-y',`${ap.y-38}px`);e.style.setProperty('--to-x',`${tp.x-27}px`);e.style.setProperty('--to-y',`${tp.y-38}px`);this.root.append(e)}
     }
     this.root.querySelectorAll('.fs-draw-flight,.fs-draw-count').forEach(e=>e.remove())
     this.root.querySelectorAll('.fs-draw-receiver').forEach(e=>e.classList.remove('fs-draw-receiver'))
@@ -202,6 +210,7 @@ export class FengshenUI {
   confirm(){
     const view=playerView(this.state,0),pending=view.pending
     if(pending?.actor===0){
+      if(pending.kind==='counter'){const answer=counterAction(view,this.selected,{blockedUntil:this.counterLockUntil});return answer?this.act(answer):false}
       if(pending.kind==='guanxing')return this.act({type:'arrange',top:this.star?.id===pending.id?this.star.top:view.legal.find(a=>a.type==='arrange').pool.map(c=>c.id),bottom:this.star?.id===pending.id?this.star.bottom:[]})
       if(pending.kind==='liuli'){const a=view.legal.find(a=>a.type==='redirect'&&a.target===this.targets[0]&&equal(a.ids,this.selected));return a?this.act(a):this.inform('选择一张牌，再选择弃牌后仍在范围内的目标')}
       if(pending.kind==='yiji'){const a=view.legal.find(a=>a.type==='give'&&a.target===this.targets[0]&&equal(a.ids,this.selected));return a?this.act(a):this.inform('只选择本次传道得到的牌和接收者')}
@@ -341,6 +350,7 @@ export class FengshenUI {
     clearTimeout(this.timer)
     const scrolls=Object.fromEntries([...this.root.querySelectorAll('[data-scroll]')].map(e=>[e.dataset.scroll,{left:e.scrollLeft,top:e.scrollTop}]))
     const wasModal=!!this.root.querySelector('.fs-modal'),prior=document.activeElement
+    if(this.state&&!this.setup){const v=playerView(this.state,0),choice=counterSelection(v,this.counterKey,this.selected);this.counterKey=choice.key;this.selected=choice.selected;this.tableTrail=updateTableTrail(this.tableTrail||[],v)}
     if(this.modal&&!wasModal)this.returnFocus={action:prior?.dataset?.action,id:prior?.dataset?.id}
     this.viewport.setImmersive(!this.lobby);this.syncClock()
     this.root.classList.toggle('fs-playing',!this.lobby&&!this.setup)
@@ -362,6 +372,7 @@ export class FengshenUI {
     for(const id of ownIds)this.root.querySelector(`.fs-hand-card[data-id="${id}"]`)?.classList.add('fs-newly-drawn')
     if(ownIds.length)revealHandCard(this.root,ownIds.at(-1))
     if(this.handRevealId){revealHandCard(this.root,this.handRevealId);this.handRevealId=null}
+    if(this.state?.pending?.kind==='counter'&&this.state.pending.actor===0&&this.selected.length)revealHandCard(this.root,this.selected.at(-1))
     if(this.transfer||this.draws.length||this.state?.pending?.kind==='reveal')this.root.querySelector('.fs-dock')?.setAttribute('inert','')
     if(this.modal){this.root.querySelectorAll('.fs-header,.fs-lobby,.fs-entry,.fs-setup,.fs-hud,.fs-arena,.fs-status,.fs-dock').forEach(e=>e.inert=true);this.root.querySelector('[data-action="close"]')?.focus()}
     else if(wasModal&&this.returnFocus?.action){const s=`[data-action="${this.returnFocus.action}"]${this.returnFocus.id?`[data-id="${this.returnFocus.id}"]`:''}`;this.root.querySelector(s)?.focus()}
