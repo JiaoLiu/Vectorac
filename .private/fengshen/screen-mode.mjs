@@ -19,7 +19,10 @@ export function bindVirtualMedia(doc){
  const collect=rules=>{for(const rule of rules){if(rule.media&&!saved.has(rule))saved.set(rule,rule.media.mediaText);if(rule.cssRules)collect(rule.cssRules)}}
  return {apply(force,width,height){for(const sheet of doc.styleSheets||[]){try{collect(sheet.cssRules||[])}catch{}}for(const [rule,original]of saved){const match=force?mediaMatches(original,width,height):null;rule.media.mediaText=match==null?original:match?'all':'not all'}},restore(){for(const [rule,original]of saved)rule.media.mediaText=original;saved.clear()}}
 }
-export function logicalScreen({width,height,immersive,mobile,rotated}){const force=!!immersive&&!!mobile&&!rotated&&height>width;return {width:force?height:width,height:force?width:height,force}}
+// 只有手机尺寸才需要强制横屏：平板等大屏竖屏直接用竖版布局，不刻意旋转。
+export const PHONE_SHORT_SIDE=600
+export const phoneScreen=(width,height)=>Math.min(width,height)<=PHONE_SHORT_SIDE
+export function logicalScreen({width,height,immersive,mobile,rotated}){const force=!!immersive&&!!mobile&&!rotated&&height>width&&phoneScreen(width,height);return {width:force?height:width,height:force?width:height,force}}
 // Beams, animations and drag coordinates must use the inverse of rotation.
 export function localPoint(root,x,y){
  const r=root.getBoundingClientRect(),rotated=root.classList.contains('fs-force-landscape'),scale=(rotated?r.height:r.width)/root.clientWidth||1

@@ -134,6 +134,18 @@
       "text": "白鹤"
     },
     {
+      "key": "card-fireattack",
+      "text": "焚天焰"
+    },
+    {
+      "key": "card-ironchain",
+      "text": "缚神索"
+    },
+    {
+      "key": "card-wine",
+      "text": "琼浆"
+    },
+    {
       "key": "skill-guanxing",
       "text": "推演"
     },
@@ -190,6 +202,10 @@
       "text": "天眼"
     },
     {
+      "key": "skill-guhuo",
+      "text": "妖言"
+    },
+    {
       "key": "skill-luoyi",
       "text": "剑威"
     },
@@ -226,6 +242,26 @@
       "text": "护道"
     },
     {
+      "key": "skill-tianxiang",
+      "text": "甘露"
+    },
+    {
+      "key": "skill-hongyan",
+      "text": "圣颜"
+    },
+    {
+      "key": "skill-xingshang",
+      "text": "收魂"
+    },
+    {
+      "key": "skill-fangzhu",
+      "text": "禁仙"
+    },
+    {
+      "key": "skill-songwei",
+      "text": "尊道"
+    },
+    {
       "key": "skill-qixi",
       "text": "落宝"
     },
@@ -258,16 +294,104 @@
       "text": "再化"
     },
     {
+      "key": "skill-ganlu",
+      "text": "补天"
+    },
+    {
+      "key": "skill-buyi",
+      "text": "护生"
+    },
+    {
+      "key": "skill-quhu",
+      "text": "驱兽"
+    },
+    {
+      "key": "skill-jieming",
+      "text": "传卦"
+    },
+    {
       "key": "skill-liegong",
       "text": "射日"
+    },
+    {
+      "key": "skill-haoshi",
+      "text": "神赐"
+    },
+    {
+      "key": "skill-dimeng",
+      "text": "神盟"
+    },
+    {
+      "key": "skill-zhenlie",
+      "text": "圣守"
+    },
+    {
+      "key": "skill-miji",
+      "text": "神谋"
     },
     {
       "key": "skill-kuanggu",
       "text": "摄魂"
     },
     {
+      "key": "skill-huoshou",
+      "text": "海御"
+    },
+    {
+      "key": "skill-zaiqi",
+      "text": "潮生"
+    },
+    {
+      "key": "skill-xueji",
+      "text": "月矢"
+    },
+    {
+      "key": "skill-huxiao",
+      "text": "狩月"
+    },
+    {
+      "key": "skill-wuji",
+      "text": "破界"
+    },
+    {
+      "key": "skill-luoying",
+      "text": "晨辉"
+    },
+    {
+      "key": "skill-jiushi",
+      "text": "醇光"
+    },
+    {
+      "key": "skill-bazhen",
+      "text": "卢恩护阵"
+    },
+    {
+      "key": "skill-huoji",
+      "text": "神焰"
+    },
+    {
+      "key": "skill-kanpo",
+      "text": "万智"
+    },
+    {
       "key": "skill-qiangxi",
       "text": "雷锤"
+    },
+    {
+      "key": "skill-wansha",
+      "text": "禁生"
+    },
+    {
+      "key": "skill-luanwu",
+      "text": "幻乱"
+    },
+    {
+      "key": "skill-weimu",
+      "text": "诡幕"
+    },
+    {
+      "key": "skill-shuangxiong",
+      "text": "双魄"
     },
     {
       "key": "skill-jieyin",
@@ -276,6 +400,38 @@
     {
       "key": "skill-xiaoji",
       "text": "圣翼"
+    },
+    {
+      "key": "skill-yinghun",
+      "text": "日魂"
+    },
+    {
+      "key": "skill-jueqing",
+      "text": "灵刃"
+    },
+    {
+      "key": "skill-shangshi",
+      "text": "夜巡"
+    },
+    {
+      "key": "skill-anxu",
+      "text": "日恩"
+    },
+    {
+      "key": "skill-zhuiyi",
+      "text": "神恩"
+    },
+    {
+      "key": "skill-tianyi",
+      "text": "天剑"
+    },
+    {
+      "key": "skill-lianhuan",
+      "text": "月链"
+    },
+    {
+      "key": "skill-niepan",
+      "text": "月生"
     },
     {
       "key": "skill-wushuang",
@@ -290,8 +446,20 @@
       "text": "镇塔"
     },
     {
+      "key": "skill-juxiang",
+      "text": "五光"
+    },
+    {
+      "key": "skill-lieren",
+      "text": "飞石"
+    },
+    {
       "key": "skill-shensu",
       "text": "疾行"
+    },
+    {
+      "key": "skill-buqu",
+      "text": "护道"
     },
     {
       "key": "skill-qianxun",
@@ -304,6 +472,22 @@
     {
       "key": "skill-mengjin",
       "text": "钉魂"
+    },
+    {
+      "key": "skill-zhuikong",
+      "text": "云惧"
+    },
+    {
+      "key": "skill-qiuyuan",
+      "text": "云援"
+    },
+    {
+      "key": "skill-beige",
+      "text": "碧曲"
+    },
+    {
+      "key": "skill-duanchang",
+      "text": "绝曲"
     },
     {
       "key": "skill-ganglie",
@@ -363,6 +547,9 @@
     "male/card-jueying.mp3",
     "male/card-dilu.mp3",
     "male/card-zhuahuang.mp3",
+    "male/card-fireattack.mp3",
+    "male/card-ironchain.mp3",
+    "male/card-wine.mp3",
     "male/skill-guanxing.mp3",
     "male/skill-kongcheng.mp3",
     "male/skill-rende.mp3",
@@ -377,6 +564,7 @@
     "male/skill-biyue.mp3",
     "male/skill-fankui.mp3",
     "male/skill-guicai.mp3",
+    "male/skill-guhuo.mp3",
     "male/skill-luoyi.mp3",
     "male/skill-qingnang.mp3",
     "male/skill-jijiu.mp3",
@@ -386,6 +574,11 @@
     "male/skill-fanjian.mp3",
     "male/skill-zhiheng.mp3",
     "male/skill-jiuyuan.mp3",
+    "male/skill-tianxiang.mp3",
+    "male/skill-hongyan.mp3",
+    "male/skill-xingshang.mp3",
+    "male/skill-fangzhu.mp3",
+    "male/skill-songwei.mp3",
     "male/skill-qixi.mp3",
     "male/skill-guose.mp3",
     "male/skill-liuli.mp3",
@@ -394,18 +587,55 @@
     "male/skill-keji.mp3",
     "male/skill-huashen.mp3",
     "male/skill-xinsheng.mp3",
+    "male/skill-ganlu.mp3",
+    "male/skill-buyi.mp3",
+    "male/skill-quhu.mp3",
+    "male/skill-jieming.mp3",
     "male/skill-liegong.mp3",
+    "male/skill-haoshi.mp3",
+    "male/skill-dimeng.mp3",
+    "male/skill-zhenlie.mp3",
+    "male/skill-miji.mp3",
     "male/skill-kuanggu.mp3",
+    "male/skill-huoshou.mp3",
+    "male/skill-zaiqi.mp3",
+    "male/skill-xueji.mp3",
+    "male/skill-huxiao.mp3",
+    "male/skill-wuji.mp3",
+    "male/skill-luoying.mp3",
+    "male/skill-jiushi.mp3",
+    "male/skill-bazhen.mp3",
+    "male/skill-huoji.mp3",
+    "male/skill-kanpo.mp3",
     "male/skill-qiangxi.mp3",
+    "male/skill-wansha.mp3",
+    "male/skill-luanwu.mp3",
+    "male/skill-weimu.mp3",
+    "male/skill-shuangxiong.mp3",
     "male/skill-jieyin.mp3",
     "male/skill-xiaoji.mp3",
+    "male/skill-yinghun.mp3",
+    "male/skill-jueqing.mp3",
+    "male/skill-shangshi.mp3",
+    "male/skill-anxu.mp3",
+    "male/skill-zhuiyi.mp3",
+    "male/skill-tianyi.mp3",
+    "male/skill-lianhuan.mp3",
+    "male/skill-niepan.mp3",
     "male/skill-wushuang.mp3",
     "male/skill-wusheng.mp3",
     "male/skill-jushou.mp3",
+    "male/skill-juxiang.mp3",
+    "male/skill-lieren.mp3",
     "male/skill-shensu.mp3",
+    "male/skill-buqu.mp3",
     "male/skill-qianxun.mp3",
     "male/skill-lianying.mp3",
     "male/skill-mengjin.mp3",
+    "male/skill-zhuikong.mp3",
+    "male/skill-qiuyuan.mp3",
+    "male/skill-beige.mp3",
+    "male/skill-duanchang.mp3",
     "male/skill-ganglie.mp3",
     "male/skill-kurou.mp3",
     "male/skill-tuxi.mp3",
@@ -444,6 +674,9 @@
     "female/card-jueying.mp3",
     "female/card-dilu.mp3",
     "female/card-zhuahuang.mp3",
+    "female/card-fireattack.mp3",
+    "female/card-ironchain.mp3",
+    "female/card-wine.mp3",
     "female/skill-guanxing.mp3",
     "female/skill-kongcheng.mp3",
     "female/skill-rende.mp3",
@@ -458,6 +691,7 @@
     "female/skill-biyue.mp3",
     "female/skill-fankui.mp3",
     "female/skill-guicai.mp3",
+    "female/skill-guhuo.mp3",
     "female/skill-luoyi.mp3",
     "female/skill-qingnang.mp3",
     "female/skill-jijiu.mp3",
@@ -467,6 +701,11 @@
     "female/skill-fanjian.mp3",
     "female/skill-zhiheng.mp3",
     "female/skill-jiuyuan.mp3",
+    "female/skill-tianxiang.mp3",
+    "female/skill-hongyan.mp3",
+    "female/skill-xingshang.mp3",
+    "female/skill-fangzhu.mp3",
+    "female/skill-songwei.mp3",
     "female/skill-qixi.mp3",
     "female/skill-guose.mp3",
     "female/skill-liuli.mp3",
@@ -475,18 +714,55 @@
     "female/skill-keji.mp3",
     "female/skill-huashen.mp3",
     "female/skill-xinsheng.mp3",
+    "female/skill-ganlu.mp3",
+    "female/skill-buyi.mp3",
+    "female/skill-quhu.mp3",
+    "female/skill-jieming.mp3",
     "female/skill-liegong.mp3",
+    "female/skill-haoshi.mp3",
+    "female/skill-dimeng.mp3",
+    "female/skill-zhenlie.mp3",
+    "female/skill-miji.mp3",
     "female/skill-kuanggu.mp3",
+    "female/skill-huoshou.mp3",
+    "female/skill-zaiqi.mp3",
+    "female/skill-xueji.mp3",
+    "female/skill-huxiao.mp3",
+    "female/skill-wuji.mp3",
+    "female/skill-luoying.mp3",
+    "female/skill-jiushi.mp3",
+    "female/skill-bazhen.mp3",
+    "female/skill-huoji.mp3",
+    "female/skill-kanpo.mp3",
     "female/skill-qiangxi.mp3",
+    "female/skill-wansha.mp3",
+    "female/skill-luanwu.mp3",
+    "female/skill-weimu.mp3",
+    "female/skill-shuangxiong.mp3",
     "female/skill-jieyin.mp3",
     "female/skill-xiaoji.mp3",
+    "female/skill-yinghun.mp3",
+    "female/skill-jueqing.mp3",
+    "female/skill-shangshi.mp3",
+    "female/skill-anxu.mp3",
+    "female/skill-zhuiyi.mp3",
+    "female/skill-tianyi.mp3",
+    "female/skill-lianhuan.mp3",
+    "female/skill-niepan.mp3",
     "female/skill-wushuang.mp3",
     "female/skill-wusheng.mp3",
     "female/skill-jushou.mp3",
+    "female/skill-juxiang.mp3",
+    "female/skill-lieren.mp3",
     "female/skill-shensu.mp3",
+    "female/skill-buqu.mp3",
     "female/skill-qianxun.mp3",
     "female/skill-lianying.mp3",
     "female/skill-mengjin.mp3",
+    "female/skill-zhuikong.mp3",
+    "female/skill-qiuyuan.mp3",
+    "female/skill-beige.mp3",
+    "female/skill-duanchang.mp3",
     "female/skill-ganglie.mp3",
     "female/skill-kurou.mp3",
     "female/skill-tuxi.mp3",

@@ -1,11 +1,11 @@
 // Presentation-only selection. Never execute a stale option in a later prompt.
 export function panelAction(view,selection){
  const p=view.pending,a=view.legal[selection?.index]
- return p?.actor===view.seat&&['incarnation','pick'].includes(p.kind)&&selection?.promptId===p.id&&selection.revision===view.revision&&a&&JSON.stringify(a)===selection.signature?a:null
+ return p?.actor===view.seat&&['ext','incarnation','pick'].includes(p.kind)&&selection?.promptId===p.id&&selection.revision===view.revision&&a&&JSON.stringify(a)===selection.signature?a:null
 }
 export function panelSelection({view,selection,index,promptId,revision}){
  const p=view.pending,a=view.legal[index]
- if(p?.actor!==view.seat||!['incarnation','pick'].includes(p?.kind)||String(p.id)!==String(promptId)||String(view.revision)!==String(revision)||!Number.isInteger(index)||!['transform','choose'].includes(a?.type))return {kind:'ignore'}
+ if(p?.actor!==view.seat||!['ext','incarnation','pick'].includes(p?.kind)||String(p.id)!==String(promptId)||String(view.revision)!==String(revision)||!Number.isInteger(index)||!['invoke','transform','choose'].includes(a?.type))return {kind:'ignore'}
  const next={promptId:p.id,revision:view.revision,index,signature:JSON.stringify(a)}
  return panelAction(view,selection)&&selection.index===index?{kind:'commit',action:a}:{kind:'select',selection:next}
 }

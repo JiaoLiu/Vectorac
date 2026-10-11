@@ -1,13 +1,14 @@
+import {stableOpponents} from './fixtures/gods-stable.mjs'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {makeDeck} from '../.private/fengshen/core/catalog.mjs'
 import {createGame,dispatch,playerView,catalog,restoreGame} from '../.private/fengshen/engine.mjs'
 import {createEngine} from '../.private/fengshen/core/engine.mjs'
 import {targetLinks,judgmentMark,publicPicks,tutorialEnabled,responsePrompt} from '../.private/fengshen/table-visuals.mjs'
-import {renderCenter,renderBattle,delayIcons} from '../.private/fengshen/table.mjs'
+import {renderCenter,renderBattle,renderOpponent,delayIcons} from '../.private/fengshen/table.mjs'
 import {hand} from './fixtures/sanguo.mjs'
 import {readFile} from 'node:fs/promises'
-function fixture(){const s=createGame({heroId:'yangjian',role:'lord',seed:17});s.deck=catalog.makeDeck();s.discard=[];s.processing=[];s.harvestPool=[];s.queue=[];s.pending=null;s.phase='play';s.current=0;s.logs=[];s.lastPlayed=null;s.lastEvent=null;for(const p of s.players){p.hand=[];p.equip={weapon:null,armor:null,offenseHorse:null,defenseHorse:null};p.judgment=[];p.marks={sha:0,rende:0};p.hp=p.maxHp;p.alive=true}return s}
+function fixture(){const s=stableOpponents(createGame({heroId:'yangjian',role:'lord',seed:17}));s.deck=catalog.makeDeck();s.discard=[];s.processing=[];s.harvestPool=[];s.queue=[];s.pending=null;s.phase='play';s.current=0;s.logs=[];s.lastPlayed=null;s.lastEvent=null;for(const p of s.players){p.hand=[];p.equip={weapon:null,armor:null,offenseHorse:null,defenseHorse:null};p.judgment=[];p.marks={sha:0,rende:0};p.hp=p.maxHp;p.alive=true}return s}
 const step=(s,a)=>{const r=dispatch(s,{seat:s.pending?.actor??s.current,...a});assert.ok(r.ok,r.error);return r.state}
 const ui=(s,hints=true)=>({state:s,hints,paused:false,selected:[],targets:[],skill:null,choiceIndex:null,pace:650,header:()=>'',targetable:()=>[],matching:()=>[],currentAs:()=>null,equipment:()=>'',skills:()=>'',won:()=>false,pendingText:()=>''})
 test('first visit has hints; disabling survives preference reads',()=>{assert.equal(tutorialEnabled(null),true);assert.equal(tutorialEnabled({}),true);assert.equal(tutorialEnabled({hints:false}),false);assert.equal(tutorialEnabled({hints:true}),true)})
@@ -36,10 +37,42 @@ test('classic harvest view/logs remain unchanged',()=>{
 test('area attack draws every public living target, not only the current responder',()=>{
  let s=fixture(),[c]=hand(s,0,'arrows');hand(s,1,'shan');s=step(s,{type:'play',as:'arrows',ids:[c.id],targets:[]});const v=playerView(s,0),links=targetLinks(v);assert.equal(links.length,4);assert.ok(links.every(l=>l.source===0&&l.target!==0));assert.equal(new Set(links.map(l=>l.target)).size,4)
 })
+test('collateral exposes the victim at counter time and keeps both links through every stage',()=>{
+ let s=fixture(),[c]=hand(s,0,'collateral');const [w]=hand(s,1,'qinggang');s.players[1].hand.pop();s.players[1].equip.weapon=w;hand(s,1,'sha');hand(s,2,'nullify')
+ s=step(s,{type:'play',ids:[c.id],as:'collateral',targets:[1,2]});assert.equal(s.pending.kind,'counter')
+ const v0=playerView(s,0);assert.equal(v0.pending.victim,2,'无懈询问阶段须暴露被杀目标，玩家才能决定要不要出破法')
+ assert.deepEqual(targetLinks(v0),[{source:0,target:1},{source:1,target:2}],'无懈询问阶段即画借刀者→持刀者、持刀者→被杀目标双线')
+ for(let i=0;i<8&&s.pending?.kind==='counter';i++)s=step(s,{type:'pass'})
+ assert.equal(s.pending?.kind,'response');const v1=playerView(s,0);assert.equal(v1.pending.context.type,'collateral')
+ assert.deepEqual(targetLinks(v1),[{source:0,target:1},{source:1,target:2}],'持刀者响应阶段保持双线')
+ s=step(s,{type:'pass'});assert.equal(s.pending,null,'持刀者放弃出杀后交出武器')
+ const v2=playerView(s,0);assert.equal(v2.lastPlayed.as,'collateral');assert.equal(v2.players[0].hand.length,1,'武器应交予借刀者')
+ assert.deepEqual(targetLinks(v2),[{source:0,target:1},{source:1,target:2}],'结算尾迹保持双线')
+})
+test('collateral/lijian target picks get order badges naming each combat role',()=>{
+ const s=fixture(),v=playerView(s,0)
+ const blade=ui(s);blade.currentAs=()=>'collateral';blade.targets=[1,2]
+ assert.ok(renderOpponent(blade,v.players[1],v).includes('>持刀</b>'));assert.ok(renderOpponent(blade,v.players[2],v).includes('>被杀</b>'))
+ blade.targets=[1,0];assert.ok(renderBattle(blade).includes('>被杀</b>'),'自己作为被杀目标也有徽章')
+ const lijian=ui(s);lijian.skill='lijian';lijian.targets=[1,2]
+ assert.ok(renderOpponent(lijian,v.players[1],v).includes('>决斗</b>'));assert.ok(renderOpponent(lijian,v.players[2],v).includes('>先出杀</b>'))
+ const plain=ui(s);plain.targets=[1];assert.ok(!renderOpponent(plain,v.players[1],v).includes('fs-target-seq'),'普通出牌无顺序徽章')
+})
 test('recipient prompts do not intercept taps; interactive card-selection panels remain separate',async()=>{
  const s=fixture(),model=ui(s),v=playerView(s,0)
  for(const kind of ['yiji','liuli','tuxi']){v.pending={id:1,actor:0,kind};assert.ok(renderCenter(model,v).includes('fs-skill-prompt'))}
  const css=await readFile(new URL('../.private/fengshen/arena-table.css',import.meta.url),'utf8');assert.match(css,/\.fs-center-choice\.fs-skill-prompt\{pointer-events:none/)
+})
+test('yiji pool renders as a private flip-card dialog for the owner and card backs for everyone else',()=>{
+ const s=fixture(),model=ui(s),v=playerView(s,0)
+ v.pending={id:1,kind:'yiji',actor:0,count:2};v.yijiPool=[{id:'t1',type:'sha',suit:'spade',rank:7},{id:'t2',type:'shan',suit:'heart',rank:3}]
+ const own=renderCenter(model,v)
+ assert.ok(own.includes('fs-yiji-choice')&&own.includes('data-yiji-card="t1"')&&own.includes('data-yiji-card="t2"')&&own.includes('原有手牌不能送出'))
+ // 选好牌后弹窗收成不挡玩家的提示条，露出全场接收者；重选返回挑牌。
+ model.selected=['t1'];const mini=renderCenter(model,v)
+ assert.ok(mini.includes('fs-yiji-mini')&&mini.includes('已选 1 张')&&!mini.includes('data-yiji-card'))
+ const other=renderCenter(model,{...v,yijiPool:undefined,pending:{...v.pending,actor:1}})
+ assert.ok(other.includes('fs-yiji-wait')&&other.includes('fs-yiji-back')&&!other.includes('data-yiji-card'))
 })
 test('skill virtual Duel is illustrated without forged suit or rank; opponent cannot see Guanxing pool',()=>{
  const s=fixture(),model=ui(s),v=playerView(s,0);v.lastPlayed={id:1,source:0,targets:[1,2],as:'duel',cards:[],virtualType:'duel',label:'魅惑'}

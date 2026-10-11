@@ -13,7 +13,7 @@ export function combatContext(view){
   if(!p&&['sha','collateral'].includes(view.lastPlayed?.as)&&view.lastPlayed.turn===view.turns&&cue)return {source:cue.source,target:cue.target,kind:cue.kind,text:`${seatName(view,cue.source)} → 杀 → ${seatName(view,cue.target)}`,hint:cue.kind==='dodge'?'已打出闪 · 伤害被抵消':cue.kind==='damage'?`已受到 ${cue.amount} 点伤害`:cue.kind==='blocked'?'防具挡下了这张杀':'杀正在结算'}
   return null
 }
-export function damageCues(before,after){return after.logs.filter(l=>l.id>before.eventId&&l.cue?.kind==='damage').slice().reverse().map(l=>({...l.cue,id:l.id}))}
+export function damageCues(before,after){return after.logs.filter(l=>l.id>before.eventId&&['damage','hp-loss'].includes(l.cue?.kind)).slice().reverse().map(l=>({...l.cue,id:l.id}))}
 export function collateralSelection(targets,seat){
   if(!targets.length)return [seat]
   if(seat===targets[0])return []

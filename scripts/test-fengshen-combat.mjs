@@ -1,3 +1,4 @@
+import {stableOpponents} from './fixtures/gods-stable.mjs'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {readFile} from 'node:fs/promises'
@@ -14,7 +15,7 @@ import {advanceUnavailable,DecisionClock} from '../.private/fengshen/flow.mjs'
 import {BackgroundMusic} from '../.private/fengshen/music.mjs'
 import {drawEffects} from '../.private/fengshen/draw-effects.mjs'
 function fixture(current=0,heroId='yangjian'){
- const s=createGame({heroId,role:'lord',seed:17});s.deck=catalog.makeDeck();s.discard=[];s.processing=[];s.harvestPool=[];s.queue=[];s.pending=null;s.phase='play';s.current=current;s.logs=[];s.lastPlayed=null;s.lastEvent=null
+ const s=stableOpponents(createGame({heroId,role:'lord',seed:17}));s.deck=catalog.makeDeck();s.discard=[];s.processing=[];s.harvestPool=[];s.queue=[];s.pending=null;s.phase='play';s.current=current;s.logs=[];s.lastPlayed=null;s.lastEvent=null
  for(const p of s.players){p.hand=[];p.equip={weapon:null,armor:null,offenseHorse:null,defenseHorse:null};p.judgment=[];p.marks={sha:0,rende:0};p.hp=p.maxHp}
  if(s.players[1].heroId==='machao'){const other=s.players.slice(2).find(p=>p.heroId!=='machao');[s.players[1].heroId,other.heroId]=[other.heroId,s.players[1].heroId]}
  return s

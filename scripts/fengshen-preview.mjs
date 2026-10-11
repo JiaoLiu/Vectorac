@@ -28,7 +28,7 @@ if(release){
 }
 console.log(release?'Website game built:':'Internal preview built:',output)
 if(process.argv.includes('--build-only'))process.exit(0)
-const port=Number(process.env.FENGSHEN_PORT||4178),mime={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.jpg':'image/jpeg','.png':'image/png','.json':'application/json','.mp3':'audio/mpeg','.wav':'audio/wav','.woff2':'font/woff2'}
+const port=Number(process.env.FENGSHEN_PORT||4178),mime={'.svg':'image/svg+xml','.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.jpg':'image/jpeg','.png':'image/png','.json':'application/json','.mp3':'audio/mpeg','.wav':'audio/wav','.woff2':'font/woff2'}
 const server=createServer(async(req,res)=>{
   const path=decodeURIComponent(new URL(req.url,'http://localhost').pathname),file=resolve(output,'.'+(path.endsWith('/')?path+'index.html':path))
   res.setHeader('X-Robots-Tag','noindex, nofollow, noarchive');res.setHeader('Cache-Control','no-store')

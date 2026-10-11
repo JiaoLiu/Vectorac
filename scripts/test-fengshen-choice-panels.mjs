@@ -1,3 +1,4 @@
+import {stableOpponents} from './fixtures/gods-stable.mjs'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {readFile} from 'node:fs/promises'
@@ -7,7 +8,7 @@ import {panelSelection,panelAction,harvestSeat,cleanRoleMarks,nextRoleMark,choic
 import {harvestEffects} from '../.private/fengshen/draw-effects.mjs'
 import {renderCenter,renderControls,renderOpponent} from '../.private/fengshen/table.mjs'
 const model=s=>({state:s,selected:[],targets:[],targetable:()=>[],equipment:()=>'',matching:()=>[],currentAs:()=>null})
-function fixture(){const s=createGame({heroId:'yangjian',role:'lord',seed:17});s.deck=catalog.makeDeck();s.discard=[];s.processing=[];s.harvestPool=[];s.queue=[];s.pending=null;s.phase='play';s.current=0;s.logs=[];s.lastPlayed=null;for(const p of s.players){p.hand=[];p.equip={weapon:null,armor:null,offenseHorse:null,defenseHorse:null};p.judgment=[];p.marks={sha:0};p.hp=p.maxHp;p.alive=true}return s}
+function fixture(){const s=stableOpponents(createGame({heroId:'yangjian',role:'lord',seed:17}));s.deck=catalog.makeDeck();s.discard=[];s.processing=[];s.harvestPool=[];s.queue=[];s.pending=null;s.phase='play';s.current=0;s.logs=[];s.lastPlayed=null;for(const p of s.players){p.hand=[];p.equip={weapon:null,armor:null,offenseHorse:null,defenseHorse:null};p.judgment=[];p.marks={sha:0};p.hp=p.maxHp;p.alive=true}return s}
 const step=(s,a)=>{const r=dispatch(s,{seat:s.pending?.actor??s.current,...a});assert.ok(r.ok,r.error);assert.equal(allCards(r.state).length,108);assert.equal(new Set(allCards(r.state).map(c=>c.id)).size,108);return r.state}
 const select=(v,index=0,selection)=>panelSelection({view:v,index,selection,promptId:String(v.pending.id),revision:String(v.revision)})
 test('Sun form selection highlights hero and skill, previews, and always owns an explicit confirm',()=>{

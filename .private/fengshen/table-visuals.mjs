@@ -7,20 +7,26 @@ export function targetLinks(view,{targets=[],as=null}={}){
  if(['reveal','judge-replace'].includes(p?.kind)||p?.kind==='counter'&&p.source==null)return []
  const direct=(source,list)=>source==null?[]:[...new Set(list)].filter(t=>t!==source&&view.players[t]?.alive).map(target=>({source,target}))
  const global=['arrows','savage','garden','harvest']
- if(p?.kind==='counter')return direct(p.source,global.includes(p.cardType)?view.players.filter(t=>t.alive).map(t=>t.seat):[p.target])
+ if(p?.kind==='counter'){
+  // 借刀无懈询问阶段即画出两条线：借刀者→持刀者、持刀者→被杀目标，
+  // 玩家决定要不要出破法前就能看清"借谁的刀、杀谁"。
+  if(p.cardType==='collateral'&&p.victim!=null&&p.source!=null)return [{source:p.source,target:p.target},...(p.target!==p.victim?[{source:p.target,target:p.victim}]:[])]
+  return direct(p.source,global.includes(p.cardType)?view.players.filter(t=>t.alive).map(t=>t.seat):[p.target])
+ }
  if(p?.kind==='take')return direct(p.source??p.actor,[p.target])
  const battle=combatContext(view)
  if(battle?.kind==='aoe')return view.players.filter(p=>p.alive&&p.seat!==battle.source).map(p=>({source:battle.source,target:p.seat}))
+ if(battle?.kind==='command'&&battle.commandedBy!=null)return [{source:battle.commandedBy,target:battle.source},...(battle.source!==battle.target?[{source:battle.source,target:battle.target}]:[])]
  if(battle&&view.lastPlayed?.as==='sha'&&view.lastPlayed.targets?.length>1)return view.lastPlayed.targets.filter(t=>view.players[t]?.alive).map(target=>({source:battle.source,target}))
  if(battle&&battle.source!=null&&battle.target!=null&&battle.source!==battle.target)return [{source:battle.source,target:battle.target}]
- if(played&&played.turn===view.turns){if(played.as==='collateral')return direct(played.source,played.targets?.slice(0,1)||[]);return direct(played.source,global.includes(played.as)?view.players.filter(t=>t.alive).map(t=>t.seat):played.targets||[])}
+ if(played&&played.turn===view.turns){if(played.as==='collateral'){const t=played.targets||[];return [...direct(played.source,t.slice(0,1)),...(t.length>1&&t[0]!==t[1]?[{source:t[0],target:t[1]}]:[])]}return direct(played.source,global.includes(played.as)?view.players.filter(t=>t.alive).map(t=>t.seat):played.targets||[])}
  return []
 }
 export const judgingSeat=view=>['reveal','judge-replace'].includes(view.pending?.kind)||view.pending?.kind==='counter'&&view.pending.source==null?view.pending.target:null
 export function counterSelection(view,previousKey,selected=[]){
  const p=view.pending,key=p?.kind==='counter'&&p.actor===view.seat?`${view.revision}:${p.id}`:null
  if(!key)return {key:null,selected}
- return {key,selected:key===previousKey?selected:(view.legal.find(a=>a.type==='respond')?.ids.slice()||[])}
+ return {key,selected:key===previousKey?selected:((view.legal.find(a=>a.type==='respond'&&!a.guhuo)||view.legal.find(a=>a.type==='respond'))?.ids.slice()||[])}
 }
 export function counterAction(view,selected,{blockedUntil=0,now=Date.now()}={}){
  if(view.pending?.kind!=='counter'||view.pending.actor!==view.seat||now<blockedUntil)return null

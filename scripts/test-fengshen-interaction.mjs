@@ -1,3 +1,4 @@
+import {stableOpponents} from './fixtures/gods-stable.mjs'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {readFile,stat} from 'node:fs/promises'
@@ -12,7 +13,7 @@ import {AUDIO_ENTRIES,VOICES} from '../.private/fengshen/audio-manifest.mjs'
 import {CardVoice,cuesForAction} from '../.private/fengshen/voice.mjs'
 
 function fixture(heroId='yangjian',role='lord',current=0){
-  const s=createGame({heroId,role,seed:17});s.deck=catalog.makeDeck();s.discard=[];s.processing=[];s.harvestPool=[];s.queue=[];s.pending=null;s.phase='play';s.current=current;s.logs=[];s.lastPlayed=null;s.lastEvent=null
+  const s=stableOpponents(createGame({heroId,role,seed:17}));s.deck=catalog.makeDeck();s.discard=[];s.processing=[];s.harvestPool=[];s.queue=[];s.pending=null;s.phase='play';s.current=current;s.logs=[];s.lastPlayed=null;s.lastEvent=null
   for(const p of s.players){p.hand=[];p.equip={weapon:null,armor:null,offenseHorse:null,defenseHorse:null};p.judgment=[];p.marks={sha:0,rende:0};p.hp=p.maxHp;p.alive=true}
   return s
 }
@@ -114,6 +115,13 @@ test('male/female cues follow the effective card and actor, including auto skill
   let s=fixture('jinling'),[c]=hand(s,0,'draw'),r=dispatch(s,{seat:0,type:'play',as:'draw',ids:[c.id],targets:[]})
   assert.deepEqual(cuesForAction(s,{seat:0,type:'play',as:'draw'},r.state),[{key:'card-draw',sex:'female'},{key:'skill-jizhi',sex:'female'}])
   s=fixture('yangjian');const [dodge]=hand(s,0,'shan');r=dispatch(s,{seat:0,type:'play',as:'sha',ids:[dodge.id],targets:[1]});assert.ok(r.ok);assert.equal(cuesForAction(s,{seat:0,type:'play',as:'sha'},r.state)[0].key,'card-sha')
+})
+test('active skills announce once and commanded attacks announce their actual actor',()=>{
+  const before=fixture('fuxi'),after=structuredClone(before);after.logs.push({id:before.eventId+1,cue:{kind:'skill',skill:'quhu',seat:0}},{id:before.eventId+2,cue:{kind:'card-response',as:'sha',seat:1}})
+  const cues=cuesForAction(before,{seat:0,type:'skill',skill:'quhu'},after)
+  assert.equal(cues.filter(c=>c.key==='skill-quhu').length,1);assert.equal(cues.filter(c=>c.key==='card-sha').length,1)
+  before.players[0].incarnation={activeHero:'pangde',activeSkill:'mashu'};after.logs=[{id:before.eventId+1,cue:{kind:'skill',skill:'mashu',seat:0}}];after.players[0].incarnation=before.players[0].incarnation
+  assert.equal(cuesForAction(before,{seat:1,type:'pass'},after)[0].key,'skill-luya-mashu')
 })
 const tick=()=>new Promise(r=>setTimeout(r,5))
 function fakeContext({rejectResume=false}={}){

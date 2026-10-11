@@ -1,6 +1,7 @@
 // Internal prototype: aliases do not constitute a cleared commercial design.
 import { HERO_BY_ID as STANDARD_HERO_BY_ID, CARDS, SKILLS, makeDeck } from './core/catalog.mjs'
 import {EXPANSION_BY_ID} from './classic-expansion.mjs'
+import {SKILL_CARDS} from './complete-roster.mjs'
 const HERO_BY_ID={...STANDARD_HERO_BY_ID,...EXPANSION_BY_ID}
 import {GODS,GOD_FACTIONS,GOD_ALLIANCES} from './gods.mjs'
 import {FENGSHEN_EXPANSION,EXPANSION_CARDS,expandedDeck} from './fengshen-expansion.mjs'
@@ -55,11 +56,11 @@ export const SECOND_BATCH=[['huangfeihu','黄飞虎','lvbu'],['shiji','石矶娘
 
 // All baseline physical cards retain their IDs, quantities, suit, rank and stats.
 const cardNames={sha:'杀',shan:'闪',tao:'仙桃',duel:'斗法',dismantle:'破阵',snatch:'摄宝',draw:'天机显化',savage:'万妖袭营',arrows:'飞剑齐发',garden:'瑶池仙宴',harvest:'仙山采宝',collateral:'借宝诛敌',nullify:'破法',indulgence:'迷魂阵',lightning:'天雷劫',crossbow:'火尖枪',dualsword:'阴阳双剑',qinggang:'斩仙飞刀',blade:'打神鞭',spear:'混天绫',axe:'番天印',halberd:'金蛟剪',bow:'五色神光',ice:'乾坤圈',bagua:'戊己杏黄旗',renwang:'紫绶仙衣',chitu:'风火轮',dayuan:'金睛兽',zixing:'墨麒麟',jueying:'五色神牛',dilu:'青鸾',zhuahuang:'白鹤'}
-export const CARDS_BY_TYPE=Object.fromEntries(Object.entries(CARDS).map(([type,base])=>[type,{...base,type,baseName:base.name,name:cardNames[type],image:`assets/cards/${type}.jpg`,thumb:`assets/cards/${type}-thumb.webp`,help:base.help}]))
+export const CARDS_BY_TYPE={...Object.fromEntries(Object.entries(CARDS).map(([type,base])=>[type,{...base,type,baseName:base.name,name:cardNames[type],image:`assets/cards/${type}.jpg`,thumb:`assets/cards/${type}-thumb.webp`,help:base.help}])),...Object.fromEntries(Object.entries(SKILL_CARDS).map(([type,c])=>[type,{...c,type,image:`assets/cards/${c.art}.${c.svg?'svg':'jpg'}`,thumb:`assets/cards/${c.art}${c.svg?'.svg':'-thumb.webp'}` }]))}
 export const PLANNED_EQUIPMENT=Object.entries(EXPANSION_CARDS).map(([type,c])=>({type,...c}))
 export const makeExpandedDeck=()=>expandedDeck(makeDeck)
 export function heroForBase(id){return PLAYABLE_HEROES.find(h=>h.engineId===id)||null}
-const aliases=[...PLAYABLE_HEROES.filter(h=>h.baseHero).map(h=>[HERO_BY_ID[h.baseHero].name,h.name]),...Object.values(CARDS_BY_TYPE).map(c=>[c.baseName,c.name]),...HEROES.filter(h=>h.baseHero).flatMap(h=>Object.entries(h.skillNames).filter(([id])=>SKILLS[id]).map(([id,n])=>[SKILLS[id][0],n])),['八卦','杏黄旗'],['青龙刀','打神鞭']]
+const aliases=[...PLAYABLE_HEROES.filter(h=>h.baseHero).map(h=>[h.referenceName,h.name]),...Object.values(CARDS_BY_TYPE).map(c=>[c.baseName,c.name]),...HEROES.filter(h=>h.baseHero).flatMap(h=>Object.entries(h.skillNames).filter(([id])=>SKILLS[id]).map(([id,n])=>[SKILLS[id][0],n])),['八卦','杏黄旗'],['青龙刀','打神鞭']]
 const replacements=new Map(aliases)
 // Reserve full themed words, so the old name 桃 never turns 仙桃 into 仙仙桃.
 for(const word of [...HEROES.map(h=>h.name),...Object.values(CARDS_BY_TYPE).map(c=>c.name),...HEROES.flatMap(h=>Object.values(h.skillNames))])replacements.set(word,word)

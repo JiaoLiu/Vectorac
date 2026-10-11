@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {readFile}from 'node:fs/promises'
-import {mediaMatches,logicalScreen,bindVirtualMedia,localPoint}from '../.private/fengshen/screen-mode.mjs'
+import {mediaMatches,logicalScreen,phoneScreen,bindVirtualMedia,localPoint}from '../.private/fengshen/screen-mode.mjs'
 import {bindGameViewport}from '../.private/fengshen/viewport.mjs'
 const events=()=>({handlers:new Map(),addEventListener(k,f){this.handlers.set(k,f)},removeEventListener(k){this.handlers.delete(k)}})
 const classes=()=>({set:new Set(),contains(k){return this.set.has(k)},toggle(k,on){on?this.set.add(k):this.set.delete(k)},remove(k){this.set.delete(k)}})
@@ -14,6 +14,13 @@ test('default touch portrait becomes a virtual landscape only after entering the
  assert.equal(logicalScreen({width:390,height:844,mobile:true,immersive:false,rotated:false}).force,false)
  assert.equal(logicalScreen({width:390,height:844,mobile:false,immersive:true,rotated:false}).force,false)
  assert.equal(logicalScreen({width:390,height:844,mobile:true,immersive:true,rotated:true}).force,false)
+})
+test('tablets and other large touch screens keep their orientation: never forced into landscape',()=>{
+ // iPad 竖屏（768×1024）等大屏不刻意旋转，直接使用竖版布局，避免旋转未就绪时连线错乱。
+ assert.equal(phoneScreen(390,844),true);assert.equal(phoneScreen(768,1024),false);assert.equal(phoneScreen(1024,1366),false)
+ assert.equal(logicalScreen({width:768,height:1024,mobile:true,immersive:true,rotated:false}).force,false)
+ assert.equal(logicalScreen({width:768,height:1024,mobile:true,immersive:true,rotated:false}).width,768)
+ assert.equal(logicalScreen({width:1024,height:1366,mobile:true,immersive:true,rotated:false}).force,false)
 })
 test('virtual media evaluates every AND clause and preserves unknown accessibility conditions',()=>{
  assert.equal(mediaMatches('(max-height:559px) and (orientation:landscape)',844,390),true);assert.equal(mediaMatches('(max-width:699px) and (orientation:portrait)',844,390),false);assert.equal(mediaMatches('(min-height:381px) and (max-height:559px) and (orientation:landscape)',844,320),false);assert.equal(mediaMatches('(prefers-reduced-motion:reduce)',844,390),null)

@@ -1,4 +1,5 @@
 // Authoritative one-to-one target mapping. This is NOT an enabled hero pool.
+import {COMPLETE_BY_ID} from './complete-roster.mjs'
 // Historical classic skill names identify the full source general, not a mix
 // of freely selectable primitives. Detailed event versions still need audit.
 const rows=[
@@ -67,12 +68,12 @@ const rows=[
  ['yijiang2013','guanyinping','关银屏','artemis','阿尔忒弥斯',3,'female','shu','xueji huxiao wuji','血祭 虎啸 武继'],
  ['yijiang2013','fuhuanghou','伏皇后','qiongxiao','琼霄',3,'female','qun','zhuikong qiuyuan','惴恐 求援'],
 ]
-// Standard + Zuoci + first six Wind/Fire profiles have timing and AI/save tests.
-// Expansion references remain disabled until they have the same evidence.
+// Every illustrated profile has timing, AI and save tests. Unillustrated
+// planning entries remain disabled and are not part of the selectable pool.
 const completedExpansion=new Set(['houyi','hades','huangtianhua','lijing','thor','luya'])
-export const CANONICAL_ROSTER=rows.map(([pack,referenceId,referenceName,id,name,hp,sex,mechanicalFaction,skills,skillNames])=>({pack,referenceId,referenceName,id,name,hp,sex,mechanicalFaction,skills:skills.split(' '),sourceSkillNames:skillNames.split(' '),ruleset:'classic-identity-original',verification:pack==='standard'||id==='sunwukong'||completedExpansion.has(id)?'verified':'pending-full-text-review'}))
+export const CANONICAL_ROSTER=rows.map(([pack,referenceId,referenceName,id,name,hp,sex,mechanicalFaction,skills,skillNames])=>({pack:referenceId==='guanyinping'?'sp-original':pack,referenceId,referenceName,id,name,hp,sex,mechanicalFaction,skills:skills.split(' '),sourceSkillNames:skillNames.split(' '),ruleset:'classic-identity-original',verification:pack==='standard'||id==='sunwukong'||completedExpansion.has(id)||COMPLETE_BY_ID[referenceId]?'verified':'pending-full-text-review'}))
 export const CANONICAL_BY_ID=Object.fromEntries(CANONICAL_ROSTER.map(h=>[h.id,h]))
-export const PACK_NAMES={standard:'标准',wind:'风',fire:'火',forest:'林',mountain:'山',yijiang2011:'一将成名2011',yijiang2012:'一将成名2012',yijiang2013:'一将成名2013'}
+export const PACK_NAMES={standard:'标准',wind:'风',fire:'火',forest:'林',mountain:'山',yijiang2011:'一将成名2011',yijiang2012:'一将成名2012',yijiang2013:'一将成名2013','sp-original':'原版SP'}
 export function auditCanonicalRoster(heroes,alliances){
  const seen=new Set(),issues=[]
  for(const c of CANONICAL_ROSTER.filter(c=>c.verification==='verified'))if(!heroes.some(h=>h.id===c.id&&h.playable))issues.push(`${c.name}已核定但不在完整可玩将池中`)

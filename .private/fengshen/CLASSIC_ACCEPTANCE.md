@@ -1,6 +1,6 @@
 # 经典标准批：规则核对与验收边界
 
-标准批之外，孙悟空及首批风火六名已分别完成专项接入；最新32名将池的新增证据见 [WIND_FIRE_ACCEPTANCE.md](WIND_FIRE_ACCEPTANCE.md)。本文件仍保留标准25的规则边界。
+标准批之外，所有已有形象的角色已完成接入；最新54名将池的完整旧版边界与证据见 [COMPLETE_ROSTER_ACCEPTANCE.md](COMPLETE_ROSTER_ACCEPTANCE.md)。本文件保留标准25的历史核对。
 
 规则冻结为经典实体原版标准25，不包含界／谋／OL加强技能。完整映射在canonical-roster.mjs；参考名与原技能名只用于核对，表现层使用神话名称和原创插画。
 

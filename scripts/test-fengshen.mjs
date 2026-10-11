@@ -10,7 +10,7 @@ import {ART_PROMPTS} from '../.private/fengshen/art-prompts.mjs'
 
 test('54 unique portraits, 32 complete playable profiles',()=>{
   assert.equal(HEROES.length,54);assert.equal(new Set(HEROES.map(h=>h.id)).size,54)
-  assert.equal(PLAYABLE_HEROES.length,32)
+  assert.equal(PLAYABLE_HEROES.length,54)
   for(const h of HEROES){if(h.playable){assert.ok(catalog.HERO_BY_ID[h.engineId]);assert.deepEqual(Object.keys(h.skillNames),catalog.HERO_BY_ID[h.engineId].skills)}else assert.throws(()=>createGame({heroId:h.id}))}
   assert.equal(HEROES.find(h=>h.baseHero==='xiaoqiao').name,'龙吉公主');assert.equal(HEROES.find(h=>h.baseHero==='xiaoqiao').sex,'female')
 })
@@ -22,10 +22,10 @@ test('theme and classic catalogs do not mutate each other',()=>{
   assert.equal(catalog.HERO_BY_ID.huangyueying.name,'金灵圣母')
 })
 test('deck physical identities and all equipment stats remain unchanged',()=>{
-  assert.equal(Object.keys(CARDS_BY_TYPE).length,32)
+  assert.equal(Object.values(CARDS_BY_TYPE).filter(c=>!c.virtualOnly).length,32);assert.equal(Object.keys(CARDS_BY_TYPE).length,35)
   for(const [type,c] of Object.entries(CARDS)){assert.equal(CARDS_BY_TYPE[type].range,c.range);assert.equal(CARDS_BY_TYPE[type].slot,c.slot);assert.equal(CARDS_BY_TYPE[type].category,c.category)}
   for(const h of PLAYABLE_HEROES){const s=createGame({heroId:h.id,seed:33});assert.deepEqual(allCards(s).sort((a,b)=>a.id.localeCompare(b.id)),catalog.makeDeck().sort((a,b)=>a.id.localeCompare(b.id)))}
-  for(const p of PLANNED_EQUIPMENT)assert.equal(CARDS_BY_TYPE[p.type],undefined)
+  for(const p of PLANNED_EQUIPMENT)assert.ok(CARDS_BY_TYPE[p.type]===undefined||CARDS_BY_TYPE[p.type].virtualOnly);assert.ok(!catalog.makeDeck().some(c=>c.type==='wine'))
 })
 test('lord support uses exact original faction, including Huang Yueying',()=>{
   const s=createGame({heroId:'jifa',role:'lord',seed:7})

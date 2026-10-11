@@ -55,7 +55,7 @@ test('ready draft is handed to the game unchanged; it never rerolls roles or her
     const r=dispatchSetup(ready,{type:'begin',seat:0,revision:ready.revision});assert.ok(r.ok);const game=r.game
     assert.deepEqual(game.players.map(p=>p.role),ready.roles)
     assert.deepEqual(game.players.map(p=>p.heroId),ready.picks.map(id=>HERO_BY_THEME_ID[id].engineId))
-    assert.equal(game.current,ready.lord);assert.equal(game.turns,1);assert.equal(allCards(game).length,DECK_SIZE)
+    assert.equal(game.current,ready.lord);assert.ok(game.turns===1||game.turns===0&&game.pending?.kind==='incarnation'&&game.pending.reason==='initial');assert.equal(allCards(game).length,DECK_SIZE)
     for(const p of game.players){const h=HERO_BY_THEME_ID[ready.picks[p.seat]];assert.equal(p.maxHp,h.hp+(p.seat===ready.lord?1:0));if(p.seat!==ready.lord)assert.equal(p.hand.length,4)}
     assert.ok(restoreGame(game));assert.deepEqual(dispatchSetup(ready,{type:'begin',seat:0}).game,game)
   }
@@ -68,7 +68,7 @@ test('refresh preserves every draft stage and locked picks; old combat saves sti
   const game=createGame({heroId:'jifa',seed:42});assert.deepEqual(restoreSession(game),{kind:'game',game});assert.equal(restoreSession({kind:'setup',setup:{}}),null)
 })
 test('malformed drafts reject duplicate packets, leaked publication, unsupported heroes and mismatched identities',()=>{
-  const ready=finish(createSetup({seed:3}));for(const modify of [s=>s.roles[0]='invalid',s=>s.lord=(s.lord+1)%5,s=>s.offers[s.lord][0]='longji',s=>s.picks[0]=s.picks[1],s=>s.published[0]='bad',s=>s.seed=-1,s=>s.candidateCount=4]){const bad=structuredClone(ready);modify(bad);assert.equal(restoreSetup(bad),null)}
+  const ready=finish(createSetup({seed:3}));for(const modify of [s=>s.roles[0]='invalid',s=>s.lord=(s.lord+1)%5,s=>s.offers[s.lord][0]='randeng',s=>s.picks[0]=s.picks[1],s=>s.published[0]='bad',s=>s.seed=-1,s=>s.candidateCount=4]){const bad=structuredClone(ready);modify(bad);assert.equal(restoreSetup(bad),null)}
   let s=reveal(createSetup({seed:5}));s=step(s,chooseSetupAI(setupView(s,s.lord)));const bad=structuredClone(s),seat=(s.lord+1)%5;bad.published[seat]=bad.offers[seat][0];assert.equal(restoreSetup(bad),null)
 })
 test('home removes role/free-hero picking; draft shows only the local assigned candidates',()=>{

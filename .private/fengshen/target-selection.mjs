@@ -6,7 +6,7 @@ export function cardTargetCandidates(actions,as,targets=[]){
  return [...new Set(options.flatMap(a=>a.targets))]
 }
 export function selectingTargets(ui,view){
- if(view.pending)return view.pending.actor===0&&(['shensu','liuli','yiji','tuxi'].includes(view.pending.kind)||ui.selected.length>0)
+ if(view.pending)return view.pending.actor===0&&(['shensu','liuli','yiji','tuxi'].includes(view.pending.kind)||view.pending.kind==='ext'&&view.extension?.spec?.targets?.length||ui.selected.length>0)
  return view.current===0&&view.phase==='play'&&(ui.selected.length>0||!!ui.skill)
 }
 export function replaceTarget(targets,seat){return targets.includes(seat)?[]:[seat]}

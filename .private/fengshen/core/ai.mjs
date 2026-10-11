@@ -1,4 +1,5 @@
 import * as defaultCatalog from './catalog.mjs'
+import {extensionResponse,expansionSkill} from './complete-ai.mjs'
 export function createAI(catalog=defaultCatalog){
 const {CARDS,HERO_BY_ID,isRed}=catalog
 const viewHero=p=>({...HERO_BY_ID[p.heroId],skills:p.effectiveSkills||HERO_BY_ID[p.heroId].skills,sex:p.effectiveSex||HERO_BY_ID[p.heroId].sex,faction:p.effectiveFaction||HERO_BY_ID[p.heroId].faction})
@@ -61,6 +62,7 @@ function slashResources(view,HERO_BY_ID,isRed) {
 }
 function response(view,HERO_BY_ID,isRed) {
   const pending=view.pending,opts=view.legal,pass=opts.find(o=>o.type==='pass')
+  if(pending.kind==='ext')return extensionResponse(view,{hostility,cardValue,ownCards})
   if(pending.kind==='incarnation'){
     const p=view.players[view.seat],rank={jizhi:8,yingzi:8,luoshen:7,zhiheng:7,qingguo:5,longdan:5,wusheng:5,paoxiao:4,qicai:3,mashu:3,qianxun:5,jijiu:6,yiji:7,tiandu:4}
     const score=a=>(rank[a.skill]||4)+(a.skill==='kongcheng'&&!p.hand.length?8:0)+(a.skill==='qingnang'&&p.hp<p.maxHp?5:0)+(a.skill==='keji'&&p.hand.length>p.hp?5:0)+(a.skill==='xiaoji'&&Object.values(p.equip).some(Boolean)?3:0)
@@ -71,7 +73,7 @@ function response(view,HERO_BY_ID,isRed) {
     const p=view.players[view.seat],score=a=>hostility(view,a.target)*2+(view.players[a.target].hp<=2?3:0)-cost(view,a.ids)*.45+(pending.mode===1?(p.judgment.length?5:-4):p.hand.some(c=>c.type==='sha'||c.type==='draw')?-6:-2),rushes=opts.filter(a=>a.type==='rush').sort((a,b)=>score(b)-score(a))
     return rushes[0]&&score(rushes[0])>0?rushes[0]:pass
   }
-  const answers=opts.filter(o=>o.type==='respond').sort((a,b)=>cost(view,a.ids)-cost(view,b.ids))
+  const answers=opts.filter(o=>o.type==='respond').sort((a,b)=>cost(view,a.ids)+(a.guhuo?3:0)-cost(view,b.ids)-(b.guhuo?3:0))
   if(pending.kind==='discard')return {type:'discard',ids:orderByValue(view).slice(0,pending.count).map(c=>c.id)}
   if(pending.kind==='guess')return opts[(view.revision*7+view.seat)%opts.length]
   if(pending.kind==='tuxi')return opts.slice().sort((a,b)=>(b.targets||[]).reduce((n,t)=>n+hostility(view,t),0)-(a.targets||[]).reduce((n,t)=>n+hostility(view,t),0))[0]
@@ -162,10 +164,13 @@ const chooseAI=function chooseAI(view) {
         } else if(action.as==='savage'||action.as==='arrows')score=view.players.filter(p=>p.alive&&p.seat!==view.seat).reduce((n,p)=>n+hostility(view,p.seat)*(p.hp<=2?1.7:1),0)
         else if(action.as==='garden')score=view.players.filter(p=>p.alive&&p.hp<p.maxHp).reduce((n,p)=>n-hostility(view,p.seat),0)+1
         else if(action.as==='harvest')score=5
+        else if(action.as==='fireattack')score=self.hand.length>1?rel*3+1:-4
+        else if(action.as==='ironchain')score=action.targets.length?action.targets.reduce((n,t)=>n+hostility(view,t)*(view.players[t].chained?-2:2),0):6-cost(view,action.ids)*.4
         else if(action.as==='collateral')score=hostility(view,action.targets[1])*2+Math.max(0,rel)+1
         else if(action.as==='lightning')score=-2
       } else if(action.type==='skill') {
-        if(action.skill==='qiangxi')score=hostility(view,action.target)*2+(view.players[action.target].hp<=1?5:0)-(action.ids.length?cost(view,action.ids)*.45:self.hp<=1?50:4)
+        const expansion=expansionSkill(view,action,{hostility,cardValue,ownCards});if(expansion){candidate=expansion.action;score=expansion.score}
+        else if(action.skill==='qiangxi')score=hostility(view,action.target)*2+(view.players[action.target].hp<=1?5:0)-(action.ids.length?cost(view,action.ids)*.45:self.hp<=1?50:4)
         else if(action.skill==='zhiheng') {
           const cards=ownCards(view).filter(c=>cardValue(c,view)<3.5||CARDS[c.type].category==='equip'&&self.equip[CARDS[c.type].slot]?.id===c.id&&CARDS[c.type].slot==='weapon'&&self.hand.some(h=>CARDS[h.type].slot==='weapon'&&CARDS[h.type].range>CARDS[c.type].range))
           candidate={...action,ids:cards.map(c=>c.id)};score=cards.length?10:-3
@@ -190,6 +195,7 @@ const chooseAI=function chooseAI(view) {
           candidate={...action,target:target?.seat,ids:cards.map(c=>c.id)};score=target&&cards.length?target.seat===view.seat?14:8:-3
         } else if(action.skill==='jijiang')score=self.marks.jijiangTried?-3:hostility(view,action.target)*2+1
       }
+      if(action.guhuo){const recent=view.logs.filter(l=>l.cue?.kind==='guhuo-claim'&&l.cue.seat===view.seat&&l.cue.turn===view.turns&&!l.cue.response).length;score-=3;if(recent>=2&&['draw','harvest','garden'].includes(action.as))score=-8}
       // Stable tie variation depends only on the public revision and our seat.
       score+=action.type==='end'?0:((view.revision+view.seat*3+(action.targets?.[0]||0))%7)*.015
       scored.push({score,action:candidate})

@@ -1,7 +1,8 @@
 export function borrowableSkills(catalog,id){return (catalog.HERO_BY_ID[id]?.skills||[]).filter(s=>catalog.SKILLS[s]&&!['lord','limited','wake'].includes(catalog.SKILLS[s][2])&&!['huashen','xinsheng'].includes(s))}
 export function effectiveHero(catalog,p){
  const base=catalog.HERO_BY_ID[p.heroId],i=p.incarnation,h=i?.activeHero&&catalog.HERO_BY_ID[i.activeHero]
- return h&&borrowableSkills(catalog,h.id).includes(i.activeSkill)?{...base,sex:h.sex,faction:h.faction,skills:[...base.skills,i.activeSkill]}:base
+ const result=h&&borrowableSkills(catalog,h.id).includes(i.activeSkill)?{...base,sex:h.sex,faction:h.faction,skills:[...base.skills,i.activeSkill]}:base
+ return {...result,skills:p.skillsSealed?[]:result.skills.filter(s=>!(p.disabledSkills||[]).includes(s)).concat(p.gainedSkills||[])}
 }
 export function validIncarnation(catalog,p){
  const i=p.incarnation,owns=catalog.HERO_BY_ID[p.heroId]?.skills.includes('huashen')

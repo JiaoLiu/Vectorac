@@ -41,6 +41,12 @@
 .fs-self-target{border:1px solid #e0b574;background:#4c4931;padding:5px 9px;border-radius:4px;min-height:32px;font-size:11px;width:100%;margin:5px 0 2px;color:#ffe7aa}
 .fs-playing [data-combat-role=攻击者],.fs-playing [data-combat-role=持刀者]{box-shadow:inset 0 0 0 3px #e2b263}
 .fs-playing [data-combat-role=受击者],.fs-playing [data-combat-role=指定被杀]{box-shadow:inset 0 0 0 3px #ee8777}
+.fs-playing [data-combat-role=借刀者]{box-shadow:inset 0 0 0 3px #b58ce8}
+[data-combat-role=借刀者]>.fs-combat-tag{background:#4f357ce8}
+/* 借刀/魅惑选择目标时的顺序语义徽章（持刀→被杀、决斗→先出杀）。 */
+.fs-target-seq{position:absolute;left:0;right:0;top:46%;z-index:7;pointer-events:none;background:#3d2f15e8;color:#ffe6a8;font-size:10px;line-height:18px;text-align:center;font-weight:700}
+.fs-target-seq[data-seq="2"]{background:#5c2320e8;color:#ffd2c8}
+.fs-own-hero .fs-target-seq{top:auto;bottom:0;font-size:9px;line-height:16px}
 .fs-combat-tag{position:absolute;left:0;right:0;top:25px;z-index:6;pointer-events:none;background:#733f2be8;color:#fff0d1;font-size:10px;line-height:20px;text-align:center;font-weight:700}
 [data-combat-role=受击者]>.fs-combat-tag,[data-combat-role=指定被杀]>.fs-combat-tag{background:#a63e39e8}
 .fs-own-hero .fs-combat-tag{top:0;font-size:9px;line-height:18px}

@@ -1,3 +1,4 @@
+import {stableOpponents} from './fixtures/gods-stable.mjs'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {readFile} from 'node:fs/promises'
@@ -12,7 +13,7 @@ const card=(s,seat,type)=>{const i=s.deck.findIndex(c=>c.type===type),c=s.deck.s
 const step=(s,a)=>{const r=dispatch(s,{seat:s.pending?.actor??s.current,revision:s.revision,promptId:s.pending?.id,...a});assert.ok(r.ok,r.error);assert.equal(allCards(r.state).length,108);assert.equal(new Set(allCards(r.state).map(c=>c.id)).size,108);return r.state}
 const ui=s=>({state:s,selected:[],targets:[],choiceIndex:null,skill:null,hints:false,header:()=>'',targetable:()=>[],matching:()=>[],currentAs:()=>null,equipment:()=>'',skills:()=>'',won:()=>false,pendingText:()=>''})
 test('single-target tricks and skill taking draw public yellow links during counter/take',()=>{
- for(const type of ['snatch','dismantle','duel','collateral']){let s=fixture(),c=card(s,0,type);card(s,1,'shan');card(s,2,'nullify');if(type==='collateral'){const w=card(s,1,'qinggang');s.players[1].hand.pop();s.players[1].equip.weapon=w}const targets=type==='collateral'?[1,0]:[1];s=step(s,{type:'play',ids:[c.id],as:type,targets});assert.equal(s.pending.kind,'counter');assert.deepEqual(targetLinks(playerView(s,0)),[{source:0,target:1}])}
+ for(const type of ['snatch','dismantle','duel','collateral']){let s=fixture(),c=card(s,0,type);card(s,1,'shan');card(s,2,'nullify');if(type==='collateral'){const w=card(s,1,'qinggang');s.players[1].hand.pop();s.players[1].equip.weapon=w}const targets=type==='collateral'?[1,0]:[1];s=step(s,{type:'play',ids:[c.id],as:type,targets});assert.equal(s.pending.kind,'counter');assert.deepEqual(targetLinks(playerView(s,0)),type==='collateral'?[{source:0,target:1},{source:1,target:0}]:[{source:0,target:1}])}
  const v=playerView(fixture(),0);v.pending={kind:'take',actor:0,target:1,source:0};assert.deepEqual(targetLinks(v),[{source:0,target:1}])
 })
 test('all-player tricks show every living victim before the attack response, never dead seats',()=>{

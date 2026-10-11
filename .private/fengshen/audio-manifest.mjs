@@ -6,5 +6,5 @@ export const AUDIO_ENTRIES=[
   ...PLAYABLE_HEROES.filter(h=>!h.baseHero).flatMap(h=>Object.entries(h.skillNames).map(([s,text])=>({key:`skill-${h.id}-${s}`,text}))),
   {key:'skill-luya-mashu',text:'游仙'},
 ]
-export function skillAudioKey(heroId,skill){const h=heroForBase(heroId);return h&&(h.id==='luya'&&skill==='mashu'||!h.baseHero)?`skill-${h.id}-${skill}`:`skill-${skill}`}
+export function skillAudioKey(actor,skill){const heroId=typeof actor==='string'?actor:actor?.incarnation?.activeSkill===skill?actor.incarnation.activeHero:actor?.heroId,h=heroForBase(heroId);return h&&(h.id==='luya'&&skill==='mashu'||!h.baseHero)?`skill-${h.id}-${skill}`:`skill-${skill}`}
 export const audioPath=(key,sex='male')=>`assets/audio/${sex==='female'?'female':'male'}/${key}.mp3`
