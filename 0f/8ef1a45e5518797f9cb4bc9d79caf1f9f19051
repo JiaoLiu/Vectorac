@@ -1,0 +1,53 @@
+.private/fengshen/core/engine.mjs
+  5058ed3dc1a97a8c 413
+scripts/test-fengshen-combat.mjs
+  5058ed3dc1a97a8c 71-78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.8",
+  "base_commit_sha": "0f8ef1a45e5518797f9cb4bc9d79caf1f9f19051",
+  "prompts": {
+    "5058ed3dc1a97a8c": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6ac848ce090dc5dc9234c7bc",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 13,
+      "total_deletions": 5,
+      "accepted_lines": 12,
+      "overriden_lines": 0
+    }
+  },
+  "commit_stats": {
+    "git_diff_added_lines": 9,
+    "git_diff_deleted_lines": 1,
+    "ai_additions": 9,
+    "ai_accepted": 9,
+    "BYMC": 0,
+    "mixed_additions": 0,
+    "BYAC": 9,
+    "BYRC": 0,
+    "per_file": {
+      ".private/fengshen/core/engine.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "413"
+        ],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-combat.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "71-78"
+        ],
+        "BYRC": []
+      }
+    }
+  },
+  "commit_timestamp": 1791727171,
+  "requirement_id": ""
+}
