@@ -5,6 +5,7 @@ import {esc,display,portrait,hp,cardFace,cardBack,cardTitle} from './presentatio
 import {combatContext,seatName} from './combat.mjs'
 import {judgmentMark,publicPicks,responsePrompt,counterAction} from './table-visuals.mjs'
 import {tableTrail,trailCards} from './table-trail.mjs'
+import {panelAction,cleanRoleMarks} from './panel-selection.mjs'
 const roleBadge=(p,view,own=false)=>{
   // 对抗局只有敌友：按与本地玩家（0 号席）的阵营关系显示友/敌。
   if(view?.teamMode){const ally=view.sides[p.seat]===view.sides[view.seat];return `<span class="fs-identity ${ally?'role-ally':'role-enemy'} ${own?'fs-own-identity':''}" data-role="${ally?'ally':'enemy'}">${ally?'友':'敌'}</span>`}
@@ -24,19 +25,20 @@ const delayArt={
 export const delayIcons=(p,v)=>delays(p,v).map(type=>`<b class="fs-delay-mark" data-delay="${type}" title="${delayLabel(type)}" aria-label="${delayLabel(type)}">${delayArt[type]||`<i>${delayLabel(type).slice(-1)}</i>`}</b>`).join('')
 export function renderOpponent(ui,p,view){
   const h=display(p),target=ui.targetable(view).includes(p.seat),active=turnActive(p,view)
+  const mark=cleanRoleMarks(view,ui.roleMarks)[p.seat],marker=!view.teamMode&&!p.role&&p.alive?`<button class="fs-role-marker fs-identity role-${mark||'unknown'}" data-action="role-mark" data-value="${p.seat}" aria-label="${h.name}的身份猜测：${mark?ROLES[mark].name:'未标记'}。点击切换忠臣、反贼、内奸或清除" title="仅自己可见的身份猜测">${mark?{loyal:'忠',rebel:'反',renegade:'内'}[mark]:'？'}<i>猜</i></button>`:''
   return `<article class="fs-player faction-${h.faction} ${active?'turn-active':''} ${target?'targetable':''} ${ui.targets.includes(p.seat)?'target-selected':''} ${!p.alive?'fallen':''}" data-player="${p.seat}" data-equip-count="${Object.values(p.equip).filter(Boolean).length}" style="--equip-count:${Math.max(1,Object.values(p.equip).filter(Boolean).length)}">
     <button class="fs-player-main" data-action="target" data-value="${p.seat}" aria-label="${target?'选择目标':'查看'}${h.name}${!p.alive?'，已阵亡，'+roleName(p,view):''}">
       ${portrait(h)}${formMarker(p)}<span class="fs-portrait-shade"></span>${roleBadge(p,view)}<span class="fs-seat">${p.seat}号 · ${FACTIONS[h.faction]}</span>${turnBadge(p,view)}
       <span class="fs-player-info"><strong>${h.name}</strong>${hp(p)}<span>▣ ${p.handCount}${view.pending?.actor===p.seat?' · 响应中':active?' · 出牌中':''}</span></span>
       ${!p.alive?`<span class="fs-death-banner" data-revealed-role="${p.role}">已阵亡 · ${roleName(p,view)}</span>`:''}
       ${delays(p,view).length?`<span class="fs-player-delays">${delayIcons(p,view)}</span>`:''}
-    </button><div class="fs-opponent-equipment" data-scroll="equip-${p.seat}">${ui.equipment(p)}</div>
+    </button>${marker}<div class="fs-opponent-equipment" data-scroll="equip-${p.seat}">${ui.equipment(p)}</div>
   </article>`
 }
 function takeChoices(ui,view){
   const pending=view.pending,target=view.players[pending.target],options=view.legal.map((a,i)=>({...a,index:i})),zones=[...new Set(options.map(a=>a.zone||'hand'))]
   const zone=zones.includes(ui.choiceZone)?ui.choiceZone:zones[0],names={hand:'手牌',equipment:'装备',judgment:'判定区'},mode=ui.state.pending.mode==='snatch'?'获得':'弃置'
-  return `<section class="fs-center-choice fs-take-choice" role="group" aria-label="选择${display(target).name}的区域牌">
+  return `<section class="fs-center-choice fs-choice-dialog fs-take-choice" role="group" aria-label="选择${display(target).name}的区域牌">
     <header><div><small>${mode==='获得'?'摄宝 · 取一张牌':'破阵 · 弃一张牌'}</small><strong>选择${display(target).name}的一张牌</strong></div><span>${mode}</span></header>
     <div class="fs-choice-tabs">${zones.map(z=>`<button data-action="choice-zone" data-value="${z}" aria-pressed="${z===zone}" class="${z===zone?'selected':''}">${names[z]} <b>${options.filter(a=>(a.zone||'hand')===z).length}</b></button>`).join('')}</div>
     <div class="fs-center-card-list" data-scroll="choice-${zone}">${options.filter(a=>(a.zone||'hand')===zone).map(a=>`<button data-action="take-choice" data-value="${a.index}" data-prompt="${pending.id}" data-revision="${view.revision}" class="fs-choice-card ${ui.choiceIndex===a.index?'selected':''}" aria-pressed="${ui.choiceIndex===a.index}" aria-label="${a.hidden?a.label:CARDS_BY_TYPE[a.card.type].name}">${a.hidden?cardBack(a.label):cardFace(a.card)}</button>`).join('')}</div>
@@ -46,8 +48,9 @@ function takeChoices(ui,view){
 export function renderCenter(ui,view){
   if(view.pending?.kind==='incarnation'){
     if(view.pending.actor!==0)return `<section class="fs-center-choice fs-skill-prompt"><header><strong>${seatName(view,view.pending.actor)}正在选择变身</strong></header><p>未展示的变身牌只有本人可见。</p></section>`
-    const choices=view.legal.map((a,index)=>({...a,index})),ids=[...new Set(choices.filter(a=>a.type==='transform').map(a=>a.heroId))],pass=choices.find(a=>a.type==='pass')
-    return `<section class="fs-center-choice fs-incarnation-choice" aria-label="七十二变选择"><header><strong>七十二变 · 选择形态与一个技能</strong><small>${view.pending.required?'首次变身，请选择技能':'可更换形态，也可保留当前技能'}</small></header><div class="fs-incarnation-options" data-scroll="incarnations">${ids.map(id=>{const h=display({heroId:id});return `<article class="fs-incarnation-entry">${portrait(h)}<div><strong>${h.name}</strong>${choices.filter(a=>a.heroId===id).map(a=>`<button data-action="response" data-value="${a.index}" aria-label="变身${h.name}，借用${h.skillNames[a.skill]}"><b>${h.skillNames[a.skill]}</b><small>${esc(skillHelp(h,a.skill))}</small></button>`).join('')}</div></article>`}).join('')}</div>${pass?`<footer><button data-action="response" data-value="${pass.index}" class="fs-secondary">保留当前形态</button></footer>`:''}</section>`
+    const choices=view.legal.map((a,index)=>({...a,index})),ids=[...new Set(choices.filter(a=>a.type==='transform').map(a=>a.heroId))],pass=choices.find(a=>a.type==='pass'),selected=panelAction(view,ui.panelSelection)
+    const attrs=a=>`data-action="panel-choice" data-value="${a.index}" data-prompt="${view.pending.id}" data-revision="${view.revision}" aria-pressed="${selected?.heroId===a.heroId&&selected?.skill===a.skill}"`
+    return `<section class="fs-center-choice fs-choice-dialog fs-incarnation-choice" aria-label="七十二变选择"><header><strong>七十二变 · 选择形态与一个技能</strong><small>${view.pending.required?'首次变身，请选择技能':'可更换形态，也可保留当前技能'}</small></header><div class="fs-incarnation-options" data-scroll="incarnations">${ids.map(id=>{const h=display({heroId:id}),options=choices.filter(a=>a.heroId===id);return `<article class="fs-incarnation-entry ${selected?.heroId===id?'selected':''}"><button class="fs-form-portrait" ${attrs(options[0])} aria-label="选择${h.name}形态">${portrait(h)}</button><div><strong>${h.name}</strong>${options.map(a=>`<button ${attrs(a)} class="${selected?.heroId===id&&selected.skill===a.skill?'selected':''}" aria-label="选择${h.name}，借用${h.skillNames[a.skill]}"><b>${h.skillNames[a.skill]}</b><small>${esc(skillHelp(h,a.skill))}</small></button>`).join('')}</div></article>`}).join('')}</div><footer><span aria-live="polite">${selected?`${display({heroId:selected.heroId}).name} · ${skillName(selected.heroId,selected.skill)}`:'先选形态与技能，再确认'}</span><button data-action="panel-confirm" data-prompt="${view.pending.id}" data-revision="${view.revision}" class="fs-primary" ${!selected?'disabled':''}>确认变身</button>${pass?`<button data-action="response" data-value="${pass.index}" class="fs-secondary">保留当前形态</button>`:''}</footer></section>`
   }
   if(view.pending?.kind==='guanxing'){
     if(view.pending.actor!==0)return `<section class="fs-center-choice"><header><strong>${seatName(view,view.pending.actor)}正在推演</strong></header><p>其他玩家不能查看推演的牌。</p></section>`
@@ -60,13 +63,16 @@ export function renderCenter(ui,view){
   if(view.pending?.kind==='tuxi')return `<section class="fs-center-choice fs-skill-prompt"><header><strong>${skillName(view.players[view.pending.actor],'tuxi')}</strong></header><p>不从牌堆摸牌，改为取得一至两名其他角色各一张手牌。请点亮人物，再确认；也可以正常摸两张。</p></section>`
   if(view.pending?.actor===0&&view.pending.kind==='take')return takeChoices(ui,view)
   const picks=publicPicks(view)
+  // While a recipient's trick is being countered, keep portraits and lines visible.
+  if(view.pending?.kind==='counter')return playedCenter(view,ui)
   if(view.lastPlayed?.as==='harvest'&&(view.harvestPool?.length||picks.length)&&view.lastPlayed.turn===view.turns){
     // 全部选完后短暂展示结果即自动收起，不再一直占着桌面中央等待
     if(view.pending?.kind!=='pick'){
       if(ui.harvestDoneId!==view.lastPlayed.id){ui.harvestDoneId=view.lastPlayed.id;ui.harvestDoneAt=Date.now();setTimeout(()=>{if(!ui.destroyed)ui.render()},1500)}
-      else if(Date.now()-ui.harvestDoneAt>1400)return playedCenter(view)
+      else if(Date.now()-ui.harvestDoneAt>1400)return playedCenter(view,ui)
     }
-    return `<section class="fs-center-choice fs-pool-choice" role="group" aria-label="仙山采宝"><header><strong>仙山采宝</strong><small>${view.pending?.kind==='pick'?(view.pending.actor===0?'请选择一张牌':display(view.players[view.pending.actor]).name+'正在选牌'):'选牌完成'}</small></header><div class="fs-center-card-list" data-scroll="pool">${(view.harvestPool||[]).map(c=>{const i=view.legal.findIndex(a=>a.type==='choose'&&a.value===c.id);return `<button class="fs-choice-card" data-action="response" data-value="${i}" ${i<0?'disabled':''} aria-label="${cardTitle(c.type)}">${cardFace(c)}</button>`}).join('')}${picks.map(p=>`<div class="fs-choice-card fs-harvest-picked" data-picked-by="${p.source}">${cardFace(p.card)}<b>${display(view.players[p.source]).name}</b><small>已选 ${cardTitle(p.card.type)}</small></div>`).join('')}</div></section>`
+    const selected=panelAction(view,ui.panelSelection),picking=view.pending?.kind==='pick',own=picking&&view.pending.actor===view.seat
+    return `<section class="fs-center-choice fs-choice-dialog fs-pool-choice" role="group" aria-label="仙山采宝"><header><strong>仙山采宝</strong><small>${picking?(own?'请选择一张牌':display(view.players[view.pending.actor]).name+'正在选牌'):'选牌完成'}</small></header><div class="fs-center-card-list" data-scroll="pool">${(view.harvestPool||[]).map(c=>{const i=view.legal.findIndex(a=>a.type==='choose'&&a.value===c.id);return `<button class="fs-choice-card ${selected?.value===c.id?'selected':''}" data-pool-card="${c.id}" data-action="panel-choice" data-value="${i}" data-prompt="${view.pending?.id}" data-revision="${view.revision}" aria-pressed="${selected?.value===c.id}" ${!own||i<0?'disabled':''} aria-label="${cardTitle(c.type)}">${cardFace(c)}</button>`}).join('')}${picks.map(p=>`<div class="fs-choice-card fs-harvest-picked" data-pool-card="${p.card.id}" data-picked-by="${p.source}">${cardFace(p.card)}<b>${display(view.players[p.source]).name}</b><small>已选 ${cardTitle(p.card.type)}</small></div>`).join('')}</div><footer><span aria-live="polite">${own?(selected?'已选 '+cardTitle(selected.card.type):'选牌后确认；再点已选牌也可直接获取'):picking?'等待选牌':'选牌完成'}</span>${own?`<button class="fs-primary" data-action="panel-confirm" data-prompt="${view.pending.id}" data-revision="${view.revision}" ${!selected?'disabled':''}>获取选中牌</button>`:''}</footer></section>`
   }
   return playedCenter(view,ui)
 }
@@ -113,6 +119,7 @@ export function renderControls(ui,v){
     if(v.pending.kind==='counter'){const answer=counterAction(v,ui.selected,{blockedUntil:ui.counterLockUntil}),pass=v.legal.findIndex(a=>a.type==='pass');return `<div class="fs-action-row fs-counter-controls" aria-label="破法响应"><button data-action="confirm" class="fs-primary" ${!answer?'disabled':''} aria-label="发动破法，${v.pending.negated?'恢复原效果':'抵消当前效果'}">发动破法</button><button data-action="response" data-value="${pass}" class="fs-secondary">不发动</button></div>`}
     if(v.pending.kind==='incarnation')return `<div class="fs-action-row fs-idle-controls"><span>请在变身面板选择技能</span></div>`
     if(v.pending.kind==='guanxing')return `<div class="fs-action-row fs-idle-controls"><span>请在推演面板确认牌序</span></div>`
+    if(v.pending.kind==='judge-replace'){const answer=v.legal.find(a=>a.type==='respond'&&a.ids.length===ui.selected.length&&a.ids.every(id=>ui.selected.includes(id))),pass=v.legal.findIndex(a=>a.type==='pass');return `<div class="fs-action-row"><button data-action="confirm" class="fs-primary" ${!answer?'disabled':''}>确认改判</button><button data-action="response" data-value="${pass}" class="fs-secondary">不改判</button></div>`}
     if(v.pending.kind==='liuli')return `<div class="fs-action-row"><button data-action="confirm" class="fs-primary" ${!v.legal.some(a=>a.type==='redirect'&&a.target===ui.targets[0]&&a.ids.length===ui.selected.length&&a.ids.every(id=>ui.selected.includes(id)))?'disabled':''}>确认转移</button><button data-action="response" data-value="0" class="fs-secondary">不转移</button><button data-action="clear" class="fs-clear">重选</button></div>`
     if(v.pending.kind==='yiji')return `<div class="fs-action-row"><button data-action="confirm" class="fs-primary" ${!ui.selected.length||!ui.targets.length?'disabled':''}>确认赠牌</button><button data-action="response" data-value="0" class="fs-secondary">保留剩余牌</button><button data-action="clear" class="fs-clear">重选</button></div>`
     if(v.pending.kind==='tuxi')return `<div class="fs-action-row"><button data-action="confirm" class="fs-primary" ${ui.targets.length<1?'disabled':''}>确认取得手牌</button><button data-action="response" data-value="0" class="fs-secondary">正常摸两张</button><button data-action="clear" class="fs-clear">重选</button></div>`

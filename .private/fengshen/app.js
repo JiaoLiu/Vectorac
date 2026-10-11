@@ -28,17 +28,27 @@ import {cardTargetCandidates,selectingTargets,replaceTarget,boundedTargets} from
 import {heroDetails,gameRules,formCollection}from './player-guide.mjs'
 import {modalReturnEntry}from './modal-navigation.mjs'
 import {takeSelection}from './take-selection.mjs'
+import {panelSelection,panelAction,harvestSeat,cleanRoleMarks,nextRoleMark} from './panel-selection.mjs'
 import {bindStarDrag} from './star-drag.mjs'
 import {advanceUnavailable,DecisionClock} from './flow.mjs'
 import {BackgroundMusic} from './music.mjs'
-import {drawEffects,judgmentEffects} from './draw-effects.mjs'
+import {drawEffects,judgmentEffects,harvestEffects} from './draw-effects.mjs'
 
 // Keep the old mixed-playtest save intact; never reinterpret its hero rules.
 const SAVE='vectorac.fengshen.classic-original.save.v2',PREFS='vectorac.fengshen.internal.prefs.v1'
 const RELEASE=typeof __FENGSHEN_RELEASE__!=='undefined'&&__FENGSHEN_RELEASE__
 // 预热牌桌小图：每次操作都会整体重渲染，提前解码并常驻引用，避免 iOS 丢弃解码缓存导致整桌图片重绘闪烁。
+// 分批+错峰：牌桌背景优先（进对局即用），缩略图队列等首页主视觉下载完再启动，
+// 避免 90 余张小图与大厅孙悟空原图抢带宽导致首屏迟迟不渲染。
 const prewarmed=[]
-const prewarmTableArt=()=>{if(prewarmed.length||typeof Image==='undefined')return;for(const src of [...HEROES.map(h=>h.thumbnail),...Object.values(CARDS_BY_TYPE).map(c=>c.thumb||c.image),'assets/heavenly-arena.jpg']){const img=new Image();img.decoding='async';img.src=src;prewarmed.push(img)}}
+const prewarmTableArt=()=>{
+  if(prewarmed.length||typeof Image==='undefined')return
+  const queue=[...HEROES.map(h=>h.thumbnail),...Object.values(CARDS_BY_TYPE).map(c=>c.thumb||c.image),'assets/heavenly-arena.jpg']
+  let i=0
+  const step=()=>{for(let n=0;n<6&&i<queue.length;n++,i++){const img=new Image();img.decoding='async';img.src=queue[i];prewarmed.push(img)}if(i<queue.length)setTimeout(step,120)}
+  if(document.readyState==='complete')setTimeout(step,1200)
+  else addEventListener('load',()=>setTimeout(step,600),{once:true})
+}
 // 增量修补（morph）：按位对齐新旧子树，只更新变化的节点与属性，保留未变化
 // 节点的元素身份——img 不销毁重解码、滚动位置与 CSS 动画不中断。此前每次
 // 操作都 innerHTML 整体替换，iOS 上整棵子树销毁后分帧重绘，表现为一选牌全桌闪。
@@ -66,22 +76,23 @@ export class FengshenUI {
     root.addEventListener('click',this.onClick);root.addEventListener('keydown',this.onKey);document.addEventListener('visibilitychange',this.onVisibility);
     this.clockTimer=setInterval(()=>this.tickClock(),250);this.onViewport();this.render();prewarmTableArt()
   }
-  reset(){this.selected=[];this.targets=[];this.skill=null;this.as=null;this.choiceIndex=null;this.choiceSelection=null;this.choiceZone='hand';this.star=null}
+  reset(){this.selected=[];this.targets=[];this.skill=null;this.as=null;this.choiceIndex=null;this.choiceSelection=null;this.panelSelection=null;this.choiceZone='hand';this.star=null}
   savePreferences(){store(PREFS,{pace:this.pace,voice:this.voice.enabled,music:this.music.enabled,hints:this.hints,mode:this.mode})}
   start(){
     if(!this.lobby)return
     this.requestGameScreen();this.clearEffects();this.voice.stop();this.music.unlock();this.auto=false;this.state=null;this.setup=createSetup({mode:this.mode});this.draftHero=null;this.lobby=false;this.paused=false;this.reset();this.save();this.render()
   }
-  save(){if(this.setup)store(SAVE,{kind:'setup',setup:this.setup});else if(this.state)store(SAVE,this.state)}
+  save(){if(this.setup)store(SAVE,{kind:'setup',setup:this.setup});else if(this.state){this.roleMarks=cleanRoleMarks(playerView(this.state,0),this.roleMarks);store(SAVE,{kind:'game',game:this.state,roleMarks:this.roleMarks})}}
   resume(){
-    const session=restoreSession(load(SAVE,null));if(!session)return
+    const raw=load(SAVE,null),session=restoreSession(raw);if(!session)return
+    this.roleMarks=session.kind==='game'?cleanRoleMarks(playerView(session.game,0),raw?.roleMarks):{}
     this.requestGameScreen();this.clearEffects();this.voice.stop();this.music.unlock();this.auto=false;this.setup=session.kind==='setup'?session.setup:null;this.state=session.kind==='game'?advanceUnavailable(session.game,dispatch,playerView):null;this.draftHero=null;this.lobby=false;this.paused=false;this.reset();this.save();this.render()
   }
   actSetup(action){
     if(!this.setup)return false
     const before=this.setup,result=dispatchSetup(before,{...action,revision:before.revision})
     if(!result.ok){this.inform(result.error);return false}
-    if(result.game){this.state=result.game;this.setup=null;this.draftHero=null;this.reset();for(const cue of cuesForAction({players:result.game.players,eventId:0},{type:'begin',seat:0},result.game))this.voice.speak(cue.key,cue.sex)}
+    if(result.game){this.state=result.game;this.roleMarks={};this.setup=null;this.draftHero=null;this.reset();for(const cue of cuesForAction({players:result.game.players,eventId:0},{type:'begin',seat:0},result.game))this.voice.speak(cue.key,cue.sex)}
     else{this.setup=result.setup;if(before.stage!==this.setup.stage||action.type==='pick'&&action.seat===0)this.draftHero=null}
     this.save();this.render();return true
   }
@@ -95,6 +106,8 @@ export class FengshenUI {
     if(before.pending?.kind==='counter'&&action.type==='respond'){this.tableTrail=counterTrail(this.tableTrail||[],playerView(before,0));if(action.seat==null||action.seat===0){this.counterLockUntil=Date.now()+700;clearTimeout(this.counterLockTimer);this.counterLockTimer=setTimeout(()=>{if(!this.destroyed)this.render()},720)}}
     const judged=judgmentEffects(before,this.state).at(-1)
     if(judged){this.transfer={from:judged.target,to:judged.target,mode:'judgment',card:judged.card,until:Date.now()+1050};clearTimeout(this.transferTimer);this.transferTimer=setTimeout(()=>{this.transfer=null;if(!this.destroyed)this.render()},1100)}
+    const picked=harvestEffects(before,this.state).at(-1)
+    if(picked){const r=this.root.querySelector(`[data-pool-card="${picked.card.id}"]`)?.getBoundingClientRect(),origin=r&&localPoint(this.root,r.x+r.width/2,r.y+r.height/2);this.transfer={from:picked.target,to:picked.target,mode:'harvest',card:picked.card,origin,until:Date.now()+1050};clearTimeout(this.transferTimer);this.transferTimer=setTimeout(()=>{this.transfer=null;if(!this.destroyed)this.render()},1100)}
     const draws=drawEffects(before,this.state)
     if(draws.length){const started=Date.now();this.draws=draws.map(d=>({...d,started}));clearTimeout(this.drawTimer);this.drawTimer=setTimeout(()=>{this.draws=[];if(!this.destroyed)this.render()},1300)}
     const previousIds=new Set(before.players[0].hand.map(c=>c.id)),received=this.state.players[0].hand.filter(c=>!previousIds.has(c.id))
@@ -125,10 +138,12 @@ export class FengshenUI {
     if(battle&&['attack','command','duel','aoe'].includes(battle.kind))for(const [seat,role]of [[battle.source,'攻击者'],[battle.target,'受击者']]){const e=anchor(seat);if(e)e.dataset.combatRole=role}
     this.root.querySelector('.fs-target-lines')?.remove()
     const links=targetLinks(v,{targets:this.targets,as:this.currentAs(v)}),r=this.root.getBoundingClientRect()
-    this.root.querySelectorAll('.fs-judging,.fs-effect-source,.fs-effect-target,.fs-effect-focus').forEach(e=>e.classList.remove('fs-judging','fs-effect-source','fs-effect-target','fs-effect-focus'))
+    this.root.querySelectorAll('.fs-judging,.fs-effect-source,.fs-effect-target,.fs-effect-focus,.fs-pick-focus,.fs-replace-focus').forEach(e=>e.classList.remove('fs-judging','fs-effect-source','fs-effect-target','fs-effect-focus','fs-pick-focus','fs-replace-focus'))
     const judge=judgingSeat(v);if(judge!=null)anchor(judge)?.classList.add('fs-judging')
     for(const link of links){anchor(link.source)?.classList.add('fs-effect-source');anchor(link.target)?.classList.add('fs-effect-target')}
     if(v.pending?.kind==='counter')anchor(v.pending.target)?.classList.add('fs-effect-focus')
+    const picker=this.transfer?.mode==='harvest'?this.transfer.to:harvestSeat(v);if(picker!=null)anchor(picker)?.classList.add('fs-pick-focus')
+    if(v.pending?.kind==='judge-replace')anchor(v.pending.actor)?.classList.add('fs-replace-focus')
     if(links.length){const layer=document.createElementNS('http://www.w3.org/2000/svg','svg');layer.classList.add('fs-target-lines');layer.setAttribute('viewBox',`0 0 ${this.root.clientWidth} ${this.root.clientHeight}`);layer.setAttribute('aria-hidden','true');const defs=document.createElementNS('http://www.w3.org/2000/svg','defs');layer.append(defs)
       // 光束式指向线（参考英雄杀）：细亮芯+柔光晕，源端亮、目标端渐隐，不再用粗箭头。
       for(const [i,link] of links.entries()){const a=anchor(link.source)?.getBoundingClientRect(),b=anchor(link.target)?.getBoundingClientRect();if(!a||!b)continue;const ap=localPoint(this.root,a.x+a.width/2,a.y+a.height/2),bp=localPoint(this.root,b.x+b.width/2,b.y+b.height/2),cx=ap.x,cy=ap.y,bx=bp.x,by=bp.y,length=Math.hypot(bx-cx,by-cy)||1,sa=Math.min(a.width,a.height)*.32,sb=Math.min(b.width,b.height)*.32
@@ -140,8 +155,8 @@ export class FengshenUI {
     for(const h of this.hits.filter(h=>h.until>Date.now())){const e=anchor(h.target);if(e){e.classList.add('fs-hurt');const badge=document.createElement('span');badge.className='fs-damage-number';badge.textContent='−'+h.amount;e.append(badge)}}
     this.root.querySelector('.fs-transfer-flight')?.remove()
     if(this.transfer&&this.transfer.until>Date.now()){
-      const f=this.transfer,a=(f.mode==='judgment'?this.root.querySelector(`[data-judge-card="${f.card.id}"]`)||this.root.querySelector('.fs-table-center'):anchor(f.from))?.getBoundingClientRect(),to=(f.mode==='judgment'?(f.to===0?this.root.querySelector('.fs-hand'):anchor(f.to)):f.mode==='snatch'?anchor(f.to):this.root.querySelector('.fs-table-center,.fs-center-choice'))?.getBoundingClientRect()
-      if(a&&to){const ap=localPoint(this.root,a.x+a.width/2,a.y+a.height/2),tp=localPoint(this.root,to.x+to.width/2,to.y+to.height/2);const e=document.createElement('div');e.className='fs-transfer-flight';e.dataset.transferMode=f.mode;e.innerHTML=(f.card?cardFace(f.card):'<span class="fs-card-back"><i>封</i><b>暗手牌</b></span>')+(f.mode==='judgment'?'':`<span>${f.mode==='snatch'?'取走':'弃置'}</span>`);e.style.setProperty('--from-x',`${ap.x-27}px`);e.style.setProperty('--from-y',`${ap.y-38}px`);e.style.setProperty('--to-x',`${tp.x-27}px`);e.style.setProperty('--to-y',`${tp.y-38}px`);this.root.append(e)}
+      const f=this.transfer,a=(f.mode==='harvest'?this.root.querySelector(`[data-pool-card="${f.card.id}"]`)||this.root.querySelector('.fs-pool-choice'):f.mode==='judgment'?this.root.querySelector(`[data-judge-card="${f.card.id}"]`)||this.root.querySelector('.fs-table-center'):anchor(f.from))?.getBoundingClientRect(),to=(['judgment','harvest'].includes(f.mode)?(f.to===0?this.root.querySelector('.fs-hand'):anchor(f.to)):f.mode==='snatch'?anchor(f.to):this.root.querySelector('.fs-table-center,.fs-center-choice'))?.getBoundingClientRect()
+      if((a||f.origin)&&to){const ap=f.origin||localPoint(this.root,a.x+a.width/2,a.y+a.height/2),tp=localPoint(this.root,to.x+to.width/2,to.y+to.height/2);const e=document.createElement('div');e.className='fs-transfer-flight';e.dataset.transferMode=f.mode;e.innerHTML=(f.card?cardFace(f.card):'<span class="fs-card-back"><i>封</i><b>暗手牌</b></span>')+(['judgment','harvest'].includes(f.mode)?'':`<span>${f.mode==='snatch'?'取走':'弃置'}</span>`);e.style.setProperty('--from-x',`${ap.x-27}px`);e.style.setProperty('--from-y',`${ap.y-38}px`);e.style.setProperty('--to-x',`${tp.x-27}px`);e.style.setProperty('--to-y',`${tp.y-38}px`);this.root.append(e)}
     }
     this.root.querySelectorAll('.fs-draw-flight,.fs-draw-count').forEach(e=>e.remove())
     this.root.querySelectorAll('.fs-draw-receiver').forEach(e=>e.classList.remove('fs-draw-receiver'))
@@ -210,6 +225,7 @@ export class FengshenUI {
   confirm(){
     const view=playerView(this.state,0),pending=view.pending
     if(pending?.actor===0){
+      if(['incarnation','pick'].includes(pending.kind)){const answer=panelAction(view,this.panelSelection);return answer?this.act(answer):false}
       if(pending.kind==='counter'){const answer=counterAction(view,this.selected,{blockedUntil:this.counterLockUntil});return answer?this.act(answer):false}
       if(pending.kind==='guanxing')return this.act({type:'arrange',top:this.star?.id===pending.id?this.star.top:view.legal.find(a=>a.type==='arrange').pool.map(c=>c.id),bottom:this.star?.id===pending.id?this.star.bottom:[]})
       if(pending.kind==='liuli'){const a=view.legal.find(a=>a.type==='redirect'&&a.target===this.targets[0]&&equal(a.ids,this.selected));return a?this.act(a):this.inform('选择一张牌，再选择弃牌后仍在范围内的目标')}
@@ -231,7 +247,7 @@ export class FengshenUI {
       }
     }
     // Portrait equipment and detail buttons must not steal a targeting tap.
-    if(this.state&&!this.modal&&!this.lobby&&!this.paused&&!this.auto&&!this.transfer&&!this.draws.length&&['target','hero-detail','card-detail','identity'].includes(b.dataset.action)&&selectingTargets(this,playerView(this.state,0))){
+    if(this.state&&!this.modal&&!this.lobby&&!this.paused&&!this.auto&&!this.transfer&&!this.draws.length&&['target','hero-detail','card-detail','identity','role-mark'].includes(b.dataset.action)&&selectingTargets(this,playerView(this.state,0))){
       const player=event.target.closest('.fs-player'),own=event.target.closest('.fs-own-hero')
       if(player)b=player.querySelector('[data-action="target"]')||b
       else if(own){const view=playerView(this.state,0);if(this.targetable(view).includes(0)){this.targets=this.currentAs(view)==='collateral'?collateralSelection(this.targets,0):replaceTarget(this.targets,0);this.render()}return}
@@ -261,6 +277,14 @@ export class FengshenUI {
     if(action==='pace'){this.pace=this.pace===650?250:this.pace===250?1100:650;this.savePreferences();this.render();return}
     if(!this.state||this.paused||this.auto||this.transfer||this.draws.length||this.state.pending?.kind==='reveal'||this.modal&&!(this.modal.kind==='hand'&&action==='card'))return
     const view=playerView(this.state,0),own=view.players[0]
+    if(action==='role-mark'){this.roleMarks=nextRoleMark(view,this.roleMarks,Number(value));this.save();this.render();return}
+    if(['panel-choice','panel-confirm'].includes(action)){
+      if(action==='panel-confirm'){if(String(view.pending?.id)===b.dataset.prompt&&String(view.revision)===b.dataset.revision)this.confirm();return}
+      const result=panelSelection({view,selection:this.panelSelection,index:Number(value),promptId:b.dataset.prompt,revision:b.dataset.revision})
+      if(result.kind==='commit')this.act(result.action)
+      else if(result.kind==='select'){this.panelSelection=result.selection;this.render()}
+      return
+    }
     if(action==='star-move'&&view.pending?.kind==='guanxing'&&view.pending.actor===0){
       const pool=view.legal.find(a=>a.type==='arrange').pool
       if(!this.star||this.star.id!==view.pending.id)this.star={id:view.pending.id,top:pool.map(c=>c.id),bottom:[]}

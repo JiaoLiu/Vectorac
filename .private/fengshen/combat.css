@@ -116,7 +116,8 @@
 @keyframes fs-reveal{from{transform:rotateY(88deg) scale(.85);opacity:.2}to{transform:rotateY(0);opacity:1}}
 .fs-judgment-reveal>strong{font-size:13px;line-height:1.4;color:#dbe8cc}.fs-judgment-reveal>strong.hit{color:#ffb09d}.fs-judgment-reveal>small{font-size:10px;color:#b2c3b3}
 .fs-transfer-flight{position:absolute;left:0;top:0;width:54px;height:78px;pointer-events:none;z-index:35;animation:fs-transfer 1s ease-in-out both}
-.fs-transfer-flight>span:last-child{display:block;position:absolute;left:-8px;right:-8px;bottom:-21px;background:#cdb47f;color:#183a30;padding:3px;text-align:center;font-size:11px;border-radius:4px}
+.fs-transfer-flight>span:last-child:not(.fs-clean-card):not(.fs-card-back){display:block;position:absolute;left:-8px;right:-8px;bottom:-21px;background:#cdb47f;color:#183a30;padding:3px;text-align:center;font-size:11px;border-radius:4px}
+.fs-transfer-flight>.fs-clean-card{display:block;position:relative;inset:auto;width:100%;height:100%;padding:0}
 .fs-transfer-flight .fs-clean-card>strong{font-size:10px}.fs-transfer-flight .fs-clean-card>.fs-card-purpose{display:none}
 @keyframes fs-transfer{0%{transform:translate(var(--from-x),var(--from-y)) scale(.85);opacity:0}15%{opacity:1}80%{transform:translate(var(--to-x),var(--to-y)) scale(1);opacity:1}100%{transform:translate(var(--to-x),var(--to-y)) scale(.7);opacity:0}}
 @media(max-width:699px) and (orientation:portrait){

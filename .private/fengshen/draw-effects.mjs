@@ -6,3 +6,4 @@ export function drawEffects(before,after,viewer=0){
 }
 // The face was already revealed to everyone; never read the recipient's hand.
 export function judgmentEffects(before,after){return after.logs.filter(l=>l.id>before.eventId&&l.cue?.kind==='judgment-keep').slice().reverse().map(l=>({...l.cue,id:l.id}))}
+export function harvestEffects(before,after){return after.logs.filter(l=>l.id>before.eventId&&l.cue?.kind==='harvest-pick').slice().reverse().map(l=>({...l.cue,id:l.id,target:l.cue.source}))}

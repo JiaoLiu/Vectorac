@@ -1,6 +1,7 @@
 // One coordinate system for the board, seats and hand. Never use zoomed screen
 // rectangles or equipment count to decide a portrait's dimensions.
 import {tableCardLayout} from './table-trail.mjs'
+import {choicePanelGeometry} from './panel-selection.mjs'
 const clamp=(n,min,max)=>Math.max(min,Math.min(max,n))
 export function arenaGeometry({width,height,seats=5,safeTop=0,safeBottom=0}){
  const landscape=width>height,gap=clamp(width*.012,6,12),topSeats=seats===2?[1]:!landscape&&seats===8?[3,4,5]:Array.from({length:Math.max(1,seats-3)},(_,i)=>i+2)
@@ -39,6 +40,7 @@ export function layoutArena(root){
  const style=getComputedStyle(root),left=parseFloat(style.paddingLeft)||0,right=parseFloat(style.paddingRight)||0,top=parseFloat(style.paddingTop)||0,bottom=parseFloat(style.paddingBottom)||0
  const g=arenaGeometry({width:root.clientWidth-left-right,height:root.clientHeight,seats:Number(arena.dataset.seats),safeTop:top,safeBottom:bottom})
  root.dataset.layout=g.landscape?'landscape':'portrait'
+ const panelFit=choicePanelGeometry({height:g.height,safeTop:top,safeBottom:bottom});root.style.setProperty('--choice-top',panelFit.top+'px');root.style.setProperty('--choice-height',panelFit.height+'px')
  for(const [key,value]of Object.entries({'hero-width':g.heroWidth,'hero-height':g.heroHeight,'own-hero-width':g.ownHeroWidth,'own-hero-height':g.ownHeroHeight,'dock-size':g.dockHeight,'hand-height':g.handHeight,'action-width':g.actionWidth,'seat-gap':g.gap,'center-top':g.center.top,'center-bottom':g.height-g.center.bottom,'center-side':g.center.left}))root.style.setProperty('--'+key,value+'px')
  root.style.setProperty('--take-card-height',Math.max(48,Math.min(124,g.height-top-bottom-176))+'px')
  root.style.setProperty('--center-card-height',centerCardHeight(g.center)+'px')
@@ -46,7 +48,7 @@ export function layoutArena(root){
  if(trail){const cards=[...trail.querySelectorAll('.fs-card-play')],fit=tableCardLayout({width:g.center.right-g.center.left,height:g.center.bottom-g.center.top,count:cards.length}),focus=cards.filter(c=>c.classList.contains('is-current-effect')).slice(-fit.visible),rest=cards.filter(c=>!focus.includes(c)).slice(-Math.max(0,fit.visible-focus.length));trail.style.setProperty('--table-columns',fit.columns);trail.style.setProperty('--table-card-height',fit.cardHeight+'px');cards.forEach(c=>c.hidden=!focus.includes(c)&&!(fit.visible>focus.length&&rest.includes(c)))}
  root.style.setProperty('--pool-card-height',Math.max(32,Math.min(120,g.height-g.dockHeight-60))+'px')
  const pool=root.querySelector('.fs-pool-choice'),list=pool?.querySelector('.fs-center-card-list')
- if(list)pool.style.setProperty('--pool-card-height',poolCardHeight({width:list.clientWidth,height:g.height-g.dockHeight-60,count:list.querySelectorAll('.fs-choice-card').length})+'px')
+ if(list)pool.style.setProperty('--pool-card-height',poolCardHeight({width:list.clientWidth,height:Math.max(32,list.clientHeight-16),count:list.querySelectorAll('.fs-choice-card').length})+'px')
  const take=root.querySelector('.fs-take-choice'),takeRow=take?.querySelector('.fs-center-card-list')
  if(takeRow)take.style.setProperty('--take-card-height',takeCardHeight(takeRow.clientHeight)+'px')
  for(const name of root.querySelectorAll('.fs-player-info>strong,.fs-own-hero strong')){const own=name.closest('.fs-own-hero'),panel=own?.closest('.fs-own-panel'),equipped=own?!!panel.querySelector('.fs-equip'):Number(name.closest('.fs-player')?.dataset.equipCount)>0,three=panel?.dataset.skillCount==='3',reserved=own?(equipped?(three?73:57):(three?44:29)):(equipped?47:18);name.style.setProperty('--hero-name-size',heroNameSize({height:own?g.ownHeroHeight:g.heroHeight,count:[...name.textContent].length,reserved})+'px')}
