@@ -1,0 +1,135 @@
+.private/fengshen/presentation.mjs
+  5058ed3dc1a97a8c 9-11
+.private/fengshen/table.mjs
+  5058ed3dc1a97a8c 4,57
+scripts/test-fengshen-choice-panels.mjs
+  5058ed3dc1a97a8c 44-56
+.private/fengshen/table.css
+  5058ed3dc1a97a8c 109-110
+.private/fengshen/app.js
+  5058ed3dc1a97a8c 24,402
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.8",
+  "base_commit_sha": "e73bd50b71f292fb4d4b92b8a9ec53e48f135137",
+  "prompts": {
+    "5058ed3dc1a97a8c": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6ac848ce090dc5dc9234c7bc",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 26,
+      "total_deletions": 8,
+      "accepted_lines": 22,
+      "overriden_lines": 0
+    }
+  },
+  "commit_stats": {
+    "git_diff_added_lines": 95,
+    "git_diff_deleted_lines": 22,
+    "ai_additions": 22,
+    "ai_accepted": 22,
+    "BYMC": 73,
+    "mixed_additions": 0,
+    "BYAC": 22,
+    "BYRC": 0,
+    "per_file": {
+      ".private/fengshen/app.js": {
+        "BYMC": [],
+        "BYAC": [
+          "24",
+          "402"
+        ],
+        "BYRC": []
+      },
+      ".private/fengshen/arena-table.css": {
+        "BYMC": [
+          "48-50"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      ".private/fengshen/card-hint.mjs": {
+        "BYMC": [
+          "1-16"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      ".private/fengshen/mobile-table.css": {
+        "BYMC": [
+          "33-40"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      ".private/fengshen/presentation.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "9-11"
+        ],
+        "BYRC": []
+      },
+      ".private/fengshen/table.css": {
+        "BYMC": [],
+        "BYAC": [
+          "109-110"
+        ],
+        "BYRC": []
+      },
+      ".private/fengshen/table.mjs": {
+        "BYMC": [
+          "11",
+          "177"
+        ],
+        "BYAC": [
+          "4",
+          "57"
+        ],
+        "BYRC": []
+      },
+      "package.json": {
+        "BYMC": [
+          "8"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-card-face-browser.mjs": {
+        "BYMC": [
+          "1-28"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-choice-panels.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "44-56"
+        ],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-interaction.mjs": {
+        "BYMC": [
+          "91-101"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-online-browser.mjs": {
+        "BYMC": [
+          "61-63",
+          "75"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      }
+    }
+  },
+  "commit_timestamp": 1791728722,
+  "requirement_id": ""
+}
