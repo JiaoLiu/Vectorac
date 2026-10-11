@@ -410,7 +410,7 @@ function dodgeComplete(s,event) {
 function dodgeWeapons(s,event) {
   if(!player(s,event.source).alive||!player(s,event.target).alive)return
   const weapon=player(s,event.source).equip.weapon?.type
-  if(weapon==='axe')makePending(s,{kind:'axe',actor:event.source,source:event.source,target:event.target,event})
+  if(weapon==='axe')makePending(s,{kind:'axe',actor:event.source,as:'axe',source:event.source,target:event.target,event})
   else if(weapon==='blade' && conversions(player(s,event.source),'sha').length && !(hasSkill(player(s,event.target),'kongcheng')&&!player(s,event.target).hand.length) && distance(s,event.source,event.target)<=attackRange(s,event.source))makePending(s,{kind:'blade',actor:event.source,as:'sha',source:event.source,target:event.target,event})
 }
 function delayed(s,event) {

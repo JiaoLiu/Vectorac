@@ -68,6 +68,14 @@ test('Sha response identifies attacker and defender; dodge is not damage',()=>{
 test('a blocked black Sha shows an armor result, never a hurt cue or endless attack prompt',()=>{
  let s=fixture(1),[c]=hand(s,1,'sha');equipment(s,0,'renwang');s=step(s,{type:'play',as:'sha',ids:[c.id],targets:[0]});assert.equal(s.pending,null);assert.equal(combatContext(playerView(s,0)).kind,'blocked');assert.equal(s.logs.some(l=>l.cue?.kind==='damage'),false)
 })
+test('axe forced-hit exposes matching respond options so two discards can be confirmed',()=>{
+ let s=fixture(1);const [sha]=hand(s,1,'sha'),[shan]=hand(s,0,'shan');equipment(s,1,'axe');const spare=hand(s,1,'tao','shan')
+ s=step(s,{type:'play',as:'sha',ids:[sha.id],targets:[0]});s=step(s,{type:'respond',ids:[shan.id]});const v=playerView(s,1)
+ assert.equal(v.pending.kind,'axe');assert.equal(v.pending.as,'axe')
+ const answer=v.legal.find(a=>a.type==='respond'&&(a.as||v.pending.as)==='axe'&&a.ids.length===2)
+ assert.ok(answer,'axe respond option must match the pending as so confirm can enable')
+ s=step(s,{type:'respond',ids:answer.ids,as:'axe'});assert.equal(s.players[0].hp,v.players[0].hp-1)
+})
 test('actual damage cues survive later healing and are not replayed by restore/render',()=>{
  let s=fixture(1);const [sha]=hand(s,1,'sha');s=step(s,{type:'play',as:'sha',ids:[sha.id],targets:[0]});const before=s
  s=step(s,{type:'pass'});const hits=damageCues(before,s);assert.equal(hits.length,1);assert.equal(hits[0].target,0);assert.equal(hits[0].source,1);assert.equal(hits[0].amount,1)
