@@ -2,7 +2,7 @@
 # Run on the host with bash -s. No install/npm/secret regeneration.
 set -euo pipefail
 online_root=/home/www/vectorac/mahjong-service
-online_archive=/home/www/vectorac/.deploy/mahjong-service-20261011-1909.tar.gz
+online_archive="${ONLINE_ARCHIVE:?Set ONLINE_ARCHIVE to the exact uploaded release archive}"
 online_count() { curl -fsS --max-time 8 http://127.0.0.1:3032/api/rooms | "$online_node" -e 'let b="";process.stdin.on("data",d=>b+=d);process.stdin.on("end",()=>{const j=JSON.parse(b);if(!j.ok||!Array.isArray(j.data.rooms))process.exit(2);process.stdout.write(String(j.data.rooms.length))})'; }
 online_pid=$(systemctl show mahjong -p MainPID --value)
 online_node=$(readlink "/proc/$online_pid/exe")

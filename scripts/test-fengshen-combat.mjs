@@ -2,7 +2,7 @@ import {stableOpponents} from './fixtures/gods-stable.mjs'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {readFile} from 'node:fs/promises'
-import {createGame,dispatch,playerView,allCards,restoreGame,catalog} from '../.private/fengshen/engine.mjs'
+import {createGame,createAssignedGame,dispatch,playerView,allCards,restoreGame,catalog,chooseAI} from '../.private/fengshen/engine.mjs'
 import {makeDeck} from '../.private/fengshen/core/catalog.mjs'
 import {hand,equipment} from './fixtures/sanguo.mjs'
 import {combatContext,damageCues,collateralSelection} from '../.private/fengshen/combat.mjs'
@@ -22,6 +22,35 @@ function fixture(current=0,heroId='yangjian'){
  return s
 }
 const step=(s,a)=>{const r=dispatch(s,{seat:s.pending?.actor??s.current,...a});assert.ok(r.ok,r.error);assert.equal(allCards(r.state).length,108);return r.state}
+test('AI saves Nullify on a full-HP group-heal recipient in either counter direction, for self/ally/enemy',()=>{
+ const s=createAssignedGame({roles:['lord','rebel','loyal','rebel'],heroIds:['yangjian','nezha','jifa','wenzhong'],sides:[0,1,0,1],seed:23});hand(s,1,'nullify')
+ const view=playerView(s,1),counter=view.players[1].hand.find(c=>c.type==='nullify')
+ for(const target of [0,1,3])for(const negated of [false,true]){
+  view.pending={kind:'counter',actor:1,id:20,source:2,target,cardType:'garden',negated};view.legal=[{type:'pass'},{type:'respond',as:'nullify',ids:[counter.id]}]
+  const p=view.players[target];p.hp=p.maxHp
+  assert.equal(chooseAI(view).type,'pass',`full HP target ${target}, negated=${negated}`)
+  p.hp--;const answer=chooseAI(view),enemy=target===0
+  assert.equal(answer.type,(enemy!==negated)?'respond':'pass',`wounded target ${target}, negated=${negated}`)
+  p.hp=p.maxHp
+ }
+ view.pending={kind:'counter',actor:1,id:21,source:2,target:0,cardType:'draw',negated:false}
+ assert.equal(chooseAI(view).type,'respond','full HP does not make enemy card-draw worthless')
+ view.pending={...view.pending,target:3,cardType:'arrows'};assert.equal(chooseAI(view).type,'respond','protect full-HP allies from real damage')
+})
+test('actual group-heal counter queue preserves AI Nullify for full target and evaluates later wounded enemy independently',()=>{
+ for(const missing of [0,1]){
+  let s=createAssignedGame({roles:['lord','loyal','rebel','rebel','renegade'],heroIds:['yangjian','nezha','jifa','wenzhong','hades'],seed:23})
+  Object.assign(s,{deck:catalog.makeDeck(),discard:[],processing:[],harvestPool:[],queue:[],pending:null,phase:'play',current:1,logs:[]});for(const p of s.players){p.hand=[];p.equip={weapon:null,armor:null,offenseHorse:null,defenseHorse:null};p.judgment=[];p.hp=p.maxHp}
+  const heal=hand(s,1,'garden')[0],nullify=hand(s,2,'nullify')[0];s.players[0].hp-=missing
+  s=step(s,{seat:1,type:'play',as:'garden',ids:[heal.id],targets:[]});let sawTarget=false,limit=0
+  while(s.pending?.kind==='counter'&&limit++<80){
+   const atTarget=s.pending.actor===2&&s.pending.target===0,decision=atTarget?chooseAI(playerView(s,2)):{type:'pass'}
+   if(atTarget){sawTarget=true;assert.equal(decision.type,missing?'respond':'pass')}
+   s=step(s,decision)
+  }
+  assert.ok(sawTarget);assert.equal(s.players[2].hand.some(c=>c.id===nullify.id),!missing);assert.equal(s.players[0].hp,s.players[0].maxHp-missing);assert.equal(allCards(s).length,108)
+ }
+})
 test('Peach recovery exposes actual public HP gain once, with no false full-HP cue',()=>{
  let s=fixture(),[c]=hand(s,0,'tao');s.players[0].hp--;const before=s;s=step(s,{type:'play',as:'tao',ids:[c.id],targets:[]})
  const cues=recoveryCues(before,s);assert.equal(cues.length,1);assert.equal(cues[0].amount,1);assert.equal(cues[0].target,0);assert.deepEqual(Object.keys(cues[0]).sort(),['amount','id','kind','target'])

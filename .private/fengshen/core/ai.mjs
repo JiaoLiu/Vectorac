@@ -120,6 +120,10 @@ function response(view,HERO_BY_ID,isRed) {
     return opts.find(o=>o.type==='choose'&&o.value===choice)||opts.find(o=>o.type==='choose')
   }
   if(pending.kind==='counter') {
+    // A group heal is countered per recipient, not as one global benefit.
+    // No HP can be gained here: preserve Nullify even in a counter-counter chain.
+    const recipient=view.players[pending.target]
+    if(pending.cardType==='garden'&&recipient&&(!recipient.alive||recipient.hp>=recipient.maxHp))return pass
     const harmful=['duel','snatch','dismantle','savage','arrows','collateral','indulgence','lightning'].includes(pending.cardType)
     const relation=hostility(view,pending.target)
     const shouldCancel=harmful?relation<-.5:relation>1
