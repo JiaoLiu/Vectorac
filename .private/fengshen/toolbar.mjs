@@ -24,10 +24,10 @@ export function toolButton(action,icon,label,pressed){return `<button type="butt
 // 对局始终默认全屏横屏（开局自动 requestFullscreen），不再提供全屏开关。
 export function renderToolbar({lobby,setup,paused,voice,music}){
  if(!lobby&&!setup)return `<nav aria-label="牌桌工具">${toolButton('menu','menu','菜单')}</nav>`
- return `<nav aria-label="牌桌工具">${toolButton('rules','rules','规则')}${toolButton('gallery','gallery','图鉴')}${!lobby&&!setup?toolButton('report','report','战报')+toolButton('pause',paused?'play':'pause',paused?'继续':'暂停',paused)+toolButton('new','new','新局'):setup?toolButton('new','back','返回'):''}${toolButton('voice',voice?'voice':'muted','报牌及音效'+(voice?'开':'关'),voice)}${toolButton('music',music?'music':'quietMusic','背景音乐'+(music?'开':'关'),music)}</nav>`
+ return `<nav aria-label="牌桌工具">${toolButton('rules','rules','规则')}${toolButton('gallery','gallery','图鉴')}${setup?toolButton('quit','back','返回'):''}${toolButton('voice',voice?'voice':'muted','报牌及音效'+(voice?'开':'关'),voice)}${toolButton('music',music?'music':'quietMusic','背景音乐'+(music?'开':'关'),music)}</nav>`
 }
 // 牌桌菜单面板内容：不常用功能全部收纳，开关项右侧显示当前状态。
 export function renderMenu({inGame,paused,voice,music,hints,pace,auto}){
  const item=(action,icon,label,state)=>`<button data-action="${action}" class="fs-menu-item ${state===true?'is-on':state===false?'is-off':''}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-icon="${icon}">${paths[icon]}</svg><span>${label}</span>${state==null?'':`<small>${state===true?'开':state===false?'关':state}</small>`}</button>`
- return `<div class="fs-menu-grid">${item('rules','rules','规则')+item('gallery','gallery','图鉴')+(inGame?item('report','report','战报')+item('pause',paused?'play':'pause',paused?'继续对局':'暂停对局')+item('new','new','新局')+item('auto','bot','AI 托管',auto):'')+item('voice',voice?'voice':'muted','报牌及音效',voice)+item('music',music?'music':'quietMusic','背景音乐',music)+item('help','help','教学提示',hints)+item('pace','clock','出牌节奏',pace)}</div>`
+ return `<div class="fs-menu-grid">${item('rules','rules','规则')+item('gallery','gallery','图鉴')+(inGame?item('report','report','战报')+item('auto','bot','AI 托管',auto)+item('quit','back','退出游戏'):'')+item('voice',voice?'voice':'muted','报牌及音效',voice)+item('music',music?'music':'quietMusic','背景音乐',music)+item('help','help','教学提示',hints)+item('pace','clock','出牌节奏',pace)}</div>`
 }

@@ -68,7 +68,7 @@ test('refresh preserves every draft stage and locked picks; old combat saves sti
   const game=createGame({heroId:'jifa',seed:42});assert.deepEqual(restoreSession(game),{kind:'game',game});assert.equal(restoreSession({kind:'setup',setup:{}}),null)
 })
 test('malformed drafts reject duplicate packets, leaked publication, unsupported heroes and mismatched identities',()=>{
-  const ready=finish(createSetup({seed:3}));for(const modify of [s=>s.roles[0]='invalid',s=>s.lord=(s.lord+1)%5,s=>s.offers[s.lord][0]='jiangziya',s=>s.picks[0]=s.picks[1],s=>s.published[0]='bad',s=>s.seed=-1,s=>s.candidateCount=4]){const bad=structuredClone(ready);modify(bad);assert.equal(restoreSetup(bad),null)}
+  const ready=finish(createSetup({seed:3}));for(const modify of [s=>s.roles[0]='invalid',s=>s.lord=(s.lord+1)%5,s=>s.offers[s.lord][0]='longji',s=>s.picks[0]=s.picks[1],s=>s.published[0]='bad',s=>s.seed=-1,s=>s.candidateCount=4]){const bad=structuredClone(ready);modify(bad);assert.equal(restoreSetup(bad),null)}
   let s=reveal(createSetup({seed:5}));s=step(s,chooseSetupAI(setupView(s,s.lord)));const bad=structuredClone(s),seat=(s.lord+1)%5;bad.published[seat]=bad.offers[seat][0];assert.equal(restoreSetup(bad),null)
 })
 test('home removes role/free-hero picking; draft shows only the local assigned candidates',()=>{

@@ -5,7 +5,7 @@ import {CANONICAL_BY_ID} from '../.private/fengshen/canonical-roster.mjs'
 import {catalog,createGame,createAssignedGame,dispatch,playerView,restoreGame,allCards,chooseAI} from '../.private/fengshen/engine.mjs'
 import {AUDIO_ENTRIES,skillAudioKey} from '../.private/fengshen/audio-manifest.mjs'
 test('all verified characters retain full original skills, HP, sex and mechanical faction',()=>{
- assert.equal(PLAYABLE_HEROES.length,26)
+ assert.equal(PLAYABLE_HEROES.length,32)
  for(const h of PLAYABLE_HEROES){const c=CANONICAL_BY_ID[h.id],runtime=catalog.HERO_BY_ID[h.engineId];assert.equal(c.verification,'verified');assert.deepEqual(Object.keys(h.skillNames).sort(),c.skills.slice().sort());assert.equal(runtime.hp,c.hp);assert.equal(runtime.sex,c.sex);assert.equal(runtime.faction,c.mechanicalFaction);assert.equal(h.referenceId,c.referenceId);assert.ok(HEROES.includes(h))}
 })
 test('unsupported full reference profiles cannot enter assignments or new games',()=>{for(const h of HEROES.filter(h=>!h.playable)){assert.throws(()=>createGame({heroId:h.id}));assert.throws(()=>createAssignedGame({heroIds:[h.id,'jifa','nezha','yangjian','dixin'],roles:['lord','loyal','rebel','rebel','renegade']}))}})

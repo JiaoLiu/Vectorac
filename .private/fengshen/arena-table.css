@@ -235,3 +235,5 @@
 .fs-role-marker>i{font:8px/1 sans-serif;position:absolute;bottom:1px;right:1px;font-style:normal;opacity:.8}
 .fs-player:has(.fs-role-marker) .fs-player-main>.fs-identity{visibility:hidden}
 .fs-playing .fs-pool-choice>header small{font-size:13px;color:#f2bcff;border:1px solid #f0a3ff;border-radius:4px;background:#56236bed;padding:4px 8px}
+.fs-flipped>.fs-portrait{filter:grayscale(.65);opacity:.5}
+.fs-face-down{position:absolute;left:2px;right:2px;top:35%;padding:5px 1px;z-index:7;background:#263441ee;color:#dfcff4;border-block:1px solid #c1a5d7;font:bold 10px/1.2 sans-serif;text-align:center;pointer-events:none}

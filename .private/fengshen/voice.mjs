@@ -53,7 +53,9 @@ export class CardVoice {
           const buffer=await this.buffer(audioPath(cue.key,cue.sex))
           if(this.closed||generation!==this.generation||!this.enabled)break
           const source=this.context.createBufferSource();source.buffer=buffer;source.connect(this.context.destination);this.source=source
-          await new Promise((resolve,reject)=>{source.onended=()=>{source.disconnect();resolve()};try{source.start()}catch(e){source.disconnect();reject(e)}})
+          // onended 在页面后台（AudioContext 挂起）可能不会触发；interrupt 给 stop() 一个
+          // 主动结束等待的出口，否则 drain 永远挂在 await 上，busy 不复位，AI 调度被无限推迟。
+          await new Promise((resolve,reject)=>{this.interrupt=()=>{try{source.disconnect()}catch{};resolve()};source.onended=()=>{this.interrupt=null;source.disconnect();resolve()};try{source.start()}catch(e){this.interrupt=null;source.disconnect();reject(e)}})
           this.history.push({...cue,status:'played'});this.history=this.history.slice(-80)
         }catch(error){this.history.push({...cue,status:'failed'});console.warn('[封神报牌]',cue.key,error.message)}
       }
@@ -63,7 +65,7 @@ export class CardVoice {
     }
   }
   setEnabled(enabled){this.enabled=!!enabled;if(!enabled)this.stop();else this.unlock()}
-  stop(){this.generation++;this.queue=[];if(this.source){try{this.source.stop()}catch{}}for(const source of this.effects){try{source.stop()}catch{}}this.effects.clear()}
+  stop(){this.generation++;this.queue=[];if(this.source){try{this.source.stop()}catch{}}for(const source of this.effects){try{source.stop()}catch{}}this.effects.clear();this.interrupt?.();this.interrupt=null}
   destroy(){this.closed=true;this.stop();this.context?.close().catch(()=>{})}
 }
 // Announce the effective card, not its physical disguise (e.g. Longdan Dodge

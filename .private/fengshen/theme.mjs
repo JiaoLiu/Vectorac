@@ -1,5 +1,7 @@
 // Internal prototype: aliases do not constitute a cleared commercial design.
-import { HERO_BY_ID, CARDS, SKILLS, makeDeck } from './core/catalog.mjs'
+import { HERO_BY_ID as STANDARD_HERO_BY_ID, CARDS, SKILLS, makeDeck } from './core/catalog.mjs'
+import {EXPANSION_BY_ID} from './classic-expansion.mjs'
+const HERO_BY_ID={...STANDARD_HERO_BY_ID,...EXPANSION_BY_ID}
 import {GODS,GOD_FACTIONS,GOD_ALLIANCES} from './gods.mjs'
 import {FENGSHEN_EXPANSION,EXPANSION_CARDS,expandedDeck} from './fengshen-expansion.mjs'
 import {CANONICAL_BY_ID}from './canonical-roster.mjs'
@@ -43,7 +45,7 @@ export const HEROES=draftHeroes.map(h=>{
  const c=CANONICAL_BY_ID[h.id],base=HERO_BY_ID[c.referenceId]
  const complete=!!base&&base.skills.slice().sort().join('|')===c.skills.slice().sort().join('|')
  return {...h,baseHero:c.referenceId,engineId:c.referenceId,referenceId:c.referenceId,referenceName:c.referenceName,ruleset:c.ruleset,sourcePack:c.pack,mechanicalFaction:c.mechanicalFaction,hp:c.hp,sex:c.sex,
-   skillNames:Object.fromEntries(c.skills.map((s,i)=>[s,h.skillNames[s]||newSkillNames[s]||c.sourceSkillNames[i]])),
+   skillNames:Object.fromEntries(c.skills.map((s,i)=>[s,h.id==='luya'&&s==='mashu'?'游仙':h.skillNames[s]||newSkillNames[s]||c.sourceSkillNames[i]])),
    playable:complete,missingSkills:complete?[]:c.skills.filter(s=>!SKILLS[s]),
  }
 })

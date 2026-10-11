@@ -67,6 +67,10 @@ function response(view,HERO_BY_ID,isRed) {
     return opts.filter(a=>a.type==='transform').sort((a,b)=>score(b)-score(a))[0]||pass
   }
   if(pending.kind==='reveal')return opts.find(o=>o.type==='ack')
+  if(pending.kind==='shensu'){
+    const p=view.players[view.seat],score=a=>hostility(view,a.target)*2+(view.players[a.target].hp<=2?3:0)-cost(view,a.ids)*.45+(pending.mode===1?(p.judgment.length?5:-4):p.hand.some(c=>c.type==='sha'||c.type==='draw')?-6:-2),rushes=opts.filter(a=>a.type==='rush').sort((a,b)=>score(b)-score(a))
+    return rushes[0]&&score(rushes[0])>0?rushes[0]:pass
+  }
   const answers=opts.filter(o=>o.type==='respond').sort((a,b)=>cost(view,a.ids)-cost(view,b.ids))
   if(pending.kind==='discard')return {type:'discard',ids:orderByValue(view).slice(0,pending.count).map(c=>c.id)}
   if(pending.kind==='guess')return opts[(view.revision*7+view.seat)%opts.length]
@@ -106,6 +110,8 @@ function response(view,HERO_BY_ID,isRed) {
     if(pending.skill==='luoyi')choice=view.players[view.seat].hand.some(c=>c.type==='sha'||c.type==='duel')?'yes':'no'
     if(pending.skill==='fan')choice=view.players[pending.target]?.equip.armor?.type==='vine'?'yes':'no'
     if(['ganglie','fankui'].includes(pending.skill))choice=hostility(view,pending.source)>0?'yes':'no'
+    if(['mengjin','liegong'].includes(pending.skill))choice=hostility(view,pending.target)>0?'yes':'no'
+    if(pending.skill==='jushou'){const p=view.players[view.seat];choice=p.hand.length<=2||p.hp<=2?'yes':'no'}
     if(pending.skill==='dualTarget')choice=orderByValue(view).length&&cardValue(orderByValue(view)[0],view)<5?'discard':'draw'
     if(pending.skill==='ice')choice=view.players[pending.target]?.hp>1&&view.players[pending.target]?.handCount>1?'yes':'no'
     if(pending.skill==='bow')choice=opts.find(o=>o.value!=='no'&&o.type==='choose')?.value||'no'
@@ -159,7 +165,8 @@ const chooseAI=function chooseAI(view) {
         else if(action.as==='collateral')score=hostility(view,action.targets[1])*2+Math.max(0,rel)+1
         else if(action.as==='lightning')score=-2
       } else if(action.type==='skill') {
-        if(action.skill==='zhiheng') {
+        if(action.skill==='qiangxi')score=hostility(view,action.target)*2+(view.players[action.target].hp<=1?5:0)-(action.ids.length?cost(view,action.ids)*.45:self.hp<=1?50:4)
+        else if(action.skill==='zhiheng') {
           const cards=ownCards(view).filter(c=>cardValue(c,view)<3.5||CARDS[c.type].category==='equip'&&self.equip[CARDS[c.type].slot]?.id===c.id&&CARDS[c.type].slot==='weapon'&&self.hand.some(h=>CARDS[h.type].slot==='weapon'&&CARDS[h.type].range>CARDS[c.type].range))
           candidate={...action,ids:cards.map(c=>c.id)};score=cards.length?10:-3
         } else if(action.skill==='kurou')score=self.hp>2&&self.hand.length<5?5:-2

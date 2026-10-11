@@ -40,7 +40,7 @@ function draw(s, seat, count, cause=null) {
   if (!player(s, seat).alive) return
   let actual = 0
   for (let i = 0; i < count; i++) { const card = topCard(s); if (!card) break; player(s, seat).hand.push(card); actual++ }
-  if (actual) note(s, `${name(s, seat)}摸了 ${actual} 张牌`,catalog.trackBattle&&cause==='card-draw'?{kind:'draw',target:seat,count:actual,reason:cause,playedId:s.lastPlayed?.id}:null)
+  if (actual) note(s, `${name(s, seat)}摸了 ${actual} 张牌`,catalog.trackBattle&&['card-draw','skill-draw'].includes(cause)?{kind:'draw',target:seat,count:actual,reason:cause,playedId:s.lastPlayed?.id}:null)
 }
 function heal(s, seat, amount) { const p = player(s, seat); p.hp = Math.min(p.maxHp, p.hp + amount); note(s, `${name(s, seat)}回复 ${amount} 点体力`) }
 function ownedCards(p) { return p.hand.concat(slots.map(slot => p.equip[slot]).filter(Boolean)) }
@@ -143,6 +143,10 @@ function supportCandidates(s, seat, as) {
   return !s.teamMode && p.role === 'lord' && hasSkill(p,skill) ? orderFrom(s,(seat+1)%s.players.length).filter(other => other !== seat && hero(player(s,other)).faction === faction) : []
 }
 function responseOptions(s, pending) {
+  if(pending.kind==='shensu'){
+    const p=player(s,pending.actor),costs=pending.mode===1?[[]]:ownedCards(p).filter(c=>CARDS[c.type].category==='equip').map(c=>[c.id])
+    return [{type:'pass'},...costs.flatMap(ids=>aliveSeats(s).filter(t=>t!==p.seat&&!(hasSkill(player(s,t),'kongcheng')&&!player(s,t).hand.length)).map(target=>({type:'rush',target,ids,mode:pending.mode})))]
+  }
   if(pending.kind==='incarnation'){const p=player(s,pending.actor);return [...incarnationOptions(p),...(!pending.required?[{type:'pass'}]:[])]}
   const p = player(s,pending.actor), opts = []
   if(pending.kind==='guanxing')return [{type:'arrange',pool:clone(pending.pool)},{type:'pass'}]
@@ -200,6 +204,7 @@ function legalActions(s, seat) {
   if(hasSkill(p,'jieyin')&&!p.marks.jieyin&&p.hand.length>=2&&s.players.some(t=>t.alive&&t.seat!==seat&&hero(t).sex==='male'&&t.hp<t.maxHp))actions.push({type:'skill',skill:'jieyin'})
   if(hasSkill(p,'qingnang')&&!p.marks.qingnang&&p.hand.length&&s.players.some(t=>t.alive&&t.hp<t.maxHp))actions.push({type:'skill',skill:'qingnang'})
   if(hasSkill(p,'lijian')&&!p.marks.lijian&&ownedCards(p).length&&s.players.filter(t=>t.alive&&t.seat!==seat&&hero(t).sex==='male').length>=2)actions.push({type:'skill',skill:'lijian'})
+  if(hasSkill(p,'qiangxi')&&!p.marks.qiangxi)for(const ids of [[],...ownedCards(p).filter(c=>CARDS[c.type].slot==='weapon').map(c=>[c.id])])for(const target of aliveSeats(s).filter(t=>t!==seat&&distance(s,seat,t,ids)<=attackRange(s,seat,ids)))actions.push({type:'skill',skill:'qiangxi',ids,target})
   if (supportCandidates(s,seat,'sha').length && (p.marks.sha<1 || unlimited(p))) for (const target of targetsFor(s,seat,'sha')) actions.push({type:'skill',skill:'jijiang',target})
   actions.push({type:'end'}); return actions
 }
@@ -324,6 +329,13 @@ function attacking(s, event) {
     event.announced=true
   }
   const attacker=player(s,event.source), defender=player(s,event.target)
+  if(!event.liegongChecked){
+    event.liegongChecked=true
+    if(hasSkill(attacker,'liegong')&&s.current===event.source&&s.phase==='play'&&(defender.hand.length>=attacker.hp||defender.hand.length<=attackRange(s,event.source))){
+      if(autoSkill('liegong')){announceSkill(s,event.source,'liegong');event.unavoidable=true}
+      else {makePending(s,{kind:'choice',actor:event.source,target:event.target,skill:'liegong',event,choices:[{value:'yes',label:'烈弓：令目标不能闪'},{value:'no',label:'允许正常响应'}]});return}
+    }
+  }
   if(!event.redirectChecked){
     event.redirectChecked=true
     if(hasSkill(defender,'liuli')&&responseOptions(s,{kind:'liuli',actor:event.target,event}).some(a=>a.type==='redirect')){makePending(s,{kind:'liuli',actor:event.target,source:event.source,target:event.target,skill:'liuli',event});return}
@@ -357,6 +369,11 @@ function attackDamage(s,event) {
 }
 function dodgeComplete(s,event) {
   note(s,`${name(s,event.target)}闪过了杀`,catalog.trackBattle?{kind:'dodge',source:event.source,target:event.target}:null)
+  if(player(s,event.source).alive&&hasSkill(player(s,event.source),'mengjin')&&ownedCards(player(s,event.target)).length){makePending(s,{kind:'choice',actor:event.source,target:event.target,skill:'mengjin',event,choices:[{value:'yes',label:'猛进：弃置目标一张牌'},{value:'no',label:'不发动'}]});return}
+  dodgeWeapons(s,event)
+}
+function dodgeWeapons(s,event) {
+  if(!player(s,event.source).alive||!player(s,event.target).alive)return
   const weapon=player(s,event.source).equip.weapon?.type
   if(weapon==='axe')makePending(s,{kind:'axe',actor:event.source,source:event.source,target:event.target,event})
   else if(weapon==='blade' && conversions(player(s,event.source),'sha').length && !(hasSkill(player(s,event.target),'kongcheng')&&!player(s,event.target).hand.length) && distance(s,event.source,event.target)<=attackRange(s,event.source))makePending(s,{kind:'blade',actor:event.source,as:'sha',source:event.source,target:event.target,event})
@@ -434,9 +451,11 @@ function settleEvent(s,event) {
     case 'turnStart': {
       const p=player(s,event.seat); if(!p.alive){enqueue(s,{type:'turnEnd',seat:event.seat});break}
       s.current=event.seat;s.turns++;s.phase='resolve';p.marks={sha:0,rende:0};note(s,`第 ${s.turns} 回合 · ${name(s,event.seat)}`)
+      if(p.faceDown){p.faceDown=false;note(s,`${name(s,event.seat)}翻回正面，跳过本回合`);enqueue(s,{type:'turnStart',seat:nextAlive(s,event.seat)});break}
       enqueue(s,...(hasSkill(p,'huashen')?[{type:'incarnationOffer',seat:event.seat,reason:'start'}]:[]),{type:'turnPrepare',seat:event.seat});break
     }
-    case 'turnPrepare':{const p=player(s,event.seat);if(p.alive)enqueue(s,...(hasSkill(p,'guanxing')?[{type:'guanxingStart',seat:event.seat}]:[]),...(hasSkill(p,'luoshen')?[{type:'luoshenAsk',seat:event.seat}]:[]),...p.judgment.slice().reverse().map(c=>({type:'delayed',target:event.seat,cardId:c.id})),{type:'drawPhase',seat:event.seat},{type:'playPhase',seat:event.seat});break}
+    case 'turnPrepare':{const p=player(s,event.seat);if(!p.alive)break;enqueue(s,...(hasSkill(p,'guanxing')?[{type:'guanxingStart',seat:event.seat}]:[]),...(hasSkill(p,'luoshen')?[{type:'luoshenAsk',seat:event.seat}]:[]),{type:'judgeDrawStart',seat:event.seat});break}
+    case 'judgeDrawStart':{const p=player(s,event.seat);if(!p.alive)break;if(!event.checked&&hasSkill(p,'shensu')){const pending={kind:'shensu',actor:event.seat,skill:'shensu',mode:1,event:{...event,checked:true}};if(responseOptions(s,pending).some(a=>a.type==='rush')){makePending(s,pending);break}}enqueue(s,...(p.marks.skipJudgeDraw?[]:[...p.judgment.slice().reverse().map(c=>({type:'delayed',target:event.seat,cardId:c.id})),{type:'drawPhase',seat:event.seat}]),{type:'playPhase',seat:event.seat});break}
     case 'incarnationOffer':{
       const p=player(s,event.seat);if(!p.alive||!hasSkill(p,'huashen'))break
       if(event.reason==='initial')acquireIncarnations(s,p.seat,2)
@@ -450,14 +469,17 @@ function settleEvent(s,event) {
       else if(hasSkill(p,'luoyi')||hasSkill(p,'yingzi'))makePending(s,{kind:'choice',actor:event.seat,skill:hasSkill(p,'luoyi')?'luoyi':'yingzi',choices:[{value:'yes',label:hasSkill(p,'luoyi')?'裸衣：少摸一张，增强伤害':'英姿：额外摸一张'},{value:'no',label:'正常摸两张'}]})
       else draw(s,event.seat,2);break
     }
-    case 'playPhase': if(!player(s,event.seat).alive||player(s,event.seat).marks.skipPlay)enqueue(s,{type:'endPhase',seat:event.seat});else s.phase='play';break
+    case 'playPhase':{const p=player(s,event.seat);if(!p.alive||p.marks.skipPlay){enqueue(s,{type:'endPhase',seat:event.seat});break}if(!event.checked&&hasSkill(p,'shensu')){const pending={kind:'shensu',actor:event.seat,skill:'shensu',mode:2,event:{...event,checked:true}};if(responseOptions(s,pending).some(a=>a.type==='rush')){makePending(s,pending);break}}s.phase='play';break}
     case 'endPhase': {
       const p=player(s,event.seat);s.phase='resolve'
       if(p.alive&&hasSkill(p,'keji')&&!p.marks.shaInPlay){announceSkill(s,event.seat,'keji');enqueue(s,{type:'turnEnd',seat:event.seat})}
       else if(p.alive && p.hand.length>Math.max(0,p.hp))makePending(s,{kind:'discard',actor:event.seat,count:p.hand.length-Math.max(0,p.hp)})
       else enqueue(s,{type:'turnEnd',seat:event.seat});break
     }
-    case 'turnEnd': enqueue(s,...(player(s,event.seat).alive&&hasSkill(player(s,event.seat),'biyue')?[{type:'equipmentDraw',seat:event.seat,count:1,skill:'biyue'}]:[]),...(player(s,event.seat).alive&&hasSkill(player(s,event.seat),'huashen')?[{type:'incarnationOffer',seat:event.seat,reason:'end'}]:[]),{type:'turnStart',seat:nextAlive(s,event.seat)});break
+    case 'turnEnd': enqueue(s,...(player(s,event.seat).alive&&hasSkill(player(s,event.seat),'biyue')?[{type:'equipmentDraw',seat:event.seat,count:1,skill:'biyue'}]:[]),...(player(s,event.seat).alive&&hasSkill(player(s,event.seat),'jushou')?[{type:'jushouOffer',seat:event.seat}]:[]),...(player(s,event.seat).alive&&hasSkill(player(s,event.seat),'huashen')?[{type:'incarnationOffer',seat:event.seat,reason:'end'}]:[]),{type:'turnStart',seat:nextAlive(s,event.seat)});break
+    case 'jushouOffer':if(player(s,event.seat).alive)makePending(s,{kind:'choice',actor:event.seat,skill:'jushou',choices:[{value:'yes',label:'据守：摸三张并翻面'},{value:'no',label:'不发动'}]});break
+    case 'kuangguRecover':{const p=player(s,event.seat);if(p.alive&&p.hp<p.maxHp){announceSkill(s,event.seat,'kuanggu');heal(s,event.seat,event.count)}break}
+    case 'dodgeFollow':dodgeWeapons(s,event);break
     case 'finishCard': finishCards(s,event.ids);break
     case 'counter': counter(s,event.chain);break
     case 'gate': gate(s,event.effect,event.cardType,event.source,event.target,event.cancel);break
@@ -478,9 +500,10 @@ function settleEvent(s,event) {
         if(p.equip.armor?.type==='vine'&&event.nature==='fire')event.amount++
         if(p.equip.armor?.type==='silverlion')event.amount=Math.min(1,event.amount)
       }
+      const source=event.source!=null?player(s,event.source):null,recover=source?.alive&&hasSkill(source,'kuanggu')&&distance(s,event.source,event.target)<=1
       p.hp-=event.amount;suspect(s,event.source,event.target,true);note(s,`${name(s,event.source)}使${name(s,event.target)}受到 ${event.amount} 点伤害`,catalog.trackBattle?{kind:'damage',source:event.source,target:event.target,amount:event.amount}:null)
       s.lastEvent={id:s.eventId,source:event.source,targets:[event.target],label:'伤害',amount:event.amount,cards:[]}
-      enqueue(s,{type:'rescue',target:event.target,source:event.source},{...event,type:'postDamage'});break
+      enqueue(s,{type:'rescue',target:event.target,source:event.source},...(recover?[{type:'kuangguRecover',seat:event.source,count:event.amount}]:[]),{...event,type:'postDamage'});break
     }
     case 'postDamage': {
       const p=player(s,event.target);if(!p.alive)break
@@ -597,7 +620,10 @@ function failedResponse(s,pending) {
 function choice(s,pending,value) {
   const p=player(s,pending.actor),event=pending.event
   if(!pending.choices.some(c=>c.value===value))throw new Error('请选择有效选项')
-  if(pending.skill==='luoyi'){p.marks.naked=value==='yes';draw(s,pending.actor,value==='yes'?1:2)}
+  if(pending.skill==='liegong'){if(value==='yes'){announceSkill(s,pending.actor,'liegong');event.unavoidable=true}enqueue(s,event)}
+  else if(pending.skill==='jushou'&&value==='yes'){announceSkill(s,pending.actor,'jushou');draw(s,pending.actor,3,'skill-draw');p.faceDown=!p.faceDown;note(s,`${name(s,pending.actor)}${p.faceDown?'翻至背面':'翻回正面'}`)}
+  else if(pending.skill==='mengjin'){if(value==='yes'){announceSkill(s,pending.actor,'mengjin');enqueue(s,{type:'take',actor:pending.actor,source:pending.actor,target:event.target,mode:'dismantle',equipmentOnly:true},{...event,type:'dodgeFollow'})}else enqueue(s,{...event,type:'dodgeFollow'})}
+  else if(pending.skill==='luoyi'){p.marks.naked=value==='yes';draw(s,pending.actor,value==='yes'?1:2)}
   else if(pending.skill==='xinsheng'&&value==='yes')acquireIncarnations(s,pending.actor,pending.count)
   else if(pending.skill==='tiandu')judgmentComplete(s,pending.event.ctx,value==='yes')
   else if(pending.skill==='luoshen'&&value==='yes')beginJudgment(s,{owner:pending.actor,kind:'luoshen'})
@@ -674,7 +700,13 @@ function playCard(s,action) {
 function activeSkill(s,action) {
   const p=player(s,action.seat),skill=action.skill,ids=action.ids||[],target=action.target
   if(!legalActions(s,action.seat).some(a=>a.type==='skill'&&a.skill===skill))throw new Error('技能暂时不可发动')
-  if(skill==='rende') {
+  if(skill==='qiangxi'){
+    if(!legalActions(s,action.seat).some(a=>a.type==='skill'&&a.skill===skill&&a.target===target&&equalIDs(a.ids,ids)))throw new Error('强袭需要范围内目标与一张武器，或失去一点体力')
+    p.marks.qiangxi=true;note(s,`${name(s,action.seat)}发动${labelSkill(s,action.seat,skill,'强袭')}`)
+    remember(s,[],labelSkill(s,action.seat,skill,'强袭'),action.seat,[target],'qiangxi')
+    if(ids.length)spend(s,action.seat,ids);else {p.hp--;note(s,`${name(s,action.seat)}失去一点体力`);enqueue(s,{type:'rescue',target:action.seat,source:null})}
+    s.queue.push({type:'damage',source:action.seat,target,amount:1,cardIds:[]})
+  } else if(skill==='rende') {
     if(!ids.length||!player(s,target)?.alive||target===action.seat||!ids.every(id=>p.hand.some(c=>c.id===id)))throw new Error('仁德需选择手牌和一名其他角色')
     const cards=spend(s,action.seat,ids,true);s.processing=s.processing.filter(c=>!ids.includes(c.id));player(s,target).hand.push(...cards)
     const before=p.marks.rende||0;p.marks.rende=before+ids.length;if(before<2&&p.marks.rende>=2)heal(s,action.seat,1)
@@ -714,6 +746,16 @@ function answer(s,action) {
   const matches=options.some(o=>o.type===action.type&&(o.value==null||o.value===action.value)&&(o.ids==null||o.ids.length===action.ids?.length&&o.ids.every(id=>action.ids.includes(id))))
   if(!matches)throw new Error('请选择可用的响应')
   s.pending=null
+  if(pending.kind==='shensu'){
+    if(action.type==='rush'){
+      if(!options.some(o=>o.type==='rush'&&o.target===action.target&&equalIDs(o.ids,action.ids)))throw new Error('请选择本次疾行的目标与装备成本')
+      if(action.ids.length)spend(s,action.seat,action.ids)
+      player(s,action.seat).marks[pending.mode===1?'skipJudgeDraw':'skipPlay']=true
+      announceSkill(s,action.seat,'shensu');remember(s,[],labelSkill(s,action.seat,'shensu','神速'),action.seat,[action.target],'sha');s.lastPlayed.virtualType='sha'
+      enqueue(s,{type:'attack',source:action.seat,target:action.target,color:'none',nature:'normal',cardIds:[],ignoreArmor:player(s,action.seat).equip.weapon?.type==='qinggang'},pending.event)
+    }else enqueue(s,pending.event)
+    return
+  }
   if(pending.kind==='incarnation'){
     if(action.type==='pass')return
     if(!options.some(o=>o.type==='transform'&&o.heroId===action.heroId&&o.skill===action.skill))throw new Error('请选择这次变身池中的角色和技能')
@@ -815,10 +857,10 @@ function playerView(s,seat) {
     ...(catalog.trackBattle?{lastResponse:clone(s.lastResponse||null),harvestPool:clone(s.harvestPool),exchange:clone(s.exchange||null)}:{}),
     players:s.players.map(p=>({seat:p.seat,heroId:p.heroId,hp:p.hp,maxHp:p.maxHp,alive:p.alive,handCount:p.hand.length,
       hand:p.seat===seat?clone(p.hand):[],role:s.teamMode||p.role==='lord'||p.seat===seat||!p.alive||s.phase==='finished'?p.role:null,
-      equip:clone(p.equip),judgment:p.judgment.map(c=>publicDelay(p,c)),marks:clone(p.marks),
+      equip:clone(p.equip),judgment:p.judgment.map(c=>publicDelay(p,c)),marks:clone(p.marks),faceDown:!!p.faceDown,
       ...(p.incarnation?{effectiveSkills:hero(p).skills.slice(),effectiveSex:hero(p).sex,effectiveFaction:hero(p).faction,incarnation:p.seat===seat?clone(p.incarnation):{activeHero:p.incarnation.activeHero,activeSkill:p.incarnation.activeSkill,count:p.incarnation.pool.length}}:{})})),
     pending:s.pending?{id:s.pending.id,kind:s.pending.kind,actor:s.pending.actor,as:s.pending.as,target:s.pending.target,source:s.pending.source,skill:s.pending.skill,remaining:s.pending.remaining,count:s.pending.count,
-      negated:s.pending.chain?.negated,cardType:s.pending.chain?.cardType,requester:s.pending.requester,required:s.pending.required,reason:s.pending.reason,
+      negated:s.pending.chain?.negated,cardType:s.pending.chain?.cardType,requester:s.pending.requester,required:s.pending.required,reason:s.pending.reason,mode:s.pending.mode,
       ...(catalog.trackBattle?{context:(()=>{const e=s.pending.event||s.pending.returnPending?.event;return e?{type:e.type,source:e.source,target:e.target,victim:e.victim,commandedBy:e.commandedBy}:null})()}: {}),
       ...(s.pending.kind==='reveal'?{card:clone(s.pending.card),delayType:s.pending.delayType,hit:s.pending.hit}:{})}:null,
     ...(s.pending?.kind==='judge-replace'?{judgmentCard:clone(s.pending.card),judgmentKind:s.pending.event.ctx.kind}:{}),
@@ -828,14 +870,15 @@ function playerView(s,seat) {
   }
 }
 function allCards(s) {return s.deck.concat(s.discard,s.processing,s.harvestPool,...s.players.map(p=>ownedCards(p).concat(p.judgment)))}
-const eventTypes=new Set(['turnStart','turnPrepare','incarnationOffer','xinshengOffer','drawPhase','playPhase','endPhase','turnEnd','finishCard','counter','gate','attack','attackDamage','duel','aoe','damage','postDamage','rescue','heal','draw','equipmentDraw','jizhi','take','harvest','harvestCleanup','collateral','delayed','judgeResult','judgeApply','delayCancelled','supportAsk','judgmentScan','judgmentComplete','luoshenAsk','yijiOffer','guanxingStart'])
-const pendingKinds=new Set(['incarnation','response','rescue','counter','support','blade','axe','discard','choice','guess','pick','take','reveal','tuxi','judge-replace','yiji','guanxing','liuli'])
+const eventTypes=new Set(['judgeDrawStart','jushouOffer','kuangguRecover','dodgeFollow','turnStart','turnPrepare','incarnationOffer','xinshengOffer','drawPhase','playPhase','endPhase','turnEnd','finishCard','counter','gate','attack','attackDamage','duel','aoe','damage','postDamage','rescue','heal','draw','equipmentDraw','jizhi','take','harvest','harvestCleanup','collateral','delayed','judgeResult','judgeApply','delayCancelled','supportAsk','judgmentScan','judgmentComplete','luoshenAsk','yijiOffer','guanxingStart'])
+const pendingKinds=new Set(['shensu','incarnation','response','rescue','counter','support','blade','axe','discard','choice','guess','pick','take','reveal','tuxi','judge-replace','yiji','guanxing','liuli'])
 const validSeat=seat=>Number.isInteger(seat)&&seat>=0&&seat<8
 function validEvent(event,depth=0) {
   if(!event||depth>8||!eventTypes.has(event.type))return false
   for(const key of ['seat','source','target','actor','victim','requester'])if(event[key]!=null&&!validSeat(event[key]))return false
   if(event.type==='incarnationOffer'&&!['initial','start','end'].includes(event.reason))return false
   if(event.type==='xinshengOffer'&&(!Number.isInteger(event.count)||event.count<1||event.count>8))return false
+  if(event.type==='kuangguRecover'&&(!Number.isInteger(event.count)||event.count<1||event.count>8))return false
   if(event.effect&&!validEvent(event.effect,depth+1)||event.cancel&&!validEvent(event.cancel,depth+1)||event.event&&!validEvent(event.event,depth+1))return false
   if(event.type==='counter'&&(!event.chain||!validEvent(event.chain.effect,depth+1)))return false
   if(['judgmentScan','judgmentComplete'].includes(event.type)){
@@ -855,7 +898,8 @@ function validPending(p,depth=0) {
   if(p.kind==='counter'&&(!p.chain||!validEvent(p.chain.effect)||!CARDS[p.chain.cardType]||typeof p.chain.negated!=='boolean'||!validSeat(p.chain.cursor)||!Number.isInteger(p.chain.passes)))return false
   if(p.kind==='discard'&&(!Number.isInteger(p.count)||p.count<1||p.count>makeDeck().length))return false
   if(p.kind==='choice'&&(!Array.isArray(p.choices)||!p.choices.length||p.choices.length>5||p.choices.some(c=>typeof c.value!=='string'||typeof c.label!=='string')))return false
-  if(p.kind==='choice'&&!['xinsheng','luoyi','yingzi','jizhi','jianxiong','tieji','dualsword','dualTarget','ice','bow','fan','xiaoji','lianying','biyue','tiandu','fankui','ganglie','luoshen','yiji'].includes(p.skill))return false
+  if(p.kind==='choice'&&!['liegong','jushou','mengjin','xinsheng','luoyi','yingzi','jizhi','jianxiong','tieji','dualsword','dualTarget','ice','bow','fan','xiaoji','lianying','biyue','tiandu','fankui','ganglie','luoshen','yiji'].includes(p.skill))return false
+  if(p.kind==='shensu'&&(![1,2].includes(p.mode)||p.skill!=='shensu'||p.event?.type!==(p.mode===1?'judgeDrawStart':'playPhase')||p.event.seat!==p.actor))return false
   if(p.kind==='choice'&&p.skill==='xinsheng'&&(!Number.isInteger(p.count)||p.count<1||p.count>8))return false
   if(p.kind==='incarnation'&&(typeof p.required!=='boolean'||!['initial','start','end'].includes(p.reason)||p.skill!=='huashen'))return false
   if(p.kind==='pick'&&(!Array.isArray(p.pool)||!p.pool.length||p.pool.length>8||p.pool.some(c=>!CARDS[c.type])))return false
@@ -880,6 +924,7 @@ function restoreGame(raw) {
       if(new Set(s.players.map(p=>p.heroId)).size!==s.players.length)return null
     }else if(new Set(s.players.map(p=>p.heroId)).size!==s.players.length||s.players.filter(p=>p.role==='lord').length!==1||!s.players.some(p=>p.role==='rebel')||s.players.filter(p=>p.role==='renegade').length>1||s.players.some(p=>!['lord','loyal','rebel','renegade'].includes(p.role)))return null
     for(const p of s.players)if(!HERO_BY_ID[p.heroId]||p.seat!==s.players.indexOf(p)||!Number.isInteger(p.hp)||p.hp>p.maxHp||p.hp< -4||typeof p.alive!=='boolean'||p.maxHp!==hero(p).hp+(s.teamMode?0:(p.role==='lord'?1:0))||!Array.isArray(p.hand)||!Array.isArray(p.judgment)||!p.equip||!p.marks)return null
+    if(s.players.some(p=>p.faceDown!=null&&typeof p.faceDown!=='boolean'))return null
     if(s.players.some(p=>!validIncarnation(catalog,p)))return null
     if(s.players.some(p=>p.incarnation&&(s.phase==='play'&&!p.incarnation.activeHero||p.incarnation.pool.some(id=>s.players.some(other=>other.alive&&other.heroId===id)))))return null
     if(s.pending?.kind==='incarnation'&&(!player(s,s.pending.actor).incarnation?.pool.length||s.pending.required!==!player(s,s.pending.actor).incarnation.activeHero))return null

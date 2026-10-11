@@ -129,6 +129,18 @@ test('blocked autoplay and disabling audio do not spin or block gameplay',async(
   const voice=new CardVoice({createContext:()=>fakeContext({rejectResume:true})});await voice.unlock();voice.speak('card-sha');await tick();assert.equal(voice.busy,false);assert.equal(voice.queue.length,0)
   voice.setEnabled(false);assert.equal(voice.speak('card-shan','female'),false);voice.destroy()
 })
+test('stop releases a background-suspended drain so AI scheduling resumes',async()=>{
+  // 页面后台时 AudioContext 挂起：source 的 onended 不触发、stop() 也不派发。
+  // 修复前 drain 永远挂在 await 上，busy 不复位，schedule 被 voice.busy 无限推迟。
+  const suspendedContext=()=>({state:'suspended',sampleRate:48000,destination:{},resume:()=>Promise.resolve(),createBuffer:()=>({}),close:()=>Promise.resolve(),decodeAudioData:()=>Promise.resolve({duration:.02}),createBufferSource(){return {connect(){},disconnect(){},start(){},stop(){}}}})
+  const voice=new CardVoice({createContext:suspendedContext,fetchAudio:async()=>({ok:true,arrayBuffer:async()=>new ArrayBuffer(4)})})
+  await voice.unlock();assert.ok(voice.speak('card-sha'))
+  for(let i=0;i<10&&!voice.busy;i++)await tick()
+  assert.equal(voice.busy,true,'drain 应挂起在等待播放结束')
+  voice.stop()
+  for(let i=0;i<10&&voice.busy;i++)await tick()
+  assert.equal(voice.busy,false,'stop 必须释放挂起的 drain');voice.destroy()
+})
 test('all generated MP3s are present and decodable, with verified male/female voices',async()=>{
   const manifest=JSON.parse(await readFile(new URL('../.private/fengshen/assets/audio/manifest.json',import.meta.url),'utf8'));assert.deepEqual(manifest.voices,VOICES);assert.equal(manifest.files.length,AUDIO_ENTRIES.length*2);assert.equal(manifest.entries.length,AUDIO_ENTRIES.length)
   for(const file of manifest.files){

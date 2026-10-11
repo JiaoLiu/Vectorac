@@ -2,7 +2,7 @@
 // Public logs hold counts only; local hand IDs never enter other players' cues.
 export function drawEffects(before,after,viewer=0){
   const old=new Set(before.players[viewer].hand.map(c=>c.id)),incoming=after.players[viewer].hand.filter(c=>!old.has(c.id)).map(c=>c.id)
-  return after.logs.filter(l=>l.id>before.eventId&&l.cue?.kind==='draw'&&l.cue.reason==='card-draw').slice().reverse().map(l=>({...l.cue,id:l.id,ownIds:l.cue.target===viewer?incoming.slice(-l.cue.count):[]}))
+  return after.logs.filter(l=>l.id>before.eventId&&l.cue?.kind==='draw'&&['card-draw','skill-draw'].includes(l.cue.reason)).slice().reverse().map(l=>({...l.cue,id:l.id,ownIds:l.cue.target===viewer?incoming.slice(-l.cue.count):[]}))
 }
 // The face was already revealed to everyone; never read the recipient's hand.
 export function judgmentEffects(before,after){return after.logs.filter(l=>l.id>before.eventId&&l.cue?.kind==='judgment-keep').slice().reverse().map(l=>({...l.cue,id:l.id}))}

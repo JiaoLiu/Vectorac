@@ -13,6 +13,7 @@ const roleBadge=(p,view,own=false)=>{
 }
 const roleName=(p,view)=>view?.teamMode?(view.sides[p.seat]===view.sides[view.seat]?'友方':'敌方'):ROLES[p.role].name
 const formMarker=p=>p.incarnation?.activeHero?`<b class="fs-form-mark" title="七十二变：${esc(display({heroId:p.incarnation.activeHero}).name)}形态">形 · ${esc(display({heroId:p.incarnation.activeHero}).name)}</b>`:''
+const faceMarker=p=>p.faceDown?'<span class="fs-face-down" aria-label="背面朝上，下次轮到自己时翻回正面并跳过回合">翻面 · 下回合休整</span>':''
 export const turnActive=(p,v)=>p.alive&&v.current===p.seat&&!v.winner
 const turnBadge=(p,v)=>turnActive(p,v)?`<span class="fs-turn-badge" data-turn-seat="${p.seat}" aria-label="${display(p).name}当前回合">${v.phase==='play'?'出牌中':v.phase==='discard'?'弃牌中':v.phase==='judge'?'判定中':'回合中'}</span>`:''
 export const delayLabel=type=>cardTitle(type)
@@ -28,7 +29,7 @@ export function renderOpponent(ui,p,view){
   const mark=cleanRoleMarks(view,ui.roleMarks)[p.seat],marker=!view.teamMode&&!p.role&&p.alive?`<button class="fs-role-marker fs-identity role-${mark||'unknown'}" data-action="role-mark" data-value="${p.seat}" aria-label="${h.name}的身份猜测：${mark?ROLES[mark].name:'未标记'}。点击切换忠臣、反贼、内奸或清除" title="仅自己可见的身份猜测">${mark?{loyal:'忠',rebel:'反',renegade:'内'}[mark]:'？'}<i>猜</i></button>`:''
   return `<article class="fs-player faction-${h.faction} ${active?'turn-active':''} ${target?'targetable':''} ${ui.targets.includes(p.seat)?'target-selected':''} ${!p.alive?'fallen':''}" data-player="${p.seat}" data-equip-count="${Object.values(p.equip).filter(Boolean).length}" style="--equip-count:${Math.max(1,Object.values(p.equip).filter(Boolean).length)}">
     <button class="fs-player-main" data-action="target" data-value="${p.seat}" aria-label="${target?'选择目标':'查看'}${h.name}${!p.alive?'，已阵亡，'+roleName(p,view):''}">
-      ${portrait(h)}${formMarker(p)}<span class="fs-portrait-shade"></span>${roleBadge(p,view)}<span class="fs-seat">${p.seat}号 · ${FACTIONS[h.faction]}</span>${turnBadge(p,view)}
+      ${portrait(h)}${formMarker(p)}${faceMarker(p)}<span class="fs-portrait-shade"></span>${roleBadge(p,view)}<span class="fs-seat">${p.seat}号 · ${FACTIONS[h.faction]}</span>${turnBadge(p,view)}
       <span class="fs-player-info"><strong>${h.name}</strong>${hp(p)}<span>▣ ${p.handCount}${view.pending?.actor===p.seat?' · 响应中':active?' · 出牌中':''}</span></span>
       ${!p.alive?`<span class="fs-death-banner" data-revealed-role="${p.role}">已阵亡 · ${roleName(p,view)}</span>`:''}
       ${delays(p,view).length?`<span class="fs-player-delays">${delayIcons(p,view)}</span>`:''}
@@ -84,6 +85,7 @@ function playedCenter(view,ui){
   }).join('')}</div></div>`
 }
 function playInstruction(ui,view){
+  if(ui.skill==='qiangxi')return ui.selected.length?'雷锤：弃选中的武器，对范围内目标造成一点伤害':'雷锤：直接选目标将失去一点体力；也可先选武器作为代价'
   if(ui.skill)return `${skillName(view.players[0],ui.skill)}：${ui.skill==='lijian'?'弃一张牌，先选决斗发起者，再选先出杀者（两名其他男性）':ui.skill==='rende'?'选择要交出的手牌，再选择接收者':ui.skill==='zhiheng'?'选择要替换的手牌或装备':ui.skill==='jieyin'?'选择两张手牌，再选择一名受伤男性':ui.skill==='kurou'?'失去一点体力，摸两张牌；可以连续发动，请留意濒死风险':ui.skill==='qingnang'?'选择一张手牌，再选择受伤角色（包括自己）':'点击人物选择目标'}`
   const as=ui.currentAs(view)
   if(!ui.selected.length)return ui.hints===false?'你的出牌阶段':'你的出牌阶段 · 先选手牌，再选目标，最后确认'
@@ -112,13 +114,14 @@ function operation(ui,v){
 }
 export function renderControls(ui,v){
   if(ui.paused)return `<div class="fs-action-row"><button data-action="pause" class="fs-primary">继续对局</button></div>`
-  if(v.winner)return `<div class="fs-action-row"><button data-action="new" class="fs-primary">再开一局</button><button data-action="report" class="fs-secondary">${v.teamMode?'胜负一览':'身份揭晓'}</button></div>`
+  if(v.winner)return `<div class="fs-action-row"><button data-action="quit-confirm" class="fs-primary">再开一局</button><button data-action="report" class="fs-secondary">${v.teamMode?'胜负一览':'身份揭晓'}</button></div>`
   if(v.pending?.kind==='reveal'||ui.transfer||ui.draws?.length)return `<div class="fs-action-row fs-idle-controls"><span>动画展示中 · 自动继续</span></div>`
   if(ui.auto)return `<div class="fs-action-row"><button data-action="auto" class="fs-primary">接管 · 由我操作</button></div>`
   if(v.pending?.actor===0){
     if(v.pending.kind==='counter'){const answer=counterAction(v,ui.selected,{blockedUntil:ui.counterLockUntil}),pass=v.legal.findIndex(a=>a.type==='pass');return `<div class="fs-action-row fs-counter-controls" aria-label="破法响应"><button data-action="confirm" class="fs-primary" ${!answer?'disabled':''} aria-label="发动破法，${v.pending.negated?'恢复原效果':'抵消当前效果'}">发动破法</button><button data-action="response" data-value="${pass}" class="fs-secondary">不发动</button></div>`}
     if(v.pending.kind==='incarnation')return `<div class="fs-action-row fs-idle-controls"><span>请在变身面板选择技能</span></div>`
     if(v.pending.kind==='guanxing')return `<div class="fs-action-row fs-idle-controls"><span>请在推演面板确认牌序</span></div>`
+    if(v.pending.kind==='shensu'){const can=v.legal.some(a=>a.type==='rush'&&a.target===ui.targets[0]&&a.ids.length===ui.selected.length&&a.ids.every(id=>ui.selected.includes(id))),pass=v.legal.findIndex(a=>a.type==='pass');return `<div class="fs-action-row"><button data-action="confirm" class="fs-primary" ${!can?'disabled':''}>确认疾行</button><button data-action="response" data-value="${pass}" class="fs-secondary">${v.pending.mode===1?'正常判定与摸牌':'正常出牌'}</button><button data-action="clear" class="fs-clear">重选</button></div>`}
     if(v.pending.kind==='judge-replace'){const answer=v.legal.find(a=>a.type==='respond'&&a.ids.length===ui.selected.length&&a.ids.every(id=>ui.selected.includes(id))),pass=v.legal.findIndex(a=>a.type==='pass');return `<div class="fs-action-row"><button data-action="confirm" class="fs-primary" ${!answer?'disabled':''}>确认改判</button><button data-action="response" data-value="${pass}" class="fs-secondary">不改判</button></div>`}
     if(v.pending.kind==='liuli')return `<div class="fs-action-row"><button data-action="confirm" class="fs-primary" ${!v.legal.some(a=>a.type==='redirect'&&a.target===ui.targets[0]&&a.ids.length===ui.selected.length&&a.ids.every(id=>ui.selected.includes(id)))?'disabled':''}>确认转移</button><button data-action="response" data-value="0" class="fs-secondary">不转移</button><button data-action="clear" class="fs-clear">重选</button></div>`
     if(v.pending.kind==='yiji')return `<div class="fs-action-row"><button data-action="confirm" class="fs-primary" ${!ui.selected.length||!ui.targets.length?'disabled':''}>确认赠牌</button><button data-action="response" data-value="0" class="fs-secondary">保留剩余牌</button><button data-action="clear" class="fs-clear">重选</button></div>`
