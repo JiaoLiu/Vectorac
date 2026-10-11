@@ -6,6 +6,7 @@ import {createGame,dispatch,playerView,catalog,restoreGame} from '../.private/fe
 import {createEngine} from '../.private/fengshen/core/engine.mjs'
 import {targetLinks,judgmentMark,publicPicks,tutorialEnabled,responsePrompt,responderHighlight} from '../.private/fengshen/table-visuals.mjs'
 import {rescueEffects,discardEffects} from '../.private/fengshen/draw-effects.mjs'
+import {TargetBeams,BEAM_DURATION} from '../.private/fengshen/target-beams.mjs'
 import {renderCenter,renderBattle,renderOpponent,delayIcons} from '../.private/fengshen/table.mjs'
 import {hand} from './fixtures/sanguo.mjs'
 import {readFile} from 'node:fs/promises'
@@ -37,6 +38,31 @@ test('classic harvest view/logs remain unchanged',()=>{
 })
 test('area attack draws every public living target, not only the current responder',()=>{
  let s=fixture(),[c]=hand(s,0,'arrows');hand(s,1,'shan');s=step(s,{type:'play',as:'arrows',ids:[c.id],targets:[]});const v=playerView(s,0),links=targetLinks(v);assert.equal(links.length,4);assert.ok(links.every(l=>l.source===0&&l.target!==0));assert.equal(new Set(links.map(l=>l.target)).size,4)
+})
+test('one area play expires at 2.5s even while counter/responders and revisions change',()=>{
+ let time=0,s=fixture(),[c]=hand(s,0,'arrows');for(let i=1;i<5;i++)hand(s,i,'shan');const beams=new TargetBeams({now:()=>time})
+ s=step(s,{type:'play',as:'arrows',ids:[c.id],targets:[]});beams.record(playerView(s,0));assert.equal(beams.frame(playerView(s,0)).links.length,4)
+ time=1800;s=step(s,{type:'pass'});beams.record(playerView(s,0));assert.equal(beams.frame(playerView(s,0)).elapsed,1800)
+ time=BEAM_DURATION;assert.deepEqual(beams.frame(playerView(s,0)).links,[])
+ s=step(s,{type:'pass'});beams.record(playerView(s,0));assert.deepEqual(beams.frame(playerView(s,0)).links,[],'the next AOE recipient cannot restart beams')
+ while(s.pending)s=step(s,{type:'pass'});beams.record(playerView(s,0));assert.deepEqual(beams.frame(playerView(s,0)).links,[],'settled-card fallback cannot restart beams')
+})
+test('new play gets a fresh lifetime, but restore/render never replays old connections',()=>{
+ let time=0,s=fixture(),[c]=hand(s,0,'arrows');const beams=new TargetBeams({now:()=>time});s=step(s,{type:'play',as:'arrows',ids:[c.id],targets:[]});while(s.pending)s=step(s,{type:'pass'});let v=playerView(s,0)
+ assert.deepEqual(beams.frame(v).links,[],'no animation before an action is observed');beams.record(v);time=3000;assert.deepEqual(beams.frame(v).links,[])
+ const [next]=hand(s,0,'snatch');hand(s,1,'sha');s=step(s,{type:'play',as:'snatch',ids:[next.id],targets:[1]});v=playerView(s,0);beams.record(v);assert.deepEqual(beams.frame(v).links,[{source:0,target:1}]);assert.equal(beams.frame(v).elapsed,0)
+ beams.clear();assert.deepEqual(beams.frame(v).links,[],'restoring a game clears transient animations')
+})
+test('live aim is independent of expired effect beams and never reactivates them',()=>{
+ let time=0,s=fixture(),[c]=hand(s,0,'arrows');const beams=new TargetBeams({now:()=>time});s=step(s,{type:'play',as:'arrows',ids:[c.id],targets:[]});while(s.pending)s=step(s,{type:'pass'});const v=playerView(s,0);beams.record(v);time=9000
+ assert.deepEqual(beams.frame(v,{targets:[2],as:'sha'}).links,[{source:0,target:2}]);assert.equal(beams.frame(v,{targets:[2],as:'sha'}).preview,true)
+ assert.deepEqual(beams.frame(v,{targets:[],as:'sha'}).links,[]);assert.deepEqual(beams.frame(v).links,[])
+})
+test('borrowed-sword two links share one lifetime across counter, holder response and settlement',()=>{
+ let time=0,s=fixture(),[c]=hand(s,0,'collateral');const [w]=hand(s,1,'qinggang');s.players[1].hand.pop();s.players[1].equip.weapon=w;hand(s,1,'sha');hand(s,2,'nullify');const beams=new TargetBeams({now:()=>time})
+ s=step(s,{type:'play',as:'collateral',ids:[c.id],targets:[1,2]});beams.record(playerView(s,0));assert.equal(beams.frame(playerView(s,0)).links.length,2);time=3000
+ for(let i=0;i<8&&s.pending?.kind==='counter';i++){s=step(s,{type:'pass'});beams.record(playerView(s,0))}assert.equal(s.pending.kind,'response');assert.deepEqual(beams.frame(playerView(s,0)).links,[])
+ s=step(s,{type:'pass'});beams.record(playerView(s,0));assert.deepEqual(beams.frame(playerView(s,0)).links,[])
 })
 test('after an area trick settles, aiming a new Slash clears the old all-player links until a target is picked',()=>{
  let s=fixture(),[arrows]=hand(s,0,'arrows');hand(s,0,'sha');for(let i=1;i<5;i++)hand(s,i,'shan');s=step(s,{type:'play',as:'arrows',ids:[arrows.id],targets:[]});for(let i=0;i<20&&s.pending;i++)s=step(s,{type:'pass'});assert.equal(s.pending,null);assert.equal(playerView(s,0).lastPlayed.as,'arrows')

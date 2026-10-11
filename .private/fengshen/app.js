@@ -12,7 +12,8 @@ import './toolbar.css'
 import {renderToolbar,renderMenu} from './toolbar.mjs'
 import './mobile-table.css'
 import './arena-table.css'
-import {tutorialEnabled,targetLinks,judgingSeat,counterSelection,counterAction,responderHighlight} from './table-visuals.mjs'
+import {tutorialEnabled,judgingSeat,counterSelection,counterAction,responderHighlight} from './table-visuals.mjs'
+import {TargetBeams} from './target-beams.mjs'
 import {tableTrail as updateTableTrail,counterTrail} from './table-trail.mjs'
 import {createSetup,dispatchSetup,setupView,chooseSetupAI,restoreSession,MODE_LIST,modeById} from './setup.mjs'
 import {renderHome,renderSetup,heroGallery} from './setup-ui.mjs'
@@ -73,7 +74,7 @@ export class FengshenUI {
     this.modalStack=[];this.choiceIndex=null;this.choiceZone='hand';this.hits=[];this.transfer=null;this.draws=[];this.auto=false;this.clock=new DecisionClock();this.music=new BackgroundMusic({enabled:preferences.music!==false});this.voice=new CardVoice({enabled:preferences.voice!==false,onIdle:()=>{if(!this.destroyed)this.schedule()}})
     this.resumeSession=restoreSession(load(SAVE,null));this.resumeState=this.resumeSession?.kind==='game'?this.resumeSession.game:null;this.legacySave=load('vectorac.fengshen.internal.save.v1',null)!=null;root.className='fs-app'
     this.onClick=e=>this.click(e);this.onKey=e=>this.key(e)
-    this.moves=[];this.discards=null;this.recoveries=[]
+    this.moves=[];this.discards=null;this.recoveries=[];this.beams=new TargetBeams()
     this.onVisibility=()=>{clearTimeout(this.timer);if(document.hidden){this.voice.stop();this.music.pause()}else{if(this.transfer?.until<Date.now())this.transfer=null;if(this.draws?.every(d=>(d.started||0)+1300<Date.now()))this.draws=[];if(this.moves?.every(m=>m.until<Date.now()))this.moves=[];this.recoveries=this.recoveries.filter(h=>h.until>Date.now());this.decorateBattle();if(!this.lobby)this.music.unlock();this.schedule()}this.syncClock()}
     this.onViewport=()=>{layoutArena(root);layoutHand(root);if(this.selected.length)revealHandCard(root,this.selected.at(-1));this.decorateBattle();scaleCards(root)}
     this.viewport=bindGameViewport(root,this.onViewport)
@@ -104,6 +105,7 @@ export class FengshenUI {
   }
   inform(message){this.toast=displayText(message);clearTimeout(this.toastTimer);this.toastTimer=setTimeout(()=>{this.toast='';if(!this.destroyed)this.render()},2800);this.render()}
   act(action){if(!this.state)return false;const before=this.state,r=dispatch(before,{...action,seat:action.seat??0,revision:before.revision,promptId:before.pending?.id});if(!r.ok){this.inform(r.error);return false}this.state=advanceUnavailable(r.state,dispatch,playerView);for(const cue of cuesForAction(before,action,this.state))this.voice.speak(cue.key,cue.sex);const hits=damageCues(before,this.state);if(hits.length){this.hits=hits.map(h=>({...h,until:Date.now()+900}));for(const h of hits)this.voice.hurt(h.amount);clearTimeout(this.hitTimer);this.hitTimer=setTimeout(()=>{this.hits=[];if(!this.destroyed)this.decorateBattle()},920)}
+    this.beams.record(playerView(this.state,0))
     const recovered=recoveryCues(before,this.state)
     if(recovered.length){const started=Date.now();this.recoveries=this.recoveries.filter(h=>h.until>started).concat(recovered.map(h=>({...h,started,until:started+RECOVERY_DURATION})));clearTimeout(this.recoveryTimer);this.recoveryTimer=setTimeout(()=>{this.recoveries=[];if(!this.destroyed)this.decorateBattle()},RECOVERY_DURATION+20)}
     if(before.pending?.kind==='take'&&action.type==='choose'){
@@ -131,7 +133,7 @@ export class FengshenUI {
     const previousIds=new Set(before.players[0].hand.map(c=>c.id)),received=this.state.players[0].hand.filter(c=>!previousIds.has(c.id))
     this.handRevealId=received.at(-1)?.id||null
     this.reset();this.save();this.render();return true}
-  clearEffects(){clearTimeout(this.hitTimer);clearTimeout(this.recoveryTimer);clearTimeout(this.transferTimer);clearTimeout(this.drawTimer);clearTimeout(this.moveTimer);clearTimeout(this.discardTimer);clearTimeout(this.counterLockTimer);this.hits=[];this.recoveries=[];this.transfer=null;this.draws=[];this.moves=[];this.discards=null;this.tableTrail=[];this.counterKey=null;this.counterLockUntil=0}
+  clearEffects(){clearTimeout(this.hitTimer);clearTimeout(this.beamTimer);this.beams.clear();clearTimeout(this.recoveryTimer);clearTimeout(this.transferTimer);clearTimeout(this.drawTimer);clearTimeout(this.moveTimer);clearTimeout(this.discardTimer);clearTimeout(this.counterLockTimer);this.hits=[];this.recoveries=[];this.transfer=null;this.draws=[];this.moves=[];this.discards=null;this.tableTrail=[];this.counterKey=null;this.counterLockUntil=0}
   syncClock(){
     const s=this.state,human=!this.lobby&&!this.setup&&s&&!s.winner&&(s.pending?.actor??s.current)===0&&!isRevealing(s)&&(s.players[0].alive||s.pending?.kind==='ext'&&s.pending.skill==='zhuiyi')
     const key=human?`${s.revision}:${s.pending?.id||s.phase}`:null
@@ -160,7 +162,9 @@ export class FengshenUI {
     const roles=counterBlade?[[counterBlade.source,'借刀者'],[counterBlade.target,'持刀者'],[counterBlade.victim,'指定被杀']]:battle?.kind==='command'?[[battle.commandedBy,'借刀者'],[battle.source,'持刀者'],[battle.target,'指定被杀']]:battle&&['attack','duel','aoe'].includes(battle.kind)?[[battle.source,'攻击者'],[battle.target,'受击者']]:[]
     for(const [seat,role]of roles){const e=anchor(seat);if(e){e.dataset.combatRole=role;const tag=document.createElement('span');tag.className='fs-combat-tag';tag.textContent=role;e.append(tag)}}
     this.root.querySelector('.fs-target-lines')?.remove()
-    const links=targetLinks(v,{targets:this.targets,as:this.currentAs(v)}),r=this.root.getBoundingClientRect()
+    const beam=this.beams.frame(v,{targets:this.targets,as:this.currentAs(v)}),links=beam.links
+    clearTimeout(this.beamTimer)
+    if(links.length&&!beam.preview)this.beamTimer=setTimeout(()=>{if(!this.destroyed)this.decorateBattle()},beam.remaining+20)
     this.root.querySelectorAll('.fs-judging,.fs-effect-source,.fs-effect-target,.fs-effect-focus,.fs-pick-focus,.fs-replace-focus,.fs-responding').forEach(e=>e.classList.remove('fs-judging','fs-effect-source','fs-effect-target','fs-effect-focus','fs-pick-focus','fs-replace-focus','fs-responding'))
     const judge=judgingSeat(v);if(judge!=null)anchor(judge)?.classList.add('fs-judging')
     // 被动抉择者淡黄色边框：轮到某人做响应/选牌等被动决定时提示（万妖/飞剑出杀闪、借刀、濒死求桃、五谷选牌…）。
@@ -176,7 +180,7 @@ export class FengshenUI {
     this.root.querySelectorAll('.fs-extension-actor').forEach(e=>e.classList.remove('fs-extension-actor'))
     if(v.pending?.kind==='ext'&&v.extension.stage!=='reveal')anchor(v.pending.actor)?.classList.add('fs-extension-actor')
     const ownAnchor=anchor(0);ownAnchor?.querySelector('.fs-state-marks')?.remove();ownAnchor?.insertAdjacentHTML('beforeend',stateMarkers(v.players[0]))
-    if(links.length){const layer=document.createElementNS('http://www.w3.org/2000/svg','svg');layer.classList.add('fs-target-lines');layer.setAttribute('viewBox',`0 0 ${this.root.clientWidth} ${this.root.clientHeight}`);layer.setAttribute('aria-hidden','true');const defs=document.createElementNS('http://www.w3.org/2000/svg','defs');layer.append(defs)
+    if(links.length){const layer=document.createElementNS('http://www.w3.org/2000/svg','svg');layer.classList.add('fs-target-lines');layer.dataset.beamMode=beam.preview?'aim':'effect';if(!beam.preview)layer.style.animationDelay=-beam.elapsed+'ms';layer.setAttribute('viewBox',`0 0 ${this.root.clientWidth} ${this.root.clientHeight}`);layer.setAttribute('aria-hidden','true');const defs=document.createElementNS('http://www.w3.org/2000/svg','defs');layer.append(defs)
       // 光束式指向线（参考英雄杀）：细亮芯+柔光晕，源端亮、目标端渐隐，不再用粗箭头。
       for(const [i,link] of links.entries()){const a=anchor(link.source)?.getBoundingClientRect(),b=anchor(link.target)?.getBoundingClientRect();if(!a||!b)continue;const ap=localPoint(this.root,a.x+a.width/2,a.y+a.height/2),bp=localPoint(this.root,b.x+b.width/2,b.y+b.height/2),cx=ap.x,cy=ap.y,bx=bp.x,by=bp.y,length=Math.hypot(bx-cx,by-cy)||1,sa=Math.min(a.width,a.height)*.32,sb=Math.min(b.width,b.height)*.32
         const x=cx+(bx-cx)*sa/length,y=cy+(by-cy)*sa/length,tx=bx-(bx-cx)*sb/length,ty=by-(by-cy)*sb/length,gid=`fs-beam-g${i}`

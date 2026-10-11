@@ -224,6 +224,9 @@
 @keyframes fs-respond-pulse{50%{box-shadow:0 0 0 2px #6b5520,0 0 22px #ffe49dcc}}
 .fs-target-lines>.fs-beam-glow{stroke-width:7;opacity:.3}
 .fs-target-lines>.fs-beam-core{stroke-width:2.3}
+.fs-target-lines[data-beam-mode="effect"]{animation:fs-beam-fade 2.5s linear both}
+@keyframes fs-beam-fade{0%,76%{opacity:1}100%{opacity:0}}
+@media(prefers-reduced-motion:reduce){.fs-target-lines[data-beam-mode="effect"]{animation:none}}
 @keyframes fs-judging-glow{50%{box-shadow:inset 0 0 0 3px #ffe49d,inset 0 0 15px #ffd56c66}}
 @media(prefers-reduced-motion:reduce){.fs-playing .fs-judging,.fs-playing .fs-responding,.fs-playing .fs-responding:after,.fs-table-judgment.is-revealing{animation:none}}
 /* Choice content scrolls; headers and touch-sized actions never scroll away.
