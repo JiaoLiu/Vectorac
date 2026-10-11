@@ -4,6 +4,7 @@ import assert from 'node:assert/strict'
 import {createRequire} from 'node:module'
 import {build} from 'esbuild'
 import {createAssignedGame,catalog,dispatch} from '../.private/fengshen/engine.mjs'
+import {paintRecovery} from '../.private/fengshen/health-effects.mjs'
 const require=createRequire(import.meta.url),{JSDOM}=require(process.env.JSDOM_PATH||'jsdom')
 const bundle=await build({entryPoints:['.private/fengshen/app.js'],bundle:true,write:false,format:'iife',platform:'browser',loader:{'.css':'empty'},define:{__FENGSHEN_RELEASE__:'false'}})
 const dom=new JSDOM('<!doctype html><div id="app"></div>',{url:'https://offline-gods.test/',runScripts:'outside-only',pretendToBeVisual:true}),w=dom.window,errors=[]
@@ -44,5 +45,14 @@ try{
  load(fixture('yangjian',['jifa','nezha','dixin','jinling']));click('[data-action="role-mark"][data-value="1"]');assert.equal(ui.roleMarks[1],'loyal');assert.equal(ui.modal,null);count++
  // Full hero guide: all portraits are enabled and none of the new cards is undefined.
  ui.openModal('heroes');assert.equal(ui.root.querySelectorAll('.fs-collection-grid button').length,54);assert.equal(ui.root.querySelectorAll('.fs-collection-grid .not-ready').length,0);assert.ok(!ui.root.textContent.includes('undefined'));count++
+ // Hades' automatic recovery has a green actual-amount cue alongside target damage.
+ s=fixture('hades');s.players[0].hp=2;a=card(s,0,'sha');load(s);assert.ok(ui.act({seat:0,type:'play',as:'sha',ids:[a.id],targets:[1]}));assert.equal(ui.state.players[0].hp,3);assert.equal(ui.root.querySelector('.fs-own-hero .fs-heal-number').textContent,'+1');assert.equal(ui.root.querySelector('[data-player="1"] .fs-damage-number').textContent,'−1');assert.equal(ui.root.querySelectorAll('.fs-heal-aura').length,1)
+ ui.render();assert.equal(ui.root.querySelectorAll('.fs-heal-number').length,1);assert.equal(ui.root.querySelector('.fs-own-hero>button').disabled,false);assert.equal(ui.root.querySelector('.fs-actions').closest('[inert]'),null);click('[data-action="role-mark"][data-value="1"]');assert.equal(ui.roleMarks[1],'loyal');ui.clearEffects();ui.render();assert.equal(ui.root.querySelectorAll('.fs-heal-number').length,0);count++
+ // Every avatar can recover, and a repaint retains elapsed animation time.
+ s=fixture('hades',undefined,1);s.players[1].hp--;a=card(s,1,'tao');load(s);assert.ok(ui.act({seat:1,type:'play',as:'tao',ids:[a.id],targets:[]}));assert.equal(ui.root.querySelector('[data-player="1"] .fs-heal-number').textContent,'+1');const effect=ui.recoveries[0];effect.started-=400;ui.render();assert.ok(parseFloat(ui.root.querySelector('.fs-heal-number').style.animationDelay)<=-400);count++
+ // Repeated cues use the newest timeline; an old one cannot hide a new recovery.
+ paintRecovery(ui.root,[{target:1,amount:1,started:0,until:1500},{target:1,amount:2,started:1000,until:2500}],{now:1200});assert.equal(ui.root.querySelector('.fs-heal-number').textContent,'+3');assert.equal(ui.root.querySelector('.fs-heal-number').style.animationDelay,'-200ms');paintRecovery(ui.root,[{target:1,amount:1,started:0,until:1500}],{now:1500});assert.equal(ui.root.querySelectorAll('.fs-heal-number,.fs-heal-aura').length,0);count++
+ // Full-HP passive recovery emits no badge, and old restored logs do not replay.
+ s=fixture('jifa',['dixin','nezha','yangjian','jinling']);a=card(s,0,'sha');b=card(s,0,'shan');load(s);assert.ok(ui.act({seat:0,type:'skill',skill:'rende',ids:[a.id,b.id],target:1}));assert.equal(ui.recoveries.length,0);assert.equal(ui.root.querySelectorAll('.fs-heal-number').length,0);load(ui.state);assert.equal(ui.root.querySelectorAll('.fs-heal-number').length,0);count++
  assert.deepEqual(errors,[]);console.log('PASS',count,'actual-client offline DOM click scenarios; NOT visual/Safari acceptance')
 }finally{ui.destroy();w.close()}

@@ -4,7 +4,8 @@ import assert from 'node:assert/strict'
 import {makeDeck} from '../.private/fengshen/core/catalog.mjs'
 import {createGame,dispatch,playerView,catalog,restoreGame} from '../.private/fengshen/engine.mjs'
 import {createEngine} from '../.private/fengshen/core/engine.mjs'
-import {targetLinks,judgmentMark,publicPicks,tutorialEnabled,responsePrompt} from '../.private/fengshen/table-visuals.mjs'
+import {targetLinks,judgmentMark,publicPicks,tutorialEnabled,responsePrompt,responderHighlight} from '../.private/fengshen/table-visuals.mjs'
+import {rescueEffects,discardEffects} from '../.private/fengshen/draw-effects.mjs'
 import {renderCenter,renderBattle,renderOpponent,delayIcons} from '../.private/fengshen/table.mjs'
 import {hand} from './fixtures/sanguo.mjs'
 import {readFile} from 'node:fs/promises'
@@ -36,6 +37,13 @@ test('classic harvest view/logs remain unchanged',()=>{
 })
 test('area attack draws every public living target, not only the current responder',()=>{
  let s=fixture(),[c]=hand(s,0,'arrows');hand(s,1,'shan');s=step(s,{type:'play',as:'arrows',ids:[c.id],targets:[]});const v=playerView(s,0),links=targetLinks(v);assert.equal(links.length,4);assert.ok(links.every(l=>l.source===0&&l.target!==0));assert.equal(new Set(links.map(l=>l.target)).size,4)
+})
+test('after an area trick settles, aiming a new Slash clears the old all-player links until a target is picked',()=>{
+ let s=fixture(),[arrows]=hand(s,0,'arrows');hand(s,0,'sha');for(let i=1;i<5;i++)hand(s,i,'shan');s=step(s,{type:'play',as:'arrows',ids:[arrows.id],targets:[]});for(let i=0;i<20&&s.pending;i++)s=step(s,{type:'pass'});assert.equal(s.pending,null);assert.equal(playerView(s,0).lastPlayed.as,'arrows')
+ const v=playerView(s,0)
+ // 挑牌中（as 已知）但未点目标：不得回退显示上一张群体牌的全体连线，否则一张杀看起来能打所有人。
+ assert.deepEqual(targetLinks(v,{targets:[],as:'sha'}),[])
+ assert.deepEqual(targetLinks(v,{targets:[1],as:'sha'}),[{source:0,target:1}])
 })
 test('collateral exposes the victim at counter time and keeps both links through every stage',()=>{
  let s=fixture(),[c]=hand(s,0,'collateral');const [w]=hand(s,1,'qinggang');s.players[1].hand.pop();s.players[1].equip.weapon=w;hand(s,1,'sha');hand(s,2,'nullify')
@@ -78,4 +86,56 @@ test('skill virtual Duel is illustrated without forged suit or rank; opponent ca
  const s=fixture(),model=ui(s),v=playerView(s,0);v.lastPlayed={id:1,source:0,targets:[1,2],as:'duel',cards:[],virtualType:'duel',label:'魅惑'}
  const html=renderCenter(model,v);assert.ok(html.includes('data-type="duel"'));assert.ok(html.includes('无实体花色点数'));assert.ok(html.includes('class="fs-rank"><i></i>'))
  v.pending={id:2,actor:1,kind:'guanxing'};v.legal=[];const concealed=renderCenter(model,v);assert.ok(concealed.includes('不能查看'));assert.equal(concealed.includes('data-type='),false)
+})
+test('dying rescue emits a public cue naming who saves whom, so the animation can show the peach source',()=>{
+ let s=fixture();s.current=1;s.players[0].hp=1
+ const [sha]=hand(s,1,'sha'),[tao]=hand(s,2,'tao')
+ s=step(s,{type:'play',as:'sha',ids:[sha.id],targets:[0]});s=step(s,{type:'pass'});assert.equal(s.pending.kind,'rescue');assert.equal(s.pending.actor,2)
+ const before=s;s=step(s,{type:'respond',ids:[tao.id]})
+ const eff=rescueEffects(before,s)
+ assert.equal(eff.length,1);assert.equal(eff[0].source,2);assert.equal(eff[0].target,0);assert.equal(eff[0].card.type,'tao');assert.equal(s.players[0].hp,1)
+ assert.ok(s.logs.some(l=>l.cue?.kind==='rescue-heal'&&l.cue.source===2&&l.cue.target===0))
+})
+test('public discard is shown inline on the table with its faces, then auto-dismisses',()=>{
+ let s=fixture();s.current=1;s.players[1].maxHp=2;s.players[1].hp=2
+ for(let i=0;i<5;i++)hand(s,1,'sha')
+ s=step(s,{type:'end'});assert.equal(s.pending.kind,'discard');assert.equal(s.pending.count,3)
+ const before=s;s=step(s,{type:'discard',ids:s.players[1].hand.slice(0,3).map(c=>c.id)})
+ const eff=discardEffects(before,s)
+ assert.equal(eff.length,1);assert.equal(eff[0].seat,1);assert.equal(eff[0].cards.length,3)
+ // 牌面公开：任何视角都能看到弃了什么牌（进入弃牌堆的牌本就公开）。
+ assert.equal(playerView(s,0).logs.find(l=>l.cue?.kind==='discard-cue').cue.cards.length,3)
+ const model=ui(s);model.discards={seat:1,cards:eff[0].cards}
+ const html=renderCenter(model,playerView(s,0))
+ // 内联在牌桌中间一行，不再是单独的弹窗（不需要点击关闭）。
+ assert.ok(html.includes('fs-public-discard')&&html.includes('fs-discard-card'))
+ assert.equal(html.includes('fs-center-choice'),false)
+ assert.equal(html.includes('fs-discard-show'),false)
+})
+test('dismantle exposes the discarded card publicly; snatch keeps the hand card hidden',()=>{
+ // 拆牌：被拆掉的牌公开，任何视角可见。
+ let s=fixture(),[dm]=hand(s,0,'dismantle');hand(s,1,'sha')
+ s=step(s,{type:'play',as:'dismantle',ids:[dm.id],targets:[1]});assert.equal(s.pending.kind,'take')
+ const before=s;s=step(s,{type:'choose',value:playerView(s,s.pending.actor).legal[0].value})
+ const eff=discardEffects(before,s)
+ assert.equal(eff.length,1);assert.equal(eff[0].seat,1);assert.equal(eff[0].by,0);assert.equal(eff[0].cards.length,1)
+ assert.equal(playerView(s,2).logs.find(l=>l.cue?.kind==='discard-cue').cue.cards.length,1)
+ // 偷牌：取走的是暗手牌，不公开，不发弃置线索。
+ let t=fixture(),[sn]=hand(t,0,'snatch');hand(t,1,'sha')
+ t=step(t,{type:'play',as:'snatch',ids:[sn.id],targets:[1]})
+ const beforeT=t;t=step(t,{type:'choose',value:playerView(t,t.pending.actor).legal[0].value})
+ assert.equal(discardEffects(beforeT,t).length,0)
+ assert.equal(t.logs.filter(l=>l.id>beforeT.eventId).some(l=>l.cue?.kind==='discard-cue'),false)
+})
+test('passive responder highlight targets real choices only, never pure public reveals',()=>{
+ const base={seat:0,current:2,players:[],extension:null}
+ // 真抉择：出杀闪、五谷选牌、濒死求桃、借刀响应、拼点——高亮该玩家
+ for(const pending of [{kind:'response',actor:3},{kind:'pick',actor:3},{kind:'rescue',actor:3},{kind:'counter',actor:3},{kind:'ext',actor:3}])
+  assert.equal(responderHighlight({...base,pending}),3,`${pending.kind} 应高亮`)
+ // 纯公开展示：判定翻开、ext 展示阶段——不高亮（否则两人轮流闪黄框）
+ assert.equal(responderHighlight({...base,pending:{kind:'reveal',actor:3}}),null)
+ assert.equal(responderHighlight({...base,pending:{kind:'ext',actor:3},extension:{stage:'reveal'}}),null)
+ // 当前回合玩家保持蓝绿 turn-active，不被泛黄覆盖
+ assert.equal(responderHighlight({...base,pending:{kind:'response',actor:2}}),null)
+ assert.equal(responderHighlight({...base,pending:null}),null)
 })

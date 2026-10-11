@@ -14,6 +14,7 @@ import {createEngine} from '../.private/fengshen/core/engine.mjs'
 import {advanceUnavailable,DecisionClock} from '../.private/fengshen/flow.mjs'
 import {BackgroundMusic} from '../.private/fengshen/music.mjs'
 import {drawEffects} from '../.private/fengshen/draw-effects.mjs'
+import {recoveryCues} from '../.private/fengshen/health-effects.mjs'
 function fixture(current=0,heroId='yangjian'){
  const s=stableOpponents(createGame({heroId,role:'lord',seed:17}));s.deck=catalog.makeDeck();s.discard=[];s.processing=[];s.harvestPool=[];s.queue=[];s.pending=null;s.phase='play';s.current=current;s.logs=[];s.lastPlayed=null;s.lastEvent=null
  for(const p of s.players){p.hand=[];p.equip={weapon:null,armor:null,offenseHorse:null,defenseHorse:null};p.judgment=[];p.marks={sha:0,rende:0};p.hp=p.maxHp}
@@ -21,6 +22,18 @@ function fixture(current=0,heroId='yangjian'){
  return s
 }
 const step=(s,a)=>{const r=dispatch(s,{seat:s.pending?.actor??s.current,...a});assert.ok(r.ok,r.error);assert.equal(allCards(r.state).length,108);return r.state}
+test('Peach recovery exposes actual public HP gain once, with no false full-HP cue',()=>{
+ let s=fixture(),[c]=hand(s,0,'tao');s.players[0].hp--;const before=s;s=step(s,{type:'play',as:'tao',ids:[c.id],targets:[]})
+ const cues=recoveryCues(before,s);assert.equal(cues.length,1);assert.equal(cues[0].amount,1);assert.equal(cues[0].target,0);assert.deepEqual(Object.keys(cues[0]).sort(),['amount','id','kind','target'])
+ assert.deepEqual(recoveryCues(s,s),[]);assert.deepEqual(recoveryCues(s,restoreGame(s)),[]);assert.equal(playerView(s,1).logs.find(l=>l.cue?.kind==='recover').cue.amount,1)
+ s=fixture(0,'jifa');const gifts=hand(s,0,'sha','shan'),full=s;s=step(s,{type:'skill',skill:'rende',ids:gifts.map(c=>c.id),target:1});assert.equal(s.players[0].hp,full.players[0].maxHp);assert.deepEqual(recoveryCues(full,s),[])
+})
+test('Hades recovery counts actual capped gain, not nominal damage; red damage is retained',()=>{
+ for(const missing of [1,2]){let s=fixture(0,'hades');s.players[0].hp=s.players[0].maxHp-missing;s.players[0].marks.naked=true;const [c]=hand(s,0,'sha');s=step(s,{type:'play',as:'sha',ids:[c.id],targets:[1]});const before=s;s=step(s,{type:'pass'});const heals=recoveryCues(before,s),hits=damageCues(before,s);assert.equal(heals.length,1);assert.equal(heals[0].amount,missing);assert.equal(hits[0].amount,2);assert.equal(hits[0].target,1);assert.equal(s.players[0].hp,s.players[0].maxHp)}
+})
+test('legacy catalog recovery mechanics stay intact without themed recovery cues',()=>{
+ const classic=createEngine({...catalog,trackBattle:false}),s=fixture(),[c]=hand(s,0,'tao');s.players[0].hp--;const hp=s.players[0].hp,r=classic.dispatch(s,{seat:0,type:'play',as:'tao',ids:[c.id],targets:[]});assert.ok(r.ok);assert.equal(r.state.players[0].hp,hp+1);assert.deepEqual(recoveryCues(s,r.state),[])
+})
 test('resolved draw trick emits one actual two-card cue and highlights only local new cards',()=>{
  let s=fixture(),[c]=hand(s,0,'draw');const before=s;s=step(s,{type:'play',as:'draw',ids:[c.id],targets:[]})
  assert.equal(s.players[0].hand.length,2);const effects=drawEffects(before,s);assert.equal(effects.length,1);assert.equal(effects[0].count,2);assert.equal(effects[0].target,0);assert.deepEqual(effects[0].ownIds,s.players[0].hand.map(c=>c.id))

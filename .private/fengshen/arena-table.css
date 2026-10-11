@@ -82,6 +82,9 @@
 .fs-playing .fs-pool-choice>.fs-center-card-list{display:flex;flex:none;min-height:0;height:auto;max-height:none;align-items:center;justify-content:flex-start;overflow-x:auto;overflow-y:hidden;padding:4px 2px;touch-action:pan-x pinch-zoom}
 .fs-playing .fs-pool-choice .fs-choice-card{flex:0 0 calc(var(--pool-card-height)/1.44);width:calc(var(--pool-card-height)/1.44);height:var(--pool-card-height);min-height:var(--pool-card-height);padding:0;overflow:hidden}
 .fs-playing .fs-harvest-picked>b{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* 公开弃置/拆牌：丢掉的牌内联摆在牌桌中间一行（与出牌同款卡片），看清后自动收起；纯展示不挡操作。 */
+.fs-playing .fs-played.fs-public-discard{display:flex;gap:5px;justify-content:center;align-items:center;flex:none;width:fit-content;max-width:100%;margin-top:4px}
+.fs-playing .fs-compact-table .fs-discard-card{position:relative;padding:0;height:var(--table-card-height,90px);width:calc(var(--table-card-height,90px)/1.44);flex:none;animation:fs-reveal .5s ease-out both;filter:drop-shadow(0 0 8px #ffd76f88)}
 /* 传道分牌：中央弹窗依次翻出新摸的牌（牌面仅本人可见）；等待方只看背面与张数。 */
 .fs-playing .fs-yiji-choice .fs-choice-card{animation:fs-reveal .5s ease-out both}
 /* 选好牌后收成提示条，落在上方人物之下，不挡玩家，方便点选接收者。 */
@@ -214,13 +217,15 @@
 .fs-playing .fs-effect-source{box-shadow:inset 0 0 0 2px #ffe5a1}
 .fs-playing .fs-effect-target{box-shadow:inset 0 0 0 2px #f0c55a}
 .fs-playing .fs-effect-focus{box-shadow:inset 0 0 0 4px #ffe18b,inset 0 0 18px #ffdb7955}
-/* 轮候响应者（飞剑/万妖/杀/决斗/借刀等轮到谁出杀闪）：黄色脉冲圈动画提示，不靠文字。
-   须盖过 effect-source/target 的静态框，故放在其后。 */
-.fs-playing .fs-responding{box-shadow:inset 0 0 0 3px #ffd76f,inset 0 0 14px #ffd56c44;animation:fs-judging-glow 1.1s ease-in-out infinite}
+/* 被动抉择者（万妖/飞剑出杀闪、借刀、濒死求桃、五谷选牌等轮到谁做决定）：
+   与回合中的蓝绿边框同款、换成淡黄色边框高亮，一眼看出现在轮到谁响应。 */
+.fs-playing .fs-responding{border:3px solid #ffe08a;box-shadow:0 0 0 2px #4a3a12,0 0 16px #ffd76faa;animation:fs-respond-pulse 1.1s ease-in-out infinite}
+.fs-playing .fs-responding:after{content:'';position:absolute;inset:0;box-shadow:inset 0 0 12px #ffe08a88;pointer-events:none;z-index:9;animation:fs-respond-pulse 1.1s ease-in-out infinite}
+@keyframes fs-respond-pulse{50%{box-shadow:0 0 0 2px #6b5520,0 0 22px #ffe49dcc}}
 .fs-target-lines>.fs-beam-glow{stroke-width:7;opacity:.3}
 .fs-target-lines>.fs-beam-core{stroke-width:2.3}
 @keyframes fs-judging-glow{50%{box-shadow:inset 0 0 0 3px #ffe49d,inset 0 0 15px #ffd56c66}}
-@media(prefers-reduced-motion:reduce){.fs-playing .fs-judging,.fs-playing .fs-responding,.fs-table-judgment.is-revealing{animation:none}}
+@media(prefers-reduced-motion:reduce){.fs-playing .fs-judging,.fs-playing .fs-responding,.fs-playing .fs-responding:after,.fs-table-judgment.is-revealing{animation:none}}
 /* Choice content scrolls; headers and touch-sized actions never scroll away.
    All interactive central panels share the same safe-area height budget. */
 .fs-playing .fs-center-choice:is(.fs-choice-dialog,.fs-star-choice){display:flex;flex-direction:column;position:absolute;left:8px;right:8px;top:var(--choice-top,28px);bottom:auto;width:auto;height:var(--choice-height,280px);max-height:none;transform:none;overflow:hidden;z-index:20;padding:8px;gap:6px;justify-content:flex-start}

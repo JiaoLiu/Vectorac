@@ -14,6 +14,9 @@ export function targetLinks(view,{targets=[],as=null}={}){
   return direct(p.source,global.includes(p.cardType)?view.players.filter(t=>t.alive).map(t=>t.seat):[p.target])
  }
  if(p?.kind==='take')return direct(p.source??p.actor,[p.target])
+ // 玩家正在挑牌（已选定牌型）却还没点亮目标：等玩家选择，不要回退显示上一张牌遗留的连线，
+ // 否则打完群体牌后再出杀，会残留"全体连线"看起来像一张杀打向所有人。
+ if(as&&!p)return []
  const battle=combatContext(view)
  if(battle?.kind==='aoe')return view.players.filter(p=>p.alive&&p.seat!==battle.source).map(p=>({source:battle.source,target:p.seat}))
  if(battle?.kind==='command'&&battle.commandedBy!=null)return [{source:battle.commandedBy,target:battle.source},...(battle.source!==battle.target?[{source:battle.source,target:battle.target}]:[])]
@@ -23,6 +26,14 @@ export function targetLinks(view,{targets=[],as=null}={}){
  return []
 }
 export const judgingSeat=view=>['reveal','judge-replace'].includes(view.pending?.kind)||view.pending?.kind==='counter'&&view.pending.source==null?view.pending.target:null
+// 被动抉择者高亮：轮到某人做响应/选牌等被动决定时返回其座位，否则 null。
+// 排除纯公开展示（判定翻开、ext 展示阶段）——那些只需自动 ack，不是抉择，否则会两人轮流闪黄框。
+export function responderHighlight(view){
+ const p=view.pending
+ if(!p||p.actor==null||p.actor===view.current)return null
+ if(p.kind==='reveal'||p.kind==='ext'&&view.extension?.stage==='reveal')return null
+ return p.actor
+}
 export function counterSelection(view,previousKey,selected=[]){
  const p=view.pending,key=p?.kind==='counter'&&p.actor===view.seat?`${view.revision}:${p.id}`:null
  if(!key)return {key:null,selected}

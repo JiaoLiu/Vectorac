@@ -44,7 +44,7 @@ function draw(s, seat, count, cause=null) {
   for (let i = 0; i < count; i++) { const card = topCard(s); if (!card) break; player(s, seat).hand.push(card); actual++ }
   if (actual) note(s, `${name(s, seat)}摸了 ${actual} 张牌`,catalog.trackBattle&&['card-draw','skill-draw'].includes(cause)?{kind:'draw',target:seat,count:actual,reason:cause,playedId:s.lastPlayed?.id}:null)
 }
-function heal(s, seat, amount) { const p = player(s, seat); p.hp = Math.min(p.maxHp, p.hp + amount); note(s, `${name(s, seat)}回复 ${amount} 点体力`);X.handChanged(s,p);if(p.buquPile?.length)enqueue(s,X.event('recover-pile',{seat})) }
+function heal(s, seat, amount) { const p = player(s, seat),before=p.hp; p.hp = Math.min(p.maxHp, p.hp + amount);const actual=Math.max(0,p.hp-before);note(s, `${name(s, seat)}回复 ${actual} 点体力`,catalog.trackBattle&&actual?{kind:'recover',target:seat,amount:actual}:null);X.handChanged(s,p);if(p.buquPile?.length)enqueue(s,X.event('recover-pile',{seat})) }
 function ownedCards(p) { return p.hand.concat(slots.map(slot => p.equip[slot]).filter(Boolean)) }
 function handEmptied(s,p){X.handChanged(s,p);if(p.alive&&!p.hand.length&&hasSkill(p,'lianying'))enqueue(s,{type:'equipmentDraw',seat:p.seat,count:1,skill:'lianying'})}
 function unequip(s,p,slot){
@@ -64,7 +64,10 @@ function spend(s, seat, ids, processing = false,reason=processing?'use':'discard
   if (!Array.isArray(ids) || new Set(ids).size !== ids.length) throw new Error('牌不能重复选择')
   const cards = ids.map(id => removeOwned(player(s, seat), id, s))
   ;(processing ? s.processing : s.discard).push(...cards)
-  if(!processing)X.discarded(s,seat,cards,reason)
+  if(!processing){X.discarded(s,seat,cards,reason)
+    // 公开弃置线索：弃置的牌本就公开（进入弃牌堆），前端据此在牌桌上短暂展示后再收起，
+    // 让所有人看清其他玩家丢了什么牌。出牌/判定等非弃置消耗不发。
+    if(reason==='discard'&&catalog.trackBattle)note(s,`${name(s,seat)}弃置${cards.length}张牌`,{kind:'discard-cue',seat,cards:cards.map(c=>clone(c))})}
   return cards
 }
 function finishCards(s, ids,context=null) {
@@ -171,7 +174,7 @@ function responseOptions(s, pending) {
     return [{type:'choose',value:'normal',label:'正常摸两张'},...combinations(targets,1,2).map(targets=>({type:'choose',value:targets.join(','),targets,label:'获取'+targets.map(t=>name(s,t)).join('、')+'各一张手牌'}))]
   }
   if(pending.kind==='judge-replace')return p.hand.map(c=>({type:'respond',ids:[c.id],as:'judgment'})).concat({type:'pass'})
-  if(pending.kind==='yiji')return [{type:'choose',value:'keep',label:'保留剩余的牌'},...combinations(pending.ids,1,pending.ids.length).flatMap(ids=>aliveSeats(s).filter(t=>t!==pending.actor).map(target=>({type:'give',ids,target})))]
+  if(pending.kind==='yiji')return [{type:'choose',value:'keep',label:'保留剩余的牌'},...combinations(pending.ids,1,pending.ids.length).flatMap(ids=>aliveSeats(s).map(target=>({type:'give',ids,target})))]
   if(pending.kind==='reveal')return [{type:'ack'}]
   if (pending.kind === 'response' || pending.kind === 'support' || pending.kind === 'rescue' || pending.kind === 'counter' || pending.kind === 'blade') {
     const as = pending.as
@@ -344,6 +347,9 @@ function takeCard(s, pending, choice) {
   if(choice==='hand'||choice.startsWith('hand:'))handEmptied(s,target)
   if(pending.mode==='snatch')player(s,pending.actor).hand.push(card);else s.discard.push(card)
   if(pending.mode!=='snatch')X.discarded(s,pending.target,[card])
+  // 拆牌公开线索：被拆掉的牌本就公开（进入弃牌堆），前端据此在牌桌上短暂展示后再收起。
+  // 偷牌（snatch）取走的是暗手牌，不公开，因此不发线索。
+  if(pending.mode==='dismantle'&&catalog.trackBattle)note(s,`${name(s,pending.actor)}拆掉了${name(s,pending.target)}的一张牌`,{kind:'discard-cue',seat:pending.target,by:pending.actor,cards:[clone(card)]})
   if(pending.publicTaken)note(s,'公开取牌',{kind:'public-transfer',source:pending.target,target:pending.actor,card:clone(card)})
   if(pending.continuation)enqueue(s,{...pending.continuation,card:clone(card),owner:pending.target,recipient:pending.actor})
   note(s,`${name(s,pending.actor)}${pending.mode==='snatch'?'获得':'弃置'}了${name(s,pending.target)}的${(choice==='hand'||choice.startsWith('hand:'))&&pending.mode==='snatch'?'一张手牌':CARDS[card.type].name}`)
@@ -625,6 +631,9 @@ function successfulResponse(s,pending) {
   if(pending.kind==='counter')return
   if(pending.kind==='rescue') {
     const target=player(s,pending.target),amount=pending.usedAs!=='wine'&&!s.teamMode&&target.role==='lord'&&hasSkill(target,'jiuyuan')&&pending.actor!==pending.target&&hero(player(s,pending.actor)).faction==='wu'?2:1
+    // 救援线索：公开谁用桃/酒把谁救起，前端据此播放飞牌动画（牌面本就公开）。
+    const shown=(pending.usedIds||[]).map(id=>s.discard.find(c=>c.id===id)||s.processing.find(c=>c.id===id)).filter(Boolean)
+    note(s,`${name(s,pending.actor)}以${CARDS[pending.usedAs]?.name||'桃'}救助${name(s,pending.target)}`,{kind:'rescue-heal',source:pending.actor,target:pending.target,card:shown[0]?clone(shown[0]):null,amount})
     heal(s,pending.target,amount);suspect(s,pending.actor,pending.target,false)
     if(target.hp<=0)enqueue(s,...(target.buquPile?.length?[X.event('recover-pile',{seat:pending.target})]:[]),{type:'rescue',...pending});return
   }
