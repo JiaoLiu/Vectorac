@@ -6,14 +6,45 @@ import {createServer} from '../mahjong-service/server.js'
 import {createAssignedGame,catalog} from '../.private/fengshen/engine.mjs'
 import {openBrowser} from './browser-cdp.mjs'
 const service=createServer({logger:()=>{}}),clients=[],root=resolve('public'),mime={'.html':'text/html','.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml','.jpg':'image/jpeg','.png':'image/png','.webp':'image/webp','.woff2':'font/woff2','.mp3':'audio/mpeg','.wav':'audio/wav'}
+const apiWrites=[];let upgrades=0;service.server.on('upgrade',()=>upgrades++)
 // Test-only static handler; no production config/server routes are modified.
 service.server.removeAllListeners('request');service.server.on('request',async(req,res)=>{
+ if(req.url.startsWith('/api/')&&req.method!=='GET')apiWrites.push(req.url)
  if(req.url.startsWith('/api/'))return service.app(req,res)
  const path=new URL(req.url,'http://test').pathname,file=resolve(root,'.'+(path.endsWith('/')?path+'index.html':path));if(!file.startsWith(root+'/')){res.writeHead(403).end();return}
  try{res.setHeader('Content-Type',mime[extname(file)]||'application/octet-stream');res.end(await readFile(file))}catch{res.writeHead(404).end()}
 })
 try{
  await new Promise(r=>service.server.listen(0,'127.0.0.1',r));const baseUrl='http://127.0.0.1:'+service.server.address().port
+ const {room:inviteRoom}=service.manager.createRoom({gameType:'fengshen',rules:{mode:'2v2'},displayName:'邀请方'}),{room:oldRoom,player:oldPlayer}=service.manager.createRoom({gameType:'fengshen',rules:{mode:'1v1'},displayName:'原房间访客'})
+ const visitor=await openBrowser({name:'gods-invite',baseUrl,route:'/games/fengshen/'})
+ try{
+  await visitor.viewport(430,932);await visitor.navigate();await visitor.waitFor('!!window.__fengshenUI')
+  const previous={...oldPlayer,gameType:'fengshen'}
+  await visitor.evaluate(`localStorage.setItem('scmj-online-cred',${JSON.stringify(JSON.stringify(previous))});true`)
+  const writes=apiWrites.length,ws=upgrades
+  await visitor.navigate('/games/fengshen/?room='+inviteRoom.roomCode);await visitor.waitFor('window.__fengshenUI.online?.preview&&!!document.querySelector("[data-online=join]")')
+  assert.equal(inviteRoom.summary().humanCount,1);assert.equal(oldRoom.summary().humanCount,1);assert.equal(apiWrites.length,writes);assert.equal(upgrades,ws)
+  assert.deepEqual(await visitor.evaluate('JSON.parse(localStorage.getItem("scmj-online-cred"))'),previous)
+  assert.equal(await visitor.evaluate('document.querySelector(".fs-online-comm").hidden'),true)
+  assert.equal(await visitor.evaluate('!!window.__fengshenUI.online.chatActive'),false,'preview does not bind microphone priming')
+  assert.ok(await visitor.evaluate('document.querySelector(".fs-room-teams").textContent.includes("1、3 号")'))
+  await visitor.tap('[data-online="preview-refresh"]');await visitor.waitFor('window.__fengshenUI.online.preview');assert.equal(apiWrites.length,writes);assert.equal(upgrades,ws)
+  console.log('invite preview screenshot:',await visitor.screenshot('invitation-no-seat'))
+  // Backing out of a preview preserves the old room and its private credential.
+  await visitor.tap('[data-online="preview-back"]');await visitor.waitFor('window.__fengshenUI.lobby');assert.equal(apiWrites.length,writes);assert.equal(oldRoom.summary().humanCount,1)
+  await visitor.evaluate('localStorage.removeItem("scmj-online-cred");true')
+  await visitor.navigate('/games/fengshen/?room='+inviteRoom.roomCode);await visitor.waitFor('window.__fengshenUI.online?.preview')
+  assert.equal(inviteRoom.summary().humanCount,1);assert.equal(apiWrites.length,writes)
+  await visitor.viewport(932,430);assert.equal(await visitor.evaluate('document.querySelector(".fs-app").classList.contains("fs-force-landscape")'),false)
+  // Synchronous double click exercises the admission guard before either POST returns.
+  await visitor.evaluate('(()=>{const e=document.querySelector("[data-online=join]");e.click();e.click();return true})()');await visitor.waitFor('window.__fengshenUI.online?.ready&&!window.__fengshenUI.online.preview')
+  assert.equal(apiWrites.slice(writes).filter(p=>p==='/api/rooms/join').length,1);assert.equal(inviteRoom.summary().humanCount,2)
+  const seat=await visitor.evaluate('window.__fengshenUI.online.cred.seatIndex'),count=apiWrites.length
+  await visitor.navigate('/games/fengshen/?room='+inviteRoom.roomCode);await visitor.waitFor('window.__fengshenUI.online?.ready');assert.equal(apiWrites.length,count);assert.equal(inviteRoom.summary().humanCount,2);assert.equal(await visitor.evaluate('window.__fengshenUI.online.cred.seatIndex'),seat)
+  assert.deepEqual(visitor.errors,[]);await visitor.evaluate('window.__fengshenUI.online.leave();true');await visitor.waitFor('window.__fengshenUI.lobby')
+  console.log('PASS invitation preview/refresh/back make no writes or WS; click/double-click admits once; refresh resumes original seat')
+ }finally{await visitor.close()}
  const {room,player:p0}=service.manager.createRoom({gameType:'fengshen',rules:{mode:'1v1'},displayName:'测试甲'}),{player:p1}=await service.manager.joinRoom({roomCode:room.roomCode,displayName:'测试乙'})
  for(const [i,p]of [p0,p1].entries()){
   const b=await openBrowser({name:'gods-online-'+i,baseUrl,route:'/games/fengshen/',extraArgs:['--use-fake-ui-for-media-stream','--use-fake-device-for-media-stream']});clients.push(b);await b.send('Page.addScriptToEvaluateOnNewDocument',{source:'(()=>{const Native=window.Audio;window.__qaAudios=[];window.Audio=function(...args){const a=new Native(...args);window.__qaAudios.push(a);return a};window.Audio.prototype=Native.prototype})()'});await b.viewport(430,932);await b.navigate();await b.waitFor('!!window.__fengshenUI')

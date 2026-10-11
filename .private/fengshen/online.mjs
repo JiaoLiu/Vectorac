@@ -23,18 +23,41 @@ export class OnlineGame{
   this.commLayer.innerHTML=chatDockHtml(PHRASES);this.dock=this.commLayer.firstElementChild
   this.dock.querySelector('[data-chat-panel]').insertAdjacentHTML('beforeend',`<div class="fs-emotes">${effects.map((e,i)=>`<button data-online="effect" data-effect="${i}" aria-label="发送${e}">${e}</button>`).join('')}</div>`)
   this.commLayer.addEventListener('click',this.capture,true)
-  this.chat=bindChatDock(this.dock,{onStartRec:()=>this.startRecording(),onStopRec:cancel=>this.recorder?.stop(cancel),onPhrase:phrase=>this.sendPhrase(phrase)})
+  // No microphone/audio priming on a read-only invitation page.
+  this.chat={closePanel(){},restick(){},setRecUI(){},destroy(){}}
   this.key=e=>{if(e.key==='Escape'){this.chat.closePanel();if(this.selectedEffect!=null){e.preventDefault();e.stopImmediatePropagation();this.selectedEffect=null;ui.render()}}};ui.root.addEventListener('keydown',this.key,true)
   this.fullscreen=()=>this.placeDock();document.addEventListener('fullscreenchange',this.fullscreen);document.addEventListener('webkitfullscreenchange',this.fullscreen)
   this.placeDock()
  }
  async connect(code){
-  try{let c=loadCredential();if(c&&c.roomCode===code&&c.gameType==='fengshen'){this.cred=c}else{
+  this.inviteCode=code
+  try{const c=loadCredential();if(c&&c.roomCode===code&&c.gameType==='fengshen'){this.cred=c;await this.net.connect(this.cred)}else{
     const found=await this.net.getRoom(code);if(found.room.gameType!=='fengshen')throw Error('这个房间不是众神斗法')
+    if(this.closed)return
+    // Sharing previews may execute JS. GET only: do not occupy a seat, open WS,
+    // generate a nickname or leave an existing room until the explicit click.
+    this.room=found.room;this.preview=true;this.status='preview';this.ui.render()
+   }
+  }catch(e){if(!this.closed){this.status='fatal';this.ui.inform(errorText(e.errorCode,e.message||'连接失败，请返回大厅'))}}
+ }
+ async joinInvite(){
+  if(!this.preview||this.joining||this.closed)return
+  this.joining=true;this.ui.render()
+  try{
+   let c=loadCredential(),player
+   if(c&&c.roomCode===this.inviteCode&&c.gameType==='fengshen')player=c
+   else{
     if(c?.resumeToken){await this.net.leaveRoomByToken(c.resumeToken);clearCredential()}
-    const name=loadDisplayName()||randomName();saveDisplayName(name);const joined=await this.net.joinRoom({roomCode:code,displayName:name});this.cred={...joined.player,gameType:'fengshen'};saveCredential(this.cred);this.room=joined.room
-   }await this.net.connect(this.cred)
-  }catch(e){this.status='fatal';this.ui.inform(errorText(e.errorCode,e.message||'连接失败，请返回大厅'))}
+    if(this.closed)return
+    const name=loadDisplayName()||randomName();saveDisplayName(name)
+    const joined=await this.net.joinRoom({roomCode:this.inviteCode,displayName:name});player={...joined.player,gameType:'fengshen'};this.room=joined.room
+    if(this.closed){await this.net.leaveRoomByToken(player.resumeToken);return}
+    saveCredential(player)
+   }
+   if(this.closed)return
+   this.cred=player;this.preview=false;this.status='connecting';await this.net.connect(this.cred)
+  }catch(e){if(!this.closed)this.ui.inform(errorText(e.errorCode,e.message||'加入失败，请重试'))}
+  finally{this.joining=false;if(!this.closed)this.ui.render()}
  }
  event(m){
   if(m.type==='RECONNECTED'){this.ready=true;this.status='open';this.net.resync();this.ui.render();return}
@@ -75,6 +98,7 @@ export class OnlineGame{
  notesKey(){return 'vectorac.fengshen.online.notes:'+this.cred?.roomId+':'+this.lastGame}
  saveNotes(){if(!this.ui.state)return;try{localStorage.setItem(this.notesKey(),JSON.stringify(this.ui.roleMarks))}catch{}}
  waitingHtml(){
+  if(this.preview)return this.inviteHtml()
   const r=this.room,own=this.cred?.seatIndex,admin=r?.adminSeat===own,me=r?.seats?.find(s=>s.seatIndex===own),humans=r?.seats?.filter(s=>s.occupantType==='HUMAN')||[],allReady=humans.length>0&&humans.every(s=>s.connected&&s.ready),finished=r?.status==='FINISHED'
   return `<main class="fs-network-wait"><section class="gh-room"><header class="gkr-room-head"><h1 class="gkr-room-title">众神斗法 · 房间 <b class="gkr-code">${esc(r?.roomCode||this.cred?.roomCode||'连接中')}</b></h1><div class="gkr-head-btns"><button class="gkr-btn" data-online="share">邀请朋友</button><button class="gkr-btn gkr-btn-danger" data-online="leave">退出房间</button></div></header><p class="fs-room-meta">${esc(modeById(r?.rules?.mode||'identity8').name)} · ${r?.seatsPerRoom||''} 席 · ${r?.turnTimeoutSeconds||60}s 思考 · ${this.status==='open'?'已连接':'正在连接 / 重连'}</p>
   ${r?.hasPlayed?`<section class="fs-round-result" aria-label="上局结果"><h2>第 ${r.round||1} 局已结束</h2><p>${finished?'本房间已结算，请退出后重新建房。':'房间和座位已保留，所有在线玩家准备后自动开下一局。'}</p>${this.results?.perSeat?`<div>${this.results.perSeat.map(p=>`<span>${esc(r.seats?.[p.seat]?.displayName||'玩家')} ${p.delta>=0?'+':''}${p.delta}</span>`).join('')}</div>`:''}</section>`:''}
@@ -82,7 +106,14 @@ export class OnlineGame{
   <div class="gkr-seats fs-net-seats">${(r?.seats||[]).map(s=>`<article class="gkr-seat ${s.seatIndex===own?'is-me':''}" data-room-seat="${s.seatIndex}" data-team-side="${roomTeam(r?.rules?.mode,s.seatIndex,own)?.side??''}"><b class="gkr-seat-name">${s.seatIndex+1} 号 · ${esc(s.displayName||'空位')}${s.seatIndex===own?'（你）':''}${s.isAdmin?' 👑':''}</b>${roomTeamBadge(r?.rules?.mode,s.seatIndex,own)}<small class="gkr-seat-sub">${s.occupantType==='AI'?'AI · 已就绪':s.occupantType==='EMPTY'?'等待朋友':!s.connected?'离线':s.ready?'✓ 已准备':'未准备'}</small><div class="fs-seat-actions">${admin&&s.occupantType==='AI'?`<button class="gkr-btn gkr-btn-mini" data-online="remove" data-seat="${s.seatIndex}">移除 AI</button>`:s.occupantType==='EMPTY'?`${admin?`<button class="gkr-btn gkr-btn-mini" data-online="add" data-seat="${s.seatIndex}">＋ AI</button>`:''}<button class="gkr-btn gkr-btn-mini" data-online="seat" data-seat="${s.seatIndex}">坐这里</button>`:''}</div></article>`).join('')}</div>
   <footer class="gkr-waiting-actions">${!finished?`<button class="gkr-btn gkr-btn-primary" data-online="ready" aria-pressed="${!!me?.ready}" ${!this.ready?'disabled':''}>${me?.ready?'取消准备':r?.hasPlayed?'准备下一局':'准备'}</button>${admin&&!r?.hasPlayed?`<button class="gkr-btn gkr-btn-primary" data-online="start" ${!this.ready||!allReady?'disabled':''}>开始对局 · 空位补 AI</button>`:''}<p class="gkr-hint">${r?.hasPlayed?'全部准备后自动进入新一轮身份 / 选将。':allReady?'准备齐了，等待房主开始。':'先邀请朋友入座；所有真人准备后由房主开始。'}</p>`:''}<p class="gkr-share-hint">房号 <b>${esc(r?.roomCode||'')}</b> · 可分享给朋友加入</p></footer></section></main>`
  }
+ inviteHtml(){
+  const r=this.room,canJoin=r?.status==='WAITING'&&(r.emptyCount>0||r.aiCount>0),old=loadCredential(),switchRoom=old&&old.roomCode!==this.inviteCode
+  return `<main class="fs-network-wait"><section class="gh-room"><header class="gkr-room-head"><h1 class="gkr-room-title">众神斗法 · 房间 <b class="gkr-code">${esc(r?.roomCode||this.inviteCode)}</b></h1><button class="gkr-btn" data-online="preview-back">返回大厅</button></header><p class="fs-room-meta">${esc(modeById(r?.rules?.mode).name)} · ${r?.seatsPerRoom||''} 席 · ${r?.turnTimeoutSeconds||60}s 思考</p>${roomTeamsGuide(r?.rules?.mode)}<p class="fs-invite-note">你尚未入座。点击加入后才会占用位置。${switchRoom?'加入后将退出原房间；仅查看不会影响原座位。':''}</p><footer class="gkr-waiting-actions"><button class="gkr-btn gkr-btn-primary" data-online="join" ${this.joining||!canJoin?'disabled':''}>${this.joining?'正在加入…':canJoin?'加入房间':r?.status==='PLAYING'?'对局已开始':r?.status==='FINISHED'?'房间已结算':'房间已满'}</button><button class="gkr-btn" data-online="preview-refresh" ${this.joining?'disabled':''}>刷新房间信息</button></footer></section></main>`
+ }
  async click(b){const act=b.dataset.online
+  if(act==='join'){await this.joinInvite();return}
+  if(act==='preview-back'){this.leave();return}
+  if(act==='preview-refresh'){if(this.preview&&!this.joining)await this.connect(this.inviteCode);return}
   if(act==='cancel'){this.selectedEffect=null;this.ui.render();return}
   if(act==='leave'){this.ui.openModal('quit');return}
   if(act==='share'){if(!this.cred)return;const url=new URL('/games/fengshen/',location.origin);url.searchParams.set('room',this.cred.roomCode);try{if(navigator.share)await navigator.share({title:'众神斗法 · 好友房',url:url.href});else{await navigator.clipboard.writeText(url.href);this.ui.inform('邀请链接已复制')}}catch{this.ui.inform('房号：'+this.cred.roomCode)}return}
@@ -100,11 +131,18 @@ export class OnlineGame{
   if(!this.recorder)this.recorder=new VoiceRecorder({onSend:p=>{if(this.closed)return;if(this.net.sendVoice(p)){this.message({...p,voice:true,seatIndex:this.meta?.mySeat??this.cred.seatIndex});clearTimeout(this.replayTimer);this.replayTimer=setTimeout(()=>{if(!this.closed&&this.ui.voice.enabled)enqueueVoice(p)},350)}else this.ui.inform('连接已断开，语音未发出')},onState:on=>this.chat.setRecUI(on),onError:text=>{if(!this.closed)this.ui.inform(text)}})
   this.recorder.start()
  }
+ activateChat(){
+  if(this.chatActive)return
+  this.chatActive=true
+  this.chat=bindChatDock(this.dock,{onStartRec:()=>this.startRecording(),onStopRec:cancel=>this.recorder?.stop(cancel),onPhrase:phrase=>this.sendPhrase(phrase)})
+ }
  beforeRender(){if(this.commLayer.parentNode===this.ui.root){this.commLayer.remove();this.detachedForRender=true}}
  placeDock(){
   if(this.closed)return
   const root=this.ui.root,native=(document.fullscreenElement||document.webkitFullscreenElement)===root,host=native?root:document.body,changed=this.commLayer.parentNode!==host
   if(changed)host.append(this.commLayer)
+  this.commLayer.hidden=!this.cred||!!this.preview
+  if(!this.commLayer.hidden)this.activateChat()
   const rotated=native&&root.classList.contains('fs-force-landscape')
   this.commLayer.style.cssText=rotated?`position:absolute;left:0;top:${root.clientHeight}px;width:${innerWidth}px;height:${innerHeight}px;transform:rotate(-90deg);transform-origin:0 0`:''
   if(changed&&!this.detachedForRender)this.chat.restick()
