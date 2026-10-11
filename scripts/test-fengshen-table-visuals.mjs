@@ -52,6 +52,7 @@ test('new play gets a fresh lifetime, but restore/render never replays old conne
  assert.deepEqual(beams.frame(v).links,[],'no animation before an action is observed');beams.record(v);time=3000;assert.deepEqual(beams.frame(v).links,[])
  const [next]=hand(s,0,'snatch');hand(s,1,'sha');s=step(s,{type:'play',as:'snatch',ids:[next.id],targets:[1]});v=playerView(s,0);beams.record(v);assert.deepEqual(beams.frame(v).links,[{source:0,target:1}]);assert.equal(beams.frame(v).elapsed,0)
  beams.clear();assert.deepEqual(beams.frame(v).links,[],'restoring a game clears transient animations')
+ beams.restore(v);beams.record(v);assert.deepEqual(beams.frame(v).links,[],'first resumed response cannot replay the saved play')
 })
 test('live aim is independent of expired effect beams and never reactivates them',()=>{
  let time=0,s=fixture(),[c]=hand(s,0,'arrows');const beams=new TargetBeams({now:()=>time});s=step(s,{type:'play',as:'arrows',ids:[c.id],targets:[]});while(s.pending)s=step(s,{type:'pass'});const v=playerView(s,0);beams.record(v);time=9000

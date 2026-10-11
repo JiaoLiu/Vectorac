@@ -10,6 +10,7 @@ function effectKey(view){
 export class TargetBeams{
  constructor({now=Date.now}={}){this.now=now;this.events=new Map()}
  clear(){this.events.clear()}
+ restore(view){this.clear();const key=effectKey(view);if(key)this.events.set(key,this.now()-BEAM_DURATION)}
  // Called only after a successful game action, never from render/restore.
  record(view){
   const key=effectKey(view)

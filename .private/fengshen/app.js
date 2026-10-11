@@ -93,7 +93,7 @@ export class FengshenUI {
   resume(){
     const raw=load(SAVE,null),session=restoreSession(raw);if(!session)return
     this.roleMarks=session.kind==='game'?cleanRoleMarks(playerView(session.game,0),raw?.roleMarks):{}
-    this.requestGameScreen();this.clearEffects();this.voice.stop();this.music.unlock();this.auto=false;this.setup=session.kind==='setup'?session.setup:null;this.state=session.kind==='game'?advanceUnavailable(session.game,dispatch,playerView):null;this.draftHero=null;this.lobby=false;this.paused=false;this.reset();this.save();this.render()
+    this.requestGameScreen();this.clearEffects();this.voice.stop();this.music.unlock();this.auto=false;this.setup=session.kind==='setup'?session.setup:null;this.state=session.kind==='game'?advanceUnavailable(session.game,dispatch,playerView):null;if(this.state)this.beams.restore(playerView(this.state,0));this.draftHero=null;this.lobby=false;this.paused=false;this.reset();this.save();this.render()
   }
   actSetup(action){
     if(!this.setup)return false
