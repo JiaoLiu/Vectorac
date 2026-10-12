@@ -194,7 +194,8 @@ export class OnlineGame{
   this.placeDock()
   const root=this.ui.root;root.querySelectorAll('.fs-online-bubble,.fs-online-name,.fs-social-flight').forEach(e=>e.remove());if(this.ui.music.audio)registerBgm(this.ui.music.audio)
   if(this.pending)root.querySelectorAll('.fs-actions button,.fs-draft-footer button').forEach(b=>b.disabled=true)
-  for(const s of this.meta?.seats||[]){const a=this.anchor(s.seatIndex);if(a){const name=document.createElement('small');name.className='fs-online-name';name.textContent=s.displayName+(s.autoPlay?' · 托管':'');a.append(name)}}
+  // 托管/AI 席位只挂机器人标记，不显示名字；真人席位才显示昵称。
+  for(const s of this.meta?.seats||[]){const a=this.anchor(s.seatIndex);if(!a)continue;const bot=!!s.autoPlay||s.isAi===true||s.occupantType==='AI',name=document.createElement('small');name.className='fs-online-name'+(bot?' is-bot':'');name.textContent=bot?'🤖':(s.displayName||'玩家');if(bot){name.title=`${s.displayName||'玩家'} · 托管机器人`;name.setAttribute('aria-label','托管机器人')}a.append(name)}
   this.commLayer.querySelector('.fs-voice-receipts')?.remove();const receipts=document.createElement('div');receipts.className='fs-voice-receipts'
   for(const m of this.messages.filter(m=>m.until>Date.now())){const text=m.voice?'🔊 '+Math.round(m.duration||1)+'″':PHRASES[m.phrase],a=this.anchor(m.seatIndex);if(a){const e=document.createElement('span');e.className='fs-online-bubble';e.textContent=text;a.append(e)}
    const e=document.createElement(m.voice?'button':'span');e.textContent=(this.room?.seats?.[m.seatIndex]?.displayName||'玩家')+' · '+text;if(m.voice){e.setAttribute('aria-label','重播语音');e.onclick=()=>enqueueVoice(m)}receipts.append(e)
