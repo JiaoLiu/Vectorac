@@ -6,8 +6,11 @@ import {HERO_BY_THEME_ID,CARDS_BY_TYPE} from '../.private/fengshen/theme.mjs'
 import {hand,equipment} from './fixtures/sanguo.mjs'
 const browser=await openBrowser({name:'fengshen',baseUrl:process.env.FENGSHEN_TEST_URL||'http://127.0.0.1:4178',route:'/'})
 const {evaluate,tap,viewport,screenshot}=browser
-const ready=async()=>{await browser.navigate();await browser.waitFor('!!window.__fengshenUI');await evaluate('localStorage.removeItem("vectorac.fengshen.classic-original.save.v2");true');await browser.navigate();await browser.waitFor('!!document.querySelector(".fs-entry")')}
+const ready=async()=>{await browser.navigate();await browser.waitFor('!!window.__fengshenUI');await evaluate('localStorage.removeItem("vectorac.fengshen.classic-original.save.v2");true');await browser.navigate();await browser.waitFor('!!document.querySelector(".fs-entry")');await evaluate('(()=>{const q=document.querySelector(".qa-tools");if(q)q.style.display="none";return true})()')}
 const startDraft=async()=>{
+  // 牌局期间要保持屏幕常亮：进入对局时向 Screen Wake Lock 发起一次请求（用桩替身记录调用）。
+  // 替身把 release 事件暴露成 __wake.autoRelease，用来模拟浏览器切后台时自动释放锁。
+  await evaluate(`(()=>{const s={requests:0,released:0,listeners:[],autoRelease(){this.listeners.forEach(f=>f())}};let hidden=false;Object.defineProperty(document,'hidden',{configurable:true,get:()=>hidden});window.__setHidden=v=>{hidden=v;document.dispatchEvent(new Event('visibilitychange'))};Object.defineProperty(navigator,'wakeLock',{configurable:true,value:{request:async()=>{s.requests++;return{release(){s.released++},addEventListener(t,f){if(t==='release')s.listeners.push(f)}}}}});window.__wake=s;return true})()`)
   await tap('[data-action="start"]');await browser.waitFor('!!window.__fengshenUI.setup')
   const role=await evaluate('window.__fengshenUI.setup.roles[0]')
   if(await evaluate('!!document.querySelector("[data-action=setup-next]")'))await tap('[data-action="setup-next"]')
@@ -17,6 +20,13 @@ const startDraft=async()=>{
   await tap('.fs-draft-pick');await tap('[data-action="draft-pick"]')
   await browser.waitFor('!!document.querySelector(".fs-hand")')
   assert.equal(await evaluate('window.__fengshenUI.state.players[0].role'),role)
+  assert.equal(await evaluate('window.__wake.requests'),1,'进入牌局后保持屏幕常亮')
+  // 切到后台时浏览器会自动释放锁（替身手动触发 release 事件模拟），回到前台必须重新申请。
+  await evaluate('window.__setHidden(true);window.__wake.autoRelease();true')
+  await evaluate('window.__setHidden(false);true')
+  assert.equal(await evaluate('window.__wake.requests'),2,'从后台回到前台重新申请常亮')
+  await evaluate('window.__fengshenUI.keepAwake(false)')
+  assert.equal(await evaluate('window.__wake.released'),1,'离开牌局后释放常亮')
 }
 const geometry=()=>evaluate(`(()=>{const app=document.querySelector('.fs-app').getBoundingClientRect();return {w:innerWidth,h:innerHeight,scroll:document.documentElement.scrollWidth,appBottom:app.bottom,buttons:[...document.querySelectorAll('.fs-action-row button')].map(b=>{const r=b.getBoundingClientRect();return {name:b.textContent,top:r.top,bottom:r.bottom,height:r.height}}),players:[...document.querySelectorAll('.fs-player')].map(b=>{const r=b.getBoundingClientRect();return {top:r.top,bottom:r.bottom}}),dockTop:document.querySelector('.fs-dock')?.getBoundingClientRect().top}})()`)
 function fixture(heroId='yangjian'){
@@ -34,7 +44,9 @@ try{
     await tap('[data-action="heroes"]');assert.equal(await evaluate('document.querySelectorAll(".fs-collection-grid>button").length'),Object.keys(HERO_BY_THEME_ID).length)
     // 并行 canonical 流会持续把武将接入为可玩，断言目标动态取第一个未接入者。
     const unplayable=Object.values(HERO_BY_THEME_ID).find(h=>!h.playable)?.id
-    if(unplayable){await tap(`.fs-collection-grid [data-id="${unplayable}"]`);await browser.waitFor('!!document.querySelector(".fs-modal")');assert.ok(await evaluate('document.querySelector(".fs-modal-body").textContent.includes("尚未接入")'));await tap('[data-action="close"]')}
+    if(unplayable){await tap(`.fs-collection-grid [data-id="${unplayable}"]`);await browser.waitFor('!!document.querySelector(".fs-modal")');assert.ok(await evaluate('document.querySelector(".fs-modal-body").textContent.includes("尚未接入")'))}
+    // 图鉴弹窗必须收起：张开时大厅按钮是 inert 的，点不到「开始」。
+    await tap('[data-action="close"]')
     await startDraft()
     await evaluate('window.__fengshenUI.paused=true;window.__fengshenUI.render();true')
     let g=await geometry();assert.ok(g.scroll<=size[0]+1,JSON.stringify(g));assert.ok(g.appBottom<=size[1]+1)

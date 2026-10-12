@@ -81,7 +81,7 @@ export class FengshenUI {
     this.feedback=new FeedbackModal()
     this.onClick=e=>this.click(e);this.onKey=e=>this.key(e)
     this.moves=[];this.discards=null;this.recoveries=[];this.beams=new TargetBeams()
-    this.onVisibility=()=>{clearTimeout(this.timer);if(document.hidden){this.voice.stop();this.music.pause()}else{if(this.transfer?.until<Date.now())this.transfer=null;if(this.draws?.every(d=>(d.started||0)+1300<Date.now()))this.draws=[];if(this.moves?.every(m=>m.until<Date.now()))this.moves=[];this.recoveries=this.recoveries.filter(h=>h.until>Date.now());this.decorateBattle();if(!this.lobby)this.music.unlock();this.schedule()}this.syncClock()}
+    this.onVisibility=()=>{clearTimeout(this.timer);if(document.hidden){this.voice.stop();this.music.pause()}else{if(this.transfer?.until<Date.now())this.transfer=null;if(this.draws?.every(d=>(d.started||0)+1300<Date.now()))this.draws=[];if(this.moves?.every(m=>m.until<Date.now()))this.moves=[];this.recoveries=this.recoveries.filter(h=>h.until>Date.now());this.decorateBattle();if(!this.lobby)this.music.unlock();this.keepAwake(!this.lobby);this.schedule()}this.syncClock()}
     this.onViewport=()=>{layoutArena(root);layoutHand(root);if(this.selected.length)revealHandCard(root,this.selected.at(-1));this.decorateBattle();scaleCards(root);this.online?.afterRender()}
     this.viewport=bindGameViewport(root,this.onViewport)
     this.starGesture=bindStarDrag(root,{getState:()=>this.state?.pending?.kind==='guanxing'?this.star:null,onMove:state=>{this.star=state;this.render()},onInteraction:active=>{this.draggingStars=active;this.syncClock()}})
@@ -156,8 +156,20 @@ export class FengshenUI {
     this.syncClock();this.root.querySelectorAll('[data-seconds]').forEach(e=>e.textContent=this.clock.seconds+'s')
     if(this.clock.key&&this.clock.running&&this.clock.left===0&&!this.auto){this.auto=true;this.modal=null;this.reset();this.render();this.inform('思考时间已到，AI 已接手；点“接管”可随时回来')}
   }
+  // 牌局期间保持屏幕常亮：手机上长时间不操作会被系统息屏锁屏，牌局就断在那里。
+  // 切到后台时浏览器会自动释放锁，回到前台由 onVisibility 重新申请一次。
+  async keepAwake(on){
+    try{
+      if(!on){const lock=this.wakeLock;this.wakeLock=null;await lock?.release?.();return}
+      if(this.wakeLock||document.hidden||!navigator.wakeLock?.request)return
+      const lock=await navigator.wakeLock.request('screen')
+      if(this.destroyed){await lock.release?.();return}
+      this.wakeLock=lock
+      lock.addEventListener?.('release',()=>{if(this.wakeLock===lock)this.wakeLock=null})
+    }catch{/* 不支持 Screen Wake Lock 的浏览器退回系统默认息屏行为 */}
+  }
   async requestGameScreen(){
-    this.viewport.setImmersive(true)
+    this.viewport.setImmersive(true);this.keepAwake(true)
     // 全屏默认开启；只有手机竖屏的虚拟横屏才锁横屏，平板等大屏保持原方向不旋转。
     const landscape=this.root.classList.contains('fs-force-landscape')
     try{const req=this.root.requestFullscreen||this.root.webkitRequestFullscreen;if(!document.fullscreenElement&&!document.webkitFullscreenElement)await req?.call(this.root,{navigationUI:'hide'});if(landscape)await screen.orientation?.lock?.('landscape')}catch{/* CSS landscape remains active when native APIs are unavailable. */}
@@ -342,7 +354,7 @@ export class FengshenUI {
     if(action==='feedback'){this.feedback.open();return}
     if(action==='hand'){this.modal={kind:'hand'};this.render();return}
     if(['rules','heroes','gallery','forms','report','hero-detail','card-detail','quit'].includes(action)){this.openModal(action,id);return}
-    if(action==='quit-confirm'){if(this.online){this.online.leave();return}this.clearEffects();this.voice.stop();this.music.pause();this.auto=false;this.resumeSession=restoreSession(load(SAVE,null));this.resumeState=this.resumeSession?.kind==='game'?this.resumeSession.game:null;this.setup=null;this.state=null;this.draftHero=null;this.lobby=true;this.modal=null;this.paused=false;this.reset();this.render();return}
+    if(action==='quit-confirm'){this.keepAwake(false);if(this.online){this.online.leave();return}this.clearEffects();this.voice.stop();this.music.pause();this.auto=false;this.resumeSession=restoreSession(load(SAVE,null));this.resumeState=this.resumeSession?.kind==='game'?this.resumeSession.game:null;this.setup=null;this.state=null;this.draftHero=null;this.lobby=true;this.modal=null;this.paused=false;this.reset();this.render();return}
     if(action==='pause'){if(this.online){this.inform('联机牌局不能暂停其他玩家');return}this.paused=!this.paused;this.render();return}
     if(action==='pace'){this.pace=this.pace===650?250:this.pace===250?1100:650;this.savePreferences();this.render();return}
     if(!this.state||this.paused||this.auto||this.transfer||this.draws.length||this.moves.length||isRevealing(this.state)||this.modal&&!(this.modal.kind==='hand'&&action==='card'))return
@@ -479,7 +491,7 @@ export class FengshenUI {
     else if(wasModal&&this.returnFocus?.action){const s=`[data-action="${this.returnFocus.action}"]${this.returnFocus.id?`[data-id="${this.returnFocus.id}"]`:''}`;this.root.querySelector(s)?.focus()}
     scaleCards(this.root);this.online?.afterRender();this.schedule()
   }
-  destroy(){this.destroyed=true;this.online?.close();this.voice.destroy();this.music.destroy();this.clearEffects();clearInterval(this.clockTimer);clearTimeout(this.timer);clearTimeout(this.toastTimer);this.root.removeEventListener('click',this.onClick);this.root.removeEventListener('keydown',this.onKey);document.removeEventListener('fullscreenchange',this.onScreen);document.removeEventListener('visibilitychange',this.onVisibility);this.viewport.destroy();this.starGesture.destroy()}
+  destroy(){this.destroyed=true;this.keepAwake(false);this.online?.close();this.voice.destroy();this.music.destroy();this.clearEffects();clearInterval(this.clockTimer);clearTimeout(this.timer);clearTimeout(this.toastTimer);this.root.removeEventListener('click',this.onClick);this.root.removeEventListener('keydown',this.onKey);document.removeEventListener('fullscreenchange',this.onScreen);document.removeEventListener('visibilitychange',this.onVisibility);this.viewport.destroy();this.starGesture.destroy()}
 }
 window.__fengshenUI=new FengshenUI(document.getElementById('app'))
 mountOnline(window.__fengshenUI)
