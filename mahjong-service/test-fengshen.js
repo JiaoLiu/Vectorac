@@ -8,6 +8,9 @@ function fresh(mode='identity8',seed=23){const a=adapterFor({mode});return {a,s:
 function action(a,s,seat,pick){const r=a.dispatch(s,{...pick,seat,stateVersion:s.version,actionId:'t'+s.version});assert.ok(r.ok,JSON.stringify({pick,error:r.error}));return r.state}
 function draft(a,s){while(s.setup){const seat=a.eligibleSeatsOf(s)[0];s=action(a,s,seat,a.aiDecide(a.playerView(s,seat)))}return s}
 function meta(n){return {roomId:'test',roomCode:'ABCDEF',seats:Array.from({length:n},(_,seatIndex)=>({seatIndex,displayName:'P'+seatIndex})),serverTime:Date.now()}}
+test('military is explicit and immutable; omitted room profile remains Standard 108',()=>{
+ assert.equal(adapterFor().defaultRules.deckVersion,1);assert.throws(()=>adapterFor({deckVersion:3}));const a=adapterFor({mode:'identity5',deckVersion:2});assert.throws(()=>a.sanitizeRules({mode:'identity5',deckVersion:1}));let s=a.createState({}, {rules:a.defaultRules,seed:29});assert.equal(a.serializeView(s,2,meta(5)).setup.deckVersion,2);s=draft(a,s);assert.equal(allCards(s.s).length,160);for(let seat=0;seat<5;seat++){const v=a.serializeView(s,seat,meta(5)).game;assert.equal(v.deckVersion,2);assert.equal(v.players[0].seat,0);for(const p of v.players.slice(1))assert.deepEqual(p.hand,[])}
+})
 test('all five modes reuse one canonical draft/game engine with correct seat counts',()=>{
  for(const [mode,n]of [['identity8',8],['identity5',5],['3v3',6],['2v2',4],['1v1',2]]){let {a,s}=fresh(mode);assert.equal(a.seatsPerRoom,n);assert.equal(s.setup.stage,'lord');s=draft(a,s);assert.equal(s.s.players.length,n);assert.equal(allCards(s.s).length,108);assert.equal(a.privateActions,true)}
  assert.throws(()=>adapterFor({mode:'__proto__'}));assert.throws(()=>adapterFor({mode:'identity5'}).sanitizeRules({mode:'identity8'}))

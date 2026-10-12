@@ -44,6 +44,8 @@ export function createCompleteSkills(api){
  }
  function publicFields(s,p,viewer){return {stage:p.stage,spec:p.spec?clone(p.spec):null,required:!!p.required,cards:p.stage==='zhenlie'?clone(s.processing.filter(c=>c.id===p.ctx.ctx.judgeId)):p.privateCards&&viewer!==p.actor?[]:clone(p.cards||[]),judgmentKind:p.stage==='zhenlie'?p.ctx.ctx.kind:null,privateCards:!!p.privateCards,targets:p.targets,labels:clone(p.labels||null),declared:p.declared,choices:p.options?.map(o=>({value:o.value,label:o.label})),instruction:p.instruction||'',target:p.target,source:p.source}}
  function legalSkills(s,seat){const p=player(s,seat),actions=[]
+  if(hasSkill(p,'luanji')&&conversions(p,'arrows',s).some(a=>a.ids.length===2))actions.push({type:'skill',skill:'luanji'})
+  if(!s.teamMode&&hero(p).faction==='qun'&&!p.marks.huangtian&&p.hand.some(c=>['shan','lightning'].includes(c.type)))for(const lord of s.players)if(lord.alive&&lord.seat!==seat&&lord.role==='lord'&&hasSkill(lord,'huangtian'))actions.push({type:'skill',skill:'huangtian',target:lord.seat})
   for(const skill of ['quhu','tianyi'])if(hasSkill(p,skill)&&!p.marks[skill]&&p.hand.length&&s.players.some(t=>t.alive&&t.seat!==seat&&t.hand.length&&(skill!=='quhu'||t.hp>p.hp)))actions.push({type:'skill',skill})
   for(const skill of ['ganlu','dimeng','anxu'])if(hasSkill(p,skill)&&!p.marks[skill])actions.push({type:'skill',skill})
   if(hasSkill(p,'xueji')&&!p.marks.xueji&&lost(p)&&ownedCards(p).some(c=>red(p,c)))actions.push({type:'skill',skill:'xueji'})
@@ -55,6 +57,8 @@ export function createCompleteSkills(api){
  function activate(s,a){const p=player(s,a.seat),ids=a.ids||[],targets=a.targets||[],target=a.target,skill=a.skill
   if(!legalSkills(s,a.seat).some(o=>o.skill===skill))return false
   p.marks[skill]=true;emit(s,a.seat,skill)
+  if(skill==='luanji'){require(ids.length===2&&own(s,a.seat,ids,true)&&suit(p,p.hand.find(c=>c.id===ids[0]))===suit(p,p.hand.find(c=>c.id===ids[1])));api.playCard(s,{type:'play',seat:a.seat,ids,as:'arrows',targets:[]});return true}
+  if(skill==='huangtian'){require(!s.teamMode&&hero(p).faction==='qun'&&ids.length===1&&own(s,a.seat,ids,true)&&['shan','lightning'].includes(p.hand.find(c=>c.id===ids[0])?.type)&&player(s,target)?.alive&&target!==a.seat&&player(s,target).role==='lord'&&hasSkill(player(s,target),'huangtian'));move(s,a.seat,target,ids);return true}
   if(skill==='quhu'||skill==='tianyi'){require(player(s,target)?.alive&&target!==a.seat&&p.hand.length&&player(s,target).hand.length&&(skill!=='quhu'||player(s,target).hp>p.hp));startPindian(s,a.seat,target,skill);return true}
   if(skill==='ganlu'){require(targets.length===2&&new Set(targets).size===2&&targets.every(t=>player(s,t)?.alive)&&Math.abs(equipCount(player(s,targets[0]))-equipCount(player(s,targets[1])))<=lost(p));const [a,b]=targets.map(t=>player(s,t)),first={...a.equip},second={...b.equip};for(const [owner,newEquip]of [[a,second],[b,first]])for(const slot of Object.keys(owner.equip))if(owner.equip[slot])api.unequip(s,owner,slot);a.equip=second;b.equip=first;return true}
   if(skill==='dimeng'){require(targets.length===2&&new Set(targets).size===2&&targets.every(t=>t!==a.seat&&player(s,t)?.alive)&&own(s,a.seat,ids)&&ids.length===Math.abs(player(s,targets[0]).hand.length-player(s,targets[1]).hand.length));spend(s,a.seat,ids);const [first,second]=targets.map(t=>player(s,t)),na=first.hand.length,nb=second.hand.length;[first.hand,second.hand]=[second.hand,first.hand];note(s,'双方交换手牌',{kind:'card-transfer',from:first.seat,to:second.seat,count:na});note(s,'双方交换手牌',{kind:'card-transfer',from:second.seat,to:first.seat,count:nb});handChanged(s,first);handChanged(s,second);return true}
@@ -106,6 +110,7 @@ export function createCompleteSkills(api){
   return false
  }
  function judgment(s,ctx,judge){const p=player(s,ctx.owner),effective={...judge,suit:suit(p,judge)},events=[]
+  if(ctx.kind==='leiji'&&effective.suit==='spade'&&p.alive)events.push({type:'damage',source:ctx.source,target:ctx.owner,amount:2,nature:'thunder',cardIds:[]})
   if(ctx.kind==='shuangxiong'){p.marks.shuangxiongColor=red(p,judge)?'red':'black'}
   if(ctx.kind==='miji'&&!red(p,judge)){const cards=[];for(let i=0;i<lost(p);i++){const c=topCard(s);if(c)cards.push(c)}s.processing.push(...cards);if(cards.length)spec(s,'miji',p.seat,'gift',{min:0,max:0,targets:aliveSeats(s)},{cards,privateCards:true,required:true})}
   if(ctx.kind==='beige'){if(effective.suit==='heart'&&p.alive)heal(s,p.seat,1);if(effective.suit==='diamond')draw(s,p.seat,2,'skill-draw');if(player(s,ctx.source)?.alive){if(effective.suit==='spade')player(s,ctx.source).faceDown=!player(s,ctx.source).faceDown;if(effective.suit==='club')events.push(event('discard',{seat:ctx.source,count:2,skill:'beige'}))}}
@@ -140,6 +145,7 @@ export function createCompleteSkills(api){
   if(p.skill==='jiushi-back'){actor.faceDown=false;return}
   if(p.skill==='xingshang'){const victim=player(s,p.target),cards=ownedCards(victim);victim.hand=[];victim.equip=Object.fromEntries(Object.keys(victim.equip).map(k=>[k,null]));actor.hand.push(...cards);note(s,'继承手牌与装备',{kind:'card-transfer',from:p.target,to:p.actor,count:cards.length});handChanged(s,actor);return}
   if(p.skill==='zhuiyi'){draw(s,target,3,'skill-draw');heal(s,target,1);return}
+  if(p.skill==='leiji'){beginJudgment(s,{owner:target,source:p.actor,kind:'leiji'});return}
   if(p.skill==='fangzhu'){draw(s,target,lost(actor),'skill-draw');player(s,target).faceDown=!player(s,target).faceDown;return}
   if(p.skill==='jieming'){draw(s,target,Math.max(0,Math.min(5,player(s,target).maxHp)-player(s,target).hand.length),'skill-draw');return}
   if(p.skill==='songwei'){draw(s,p.target,1,'skill-draw');return}
@@ -154,7 +160,7 @@ export function createCompleteSkills(api){
  function handle(s,e){const p=player(s,e.seat)
   switch(e.op){
    case 'ask':{if(!p||!p.alive&&!e.deadActor)break;const skill=e.skill
-    if(['fangzhu','jieming','zhuiyi'].includes(skill))spec(s,skill,e.seat,'target',{min:0,max:0,targets:aliveSeats(s).filter(t=>skill==='jieming'||t!==e.seat&&t!==e.source)},{...e})
+    if(['fangzhu','jieming','zhuiyi','leiji'].includes(skill))spec(s,skill,e.seat,'target',{min:0,max:0,targets:aliveSeats(s).filter(t=>['jieming','leiji'].includes(skill)||t!==e.seat&&t!==e.source)},{...e})
     else if(skill==='yinghun')spec(s,skill,e.seat,'target',{min:0,max:0,targets:aliveSeats(s).filter(t=>t!==e.seat)},{options:[{type:'invoke',value:'draw-many',label:'多摸一张弃一张'},{type:'invoke',value:'discard-many',label:'摸一张，多弃牌'},{type:'pass'}]})
     else if(skill==='beige')spec(s,skill,e.seat,'beige-cost',{min:1,max:1},{target:e.target,source:e.source})
     else ask(s,skill,e.seat,'yes',{...e});break}

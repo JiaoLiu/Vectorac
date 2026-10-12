@@ -112,7 +112,7 @@ test('played Sha and actual Shan remain illustrated side by side, with responder
 })
 test('converted Sha uses the same illustrated card UI without changing the physical card',()=>{
   let s=fixture(),[shan]=hand(s,0,'shan');hand(s,1,'shan');s=step(s,{type:'play',as:'sha',ids:[shan.id],targets:[1]})
-  const center=renderCenter(ui(s),playerView(s,0));assert.ok(center.includes('data-type="sha"'));assert.ok(center.includes('转化攻击'));assert.equal(center.includes('fs-effective-sha'),false);assert.equal(s.lastPlayed.cards[0].type,'shan')
+  const center=renderCenter(ui(s),playerView(s,0));assert.ok(center.includes('data-type="shan"'));assert.ok(!center.includes('data-type="sha"'));assert.ok(center.includes('作为杀使用'));assert.equal(center.includes('fs-effective-sha'),false);assert.equal(s.lastPlayed.cards[0].type,'shan')
 })
 test('selecting a theme card explains its function outside the face',()=>{
   const s=fixture(),[c]=hand(s,0,'snatch');hand(s,1,'shan');const model=ui(s);model.selected=[c.id]

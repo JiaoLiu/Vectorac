@@ -1,7 +1,7 @@
 import * as baseline from './core/catalog.mjs'
 import { createEngine } from './core/engine.mjs'
 import {createAI} from './core/ai.mjs'
-import { ALLIANCES, PLAYABLE_HEROES, CARDS_BY_TYPE, skillName,makeExpandedDeck } from './theme.mjs'
+import { ALLIANCES, PLAYABLE_HEROES, CARDS_BY_TYPE, skillName,makeMilitaryDeck } from './theme.mjs'
 export const THEME_VERSION='fengshen-classic-original-v2'
 // Mechanical factions are an explicit alliance adapter, never the old hero's
 // hard-coded nationality. Public base IDs stay intact for the existing local AI.
@@ -13,25 +13,31 @@ export const catalog={...baseline,theme:THEME_VERSION,HEROES:heroes,HERO_BY_ID:O
   skillName,
 }
 const engine=createEngine(catalog)
+export const militaryCatalog={...catalog,makeDeck:makeMilitaryDeck,deckVersion:2}
+const militaryEngine=createEngine(militaryCatalog)
+const engineFor=s=>s?.deckVersion===2?militaryEngine:engine
 export const chooseAI=createAI(catalog)
-export const {dispatch,allCards,legalActions,distance,attackRange,hasSkill,hero}=engine
-export function playerView(s,seat){return s?.networkView?JSON.parse(JSON.stringify(s.networkView)):engine.playerView(s,seat)}
-export function createGame({heroId='jifa',...options}={}) {
+export const {allCards,distance,attackRange,hasSkill,hero}=engine
+export const dispatch=(s,a)=>engineFor(s).dispatch(s,a)
+export const legalActions=(s,seat)=>engineFor(s).legalActions(s,seat)
+export function playerView(s,seat){return s?.networkView?JSON.parse(JSON.stringify(s.networkView)):engineFor(s).playerView(s,seat)}
+export function createGame({heroId='jifa',deckVersion=1,...options}={}) {
   const chosen=PLAYABLE_HEROES.find(h=>h.id===heroId)
   if(!chosen)throw new Error('该角色尚未接入完整技能，不能进入对局')
-  return {...engine.createGame({...options,heroId:chosen.engineId}),theme:THEME_VERSION}
+  return {...engineFor({deckVersion}).createGame({...options,heroId:chosen.engineId}),theme:THEME_VERSION}
 }
-export function createAssignedGame({roles,heroIds,seed,label,sides,firstSeat}){
+export function createAssignedGame({roles,heroIds,seed,label,sides,firstSeat,deckVersion=1}){
   const ids=heroIds.map(id=>PLAYABLE_HEROES.find(h=>h.id===id)?.engineId)
   if(ids.some(id=>!id))throw new Error('所选武将的技能尚未接入')
-  return {...engine.createAssignedGame({roles,heroIds:ids,seed,label,sides,firstSeat}),theme:THEME_VERSION}
+  return {...engineFor({deckVersion}).createAssignedGame({roles,heroIds:ids,seed,label,sides,firstSeat}),theme:THEME_VERSION}
 }
 export function restoreGame(raw){
   if(!raw||raw.theme!==THEME_VERSION)return null
-  let state=engine.restoreGame(raw)
+  const active=engineFor(raw)
+  let state=active.restoreGame(raw)
   // Upgrade an old optional-positive-skill response without losing the match.
   while(state?.pending?.kind==='choice'&&catalog.automaticSkills.includes(state.pending.skill)){
-    const p=state.pending,r=engine.dispatch(state,{type:'choose',value:'yes',seat:p.actor,promptId:p.id,revision:state.revision})
+    const p=state.pending,r=active.dispatch(state,{type:'choose',value:'yes',seat:p.actor,promptId:p.id,revision:state.revision})
     if(!r.ok)return null;state=r.state
   }
   return state

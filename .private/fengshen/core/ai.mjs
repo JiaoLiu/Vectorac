@@ -80,7 +80,7 @@ function response(view,HERO_BY_ID,isRed) {
   if(pending.kind==='guanxing'){
     const cards=opts.find(a=>a.type==='arrange').pool.slice(),top=[],own=view.players[view.seat]
     for(const delayed of own.judgment.slice().reverse()){
-      const i=cards.findIndex(c=>delayed.type==='indulgence'?c.suit==='heart':!(c.suit==='spade'&&c.rank>=2&&c.rank<=9));if(i>=0)top.push(cards.splice(i,1)[0].id)
+      const i=cards.findIndex(c=>delayed.type==='supplyshortage'?c.suit==='club':delayed.type==='indulgence'?c.suit==='heart':!(c.suit==='spade'&&c.rank>=2&&c.rank<=9));if(i>=0)top.push(cards.splice(i,1)[0].id)
     }
     cards.sort((a,b)=>cardValue(b,view)-cardValue(a,view));top.push(...cards.slice(0,2).map(c=>c.id))
     return {type:'arrange',top,bottom:cards.slice(2).map(c=>c.id)}
@@ -90,9 +90,9 @@ function response(view,HERO_BY_ID,isRed) {
     return candidates[0]||opts.find(a=>a.type==='pass')
   }
   if(pending.kind==='judge-replace'){
-    const card=view.judgmentCard,relation=hostility(view,pending.target),pool=view.players[view.seat].hand
+    const card=view.judgmentCard,relation=hostility(view,pending.target),pool=ownCards(view),effective=c=>({...c,suit:view.players[pending.target].effectiveSkills?.includes('hongyan')&&c.suit==='spade'?'heart':c.suit})
     // Only the public judgment and our own hand inform replacement decisions.
-    const good=c=>view.judgmentKind==='indulgence'?c.suit==='heart':view.judgmentKind==='lightning'?!(c.suit==='spade'&&c.rank>=2&&c.rank<=9):view.judgmentKind==='luoshen'?!isRed(c):view.judgmentKind==='ganglie'?c.suit!=='heart':isRed(c)
+    const good=raw=>{const c=effective(raw);return view.judgmentKind==='leiji'?c.suit!=='spade':view.judgmentKind==='supplyshortage'?c.suit==='club':view.judgmentKind==='indulgence'?c.suit==='heart':view.judgmentKind==='lightning'?!(c.suit==='spade'&&c.rank>=2&&c.rank<=9):view.judgmentKind==='luoshen'?!isRed(c):view.judgmentKind==='ganglie'?c.suit!=='heart':isRed(c)}
     const replacement=opts.filter(a=>a.type==='respond').sort((a,b)=>cost(view,a.ids)-cost(view,b.ids)).find(a=>{const c=pool.find(c=>c.id===a.ids[0]);return relation<0&&good(c)&&!good(card)||relation>0&&!good(c)&&good(card)})
     return replacement||opts.find(a=>a.type==='pass')
   }
@@ -104,7 +104,7 @@ function response(view,HERO_BY_ID,isRed) {
   if(pending.kind==='pick')return opts.slice().sort((a,b)=>cardValue(b.card,view)-cardValue(a.card,view))[0]
   if(pending.kind==='take') {
     const enemy=hostility(view,pending.target)>0
-    const score=o=>!o.card?2:o.card.type==='indulgence'||o.card.type==='lightning'?(enemy?-8:10):CARDS[o.card.type].slot==='armor'?7:CARDS[o.card.type].slot==='weapon'?6:4
+    const score=o=>!o.card?2:['supplyshortage','indulgence','lightning'].includes(o.card.type)?(enemy?-8:10):CARDS[o.card.type].slot==='armor'?7:CARDS[o.card.type].slot==='weapon'?6:4
     return opts.slice().sort((a,b)=>score(b)-score(a))[0]
   }
   if(pending.kind==='choice') {
@@ -124,7 +124,7 @@ function response(view,HERO_BY_ID,isRed) {
     // No HP can be gained here: preserve Nullify even in a counter-counter chain.
     const recipient=view.players[pending.target]
     if(pending.cardType==='garden'&&recipient&&(!recipient.alive||recipient.hp>=recipient.maxHp))return pass
-    const harmful=['duel','snatch','dismantle','savage','arrows','collateral','indulgence','lightning'].includes(pending.cardType)
+    const harmful=['fireattack','supplyshortage','duel','snatch','dismantle','savage','arrows','collateral','indulgence','lightning'].includes(pending.cardType)
     const relation=hostility(view,pending.target)
     const shouldCancel=harmful?relation<-.5:relation>1
     return shouldCancel!==pending.negated&&answers.length?answers[0]:pass
@@ -155,17 +155,17 @@ const chooseAI=function chooseAI(view) {
         else if(CARDS[action.as].category==='equip') {
           const slot=CARDS[action.as].slot,old=self.equip[slot]
           score=!old?9:slot==='weapon'&&(CARDS[action.as].range>CARDS[old.type].range||action.as==='crossbow'&&self.hand.filter(c=>c.type==='sha').length>1)?7:-4
-        } else if(['sha','duel','snatch','dismantle','indulgence'].includes(action.as)) {
+        } else if(['sha','firesha','thundersha','supplyshortage','duel','snatch','dismantle','indulgence'].includes(action.as)) {
           const relations=action.targets.reduce((n,t)=>n+hostility(view,t),0)
           score=relations*3+(rel>0?(view.players[target].hp<=2?3:0):0)-(action.as==='duel'&&!self.hand.some(c=>c.type==='sha')?1:0)
           if(action.as==='sha'&&view.players[target].equip.armor?.type==='vine'&&self.equip.weapon?.type!=='qinggang'&&self.equip.weapon?.type!=='fan'&&!action.ids.some(id=>CARDS[ownCards(view).find(c=>c.id===id)?.type]?.attackNature))score=-4
           if(action.as==='snatch'||action.as==='dismantle') {
             const ally=view.players[target]
-            if(rel<0&&ally.judgment.some(c=>c.type==='indulgence'))score=13
+            if(rel<0&&ally.judgment.some(c=>['indulgence','supplyshortage'].includes(c.type)))score=13
           }
           score-=Math.max(0,cost(view,action.ids)-5)*.4
           if(action.as==='duel'&&view.players[target].handCount>0&&slashResources(view,HERO_BY_ID,isRed)===0)score-=self.hp<=1?30:5
-        } else if(action.as==='savage'||action.as==='arrows')score=view.players.filter(p=>p.alive&&p.seat!==view.seat).reduce((n,p)=>n+hostility(view,p.seat)*(p.hp<=2?1.7:1),0)
+        } else if(action.as==='savage'||action.as==='arrows')score=view.players.filter(p=>p.alive&&p.seat!==view.seat&&p.equip.armor?.type!=='vine'&&(action.as!=='savage'||!viewHero(p).skills.some(s=>['huoshou','juxiang'].includes(s)))).reduce((n,p)=>n+hostility(view,p.seat)*(p.hp<=2?1.7:1),0)-Math.max(0,cost(view,action.ids)-5)*.5
         else if(action.as==='garden')score=view.players.filter(p=>p.alive&&p.hp<p.maxHp).reduce((n,p)=>n-hostility(view,p.seat),0)+1
         else if(action.as==='harvest')score=5
         else if(action.as==='fireattack')score=self.hand.length>1?rel*3+1:-4

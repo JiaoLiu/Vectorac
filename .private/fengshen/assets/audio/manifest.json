@@ -134,6 +134,34 @@
       "text": "白鹤"
     },
     {
+      "key": "card-guding",
+      "text": "化血神刀"
+    },
+    {
+      "key": "card-fan",
+      "text": "五火七禽扇"
+    },
+    {
+      "key": "card-silverlion",
+      "text": "莲花宝甲"
+    },
+    {
+      "key": "card-vine",
+      "text": "青莲宝色旗"
+    },
+    {
+      "key": "card-firesha",
+      "text": "炎杀"
+    },
+    {
+      "key": "card-thundersha",
+      "text": "雷杀"
+    },
+    {
+      "key": "card-wine",
+      "text": "琼浆"
+    },
+    {
       "key": "card-fireattack",
       "text": "焚天焰"
     },
@@ -142,8 +170,12 @@
       "text": "缚神索"
     },
     {
-      "key": "card-wine",
-      "text": "琼浆"
+      "key": "card-supplyshortage",
+      "text": "闭粮阵"
+    },
+    {
+      "key": "card-hualiu",
+      "text": "守山獬豸"
     },
     {
       "key": "skill-guanxing",
@@ -510,6 +542,30 @@
       "text": "磐影"
     },
     {
+      "key": "skill-leiji",
+      "text": "灯雷"
+    },
+    {
+      "key": "skill-guidao",
+      "text": "移劫"
+    },
+    {
+      "key": "skill-huangtian",
+      "text": "归灯"
+    },
+    {
+      "key": "skill-luanji",
+      "text": "万剑"
+    },
+    {
+      "key": "skill-xueyi",
+      "text": "仙统"
+    },
+    {
+      "key": "skill-duanliang",
+      "text": "断道"
+    },
+    {
       "key": "skill-luya-mashu",
       "text": "游仙"
     }
@@ -547,9 +603,17 @@
     "male/card-jueying.mp3",
     "male/card-dilu.mp3",
     "male/card-zhuahuang.mp3",
+    "male/card-guding.mp3",
+    "male/card-fan.mp3",
+    "male/card-silverlion.mp3",
+    "male/card-vine.mp3",
+    "male/card-firesha.mp3",
+    "male/card-thundersha.mp3",
+    "male/card-wine.mp3",
     "male/card-fireattack.mp3",
     "male/card-ironchain.mp3",
-    "male/card-wine.mp3",
+    "male/card-supplyshortage.mp3",
+    "male/card-hualiu.mp3",
     "male/skill-guanxing.mp3",
     "male/skill-kongcheng.mp3",
     "male/skill-rende.mp3",
@@ -641,6 +705,12 @@
     "male/skill-tuxi.mp3",
     "male/skill-luoshen.mp3",
     "male/skill-qingguo.mp3",
+    "male/skill-leiji.mp3",
+    "male/skill-guidao.mp3",
+    "male/skill-huangtian.mp3",
+    "male/skill-luanji.mp3",
+    "male/skill-xueyi.mp3",
+    "male/skill-duanliang.mp3",
     "male/skill-luya-mashu.mp3",
     "female/card-sha.mp3",
     "female/card-shan.mp3",
@@ -674,9 +744,17 @@
     "female/card-jueying.mp3",
     "female/card-dilu.mp3",
     "female/card-zhuahuang.mp3",
+    "female/card-guding.mp3",
+    "female/card-fan.mp3",
+    "female/card-silverlion.mp3",
+    "female/card-vine.mp3",
+    "female/card-firesha.mp3",
+    "female/card-thundersha.mp3",
+    "female/card-wine.mp3",
     "female/card-fireattack.mp3",
     "female/card-ironchain.mp3",
-    "female/card-wine.mp3",
+    "female/card-supplyshortage.mp3",
+    "female/card-hualiu.mp3",
     "female/skill-guanxing.mp3",
     "female/skill-kongcheng.mp3",
     "female/skill-rende.mp3",
@@ -768,6 +846,12 @@
     "female/skill-tuxi.mp3",
     "female/skill-luoshen.mp3",
     "female/skill-qingguo.mp3",
+    "female/skill-leiji.mp3",
+    "female/skill-guidao.mp3",
+    "female/skill-huangtian.mp3",
+    "female/skill-luanji.mp3",
+    "female/skill-xueyi.mp3",
+    "female/skill-duanliang.mp3",
     "female/skill-luya-mashu.mp3"
   ]
 }

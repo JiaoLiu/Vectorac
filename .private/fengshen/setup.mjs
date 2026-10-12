@@ -1,7 +1,7 @@
 import {PLAYABLE_HEROES,HERO_BY_THEME_ID,ALLIANCES} from './theme.mjs'
 import {createAssignedGame,restoreGame,THEME_VERSION} from './engine.mjs'
 export const SETUP_VERSION=1
-export const LORD_HEROES=['jifa','dixin','yunzhongzi']
+export const LORD_HEROES=['jifa','dixin','yunzhongzi','randeng','yuanshi']
 // 玩法模式：身份局隐藏身份；对抗局（1v1/2v2/3v3）只有敌友两队，
 // 0 号席固定为友方（本地），1 号席敌方，此后交替穿插，先手由开局掷骰决定。
 export const MODES={
@@ -29,12 +29,13 @@ function arrangeRoles(mode,s){
   return out
 }
 function mixSeed(value){let x=(value^0x9e3779b9)>>>0;x=Math.imul(x^(x>>>16),0x85ebca6b);x=Math.imul(x^(x>>>13),0xc2b2ae35);return (x^(x>>>16))>>>0}
-export function createSetup({seed=Date.now()>>>0,mode:modeId='identity5'}={}){
+export function createSetup({seed=Date.now()>>>0,mode:modeId='identity5',deckVersion=1}={}){
   const mode=modeById(modeId),n=mode.players,team=!!mode.teams
   // Mix time-like adjacent seeds before the first shuffle; a raw LCG's first
   // draw is correlated across neighboring milliseconds and biases seat roles.
   const s={version:SETUP_VERSION,theme:THEME_VERSION,mode:mode.id,stage:'identity',seed:mixSeed(seed),revision:0,roles:[],sides:null,dice:null,first:0,lord:0,offers:Array.from({length:n},()=>[]),picks:Array(n).fill(null),published:Array(n).fill(null),candidateCount:Math.min(3,Math.floor((PLAYABLE_HEROES.length-1)/(n-1)))}
   s.roles=arrangeRoles(mode,s)
+  s.deckVersion=deckVersion===2?2:1
   if(team){
     // sides[i]=0 友方 / 1 敌方；座位交替，故 i%2 即阵营。
     s.sides=s.roles.map((_,i)=>i%2)
@@ -53,7 +54,7 @@ export function setupView(s,seat=0){
   if(s?.networkSetup)return clone(s.networkSetup)
   // 骰子只在选将完成（ready）后才掷出并公开；在此之前 dice/first 均为空。
   const rolled=s.sides&&Array.isArray(s.dice)
-  return {stage:s.stage,revision:s.revision,seat,mode:s.mode||'identity5',role:s.roles[seat],lord:s.lord,teamMode:!!s.sides,sides:s.sides?s.sides.slice():null,dice:rolled?s.dice.slice():null,first:rolled?s.first:0,candidateCount:s.candidateCount,
+  return {stage:s.stage,revision:s.revision,seat,mode:s.mode||'identity5',deckVersion:s.deckVersion||1,role:s.roles[seat],lord:s.lord,teamMode:!!s.sides,sides:s.sides?s.sides.slice():null,dice:rolled?s.dice.slice():null,first:rolled?s.first:0,candidateCount:s.candidateCount,
     candidates:s.sides?(s.picks[seat]?[]:s.offers[seat].slice()):(s.stage==='lord'&&seat===s.lord||s.stage==='others'&&seat!==s.lord?s.offers[seat].slice():[]),
     picked:s.picks[seat],players:s.roles.map((role,index)=>({seat:index,role:s.sides?(s.sides[index]===0?'lord':'rebel'):(index===seat||role==='lord'?role:null),heroId:index===seat?s.picks[index]:s.published[index],ready:!!s.picks[index]})),
   }
@@ -89,7 +90,7 @@ export function dispatchSetup(state,action){
         s.stage='others'
       }else if(s.picks.every(Boolean)){s.stage='ready';s.published=s.picks.slice()}
     }else if(action.type==='begin'&&s.stage==='ready'&&action.seat===0){
-      return {ok:true,setup:s,game:createAssignedGame({roles:s.roles,heroIds:s.picks,seed:s.seed,label:modeById(s.mode).name,sides:s.sides||null,firstSeat:s.sides?s.first:null})}
+      return {ok:true,setup:s,game:createAssignedGame({roles:s.roles,heroIds:s.picks,seed:s.seed,label:modeById(s.mode).name,sides:s.sides||null,firstSeat:s.sides?s.first:null,deckVersion:s.deckVersion||1})}
     }else throw Error('当前阶段不允许这个操作')
     s.revision++;return {ok:true,setup:s}
   }catch(error){return {ok:false,error:error.message,setup:state}}
@@ -111,6 +112,7 @@ export function chooseSetupAI(view){
 export function restoreSetup(raw){
   try{
     const s=clone(raw),valid=id=>typeof id==='string'&&HERO_BY_THEME_ID[id]?.playable
+    if(s.deckVersion!=null&&![1,2].includes(s.deckVersion))return null
     if(s.version!==SETUP_VERSION||s.theme!==THEME_VERSION||!['identity','lord','others','ready'].includes(s.stage)||!Number.isInteger(s.seed)||s.seed<0||s.seed>4294967295||!Number.isInteger(s.revision)||s.revision<0)return null
     // 旧存档没有 mode 字段，按五人身份局处理
     const mode=s.mode==null?MODES.identity5:MODES[s.mode];if(!mode)return null

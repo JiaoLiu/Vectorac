@@ -1,6 +1,6 @@
 import {HEROES,HERO_BY_THEME_ID,PLAYABLE_HEROES,FACTIONS,ALLIANCES,ALLIANCE_NAMES,CARDS_BY_TYPE,PLANNED_EQUIPMENT,heroForBase,displayText,skillName,skillHelp} from './theme.mjs'
 import {SKILLS,ROLES,SUITS,isRed,rankName} from './core/catalog.mjs'
-import {createGame,dispatch,playerView,restoreGame,THEME_VERSION,catalog} from './engine.mjs'
+import {createGame,dispatch,playerView,restoreGame,THEME_VERSION,catalog,militaryCatalog} from './engine.mjs'
 import {chooseAI} from './engine.mjs'
 import './style.css'
 import './table.css'
@@ -74,6 +74,7 @@ export class FengshenUI {
     this.root=root;this.state=null;this.setup=null;this.draftHero=null;this.lobby=true;this.selected=[];this.targets=[];this.skill=null;this.as=null;this.modal=null;this.paused=false;this.timer=null;this.toast='';this.destroyed=false
     const preferences=load(PREFS,{pace:650,voice:true});this.hints=tutorialEnabled(preferences);this.pace=preferences.pace;if(![250,650,1100].includes(this.pace))this.pace=650
     this.mode=MODE_LIST.some(m=>m.id===preferences.mode)?preferences.mode:'identity5'
+    this.deckVersion=preferences.deckVersion===2?2:1
     this.modalStack=[];this.choiceIndex=null;this.choiceZone='hand';this.hits=[];this.transfer=null;this.draws=[];this.auto=false;this.clock=new DecisionClock();this.music=new BackgroundMusic({enabled:preferences.music!==false});this.voice=new CardVoice({enabled:preferences.voice!==false,onIdle:()=>{if(!this.destroyed)this.schedule()}})
     this.resumeSession=restoreSession(load(SAVE,null));this.resumeState=this.resumeSession?.kind==='game'?this.resumeSession.game:null;this.legacySave=load('vectorac.fengshen.internal.save.v1',null)!=null;root.className='fs-app'
     this.feedback=new FeedbackModal()
@@ -88,10 +89,10 @@ export class FengshenUI {
     this.clockTimer=setInterval(()=>this.tickClock(),250);this.onViewport();this.render();prewarmTableArt()
   }
   reset(){this.selected=[];this.targets=[];this.skill=null;this.as=null;this.guhuoMode=false;this.extValue=null;this.choiceIndex=null;this.choiceSelection=null;this.panelSelection=null;this.choiceZone='hand';this.star=null}
-  savePreferences(){store(PREFS,{pace:this.pace,voice:this.voice.enabled,music:this.music.enabled,hints:this.hints,mode:this.mode})}
+  savePreferences(){store(PREFS,{pace:this.pace,voice:this.voice.enabled,music:this.music.enabled,hints:this.hints,mode:this.mode,deckVersion:this.deckVersion})}
   start(){
     if(!this.lobby)return
-    this.requestGameScreen();this.clearEffects();this.voice.stop();this.music.unlock();this.auto=false;this.state=null;this.setup=createSetup({mode:this.mode});this.draftHero=null;this.lobby=false;this.paused=false;this.reset();this.save();this.render()
+    this.requestGameScreen();this.clearEffects();this.voice.stop();this.music.unlock();this.auto=false;this.state=null;this.setup=createSetup({mode:this.mode,deckVersion:this.deckVersion});this.draftHero=null;this.lobby=false;this.paused=false;this.reset();this.save();this.render()
   }
   save(){if(this.online){if(this.state)this.roleMarks=cleanRoleMarks(playerView(this.state,0),this.roleMarks);this.online.saveNotes();return}if(this.setup)store(SAVE,{kind:'setup',setup:this.setup});else if(this.state){this.roleMarks=cleanRoleMarks(playerView(this.state,0),this.roleMarks);store(SAVE,{kind:'game',game:this.state,roleMarks:this.roleMarks})}}
   resume(){
@@ -293,6 +294,7 @@ export class FengshenUI {
       if(pending.kind==='yiji'){const a=view.legal.find(a=>a.type==='give'&&a.target===this.targets[0]&&equal(a.ids,this.selected));return a?this.act(a):this.inform('只选择本次传道得到的牌和接收者')}
       if(pending.kind==='tuxi'){const a=view.legal.find(a=>a.targets?.length===this.targets.length&&a.targets.every(t=>this.targets.includes(t)));return a?this.act(a):this.inform('选择一至两名角色')}
       if(pending.kind==='discard')return this.act({type:'discard',ids:this.selected})
+      if(pending.kind==='judge-replace'){const answer=view.legal.find(a=>a.type==='respond'&&a.as==='judgment'&&equal(a.ids,this.selected));return answer?this.act(answer):false}
       const answer=view.legal.find(a=>a.type==='respond'&&(a.as||pending.as)===(this.as||pending.as)&&equal(a.ids,this.selected));return answer?this.act({...answer,guhuo:this.guhuoMode||answer.guhuo}):this.inform('请按提示选择可以响应的牌')
     }
     if(this.skill)return this.act({type:'skill',skill:this.skill,ids:this.selected,target:this.targets[0],targets:this.targets})
@@ -330,6 +332,7 @@ export class FengshenUI {
     if(action==='setup-begin'){this.actSetup({type:'begin',seat:0});return}
     if(action==='start'){this.start();return}
     if(action==='mode'&&this.lobby){this.mode=modeById(id).id;this.savePreferences();this.render();return}
+    if(action==='deck'&&this.lobby){this.deckVersion=this.deckVersion===2?1:2;this.savePreferences();this.render();return}
     if(action==='resume'){this.resume();return}
     if(action==='close'){this.closeModal();return}
     if(action==='feedback'){this.feedback.open();return}
@@ -370,7 +373,7 @@ export class FengshenUI {
       else{
         const equipped=Object.values(own.equip).some(c=>c?.id===id)
         if(equipped&&this.skill!=='zhiheng'&&!view.legal.some(a=>a.ids?.includes(id))){this.modal={kind:'card-detail',id};this.render();return}
-        const spear=!this.skill&&own.equip.weapon?.type==='spear'&&(!view.pending||view.pending.as==='sha'),multi=['zhiheng','rende','jieyin','dimeng'].includes(this.skill)||['discard','axe','yiji'].includes(view.pending?.kind)||view.pending?.kind==='ext'&&view.extension.spec?.max>1
+        const spear=!this.skill&&own.equip.weapon?.type==='spear'&&(!view.pending||view.pending.as==='sha'),multi=['zhiheng','rende','jieyin','dimeng','luanji'].includes(this.skill)||['discard','axe','yiji'].includes(view.pending?.kind)||view.pending?.kind==='ext'&&view.extension.spec?.max>1
         this.selected=multi?this.selected.concat(id):spear&&this.selected.length<2?this.selected.concat(id):[id]
       }
       if(this.skill==='dimeng'||view.pending?.kind==='ext')this.targets=this.targets.filter(t=>this.targetable(view).includes(t));else this.targets=[];this.as=null;this.render();return
@@ -400,13 +403,13 @@ export class FengshenUI {
   header(){const label=this.lobby?'准备大厅':this.setup?(setupView(this.setup,0).teamMode?'选将':'身份选将'):(this.state?.teamMode?'两军对垒':'身份对决');return `<header class="fs-header"><div class="fs-brand">众神<span>斗法</span><small>${this.online?'好友联机':'单机对局'} / ${label}</small></div>${renderToolbar({lobby:this.lobby,setup:this.setup,paused:this.paused,voice:this.voice.enabled,music:this.music.enabled})}</header>`}
   renderLobby(){this.networkCredential=onlineCredential();return renderHome(this)}
   equipment(p,own=false){return Object.entries(p.equip).filter(([,c])=>c).map(([slot,c])=>`<button class="fs-equip ${this.selected.includes(c.id)?'selected':''}" data-action="${own?'card':'card-detail'}" data-id="${c.id}" data-slot="${slot}" aria-label="${{weapon:'武器',armor:'防具',offenseHorse:'进攻坐骑',defenseHorse:'防御坐骑'}[slot]}：${CARDS_BY_TYPE[c.type].name}" title="${esc(displayText(CARDS_BY_TYPE[c.type].help))}"><img src="${CARDS_BY_TYPE[c.type].image}" alt="" loading="lazy">${equipmentSlot(slot)}<span>${CARDS_BY_TYPE[c.type].name}</span><small>${equipEffect(CARDS_BY_TYPE[c.type])}</small></button>`).join('')||'<small class="fs-no-equip">法宝栏为空</small>'}
-  skills(p,view){const h=display(p);return Object.keys(h.skillNames).filter(s=>SKILLS[s][2]!=='lord'||(!view.teamMode&&p.role==='lord')).map(s=>{const active=p.seat===0&&view.legal.some(a=>a.type==='skill'&&a.skill===s),guhuo=p.seat===0&&s==='guhuo'&&view.legal.some(a=>a.type==='play'||a.type==='respond');return `<button data-action="${guhuo?'guhuo':p.seat===0&&s==='huashen'?'forms':active?'skill':'hero-detail'}" data-value="${s}" data-id="${h.id}" class="fs-skill ${(this.skill===s||guhuo&&this.guhuoMode)&&p.seat===0?'selected':''}"><b>${h.skillNames[s]}</b><small>${guhuo?(this.guhuoMode?'已扣置':'扣置声明'):active?'发动':catalog.automaticSkills.includes(s)?'自动':{lord:'主公技',locked:'锁定',convert:'转化',trigger:'触发',limited:'限定',wake:'觉醒'}[SKILLS[s][2]]||'技能'}</small></button>`}).join('')}
+  skills(p,view){const h=display(p),donate=p.seat===0&&view.legal.some(a=>a.skill==='huangtian'),names={...h.skillNames,...(donate?{huangtian:skillName(p,'huangtian')}: {})};return Object.keys(names).filter(s=>donate&&s==='huangtian'||SKILLS[s][2]!=='lord'||(!view.teamMode&&p.role==='lord')).map(s=>{const active=p.seat===0&&view.legal.some(a=>a.type==='skill'&&a.skill===s),guhuo=p.seat===0&&s==='guhuo'&&view.legal.some(a=>a.type==='play'||a.type==='respond');return `<button data-action="${guhuo?'guhuo':p.seat===0&&s==='huashen'?'forms':active?'skill':'hero-detail'}" data-value="${s}" data-id="${h.id}" class="fs-skill ${(this.skill===s||guhuo&&this.guhuoMode)&&p.seat===0?'selected':''}"><b>${names[s]}</b><small>${guhuo?(this.guhuoMode?'已扣置':'扣置声明'):active?'发动':catalog.automaticSkills.includes(s)?'自动':{lord:'主公技',locked:'锁定',convert:'转化',trigger:'触发',limited:'限定',wake:'觉醒'}[SKILLS[s][2]]||'技能'}</small></button>`}).join('')}
   opponent(p,view){return renderOpponent(this,p,view)}
   pendingText(view){const p=view.pending;if(!p)return '';const source=p.source==null?'法术':display(view.players[p.source]).name,target=p.target==null?'目标':display(view.players[p.target]).name;return {
     shensu:p.mode===1?'疾行：选择目标；发动后跳过判定与摸牌':'疾行：选一张装备牌和目标；发动后跳过出牌',
     response:combatContext(view)?.hint||`${source} → ${target}：请打出${p.remaining>1?p.remaining+' 张':''}${CARDS_BY_TYPE[p.as]?.name||''}`,
     rescue:`${target}濒死：是否使用仙桃救援？`,counter:`${p.negated?'反制破法':'使用破法'}：${CARDS_BY_TYPE[p.cardType]?.name||''} → ${target}`,
-    incarnation:'七十二变：在中央选择形态与技能',guanxing:'推演：排列牌顶与牌底，然后确认',liuli:'移劫：弃一张牌，选择转移目标',yiji:'传道：分配本次获得的牌，或保留',tuxi:'地行：选择一至两名角色，或正常摸牌','judge-replace':'天眼：用一张手牌改判，或放弃',
+    incarnation:'七十二变：在中央选择形态与技能',guanxing:'推演：排列牌顶与牌底，然后确认',liuli:'移劫：弃一张牌，选择转移目标',yiji:'传道：分配本次获得的牌，或保留',tuxi:'地行：选择一至两名角色，或正常摸牌','judge-replace':`${skillName(view.players[p.actor],p.skill)}：选择合法改判牌，或放弃`,
     discard:`弃牌：请选 ${p.count} 张手牌`,guess:`${skillName(view.players[p.actor],'fanjian')}：猜测花色`,pick:'仙山采宝：选择一张牌',take:`选择${target}的一张牌`,axe:'番天印：弃两张牌，令杀命中',blade:'打神鞭：是否再出一张杀？',support:`${p.requester==null?'主公':display(view.players[p.requester]).name}请求${CARDS_BY_TYPE[p.as]?.name||''}援助`,choice:`${SKILLS[p.skill]?skillName(view.players[p.actor],p.skill):displayText({dualsword:'阴阳双剑',dualTarget:'阴阳双剑',ice:'乾坤圈',bow:'五色神光'}[p.skill]||'法宝')}：请选择`,
   }[p.kind]||'等待响应'}
   renderActions(view){return renderControls(this,view)}
@@ -414,7 +417,7 @@ export class FengshenUI {
   renderGame(){return renderBattle(this)}
   modalContent(){
     if(!this.modal)return ''
-    const {kind,id}=this.modal;let title='',body=''
+    const {kind,id}=this.modal;let title='',body='';const deck=(this.state?(playerView(this.state,0).deckVersion===2?militaryCatalog:catalog):(this.deckVersion===2?militaryCatalog:catalog)).makeDeck()
     // 牌桌「菜单」收纳（英雄杀式）：不常用功能全部收进这里，顶栏只留菜单按钮。
     if(kind==='menu'){title='菜单';body=renderMenu({inGame:!!this.state,paused:this.paused,voice:this.voice.enabled,music:this.music.enabled,hints:this.hints!==false,pace:this.pace===250?'快':this.pace===1100?'慢':'标准',auto:this.auto})}
     if(kind==='heroes'){title='人物图鉴';body=heroGallery()}
@@ -425,8 +428,8 @@ export class FengshenUI {
       if(v.teamMode){const ally=v.sides[0]===0;title='你的阵营';body=`<section class="fs-identity-help"><strong class="fs-identity ${ally?'role-ally':'role-enemy'}">${ally?'友方':'敌方'}</strong><h3>胜利条件</h3><p>消灭敌方全部角色即获胜；我方全部阵亡则失败。</p><p>座位穿插：你之后依次是敌方、队友、敌方循环。开局掷骰，点数最高者先手。</p></section>`}
       else{const r=ROLES[p.role];title='你的身份：'+r.name;body=`<section class="fs-identity-help"><strong class="fs-identity role-${p.role}">${r.name}</strong><h3>你的胜利条件</h3><p>${r.goal}。</p><p>${p.alive?'其他玩家不能看到你的身份，主公除外。':'你已阵亡，身份已公开；仍可在牌桌观看结算。'}</p></section>`}}
     if(kind==='hero-detail'){const p=this.state&&playerView(this.state,0).players.find(p=>display(p).id===id),h=p?display(p):HERO_BY_THEME_ID[id];title=h.name+' · '+h.title;body=heroDetails(h)}
-    if(kind==='card-detail'){const c=catalog.makeDeck().find(c=>c.id===id)||catalog.makeDeck().find(c=>c.type===id)||(CARDS_BY_TYPE[id]?sampleCard(id):null),d=c&&CARDS_BY_TYPE[c.type];title=d?.name||'卡牌';body=d?`<div class="fs-card-detail">${cardFace(c)}<div><b>${{basic:'基本牌',trick:'即时法术',delay:'延时阵法',equip:'法宝'}[d.category]}</b><p>${esc(displayText(d.help))}</p><small>${d.virtualOnly?'仅由技能生成，不增加实体牌数量':'牌库中共有 '+catalog.makeDeck().filter(c=>c.type===d.type).length+' 张'}</small></div></div>`:''}
-    if(kind==='gallery'){title='法宝与卡牌图鉴';body=`<p>实体牌库共 108 张；焚天焰、缚神索、琼浆由技能生成。点击卡牌查看用途，返回图鉴后可以继续浏览。</p><div class="fs-gallery">${Object.values(CARDS_BY_TYPE).map(d=>`<button data-action="card-detail" data-id="${d.type}">${cardFace(sampleCard(d.type))}</button>`).join('')}</div><section><h3>扩展法宝 · 未加入当前牌堆</h3><p>${PLANNED_EQUIPMENT.map(d=>d.name).join('、')}将在后续版本逐步开放，当前对局只使用上方列出的卡牌。</p></section>`}
+    if(kind==='card-detail'){const c=deck.find(c=>c.id===id)||deck.find(c=>c.type===id)||(CARDS_BY_TYPE[id]?sampleCard(id):null),d=c&&CARDS_BY_TYPE[c.type],count=d?deck.filter(c=>c.type===d.type).length:0;title=d?.name||'卡牌';body=d?`<div class="fs-card-detail">${cardFace(c)}<div><b>${{basic:'基本牌',trick:'即时法术',delay:'延时阵法',equip:'法宝'}[d.category]}</b><p>${esc(displayText(d.help))}</p><small>${count?'本局牌堆中共有 '+count+' 张':'本局无此实体牌；部分技能可转化使用'}</small></div></div>`:''}
+    if(kind==='gallery'){title='法宝与卡牌图鉴';body=`<p>当前${deck.length===160?'军争160张':'标准108张'}牌堆。军争增加炎杀、雷杀、焚天焰、缚神索、琼浆、闭粮阵及配套法宝。点击查看用途，返回后可以继续浏览。</p><div class="fs-gallery">${Object.values(CARDS_BY_TYPE).map(d=>`<button data-action="card-detail" data-id="${d.type}">${cardFace(deck.find(c=>c.type===d.type)||sampleCard(d.type))}</button>`).join('')}</div>`}
     if(kind==='report'){title=this.state?.winner?(playerView(this.state,0).teamMode?'终局 · 胜负一览':'终局 · 身份揭晓'):'战场记录';if(this.state){const v=playerView(this.state,0);body=`${v.winner?`<div class="fs-role-reveal">${v.players.map(p=>`<span>${display(p).name}<b>${v.teamMode?(v.sides[p.seat]===v.sides[v.seat]?'友方':'敌方'):ROLES[p.role].name}</b></span>`).join('')}</div>`:''}<ol class="fs-report">${v.logs.map(l=>`<li>${esc(displayText(l.text))}</li>`).join('')}</ol>`}}
     if(kind==='quit'){title='退出游戏？';body=`<p>${this.online?'退出房间会放弃本席，进行中的对局由 AI 继续；暂时断网或切后台可自动重连。':'当前牌局或选将进度已保存，回到大厅后可以继续上次进度。'}</p><button data-action="quit-confirm" class="fs-primary">退出游戏</button>`}
     if(kind==='rules'){title='众神斗法 · 游戏规则';body=gameRules()}

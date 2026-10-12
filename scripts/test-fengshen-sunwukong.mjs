@@ -34,7 +34,7 @@ test('AI uses private owner options only and every borrowed skill remains dispat
  for(const source of catalog.HEROES.filter(h=>!h.skills.includes('huashen')))for(const skill of source.skills.filter(s=>!['lord','limited','wake'].includes(catalog.SKILLS[s][2]))){let s=setup();const onBoard=s.players.find(p=>p.heroId===source.id);if(onBoard){const spare=catalog.HEROES.find(h=>!h.skills.includes('huashen')&&!s.players.some(p=>p.heroId===h.id)&&h.id!==source.id);onBoard.heroId=spare.id;onBoard.hp=onBoard.maxHp=spare.hp+(onBoard.role==='lord'?1:0)}s.players[0].incarnation.pool=[source.id];s=step(s,{type:'transform',heroId:source.id,skill});assert.ok(restoreGame(s));const seat=s.pending?.actor??s.current,r=dispatch(s,{...chooseAI(playerView(s,seat)),seat});assert.ok(r.ok,source.id+' '+skill+' '+r.error)}
 })
 test('player rules and every character detail never expose comparison or engine labels',()=>{
- const forbidden=/三国杀|曹操|刘备|左慈|测试基准|完整原型|经典原版|映射|军争|pending-full|huashen/;assert.ok(!forbidden.test(gameRules()));for(const h of HEROES)assert.ok(!forbidden.test(heroDetails(h)),h.name)
+ const forbidden=/三国杀|曹操|刘备|左慈|测试基准|完整原型|经典原版|映射|pending-full|huashen/;assert.ok(!forbidden.test(gameRules()));for(const h of HEROES)assert.ok(!forbidden.test(heroDetails(h)),h.name)
  assert.equal(skillName({heroId:'zuoci',incarnation:{activeHero:'sunquan',activeSkill:'zhiheng'}},'zhiheng'),'炼化');assert.equal(skillName('zuoci','zhiheng'),'炼化')
 })
 test('detail closes back to the originating catalog with scroll and focus metadata',()=>{

@@ -182,7 +182,7 @@ export default class GameHall {
       '      <span class="gh-field">AI 提示 ' + segHtml('assist', ON_OFF, 'on') + '</span>' +
       '      <span class="gh-field">封顶 ' + stepperHtml('capFan', CAP_VALUES, 3, fmtCap) + '</span>' +
       '    </div>' +
-      '    <div class="gh-create-opts" data-gh-opts-fengshen hidden><span class="gh-field">玩法 '+segHtml('mode',[{value:'identity8',label:'8人身份'},{value:'identity5',label:'5人身份'},{value:'3v3',label:'3v3'},{value:'2v2',label:'2v2'},{value:'1v1',label:'1v1'}],'identity8')+'</span><span class="gh-field">思考时长 '+stepperHtml('turnTimeoutSeconds',TIMEOUT_VALUES,60,fmtTimeout)+'</span><div class="gh-hint">随机身份、主公先选将；空位可由 AI 补齐，支持语音与互动。</div></div>' +
+      '    <div class="gh-create-opts" data-gh-opts-fengshen hidden><span class="gh-field">玩法 '+segHtml('mode',[{value:'identity8',label:'8人身份'},{value:'identity5',label:'5人身份'},{value:'3v3',label:'3v3'},{value:'2v2',label:'2v2'},{value:'1v1',label:'1v1'}],'identity8')+'</span><span class="gh-field">牌堆 '+segHtml('deckVersion',[{value:'1',label:'标准108'},{value:'2',label:'军争160'}],'1')+'</span><span class="gh-field">思考时长 '+stepperHtml('turnTimeoutSeconds',TIMEOUT_VALUES,60,fmtTimeout)+'</span><div class="gh-hint">随机身份、主公先选将；空位可由 AI 补齐，支持语音与互动。</div></div>' +
       '    <div class="gh-create-btns">' +
       '      <button type="button" class="gh-btn gh-btn-primary" data-gh="create-go">创建</button>' +
       '      <button type="button" class="gh-btn" data-gh="create-cancel">取消</button>' +
@@ -387,7 +387,7 @@ export default class GameHall {
         turnTimeoutSeconds: Number(val('turnTimeoutSeconds'))
       }
       if (val('hostSide')) payload.hostSide = val('hostSide')
-      if(gameType==='fengshen')payload.rules={mode:val('mode')}
+      if(gameType==='fengshen')payload.rules={mode:val('mode'),deckVersion:Number(val('deckVersion'))||1}
       const data = await this.http.createRoom(payload)
       await this._enterOnline(data, gameType)
     } catch (e) {

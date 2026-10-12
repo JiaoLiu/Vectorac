@@ -2,13 +2,13 @@ import {createSetup,dispatchSetup,setupView,chooseSetupAI,MODES,dispatch,playerV
 import {ERR,fail} from '../../errors.js'
 import {WINDOW_TYPE} from '../action-window.js'
 const same=(a,b)=>Array.isArray(a)&&Array.isArray(b)&&a.length===b.length&&a.every((x,i)=>x===b[i])
-function rules(input){const mode=input?.mode??'identity8';if(!Object.hasOwn(MODES,mode))fail(ERR.INVALID_RULES,'众神斗法模式无效');return {mode}}
+function rules(input){const mode=input?.mode??'identity8',deckVersion=input?.deckVersion??1;if(!Object.hasOwn(MODES,mode)||![1,2].includes(deckVersion))fail(ERR.INVALID_RULES,'众神斗法模式或牌堆无效');return {mode,deckVersion}}
 function eligible(state){return state.setup?(state.setup.stage==='lord'&&!state.setup.sides?[state.setup.lord]:state.setup.picks.flatMap((p,i)=>p?[]:[i])):state.s.winner?[]:[state.s.pending?.actor??state.s.current]}
 function legal(state,seat){if(!eligible(state).includes(seat))return [];return state.setup?setupView(state.setup,seat).candidates.map(heroId=>({type:'pick',heroId})):playerView(state.s,seat).legal}
 function matches(options,a){return !!a&&typeof a.type==='string'&&options.some(o=>o.type===a.type&&(!o.skill||o.skill===a.skill)&&(!o.as||o.as===a.as)&&(!o.heroId||o.heroId===a.heroId)&&(o.value==null||o.value===a.value)&&(!o.ids||same(o.ids,a.ids))&&(!o.targets||same(o.targets,a.targets))&&(o.target==null||o.target===a.target))}
-function createState(_init,{rules:r,seed}){let setup=createSetup({seed,mode:r.mode});setup=dispatchSetup(setup,{type:'reveal',seat:0}).setup;return {version:0,setup,s:null,actionIds:new Set()}}
+function createState(_init,{rules:r,seed}){let setup=createSetup({seed,mode:r.mode,deckVersion:r.deckVersion});setup=dispatchSetup(setup,{type:'reveal',seat:0}).setup;return {version:0,setup,s:null,actionIds:new Set()}}
 function apply(state,a){
- if(!a||['ids','top','bottom'].some(k=>a[k]!=null&&(!Array.isArray(a[k])||a[k].length>121||a[k].some(x=>typeof x!=='string'||x.length>96)))||a.targets!=null&&(!Array.isArray(a.targets)||a.targets.length>8||a.targets.some(t=>!Number.isInteger(t)||t<0||t>=((state.s?.players||state.setup.roles).length)))||['type','skill','as','heroId'].some(k=>a[k]!=null&&(typeof a[k]!=='string'||a[k].length>64)))return {ok:false,error:'illegal'}
+ if(!a||['ids','top','bottom'].some(k=>a[k]!=null&&(!Array.isArray(a[k])||a[k].length>160||a[k].some(x=>typeof x!=='string'||x.length>96)))||a.targets!=null&&(!Array.isArray(a.targets)||a.targets.length>8||a.targets.some(t=>!Number.isInteger(t)||t<0||t>=((state.s?.players||state.setup.roles).length)))||['type','skill','as','heroId'].some(k=>a[k]!=null&&(typeof a[k]!=='string'||a[k].length>64)))return {ok:false,error:'illegal'}
  if(a.stateVersion!=null&&a.stateVersion!==state.version)return {ok:false,error:'stale'}
  if(a.actionId&&state.actionIds.has(a.actionId))return {ok:false,error:'duplicate'}
  if(!matches(legal(state,a.seat),a))return {ok:false,error:'illegal'}
@@ -25,9 +25,9 @@ function serialize(state,seat,meta){
  const v=state.setup?{setup:rotateView(setupView(state.setup,seat),seat)}:{game:rotateView({...playerView(state.s,seat),eventId:state.s.eventId,theme:THEME_VERSION},seat)}
  return {...v,action:state.action?{...state.action,seat:seatMap(state.action.seat,seat,(state.s?.players||state.setup.roles).length)}:null,meta:{...meta,seats:meta.seats.map(s=>({...s,playerId:undefined})),mySeat:seat,gameType:'fengshen'},version:state.version}
 }
-export function adapterFor(input){const r=rules(input),mode=r.mode;return {
+export function adapterFor(input){const r=rules(input),mode=r.mode,deckVersion=r.deckVersion;return {
  gameId:'fengshen',seatsPerRoom:MODES[mode].players,privateActions:true,defaultRules:r,
- sanitizeRules(input){const out=rules(input);if(out.mode!==mode)fail(ERR.INVALID_RULES,'模式人数不能在房内改变，请重新建房');return out},
+ sanitizeRules(input){const out=rules(input);if(out.mode!==mode||out.deckVersion!==deckVersion)fail(ERR.INVALID_RULES,'模式或牌堆不能在房内改变，请重新建房');return out},
  openingFor:()=>({engineInit:{},ceremony:{},firstMoverSeat:null}),createState,dispatch:apply,legalActions:legal,playerView:view,serializeView:serialize,
  matchesLegalOption:matches,isFinished:state=>!!state.s?.winner,settlementOf:results,
  eligibleSeatsOf:eligible,windowIdentityOf:state=>state.setup?'draft:'+state.setup.stage:state.s.winner?null:state.s.pending?'prompt:'+state.s.pending.id:'turn:'+state.s.turns+':'+state.s.current,

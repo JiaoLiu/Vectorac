@@ -6,6 +6,7 @@ const HERO_BY_ID={...STANDARD_HERO_BY_ID,...EXPANSION_BY_ID}
 import {GODS,GOD_FACTIONS,GOD_ALLIANCES} from './gods.mjs'
 import {FENGSHEN_EXPANSION,EXPANSION_CARDS,expandedDeck} from './fengshen-expansion.mjs'
 import {CANONICAL_BY_ID}from './canonical-roster.mjs'
+export {makeMilitaryDeck} from './military-deck.mjs'
 
 export const FACTIONS = { zhou:'周', shang:'商', chan:'阐', jie:'截',...GOD_FACTIONS }
 export const ALLIANCES = { zhou:'shu', shang:'wei', chan:'wu', jie:'qun',...GOD_ALLIANCES }
@@ -38,6 +39,9 @@ const draftHeroes = rows.map(([id,name,title,faction,baseHero,hp,sex,skillNames,
 })).concat(GODS,FENGSHEN_EXPANSION,[
  {id:'tuxingsun',name:'土行孙',title:'地行神通',faction:'zhou',skillNames:{tuxi:'地行'},artDirection:'adult stocky short-statured earth-travelling Taoist warrior, ochre bronze armor, gold binding rope, cave and earth mist',image:'assets/heroes/tuxingsun.jpg',thumbnail:'assets/heroes/tuxingsun-thumb.jpg'},
  {id:'shiji',name:'石矶娘娘',title:'白骨洞仙',faction:'jie',skillNames:{luoshen:'石魄',qingguo:'磐影'},artDirection:'dignified adult female stone immortal, slate-grey violet robes, jade headdress and stone talisman, moonlit sacred pillars',image:'assets/heroes/shiji.jpg',thumbnail:'assets/heroes/shiji-thumb.jpg'},
+ {id:'randeng',name:'燃灯道人',title:'灵灯照劫',faction:'chan',skillNames:{leiji:'灯雷',guidao:'移劫',huangtian:'归灯'},artDirection:'ancient slender lamp-bearing immortal monk, clean-shaven wise face, ivory saffron robes, bronze lamp, indigo lightning',image:'assets/heroes/randeng.jpg',thumbnail:'assets/heroes/randeng-thumb.jpg'},
+ {id:'yuanshi',name:'元始天尊',title:'玉清御法',faction:'chan',skillNames:{luanji:'万剑',xueyi:'仙统'},artDirection:'elder celestial sovereign, jade crown and ruyi sceptre, white beard, ivory ice-blue gold robes, cloud palace and swords',image:'assets/heroes/yuanshi.jpg',thumbnail:'assets/heroes/yuanshi-thumb.jpg'},
+ {id:'muzha',name:'木吒',title:'吴钩断道',faction:'zhou',skillNames:{duanliang:'断道'},artDirection:'young male guardian, bronze-grey lotus armor, twin hooked Wu blades, green mountain wind',image:'assets/heroes/muzha.jpg',thumbnail:'assets/heroes/muzha-thumb.jpg'},
 ])
 const newSkillNames={jieyin:'生命之契',xiaoji:'圣翼',kurou:'吐气',jushou:'镇塔',qianxun:'五色护体',lianying:'明光',ganglie:'反震',liegong:'射日',kuanggu:'摄魂',shensu:'疾行',buqu:'护道',bazhen:'卢恩护阵',huoji:'神焰',kanpo:'万智',lianhuan:'月链',niepan:'月生',quhu:'驱兽',jieming:'传卦',qiangxi:'雷锤',tianyi:'天剑',mengjin:'钉魂',shuangxiong:'双魄',huoshou:'海御',zaiqi:'潮生',juxiang:'五光',lieren:'飞石',songwei:'尊道',haoshi:'神赐',dimeng:'神盟',yinghun:'日魂',wansha:'禁生',luanwu:'幻乱',weimu:'诡幕',huashen:'七十二变',xinsheng:'再化',beige:'碧曲',duanchang:'绝曲',ganlu:'补天',buyi:'护生',luoying:'晨辉',jiushi:'醇光',jueqing:'灵刃',shangshi:'夜巡',zhenlie:'圣守',miji:'神谋',anxu:'日恩',zhuiyi:'神恩',xueji:'月矢',huxiao:'狩月',wuji:'破界',zhuikong:'云惧',qiuyuan:'云援'}
 // A source general is indivisible: art factions never determine mechanical aid.
@@ -56,8 +60,12 @@ export const SECOND_BATCH=[['huangfeihu','黄飞虎','lvbu'],['shiji','石矶娘
 
 // All baseline physical cards retain their IDs, quantities, suit, rank and stats.
 const cardNames={sha:'杀',shan:'闪',tao:'仙桃',duel:'斗法',dismantle:'破阵',snatch:'摄宝',draw:'天机显化',savage:'万妖袭营',arrows:'飞剑齐发',garden:'瑶池仙宴',harvest:'仙山采宝',collateral:'借宝诛敌',nullify:'破法',indulgence:'迷魂阵',lightning:'天雷劫',crossbow:'火尖枪',dualsword:'阴阳双剑',qinggang:'斩仙飞刀',blade:'打神鞭',spear:'混天绫',axe:'番天印',halberd:'金蛟剪',bow:'五色神光',ice:'乾坤圈',bagua:'戊己杏黄旗',renwang:'紫绶仙衣',chitu:'风火轮',dayuan:'金睛兽',zixing:'墨麒麟',jueying:'五色神牛',dilu:'青鸾',zhuahuang:'白鹤'}
-export const CARDS_BY_TYPE={...Object.fromEntries(Object.entries(CARDS).map(([type,base])=>[type,{...base,type,baseName:base.name,name:cardNames[type],image:`assets/cards/${type}.jpg`,thumb:`assets/cards/${type}-thumb.webp`,help:base.help}])),...Object.fromEntries(Object.entries(SKILL_CARDS).map(([type,c])=>[type,{...c,type,image:`assets/cards/${c.art}.${c.svg?'svg':'jpg'}`,thumb:`assets/cards/${c.art}${c.svg?'.svg':'-thumb.webp'}` }]))}
-export const PLANNED_EQUIPMENT=Object.entries(EXPANSION_CARDS).map(([type,c])=>({type,...c}))
+const militaryCards={...EXPANSION_CARDS,...SKILL_CARDS,
+ supplyshortage:{name:'闭粮阵',baseName:'兵粮寸断',category:'delay',artDirection:'sealed celestial granary, grain sacks and bronze lock behind crossed vermilion magical wards',help:'对距离一以内的其他角色布阵。其判定不为梅花，则跳过本回合摸牌阶段；同一角色不能同时挂两个闭粮阵。',art:'supplyshortage',svg:true},
+ hualiu:{name:'守山獬豸',baseName:'骅骝',category:'equip',slot:'defenseHorse',artDirection:'original jade guardian beast with single horn, gold saddle, cloud mountains',help:'防御坐骑：其他角色计算到你的距离时增加一。',art:'hualiu',svg:true},
+}
+export const CARDS_BY_TYPE={...Object.fromEntries(Object.entries(CARDS).map(([type,base])=>[type,{...base,type,baseName:base.name,name:cardNames[type],image:`assets/cards/${type}.jpg`,thumb:`assets/cards/${type}-thumb.webp`,help:base.help}])),...Object.fromEntries(Object.entries(militaryCards).map(([type,c])=>[type,{...c,type,virtualOnly:false,image:`assets/cards/${c.art||type}.${c.svg?'svg':'jpg'}`,thumb:`assets/cards/${c.art||type}${c.svg?'.svg':'-thumb.webp'}` }]))}
+export const PLANNED_EQUIPMENT=[] // All seven former previews are available in Military.
 export const makeExpandedDeck=()=>expandedDeck(makeDeck)
 export function heroForBase(id){return PLAYABLE_HEROES.find(h=>h.engineId===id)||null}
 const aliases=[...PLAYABLE_HEROES.filter(h=>h.baseHero).map(h=>[h.referenceName,h.name]),...Object.values(CARDS_BY_TYPE).map(c=>[c.baseName,c.name]),...HEROES.filter(h=>h.baseHero).flatMap(h=>Object.entries(h.skillNames).filter(([id])=>SKILLS[id]).map(([id,n])=>[SKILLS[id][0],n])),['八卦','杏黄旗'],['青龙刀','打神鞭']]

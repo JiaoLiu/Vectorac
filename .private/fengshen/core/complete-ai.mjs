@@ -5,7 +5,7 @@ export function extensionResponse(v,{hostility,cardValue,ownCards}){
  if(e.stage==='question'){const lies=v.logs.filter(l=>l.cue?.kind==='guhuo-reveal'&&l.cue.seat===p.source&&!l.cue.real).length,question=relation(p.source)>0&&(lies>=2||(v.revision+v.seat*13)%5===0);return v.legal.find(a=>a.value===(question?'question':'believe'))}
  if(e.stage==='buqu-remove'){const ranks=e.cards.map(c=>c.rank),card=e.cards.find(c=>ranks.filter(r=>r===c.rank).length>1)||e.cards[0];return v.legal.find(a=>a.value===card.id)}
  if(e.stage==='buyi'){if(relation(p.target)>0&&p.target!==v.seat)return pass||invoke;if(p.target!==v.seat)return invoke;const c=self.hand.find(c=>!['sha','shan','tao','wine','firesha','thundersha'].includes(c.type));return c?{...invoke,ids:[c.id]}:pass||{...invoke,ids:[self.hand[0].id]}}
- if(e.stage==='zhenlie'){const c=e.cards[0],kind=e.judgmentKind,good=c&&(kind==='indulgence'?viewSuit(self,c)==='heart':kind==='lightning'?!(viewSuit(self,c)==='spade'&&c.rank>=2&&c.rank<=9):['luoshen','miji'].includes(kind)?!['heart','diamond'].includes(viewSuit(self,c)):true);return good?pass:invoke}
+ if(e.stage==='zhenlie'){const c=e.cards[0],kind=e.judgmentKind,good=c&&(kind==='supplyshortage'?viewSuit(self,c)==='club':kind==='leiji'?viewSuit(self,c)!=='spade':kind==='indulgence'?viewSuit(self,c)==='heart':kind==='lightning'?!(viewSuit(self,c)==='spade'&&c.rank>=2&&c.rank<=9):['luoshen','miji'].includes(kind)?!['heart','diamond'].includes(viewSuit(self,c)):true);return good?pass:invoke}
  if(e.spec){const d=e.spec;let cards=(d.handOnly?self.hand:cheap).filter(c=>!d.suit||viewSuit(self,c)===d.suit),ids=cards.slice(0,d.min||0).map(c=>c.id),target=d.targets?.[0],value=invoke.value
   if(e.stage==='pindian')ids=self.hand.slice().sort((a,b)=>b.rank-a.rank).slice(0,1).map(c=>c.id)
   if(e.stage==='transfer'||e.stage==='quhu-target')target=d.targets.slice().sort((a,b)=>relation(b)-relation(a)||v.players[a].hp-v.players[b].hp)[0]
@@ -16,6 +16,7 @@ export function extensionResponse(v,{hostility,cardValue,ownCards}){
   else if(p.skill==='jieming')target=d.targets.slice().sort((a,b)=>Math.max(0,Math.min(5,v.players[b].maxHp)-v.players[b].handCount)*(relation(b)<0?1:-1)-Math.max(0,Math.min(5,v.players[a].maxHp)-v.players[a].handCount)*(relation(a)<0?1:-1))[0]
   else if(p.skill==='fangzhu'){const ally=d.targets.find(t=>v.players[t].faceDown&&relation(t)<0);target=ally??d.targets.slice().sort((a,b)=>relation(b)-relation(a))[0]}
   else if(p.skill==='yinghun'&&d.targets){target=pick(d.targets);if(relation(target)<0)value='draw-many';else{target=d.targets.slice().sort((a,b)=>relation(b)-relation(a))[0];value='discard-many'}}
+  else if(p.skill==='leiji'){target=d.targets.slice().sort((a,b)=>relation(b)-relation(a)||v.players[a].hp-v.players[b].hp)[0];if(relation(target)<=0)return pass||invoke}
   else if(d.targets)target=pick(d.targets)
   if(e.stage==='beige-cost'&&relation(p.target)>0)return pass||invoke
   if(ids.length<(d.min||0)&&value!=='lose')return pass||invoke
@@ -34,5 +35,7 @@ export function expansionSkill(v,a,{hostility,cardValue,ownCards}){
  if(skill==='luanwu')return {action:a,score:others.reduce((n,p)=>n+rel(p)*(p.hp<=1?2:1),0)-2}
  if(skill==='jiushi')return {action:a,score:self.hand.some(c=>c.type==='sha')&&others.some(p=>rel(p)>0&&p.hp<=2)&&!self.marks.wine?17:-5}
  if(skill==='lianhuan')return {action:a,score:a.ids?.length?6-cardValue(self.hand.find(c=>c.id===a.ids[0]),v): -5}
+ if(skill==='huangtian'){const c=cheap.find(c=>self.hand.some(h=>h.id===c.id)&&['shan','lightning'].includes(c.type));return {action:{...a,ids:c?[c.id]:[]},score:c&&hostility(v,a.target)<0&&(c.type==='lightning'||self.handCount>2)?7-cardValue(c,v)*.3:-5}}
+ if(skill==='luanji'){const pairs=v.legal.filter(o=>o.type==='play'&&o.as==='arrows'&&o.ids.length===2).sort((a,b)=>a.ids.reduce((n,id)=>n+cardValue(self.hand.find(c=>c.id===id),v),0)-b.ids.reduce((n,id)=>n+cardValue(self.hand.find(c=>c.id===id),v),0));return {action:{...a,ids:pairs[0]?.ids||[]},score:-5}}
  return null
 }

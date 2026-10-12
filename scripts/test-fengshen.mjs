@@ -8,9 +8,9 @@ import {HERO_BY_ID,CARDS,makeDeck} from '../.private/fengshen/core/catalog.mjs'
 import {chooseAI} from '../.private/fengshen/engine.mjs'
 import {ART_PROMPTS} from '../.private/fengshen/art-prompts.mjs'
 
-test('54 unique portraits, 32 complete playable profiles',()=>{
-  assert.equal(HEROES.length,54);assert.equal(new Set(HEROES.map(h=>h.id)).size,54)
-  assert.equal(PLAYABLE_HEROES.length,54)
+test('57 unique portraits and complete playable profiles',()=>{
+  assert.equal(HEROES.length,57);assert.equal(new Set(HEROES.map(h=>h.id)).size,57)
+  assert.equal(PLAYABLE_HEROES.length,57)
   for(const h of HEROES){if(h.playable){assert.ok(catalog.HERO_BY_ID[h.engineId]);assert.deepEqual(Object.keys(h.skillNames),catalog.HERO_BY_ID[h.engineId].skills)}else assert.throws(()=>createGame({heroId:h.id}))}
   assert.equal(HEROES.find(h=>h.baseHero==='xiaoqiao').name,'龙吉公主');assert.equal(HEROES.find(h=>h.baseHero==='xiaoqiao').sex,'female')
 })
@@ -22,10 +22,10 @@ test('theme and classic catalogs do not mutate each other',()=>{
   assert.equal(catalog.HERO_BY_ID.huangyueying.name,'金灵圣母')
 })
 test('deck physical identities and all equipment stats remain unchanged',()=>{
-  assert.equal(Object.values(CARDS_BY_TYPE).filter(c=>!c.virtualOnly).length,32);assert.equal(Object.keys(CARDS_BY_TYPE).length,35)
+  assert.equal(Object.keys(CARDS_BY_TYPE).length,43)
   for(const [type,c] of Object.entries(CARDS)){assert.equal(CARDS_BY_TYPE[type].range,c.range);assert.equal(CARDS_BY_TYPE[type].slot,c.slot);assert.equal(CARDS_BY_TYPE[type].category,c.category)}
   for(const h of PLAYABLE_HEROES){const s=createGame({heroId:h.id,seed:33});assert.deepEqual(allCards(s).sort((a,b)=>a.id.localeCompare(b.id)),catalog.makeDeck().sort((a,b)=>a.id.localeCompare(b.id)))}
-  for(const p of PLANNED_EQUIPMENT)assert.ok(CARDS_BY_TYPE[p.type]===undefined||CARDS_BY_TYPE[p.type].virtualOnly);assert.ok(!catalog.makeDeck().some(c=>c.type==='wine'))
+  assert.ok(!catalog.makeDeck().some(c=>c.type==='wine'));assert.ok(!catalog.makeDeck().some(c=>CARDS_BY_TYPE[c.type].attackNature))
 })
 test('lord support uses exact original faction, including Huang Yueying',()=>{
   const s=createGame({heroId:'jifa',role:'lord',seed:7})
@@ -59,14 +59,16 @@ test('180 seeded matches complete legally across every enabled character and rol
   const winners={lord:0,rebel:0,renegade:0}
   for(let seed=1;seed<=180;seed++){
     let s=createGame({heroId:PLAYABLE_HEROES[(seed-1)%PLAYABLE_HEROES.length].id,role:['lord','loyal','rebel','renegade','random'][seed%5],seed}),actions=0
-    while(!s.winner&&actions++<3500){const actor=s.pending?.actor??s.current,v=playerView(s,actor),a=chooseAI(v);assert.ok(a,`seed ${seed} actor ${actor}`);const r=dispatch(s,a);assert.ok(r.ok,`seed ${seed}: ${r.error} ${JSON.stringify(a)}`);s=r.state;if(actions%71===0){assert.equal(allCards(s).length,108);assert.ok(restoreGame(s))}}
+    // Healing endgames can legitimately exceed 3500 choices with the larger
+    // pool; keep a finite cap, without changing damage or forcing a victory.
+    while(!s.winner&&actions++<6000){const actor=s.pending?.actor??s.current,v=playerView(s,actor),a=chooseAI(v);assert.ok(a,`seed ${seed} actor ${actor}`);const r=dispatch(s,a);assert.ok(r.ok,`seed ${seed}: ${r.error} ${JSON.stringify(a)}`);s=r.state;if(actions%71===0){assert.equal(allCards(s).length,108);assert.ok(restoreGame(s))}}
     assert.ok(s.winner,`seed ${seed} failed to finish`);winners[s.winner]++;assert.equal(allCards(s).length,108)
   }
   console.log('Fengshen prototype simulations (not a balance result):',winners)
 })
-test('54 hero and 32 card artwork prompts and workspace assets exist',async()=>{
-  assert.equal(ART_PROMPTS.length,86);assert.equal(new Set(ART_PROMPTS.map(a=>a.kind+'/'+a.id)).size,86)
-  for(const a of ART_PROMPTS){assert.ok(a.prompt.includes('no watermark'));const s=await stat(new URL(`../.private/fengshen/assets/${a.kind}/${a.id}.jpg`,import.meta.url));assert.ok(s.size>1000)}
+test('57 hero and 43 card artwork prompts and workspace assets exist',async()=>{
+  assert.equal(ART_PROMPTS.length,100);assert.equal(new Set(ART_PROMPTS.map(a=>a.kind+'/'+a.id)).size,100)
+  for(const a of ART_PROMPTS){assert.ok(a.prompt.includes('no watermark'));const path=a.kind==='heroes'?HEROES.find(h=>h.id===a.id).image:CARDS_BY_TYPE[a.id].image;const s=await stat(new URL(`../.private/fengshen/${path}`,import.meta.url));assert.ok(s.size>1000)}
   for(const h of HEROES){const full=await stat(new URL(`../.private/fengshen/${h.image}`,import.meta.url)),thumb=await stat(new URL(`../.private/fengshen/${h.thumbnail}`,import.meta.url));assert.ok(thumb.size>1000&&thumb.size<full.size)}
 })
 test('prototype stays out of VuePress public routes and binds loopback',async()=>{

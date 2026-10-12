@@ -1,5 +1,6 @@
 // Original versions only; revised/OL/limit-break texts are deliberately excluded.
 export const COMPLETE_PROFILES=[
+ ['zhangjiao',3,'qun','male','leiji guidao huangtian'],['yuanshao',4,'qun','male','luanji xueyi'],['xuhuang',4,'wei','male','duanliang'],
  ['yuji',3,'qun','male','guhuo'],['xiaoqiao',3,'wu','female','tianxiang hongyan'],['caopi',3,'wei','male','xingshang fangzhu songwei'],
  ['wuguotai',3,'wu','female','ganlu buyi'],['xunyu',3,'wei','male','quhu jieming'],['lusu',3,'wu','male','haoshi dimeng'],
  ['wangyi',3,'wei','female','zhenlie miji'],['menghuo',4,'shu','male','huoshou zaiqi'],['guanyinping',3,'shu','female','xueji huxiao wuji'],
@@ -10,6 +11,12 @@ export const COMPLETE_PROFILES=[
 ].map(([id,hp,faction,sex,skills])=>({id,hp,faction,sex,skills:skills.split(' ')}))
 export const COMPLETE_BY_ID=Object.fromEntries(COMPLETE_PROFILES.map(h=>[h.id,h]))
 export const COMPLETE_SKILLS={
+ leiji:['雷击','每次使用或打出闪后，可令任意一名角色判定：若为黑桃，你对其造成两点雷电伤害。','trigger'],
+ guidao:['鬼道','任何角色判定生效前，可用一张黑色手牌或装备替换判定牌，并获得被替换的牌。','trigger'],
+ huangtian:['黄天','主公技：其他玄盟角色在自己的出牌阶段限一次，可交给你一张闪或天雷劫。','lord'],
+ luanji:['乱击','两张相同花色的手牌可当飞剑齐发使用。','convert'],
+ xueyi:['血裔','主公技：手牌上限增加其他存活玄盟角色数量的两倍。','lord'],
+ duanliang:['断粮','一张黑色基本牌或装备牌可当闭粮阵使用；你使用闭粮阵的距离上限为二。','convert'],
  guhuo:['蛊惑','将一张手牌扣置，声明为基本牌或非延时法术。体力大于零的其他角色依次决定是否质疑；随后公开实牌。无人质疑时按声明结算；有人质疑时，实牌为真则质疑者各失去一点体力，为假则各摸一张；只有真实红桃牌仍继续生效。','convert'],
  tianxiang:['天香','受到伤害时，可弃一张红桃手牌并选另一名角色，将本次伤害转移给他；伤害结算后，该角色按已损失体力摸牌。','trigger'],
  hongyan:['红颜','锁定技：你的黑桃牌按红桃处理，包括自己的判定牌；实体牌的原始花色不改。','locked'],

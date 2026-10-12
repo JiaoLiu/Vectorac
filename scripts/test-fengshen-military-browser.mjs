@@ -1,0 +1,25 @@
+import assert from 'node:assert/strict'
+import {openBrowser} from './browser-cdp.mjs'
+import {createAssignedGame,dispatch,catalog} from '../.private/fengshen/engine.mjs'
+import {makeMilitaryDeck} from '../.private/fengshen/theme.mjs'
+function fixture(hero='yuanshi'){
+ const ids=[hero,...['yuanshi','randeng','muzha','taiyi','nezha','jifa','yangjian','dixin'].filter(id=>id!==hero)].slice(0,8),s=createAssignedGame({heroIds:ids,roles:['lord','loyal','loyal','rebel','rebel','rebel','rebel','renegade'],seed:37,deckVersion:2});s.deck=makeMilitaryDeck();s.discard=[];s.processing=[];s.harvestPool=[];s.pending=null;s.queue=[];s.phase='play';s.current=0;s.logs=[];s.lastPlayed=null;s.lastEvent=null;s.lastResponse=null
+ for(const p of s.players){p.hand=[];p.judgment=[];p.equip={weapon:null,armor:null,offenseHorse:null,defenseHorse:null};p.marks={sha:0}}
+ return s
+}
+const give=(s,seat,type,pred=()=>true)=>{const i=s.deck.findIndex(c=>c.type===type&&pred(c));assert.ok(i>=0);const [c]=s.deck.splice(i,1);s.players[seat].hand.push(c);return c}
+const act=(s,a)=>{const r=dispatch(s,{seat:s.pending?.actor??s.current,...a});assert.ok(r.ok,r.error);return r.state}
+const b=await openBrowser({name:'gods-military',baseUrl:process.env.FENGSHEN_TEST_URL||'http://127.0.0.1:4186'})
+const inject=s=>b.evaluate(`(()=>{const ui=window.__fengshenUI;clearTimeout(ui.timer);ui.schedule=()=>{};ui.voice.stop();ui.clearEffects();ui.setup=null;ui.state=${JSON.stringify(s)};ui.lobby=false;ui.paused=false;ui.auto=false;ui.modal=null;ui.reset();ui.render();return true})()`)
+const visibleConfirm=()=>b.evaluate(`(()=>{const x=document.querySelector('.fs-actions [data-action=confirm]');if(!x||x.disabled)return false;const r=x.getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return r.width>0&&r.height>0&&!!hit&&x.contains(hit)})()`)
+try{
+ await b.navigate();await b.waitFor('!!window.__fengshenUI');await b.evaluate('localStorage.clear();true');await b.navigate();await b.waitFor('!!window.__fengshenUI')
+ for(const [w,h]of [[390,844],[844,390],[932,430]]){await b.viewport(w,h);await b.screenshot(w+'-home');assert.equal(await b.evaluate(`(()=>{const r=document.querySelector('[data-action=start]').getBoundingClientRect();return r.height>0&&r.top>=0&&r.bottom<=innerHeight&&r.left>=0&&r.right<=innerWidth})()`),true,'home controls '+w)}
+ assert.equal(await b.evaluate('window.__fengshenUI.deckVersion'),1);await b.tap('[data-action=deck]');assert.equal(await b.evaluate('window.__fengshenUI.deckVersion'),2);await b.navigate();await b.waitFor('!!window.__fengshenUI');assert.equal(await b.evaluate('window.__fengshenUI.deckVersion'),2);await b.tap('[data-action=start]');assert.equal(await b.evaluate('window.__fengshenUI.setup.deckVersion'),2)
+ for(const [w,h]of [[844,390],[932,430],[390,844]]){
+  await b.viewport(w,h);let s=fixture();const a=give(s,0,'sha',c=>c.suit==='spade'),c=give(s,0,'sha',c=>c.suit==='spade');give(s,0,'tao');await inject(s);await b.tap('[data-action=skill][data-value=luanji]');await b.tap(`.fs-hand [data-id="${a.id}"]`);assert.equal(await visibleConfirm(),false);await b.tap(`.fs-hand [data-id="${c.id}"]`);assert.equal(await visibleConfirm(),true);await b.screenshot(w+'-luanji');await b.tap('.fs-actions [data-action=confirm]');assert.equal(await b.evaluate(`window.__fengshenUI.state.players[0].hand.some(c=>c.id===${JSON.stringify(a.id)})`),false);assert.equal(await b.evaluate('window.__fengshenUI.state.lastPlayed.as'),'arrows')
+  assert.equal(await b.evaluate('document.querySelectorAll(".fs-table-trail .fs-card-face[data-type=arrows]").length'),0);assert.equal(await b.evaluate('document.querySelectorAll(".fs-table-trail .fs-card-face[data-type=sha]").length'),2)
+  s=fixture('randeng');s.current=1;const slash=give(s,1,'sha'),dodge=give(s,0,'shan'),black=give(s,0,'qinggang');s.players[0].hand=s.players[0].hand.filter(c=>c.id!==black.id);s.players[0].equip.weapon=black;const i=s.deck.findIndex(c=>c.suit==='heart');s.deck.unshift(...s.deck.splice(i,1));s=act(s,{type:'play',as:'sha',ids:[slash.id],targets:[0]});s=act(s,{type:'respond',as:'shan',ids:[dodge.id]});await inject(s);await b.tap('[data-action=target][data-value="1"]');assert.equal(await visibleConfirm(),true);await b.tap('.fs-actions [data-action=confirm]');await b.waitFor('window.__fengshenUI.state.pending?.skill==="guidao"');await b.tap(`.fs-own-equipment [data-id="${black.id}"]`);assert.equal(await visibleConfirm(),true);await b.screenshot(w+'-guidao');await b.tap('.fs-actions [data-action=confirm]');assert.equal(await b.evaluate('window.__fengshenUI.state.pending?.hit'),true)
+ }
+ assert.deepEqual(b.errors.filter(e=>e!==JSON.stringify({code:-32602,message:'Invalid InterceptionId.'})),[]);console.log('PASS: 108 default/160 persisted, 8-seat Luanji and Leiji/Guidao real touch confirmation at 3 viewports; screenshots '+b.output)
+}catch(error){console.error('Failure screenshot: '+await b.screenshot('failure'));throw error}finally{await b.close()}
