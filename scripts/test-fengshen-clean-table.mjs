@@ -5,7 +5,7 @@ import {readFile} from 'node:fs/promises'
 import {createAssignedGame,dispatch,playerView,catalog,allCards,restoreGame} from '../.private/fengshen/engine.mjs'
 import {targetLinks,judgingSeat,counterSelection,counterAction} from '../.private/fengshen/table-visuals.mjs'
 import {seatName} from '../.private/fengshen/combat.mjs'
-import {tableTrail,trailCards,tableCardLayout,counterTrail,recentWithFocus} from '../.private/fengshen/table-trail.mjs'
+import {tableTrail,trailCards,tableCardLayout,counterTrail,recentWithFocus,takeJudgmentCard} from '../.private/fengshen/table-trail.mjs'
 import {judgmentEffects} from '../.private/fengshen/draw-effects.mjs'
 import {renderCenter,renderBattle,renderControls} from '../.private/fengshen/table.mjs'
 import {arenaGeometry} from '../.private/fengshen/arena-layout.mjs'
@@ -55,6 +55,16 @@ test('rejudge prompt and final judgment share one physical card instead of dupli
  assert.equal(judge.length,1,'改判询问与最终判定共用同一张牌位')
  assert.equal(judge[0].hit,true,'命中戳记盖在原判定牌上')
  assert.equal(trailCards(trail).filter(e=>e.card?.id===c.id).length,1,'牌桌上只有一张实体判定牌')
+})
+test('taking a judgment removes only its original stamped face, not equal-looking physical cards',()=>{
+ const cards=catalog.makeDeck(),c=cards[0],other={...c,id:'another-real-card'}
+ const trail=[{key:'play:1',cards:[other],turn:1},{key:'judge:1',cards:[c],judgment:true,hit:true,turn:1},{key:'judge:2',cards:[cards[1],cards[2]],judgment:true,hit:false,turn:1}]
+ const original=JSON.stringify(trail),next=takeJudgmentCard(trail,c.id)
+ assert.equal(JSON.stringify(trail),original,'does not mutate old visual state')
+ assert.equal(trailCards(next).filter(e=>e.card.id===c.id).length,0)
+ assert.ok(trailCards(next).some(e=>e.card.id===other.id),'same picture on a different real card remains')
+ assert.equal(next.find(e=>e.key==='judge:2').hit,false)
+ assert.deepEqual(takeJudgmentCard(next,c.id),next,'idempotent under repeat render')
 })
 test('a counter window names the exact victim being cancelled, never the whole card',()=>{
  let s=fixture('yangjian',1),spell=card(s,1,'snatch');card(s,0,'shan');card(s,0,'nullify')

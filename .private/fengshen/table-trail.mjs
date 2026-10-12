@@ -27,8 +27,20 @@ export function counterTrail(trail,view){
 }
 export function recentWithFocus(entries,count){if(count<=0)return [];const focused=entries.filter(e=>e.currentEffect).slice(-count),rest=entries.filter(e=>!focused.includes(e)).slice(-Math.max(0,count-focused.length));return entries.filter(e=>focused.includes(e)||count>focused.length&&rest.includes(e))}
 export function trailCards(trail){return recentWithFocus(trail.flatMap(e=>e.virtualType?[{...e,card:{type:e.virtualType,virtual:true},key:e.key}]:e.cards.map((card,i)=>({...e,card,key:`${e.key}:${i}`}))),12)}
+// A publicly received judgment leaves the table; keep other cards/results intact.
+// Removing the real id also prevents its old stamped face returning after flight.
+export function takeJudgmentCard(trail,cardId){return trail.map(e=>e.judgment?{...e,cards:e.cards.filter(c=>c.id!==cardId)}:e).filter(e=>e.virtualType||e.cards.length)}
 export function tableCardLayout({width,height,count}){
  const gap=5,maxHeight=Math.max(24,Math.min(112,height-10)),minHeight=Math.min(70,maxHeight),columns=Math.max(1,Math.floor((width+gap)/(minHeight/1.44+gap))),rows=Math.max(1,Math.min(2,Math.floor((height+gap)/(minHeight+gap)))),visible=Math.min(count,columns*rows)
  const usedRows=Math.max(1,Math.ceil(visible/columns)),usedCols=Math.min(columns,Math.max(1,visible)),cardHeight=Math.min(112,(height-10-gap*(usedRows-1))/usedRows,(width-gap*(usedCols-1))/usedCols*1.44)
  return {visible,columns:usedCols,rows:usedRows,cardHeight:Math.max(24,cardHeight)}
+}
+// 公开弃置/阵亡亮牌一次可能摆出整副手牌：竖屏上下有空间就换行铺开（不限两行），
+// 横屏空间不够就按宽度把牌面压小。绝不横向裁切；只有极小屏实在放不下才少摆几张。
+export function publicDiscardLayout({width,height,count}){
+ const gap=5,n=Math.max(1,count||0),usable=Math.max(24,height-10),maxCardHeight=Math.min(112,usable),preferred=Math.min(70,maxCardHeight)
+ const columns=Math.max(1,Math.min(n,Math.floor((width+gap)/(preferred/1.44+gap)))),rows=Math.max(1,Math.ceil(n/columns))
+ const cardHeight=Math.max(24,Math.min(maxCardHeight,(usable-gap*(rows-1))/rows,(width-gap*(columns-1))/columns*1.44))
+ const floorRows=Math.max(1,Math.floor((height+gap)/(24+gap))),visible=cardHeight>24||24*rows+gap*(rows-1)<=height+.01?n:Math.min(n,columns*floorRows)
+ return {columns,rows:Math.max(1,Math.ceil(visible/columns)),cardHeight,visible}
 }

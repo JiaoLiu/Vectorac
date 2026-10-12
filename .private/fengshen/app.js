@@ -17,7 +17,7 @@ import {TargetBeams} from './target-beams.mjs'
 import {mountOnline,onlineCredential} from './online.mjs'
 import './online.css'
 import './home-entry.css'
-import {tableTrail as updateTableTrail,counterTrail} from './table-trail.mjs'
+import {tableTrail as updateTableTrail,counterTrail,takeJudgmentCard} from './table-trail.mjs'
 import {createSetup,dispatchSetup,setupView,chooseSetupAI,restoreSession,MODE_LIST,modeById} from './setup.mjs'
 import {renderHome,renderSetup,heroGallery} from './setup-ui.mjs'
 import {CardVoice,cuesForAction} from './voice.mjs'
@@ -125,7 +125,11 @@ export class FengshenUI {
     }
     if(before.pending?.kind==='counter'&&action.type==='respond'){this.tableTrail=counterTrail(this.tableTrail||[],playerView(before,0));if(action.seat==null||action.seat===0){this.counterLockUntil=Date.now()+700;clearTimeout(this.counterLockTimer);this.counterLockTimer=setTimeout(()=>{if(!this.destroyed)this.render()},720)}}
     const judged=judgmentEffects(before,this.state).at(-1)
-    if(judged){this.transfer={from:judged.target,to:judged.target,mode:'judgment',card:judged.card,started:Date.now(),until:Date.now()+1050};clearTimeout(this.transferTimer);this.transferTimer=setTimeout(()=>{this.transfer=null;if(!this.destroyed)this.render()},1100)}
+    if(judged){
+      const r=this.root.querySelector(`[data-judge-card="${judged.card.id}"]`)?.getBoundingClientRect(),origin=r&&localPoint(this.root,r.x+r.width/2,r.y+r.height/2)
+      this.tableTrail=takeJudgmentCard(this.tableTrail||[],judged.card.id)
+      this.transfer={from:judged.target,to:judged.target,mode:'judgment',card:judged.card,origin,started:Date.now(),until:Date.now()+1050};clearTimeout(this.transferTimer);this.transferTimer=setTimeout(()=>{this.transfer=null;if(!this.destroyed)this.render()},1100)
+    }
     const picked=harvestEffects(before,this.state).at(-1)
     if(picked){const r=this.root.querySelector(`[data-pool-card="${picked.card.id}"]`)?.getBoundingClientRect(),origin=r&&localPoint(this.root,r.x+r.width/2,r.y+r.height/2);this.transfer={from:picked.target,to:picked.target,mode:'harvest',card:picked.card,origin,started:Date.now(),until:Date.now()+1050};clearTimeout(this.transferTimer);this.transferTimer=setTimeout(()=>{this.transfer=null;if(!this.destroyed)this.render()},1100)}
     const gifted=yijiEffects(before,this.state).at(-1)
@@ -216,12 +220,15 @@ export class FengshenUI {
     for(const h of this.hits.filter(h=>h.until>Date.now())){const e=anchor(h.target);if(e){e.classList.add('fs-hurt');const badge=document.createElement('span');badge.className='fs-damage-number';badge.textContent='−'+h.amount;e.append(badge)}}
     paintRecovery(this.root,this.recoveries)
     this.root.querySelector('.fs-transfer-flight')?.remove()
+    this.root.querySelectorAll('[data-judgment-incoming]').forEach(e=>{e.style.removeProperty('visibility');e.removeAttribute('data-judgment-incoming')})
     if(this.transfer&&this.transfer.until>Date.now()){
-      const f=this.transfer,a=(f.mode==='harvest'?this.root.querySelector(`[data-pool-card="${f.card.id}"]`)||this.root.querySelector('.fs-pool-choice'):f.mode==='judgment'?this.root.querySelector(`[data-judge-card="${f.card.id}"]`)||this.root.querySelector('.fs-table-center'):anchor(f.from))?.getBoundingClientRect(),to=(['judgment','harvest','yiji','rescue'].includes(f.mode)?(f.to===0?this.root.querySelector('.fs-hand'):anchor(f.to)):f.mode==='snatch'?anchor(f.to):this.root.querySelector('.fs-table-center,.fs-center-choice'))?.getBoundingClientRect()
+      const f=this.transfer,incoming=f.mode==='judgment'&&f.to===0?this.root.querySelector(`.fs-hand-card[data-id="${f.card.id}"]`):null,a=(f.mode==='harvest'?this.root.querySelector(`[data-pool-card="${f.card.id}"]`)||this.root.querySelector('.fs-pool-choice'):f.mode==='judgment'?this.root.querySelector(`[data-judge-card="${f.card.id}"]`)||this.root.querySelector('.fs-table-center'):anchor(f.from))?.getBoundingClientRect(),to=(incoming||(['judgment','harvest','yiji','rescue'].includes(f.mode)?(f.to===0?this.root.querySelector('.fs-hand'):anchor(f.to)):f.mode==='snatch'?anchor(f.to):this.root.querySelector('.fs-table-center,.fs-center-choice')))?.getBoundingClientRect()
       if((a||f.origin)&&to){const ap=f.origin||localPoint(this.root,a.x+a.width/2,a.y+a.height/2),tp=localPoint(this.root,to.x+to.width/2,to.y+to.height/2);const e=document.createElement('div');e.className='fs-transfer-flight';e.dataset.transferMode=f.mode;e.innerHTML=(f.card?cardFace(f.card):'<span class="fs-card-back"><i>封</i><b>暗手牌</b></span>')+(['judgment','harvest'].includes(f.mode)?'':`<span>${f.mode==='yiji'?`赠予${f.count>1?'×'+f.count:''}`:f.mode==='rescue'?'救援':f.mode==='snatch'?'取走':'弃置'}</span>`);e.style.setProperty('--from-x',`${ap.x-27}px`);e.style.setProperty('--from-y',`${ap.y-38}px`);e.style.setProperty('--to-x',`${tp.x-27}px`);e.style.setProperty('--to-y',`${tp.y-38}px`);
         // 每次重渲染都会重建飞牌节点；用负延迟对齐已流逝的时间，避免 AI 连续行动时同一张牌从起点反复飞（看起来像飞出 2-3 张）。
         if(f.started)e.style.animationDelay=`${Math.min(0,f.started-Date.now())}ms`
-        this.root.append(e)}
+        this.root.append(e)
+        if(incoming){incoming.dataset.judgmentIncoming='true';incoming.style.visibility='hidden'}
+      }
     }
     this.root.querySelectorAll('.fs-draw-flight,.fs-draw-count').forEach(e=>e.remove())
     this.root.querySelectorAll('.fs-move-flight,.fs-move-count').forEach(e=>e.remove())
