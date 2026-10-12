@@ -131,9 +131,10 @@ export class FengshenUI {
     // 濒死救援：桃/酒从救援者飞向濒死者，让所有人看清是谁把谁救起。
     const rescued=rescueEffects(before,this.state).at(-1)
     if(rescued){this.transfer={from:rescued.source,to:rescued.target,mode:'rescue',card:rescued.card||null,origin:null,started:Date.now(),until:Date.now()+1050};clearTimeout(this.transferTimer);this.transferTimer=setTimeout(()=>{this.transfer=null;if(!this.destroyed)this.render()},1100)}
-    // 公开弃置/拆牌：丢掉的牌在牌桌中间内联展示一会再自动收起，让人看清丢了什么（自己弃牌无需提示）。
+    // 公开弃置/拆牌：丢掉的牌在牌桌中间内联展示一会再自动收起，让人看清丢了什么。
+    // 自己弃牌同样展示——碧曲（悲歌）等技能代价、弃牌阶段的弃牌都是公开流程，不能只给别人看。
     const discarded=discardEffects(before,this.state).at(-1)
-    if(discarded&&discarded.seat!==0){this.discards={seat:discarded.seat,by:discarded.by??null,cards:discarded.cards||[],until:Date.now()+2200};clearTimeout(this.discardTimer);this.discardTimer=setTimeout(()=>{this.discards=null;if(!this.destroyed)this.render()},2250)}
+    if(discarded){this.discards={seat:discarded.seat,by:discarded.by??null,cards:discarded.cards||[],until:Date.now()+2200};clearTimeout(this.discardTimer);this.discardTimer=setTimeout(()=>{this.discards=null;if(!this.destroyed)this.render()},2250)}
     const draws=drawEffects(before,this.state)
     if(draws.length){const started=Date.now();this.draws=draws.map(d=>({...d,started}));clearTimeout(this.drawTimer);this.drawTimer=setTimeout(()=>{this.draws=[];if(!this.destroyed)this.render()},1300)}
     const moves=transferEffects(before,this.state)
