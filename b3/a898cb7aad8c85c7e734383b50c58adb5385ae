@@ -1,0 +1,53 @@
+.private/fengshen/online.css
+  5058ed3dc1a97a8c 11-16
+.private/fengshen/online.mjs
+  5058ed3dc1a97a8c 197-198
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.8",
+  "base_commit_sha": "b3a898cb7aad8c85c7e734383b50c58adb5385ae",
+  "prompts": {
+    "5058ed3dc1a97a8c": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6ac848ce090dc5dc9234c7bc",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 36,
+      "total_deletions": 27,
+      "accepted_lines": 81,
+      "overriden_lines": 0
+    }
+  },
+  "commit_stats": {
+    "git_diff_added_lines": 8,
+    "git_diff_deleted_lines": 63,
+    "ai_additions": 8,
+    "ai_accepted": 8,
+    "BYMC": 0,
+    "mixed_additions": 0,
+    "BYAC": 8,
+    "BYRC": 0,
+    "per_file": {
+      ".private/fengshen/online.css": {
+        "BYMC": [],
+        "BYAC": [
+          "11-16"
+        ],
+        "BYRC": []
+      },
+      ".private/fengshen/online.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "197-198"
+        ],
+        "BYRC": []
+      }
+    }
+  },
+  "commit_timestamp": 1791773897,
+  "requirement_id": ""
+}
