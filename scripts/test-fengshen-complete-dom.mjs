@@ -40,7 +40,7 @@ try{
  // An option switch does not discard the selected recipient.
  s=fixture('ra',undefined,4);s.players[0].hp=2;r=dispatch(s,{seat:4,type:'end'});assert.ok(r.ok);load(r.state);click('[data-player="1"] .fs-player-main');click('.fs-actions [data-action="ext-option"]');assert.deepEqual(Array.from(ui.targets),[1]);count++
  // Every new virtual card has a real detail view; close returns to gallery.
- load(fixture('odin'));click('[data-action="menu"]');click('[data-action="gallery"]');assert.ok(ui.root.querySelector('.fs-gallery [data-id="fireattack"]'));click('.fs-gallery [data-id="fireattack"]');assert.ok(ui.root.querySelector('.fs-card-detail img').src.endsWith('fireattack.svg'));click('[data-action="close"]');assert.ok(ui.root.querySelector('.fs-gallery'));count++
+ load(fixture('odin'));click('[data-action="menu"]');click('[data-action="gallery"]');assert.ok(ui.root.querySelector('.fs-gallery [data-id="fireattack"]'));click('.fs-gallery [data-id="fireattack"]');assert.ok(ui.root.querySelector('.fs-card-detail img').src.endsWith('fireattack-v2-thumb.jpg'));click('[data-action="close"]');assert.ok(ui.root.querySelector('.fs-gallery'));count++
  // Updated private identity cycle remains an independent action, not a hero modal.
  load(fixture('yangjian',['jifa','nezha','dixin','jinling']));click('[data-action="role-mark"][data-value="1"]');assert.equal(ui.roleMarks[1],'loyal');assert.equal(ui.modal,null);count++
  // Full hero guide: all portraits are enabled and none of the new cards is undefined.

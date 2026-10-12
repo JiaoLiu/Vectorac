@@ -16,6 +16,7 @@ import {tutorialEnabled,judgingSeat,counterSelection,counterAction,responderHigh
 import {TargetBeams} from './target-beams.mjs'
 import {mountOnline,onlineCredential} from './online.mjs'
 import './online.css'
+import './home-entry.css'
 import {tableTrail as updateTableTrail,counterTrail} from './table-trail.mjs'
 import {createSetup,dispatchSetup,setupView,chooseSetupAI,restoreSession,MODE_LIST,modeById} from './setup.mjs'
 import {renderHome,renderSetup,heroGallery} from './setup-ui.mjs'
