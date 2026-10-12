@@ -1,0 +1,66 @@
+.private/fengshen/setup-ui.mjs
+  5058ed3dc1a97a8c 33
+.private/fengshen/home-entry.css
+  5058ed3dc1a97a8c 24-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.8",
+  "base_commit_sha": "7085e855b265e23d7c7fc4e1cb85d315e192c256",
+  "prompts": {
+    "5058ed3dc1a97a8c": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6ac848ce090dc5dc9234c7bc",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 20,
+      "total_deletions": 11,
+      "accepted_lines": 138,
+      "overriden_lines": 0
+    },
+    "f36f3bac29a5715f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ff04e-8a7a-7f23-9f72-f400e68f268d",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    }
+  },
+  "commit_stats": {
+    "git_diff_added_lines": 4,
+    "git_diff_deleted_lines": 2,
+    "ai_additions": 4,
+    "ai_accepted": 4,
+    "BYMC": 0,
+    "mixed_additions": 0,
+    "BYAC": 4,
+    "BYRC": 0,
+    "per_file": {
+      ".private/fengshen/home-entry.css": {
+        "BYMC": [],
+        "BYAC": [
+          "24-26"
+        ],
+        "BYRC": []
+      },
+      ".private/fengshen/setup-ui.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "33"
+        ],
+        "BYRC": []
+      }
+    }
+  },
+  "commit_timestamp": 1791778394,
+  "requirement_id": ""
+}
