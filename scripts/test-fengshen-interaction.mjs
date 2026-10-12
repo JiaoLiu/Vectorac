@@ -165,6 +165,17 @@ test('active skills announce once and commanded attacks announce their actual ac
   before.players[0].incarnation={activeHero:'pangde',activeSkill:'mashu'};after.logs=[{id:before.eventId+1,cue:{kind:'skill',skill:'mashu',seat:0}}];after.players[0].incarnation=before.players[0].incarnation
   assert.equal(cuesForAction(before,{seat:1,type:'pass'},after)[0].key,'skill-luya-mashu')
 })
+test('backlogged frames announce only the newest cues, in order',()=>{
+  const before=fixture('fuxi'),after=structuredClone(before),base=before.eventId
+  // 日志 newest-first（引擎 note 用 unshift 写入）。7 条历史事件模拟断线 / 后台补帧。
+  after.logs=[7,6,5,4,3,2,1].map(n=>({id:base+n,cue:{kind:'card-response',as:'sha',seat:0}}))
+  const backlog=cuesForAction(before,{seat:0,type:'pass'},after)
+  assert.equal(backlog.length,2,'补帧只播最新两条，避免语音越播越落后')
+  assert.ok(backlog.every(c=>c.key==='card-sha'))
+  // 正常单手（≤2 条）不受影响，仍按发生顺序播报
+  after.logs=[{id:base+2,cue:{kind:'card-response',as:'shan',seat:0}},{id:base+1,cue:{kind:'skill',skill:'quhu',seat:0}}]
+  assert.deepEqual(cuesForAction(before,{seat:0,type:'pass'},after).map(c=>c.key),['skill-quhu','card-shan'])
+})
 const tick=()=>new Promise(r=>setTimeout(r,5))
 function fakeContext({rejectResume=false}={}){
   return {state:'running',sampleRate:48000,destination:{},resume:()=>rejectResume?Promise.reject(Error('blocked')):Promise.resolve(),createBuffer:()=>({}),close:()=>Promise.resolve(),decodeAudioData:()=>Promise.resolve({duration:.02}),createBufferSource(){return {connect(){},disconnect(){},start(){setTimeout(()=>this.onended?.(),3)},stop(){this.onended?.()}}}}

@@ -112,7 +112,9 @@ export class FengshenUI {
   }
   inform(message){this.toast=displayText(message);clearTimeout(this.toastTimer);this.toastTimer=setTimeout(()=>{this.toast='';if(!this.destroyed)this.render()},2800);this.render()}
   act(action){if(this.online)return this.online.send(action);if(!this.state)return false;const before=this.state,r=dispatch(before,{...action,seat:action.seat??0,revision:before.revision,promptId:before.pending?.id});if(!r.ok){this.inform(r.error);return false}this.state=advanceUnavailable(r.state,dispatch,playerView);return this.present(before,action)}
-  present(before,action){for(const cue of cuesForAction(before,action,this.state))this.voice.speak(cue.key,cue.sex);const hits=damageCues(before,this.state);if(hits.length){this.hits=hits.map(h=>({...h,until:Date.now()+900}));for(const h of hits)this.voice.hurt(h.amount);clearTimeout(this.hitTimer);this.hitTimer=setTimeout(()=>{this.hits=[];if(!this.destroyed)this.decorateBattle()},920)}
+  // 页面在后台时 AudioContext 被挂起，drain 卡在当前这句上不再消费队列；若继续入队，
+  // 回到前台会一次性把期间攒下的报牌全播一遍（AI 早出下一张了还在念前面的牌）。所以后台不入队。
+  present(before,action){if(!document.hidden)for(const cue of cuesForAction(before,action,this.state))this.voice.speak(cue.key,cue.sex);const hits=damageCues(before,this.state);if(hits.length){this.hits=hits.map(h=>({...h,until:Date.now()+900}));for(const h of hits)this.voice.hurt(h.amount);clearTimeout(this.hitTimer);this.hitTimer=setTimeout(()=>{this.hits=[];if(!this.destroyed)this.decorateBattle()},920)}
     this.beams.record(playerView(this.state,0))
     const recovered=recoveryCues(before,this.state)
     if(recovered.length){const started=Date.now();this.recoveries=this.recoveries.filter(h=>h.until>started).concat(recovered.map(h=>({...h,started,until:started+RECOVERY_DURATION})));clearTimeout(this.recoveryTimer);this.recoveryTimer=setTimeout(()=>{this.recoveries=[];if(!this.destroyed)this.decorateBattle()},RECOVERY_DURATION+20)}

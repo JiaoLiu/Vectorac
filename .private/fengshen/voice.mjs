@@ -2,6 +2,8 @@ import {AUDIO_ENTRIES,audioPath} from './audio-manifest.mjs'
 import {heroForBase,CARDS_BY_TYPE} from './theme.mjs'
 import {skillAudioKey} from './audio-manifest.mjs'
 const allowed=new Set(AUDIO_ENTRIES.map(e=>e.key))
+// 一帧里最多补播几条历史事件：正常单手最多 2 条（见 cuesForAction 注释），超出说明是断线/后台补帧。
+const MAX_BACKLOG_CUES=2
 export class CardVoice {
   constructor({enabled=true,createContext=()=>{const C=window.AudioContext||window.webkitAudioContext;return C?new C():null},fetchAudio=url=>fetch(url),onIdle=()=>{}}={}){
     this.enabled=enabled;this.createContext=createContext;this.fetchAudio=fetchAudio;this.onIdle=onIdle;this.context=null;this.ready=null;this.queue=[];this.cache=new Map();this.busy=false;this.generation=0;this.history=[];this.source=null;this.closed=false;this.effects=new Set()
@@ -78,7 +80,11 @@ export function cuesForAction(before,action,after){
   if(action.type==='play'){const p=before.players[seat],card=p.hand.concat(Object.values(p.equip).filter(Boolean)).find(c=>c.id===action.ids?.[0]),skill=action.as==='arrows'&&action.ids?.length===2?'luanji':action.as==='supplyshortage'&&card?.type!=='supplyshortage'?'duanliang':action.as==='fireattack'&&card?.type!=='fireattack'?'huoji':action.as==='ironchain'&&card?.type!=='ironchain'?'lianhuan':null;if(skill)cues.push({key:skillAudioKey(p,skill),sex:displaySex(before,seat)})}
   if(action.type==='play'&&action.as==='dismantle'&&action.ids?.length===1){const c=before.players[seat].hand.concat(Object.values(before.players[seat].equip).filter(Boolean)).find(c=>c.id===action.ids[0]);if(c&&c.type!=='dismantle')cues.push({key:skillAudioKey(before.players[seat],'qixi'),sex:displaySex(before,seat)})}
   if(action.type==='respond'&&before.pending?.as==='shan'&&action.ids?.length===1){const p=before.players[seat],c=p.hand.find(c=>c.id===action.ids[0]),h=heroForBase(p.incarnation?.activeHero||p.heroId);if(c&&c.type!=='shan'&&h?.skillNames.qingguo&&['spade','club'].includes(c.suit))cues.push({key:skillAudioKey(p,'qingguo'),sex:displaySex(before,seat)})}
-  for(const line of after.logs.filter(l=>l.id>before.eventId).slice().reverse()){const cue=line.cue;if(!cue||!after.players[cue.seat])continue;if(cue.kind==='skill'&&!(action.type==='skill'&&cue.seat===seat&&cue.skill===action.skill))cues.push({key:skillAudioKey(after.players[cue.seat],cue.skill),sex:displaySex(after,cue.seat)});else if(cue.kind==='card-response')cues.push({key:`card-${cue.as}`,sex:displaySex(after,cue.seat)})}
+  // 日志按 id 倒序（最新在前）。断线 / 后台回来的那一帧会一次补上好几手的历史事件，
+  // 逐条播报只会让语音越播越落后（AI 已经出下一张了还在念前面的牌），所以只保留最新的几条。
+  // 实测单手最多产生 2 条可播报事件（13448 手样本，含连携技能与出杀响应），超出即视为补帧。
+  const backlog=after.logs.filter(l=>l.id>before.eventId&&l.cue&&after.players[l.cue.seat]).slice(0,MAX_BACKLOG_CUES)
+  for(const line of backlog.reverse()){const cue=line.cue;if(cue.kind==='skill'&&!(action.type==='skill'&&cue.seat===seat&&cue.skill===action.skill))cues.push({key:skillAudioKey(after.players[cue.seat],cue.skill),sex:displaySex(after,cue.seat)});else if(cue.kind==='card-response')cues.push({key:`card-${cue.as}`,sex:displaySex(after,cue.seat)})}
   return cues
 }
 function displaySex(state,seat){const p=state.players[seat];return p.effectiveSex||heroForBase(p.incarnation?.activeHero||p.heroId)?.sex||'male'}
