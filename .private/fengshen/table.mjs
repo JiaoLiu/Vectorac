@@ -120,7 +120,7 @@ function playedCenter(view,ui){
   }).join('')}</div>${publicRows}</div>`
 }
 function playInstruction(ui,view){
-  if(EXT_ACTIVE.has(ui.skill)){const n=skillName(view.players[0],ui.skill),help={quhu:'选择体力更高且有手牌的对手，确认后拼点',tianyi:'选择有手牌的对手，确认后拼点',ganlu:'选择两名角色交换装备，可选自己',dimeng:'选两名其他角色，再弃等于其手牌差的牌',anxu:'选择手牌数不同的两名其他角色',xueji:'选一张红色牌，再选范围内的伤害目标',luanwu:'每局一次：令其他角色攻击最近的人，否则失体力',jiushi:'翻面，下一张杀伤害加一；下次自己的回合将休整',lianhuan:'选一张梅花手牌重铸摸一张；直接选牌也可转换为缚神索'};return n+' · '+help[ui.skill]}
+  if(EXT_ACTIVE.has(ui.skill)){const n=skillName(view.players[0],ui.skill),help={luanji:'选两张相同花色手牌，作为飞剑齐发使用；保留原牌面',huangtian:'选一张闪或天雷劫，再点亮主公交牌',quhu:'选择体力更高且有手牌的对手，确认后拼点',tianyi:'选择有手牌的对手，确认后拼点',ganlu:'选择两名角色交换装备，可选自己',dimeng:'选两名其他角色，再弃等于其手牌差的牌',anxu:'选择手牌数不同的两名其他角色',xueji:'选一张红色牌，再选范围内的伤害目标',luanwu:'每局一次：令其他角色攻击最近的人，否则失体力',jiushi:'翻面，下一张杀伤害加一；下次自己的回合将休整',lianhuan:'选一张梅花手牌重铸摸一张；直接选牌也可转换为缚神索'};return n+' · '+(help[ui.skill]||'按技能说明选牌与目标')}
   if(ui.skill==='qiangxi')return ui.selected.length?'雷锤：弃选中的武器，对范围内目标造成一点伤害':'雷锤：直接选目标将失去一点体力；也可先选武器作为代价'
   if(ui.skill)return `${skillName(view.players[0],ui.skill)}：${ui.skill==='lijian'?'弃一张牌，先选决斗发起者，再选先出杀者（两名其他男性）':ui.skill==='rende'?'选择要交出的手牌，再选择接收者':ui.skill==='zhiheng'?'选择要替换的手牌或装备':ui.skill==='jieyin'?'选择两张手牌，再选择一名受伤男性':ui.skill==='kurou'?'失去一点体力，摸两张牌；可以连续发动，请留意濒死风险':ui.skill==='qingnang'?'选择一张手牌，再选择受伤角色（包括自己）':'点击人物选择目标'}`
   const as=ui.currentAs(view)
