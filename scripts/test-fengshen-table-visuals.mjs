@@ -158,6 +158,20 @@ test('dismantle exposes the discarded card publicly; snatch keeps the hand card 
  assert.equal(discardEffects(beforeT,t).length,0)
  assert.equal(t.logs.filter(l=>l.id>beforeT.eventId).some(l=>l.cue?.kind==='discard-cue'),false)
 })
+test('a fallen player lays their whole hand on the table so everyone can see it',()=>{
+ let s=fixture();s.current=1;s.players[0].hp=1
+ const [a]=hand(s,0,'sha'),[b]=hand(s,0,'snatch') // 无闪，无法自救，也无人持桃
+ const [sha]=hand(s,1,'sha')
+ s=step(s,{type:'play',as:'sha',ids:[sha.id],targets:[0]})
+ const before=s;s=step(s,{type:'pass'})
+ assert.equal(s.players[0].alive,false,'0 号席因伤害阵亡')
+ const eff=discardEffects(before,s),cue=playerView(s,0).logs.find(l=>l.cue?.kind==='discard-cue')?.cue
+ // 阵亡后手牌全部弃置是公开信息：必须摆到牌桌中央让所有人看清。
+ assert.equal(eff.length,1);assert.equal(eff[0].seat,0,`${eff.length}`)
+ assert.equal(eff[0].cards.length,2)
+ assert.ok(cue);assert.equal(cue.seat,0)
+ assert.deepEqual(cue.cards.map(c=>c.id).sort(),[a.id,b.id].sort())
+})
 test('passive responder highlight targets real choices only, never pure public reveals',()=>{
  const base={seat:0,current:2,players:[],extension:null}
  // 真抉择：出杀闪、五谷选牌、濒死求桃、借刀响应、拼点——高亮该玩家

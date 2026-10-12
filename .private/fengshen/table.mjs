@@ -113,9 +113,11 @@ export function renderCenter(ui,view){
 }
 function playedCenter(view,ui){
   const entries=trailCards(tableTrail(ui?.tableTrail||[],view)),p=view.pending
+  // 当前正在翻出的判定牌 id：改判询问牌与最终判定牌共用同一张牌面，命中/落空的戳记盖在这张牌上。
+  const judgeCardId=p?.kind==='reveal'?p.card?.id:p?.kind==='judge-replace'?p.judgmentCard?.id:null
   const publicRows=ui?.discards?.cards?.length?`<div class="fs-played fs-public-discard" data-discard-seat="${ui.discards.seat}" role="status" aria-label="${display(view.players[ui.discards.seat]).name}${ui.discards.by!=null?'被拆掉':'弃置'}的牌">${ui.discards.cards.map(c=>`<span class="fs-card-play fs-discard-card" aria-label="${cardTitle(c.type)}">${cardFace(c)}</span>`).join('')}</div>`:''
   return `<div class="fs-table-center fs-compact-table" role="group" aria-label="公开出牌与判定"><div class="fs-played fs-table-trail">${entries.map(e=>{
-    const c=e.card,converted=e.as&&e.as!==c.type&&!CARDS_BY_TYPE[c.type]?.attackNature,face=c,judging=e.judgment&&(e.key.startsWith(`judge:${p?.id}:`)||e.key.startsWith(`replace:${p?.id}:`)),m=e.judgment&&e.hit!=null?judgmentMark(e):null,label=seatName(view,e.source)+' · '+(e.judgment?(displayText(e.label)||'判定'):e.virtualType?'技能虚拟牌 · 无实体花色点数':converted?'作为'+cardTitle(e.as)+'使用':e.response?'响应':cardTitle(e.as||c.type))
+    const c=e.card,converted=e.as&&e.as!==c.type&&!CARDS_BY_TYPE[c.type]?.attackNature,face=c,judging=!!judgeCardId&&e.judgment&&e.card?.id===judgeCardId,m=e.judgment&&e.hit!=null?judgmentMark(e):null,label=seatName(view,e.source)+' · '+(e.judgment?(displayText(e.label)||'判定'):e.virtualType?'技能虚拟牌 · 无实体花色点数':converted?'作为'+cardTitle(e.as)+'使用':e.response?'响应':cardTitle(e.as||c.type))
     return `<span class="fs-card-play ${e.currentEffect?'is-current-effect':''} ${e.judgment?'fs-table-judgment':''} ${judging?'is-revealing':''} ${e.negated?'is-negated':''}" data-trail-key="${esc(e.key)}" ${e.judgment?`data-judge-card="${c.id}" data-judge-kind="${e.judgeKind||'replace'}"`:''} aria-label="${esc(label)}">${cardFace(face)}${m?`<b class="fs-judge-stamp ${m.hit?'hit':'miss'}" data-judge-hit="${m.hit}" aria-label="${m.label}">${m.symbol}</b>`:e.negated?'<b class="fs-effect-cancel" aria-label="效果已被抵消">×</b>':''}<small class="fs-sr-only">${esc(label)}</small></span>`
   }).join('')}</div>${publicRows}</div>`
 }
@@ -157,7 +159,14 @@ export function renderControls(ui,v){
   const extra=extensionControls(ui,v);if(extra)return extra
   if(v.pending?.actor===0){
     const response=actualResponseControls(ui,v);if(response)return response
-    if(v.pending.kind==='counter'){const answer=counterAction(v,ui.selected,{blockedUntil:ui.counterLockUntil}),pass=v.legal.findIndex(a=>a.type==='pass');return `<div class="fs-action-row fs-counter-controls" aria-label="破法响应"><button data-action="confirm" class="fs-primary" ${!answer?'disabled':''} aria-label="发动破法，${v.pending.negated?'恢复原效果':'抵消当前效果'}">发动破法</button><button data-action="response" data-value="${pass}" class="fs-secondary">不发动</button></div>`}
+    if(v.pending.kind==='counter'){
+      // 群体锦囊是逐个目标结算的：破法只能抵消"当前这位目标"的效果。牌桌上画的是全体连线，
+      // 所以必须在按钮旁点名本次抵消的是谁，否则玩家会以为一次破法能护住整张牌（含他关心的反贼）。
+      const answer=counterAction(v,ui.selected,{blockedUntil:ui.counterLockUntil}),pass=v.legal.findIndex(a=>a.type==='pass')
+      const spell=CARDS_BY_TYPE[v.pending.cardType]?.name||'该锦囊',victim=v.pending.target!=null?seatName(v,v.pending.target):null
+      const note=v.pending.negated?`再次破法：恢复${spell}对${victim||'该角色'}的效果`:victim?`破法：抵消${spell}对${victim}的效果`:`破法：抵消${spell}的效果`
+      return `<div class="fs-action-row fs-counter-controls" aria-label="破法响应"><span class="fs-counter-note">${esc(note)}</span><button data-action="confirm" class="fs-primary" ${!answer?'disabled':''} aria-label="${esc(note)}">发动破法</button><button data-action="response" data-value="${pass}" class="fs-secondary">不发动</button></div>`
+    }
     if(v.pending.kind==='incarnation')return `<div class="fs-action-row fs-idle-controls"><span>请在变身面板选择技能</span></div>`
     if(v.pending.kind==='guanxing')return `<div class="fs-action-row fs-idle-controls"><span>请在推演面板确认牌序</span></div>`
     if(v.pending.kind==='shensu'){const can=v.legal.some(a=>a.type==='rush'&&a.target===ui.targets[0]&&a.ids.length===ui.selected.length&&a.ids.every(id=>ui.selected.includes(id))),pass=v.legal.findIndex(a=>a.type==='pass');return `<div class="fs-action-row"><button data-action="confirm" class="fs-primary" ${!can?'disabled':''}>确认疾行</button><button data-action="response" data-value="${pass}" class="fs-secondary">${v.pending.mode===1?'正常判定与摸牌':'正常出牌'}</button><button data-action="clear" class="fs-clear">重选</button></div>`}

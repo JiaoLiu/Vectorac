@@ -14,8 +14,10 @@ export function tableTrail(previous=[],view){
  if(p?.kind==='counter'&&p.source==null){const c=view.players[p.target]?.judgment.find(c=>c.type===p.cardType);if(c)add({key:`delay:${view.turns}:${c.id}`,turn:view.turns,source:p.target,cards:[c],as:p.cardType,delay:true,currentEffect:true,negated:p.negated})}
  if(p?.kind==='counter'&&p.source!=null&&current){const e=trail.find(e=>e.key===`play:${played.id}`);if(e)e.negated=p.negated}
  if(!current&&view.lastResponse?.turn===view.turns){const e=view.lastResponse;add({key:`standalone:${e.id}`,turn:view.turns,source:e.source,cards:e.cards,as:e.as,response:true})}
- if(p?.kind==='reveal')add({key:`judge:${p.id}`,turn:view.turns,source:p.target,cards:[p.effectiveSuit?{...p.card,suit:p.effectiveSuit,physicalSuit:p.card.suit}:p.card],as:p.card.type,judgment:true,currentEffect:true,judgeKind:p.delayType,hit:p.hit,label:view.judgmentLabel})
- if(p?.kind==='judge-replace'&&view.judgmentCard)add({key:`replace:${p.id}`,turn:view.turns,source:p.target,cards:[view.judgmentCard],as:view.judgmentCard.type,judgment:true,currentEffect:true,label:'改判'})
+ // 判定牌只占一个牌位：改判询问阶段先亮出这张牌，判定完成后命中/落空直接盖在同一张牌上，
+ // 不再另起一张复制牌，否则玩家会看到「一张原牌 + 一张带勾的复制牌」。
+ if(p?.kind==='reveal')add({key:`judge:${p.card.id}`,turn:view.turns,source:p.target,cards:[p.effectiveSuit?{...p.card,suit:p.effectiveSuit,physicalSuit:p.card.suit}:p.card],as:p.card.type,judgment:true,currentEffect:true,judgeKind:p.delayType,hit:p.hit,label:view.judgmentLabel})
+ if(p?.kind==='judge-replace'&&view.judgmentCard)add({key:`judge:${view.judgmentCard.id}`,turn:view.turns,source:p.target,cards:[view.judgmentCard],as:view.judgmentCard.type,judgment:true,currentEffect:true,label:'改判'})
  return recentWithFocus(trail,12)
 }
 export function counterTrail(trail,view){

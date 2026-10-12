@@ -301,10 +301,13 @@ function winCheck(s) {
 function die(s, seat, source) {if(X.death(s,seat,source))return;finalDeath(s,seat,source)}
 function finalDeath(s, seat, source) {
   const p = player(s,seat); p.alive=false
-  s.discard.push(...p.hand.splice(0),...p.judgment.splice(0));p.virtualJudgments={}
+  const hand=p.hand.splice(0)
+  s.discard.push(...hand,...p.judgment.splice(0));p.virtualJudgments={}
   s.discard.push(...(p.buquPile||[]));p.buquPile=[]
   for (const slot of slots) if (p.equip[slot]) {s.discard.push(p.equip[slot]);p.equip[slot]=null}
   note(s, s.teamMode?`${name(s,seat)}阵亡（${s.sides[seat]===0?'友方':'敌方'}）`:`${name(s,seat)}阵亡，身份为${{lord:'主公',loyal:'忠臣',rebel:'反贼',renegade:'内奸'}[p.role]}`)
+  // 阵亡后所有手牌一并弃置是公开信息：把死者的手牌摆到牌桌中间，让所有人看清他手里还有什么。
+  if(catalog.trackBattle&&hand.length)note(s,`${name(s,seat)}阵亡，弃置所有手牌`,{kind:'discard-cue',seat,cards:hand.map(c=>clone(c))})
   if (winCheck(s)) return
   // 阵营局没有反贼赏功与主公误杀忠臣的规则。
   if (!s.teamMode && source!=null && player(s,source).alive) {

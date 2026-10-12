@@ -4,6 +4,7 @@ import assert from 'node:assert/strict'
 import {readFile} from 'node:fs/promises'
 import {createAssignedGame,dispatch,playerView,catalog,allCards,restoreGame} from '../.private/fengshen/engine.mjs'
 import {targetLinks,judgingSeat,counterSelection,counterAction} from '../.private/fengshen/table-visuals.mjs'
+import {seatName} from '../.private/fengshen/combat.mjs'
 import {tableTrail,trailCards,tableCardLayout,counterTrail,recentWithFocus} from '../.private/fengshen/table-trail.mjs'
 import {judgmentEffects} from '../.private/fengshen/draw-effects.mjs'
 import {renderCenter,renderBattle,renderControls} from '../.private/fengshen/table.mjs'
@@ -39,6 +40,32 @@ test('area effect cancellation applies only to this victim, not a permanent canc
 test('revealed judgment is a real table card with a stamp, not a panel; replacements remain public',()=>{
  const s=fixture(),v=playerView(s,0),c=catalog.makeDeck()[0];for(const hit of [true,false]){v.pending={kind:'reveal',id:6,actor:0,target:0,card:c,delayType:'indulgence',hit};const html=renderCenter(ui(s),v);assert.ok(html.includes('fs-compact-table'));assert.ok(!html.includes('fs-center-choice'));assert.ok(!html.includes('fs-judgment-reveal'));assert.ok(html.includes(`data-judge-hit="${hit}"`));assert.ok(html.includes('data-judge-card="'+c.id+'"'))}
  v.pending={kind:'judge-replace',id:7,actor:1,target:0};v.judgmentCard=c;assert.ok(renderCenter(ui(s),v).includes('data-judge-card="'+c.id+'"'))
+})
+test('rejudge prompt and final judgment share one physical card instead of duplicating faces',()=>{
+ const s=fixture(),v=playerView(s,0),c=catalog.makeDeck().find(c=>c.suit==='heart')
+ // 有改判权但未改判：先亮出这张判定牌（无命中戳记）。
+ v.pending={kind:'judge-replace',id:6,actor:1,target:0};v.judgmentCard=c
+ let trail=tableTrail([],v)
+ assert.equal(trail.filter(e=>e.key===`judge:${c.id}`).length,1)
+ assert.equal(trail.find(e=>e.key===`judge:${c.id}`).hit,undefined)
+ // 判定完成：命中结果直接盖在同一张牌上，不再另起一张复制牌。
+ v.pending={kind:'reveal',id:7,actor:0,target:0,card:c,delayType:'indulgence',hit:true}
+ trail=tableTrail(trail,v)
+ const judge=trail.filter(e=>e.key===`judge:${c.id}`)
+ assert.equal(judge.length,1,'改判询问与最终判定共用同一张牌位')
+ assert.equal(judge[0].hit,true,'命中戳记盖在原判定牌上')
+ assert.equal(trailCards(trail).filter(e=>e.card?.id===c.id).length,1,'牌桌上只有一张实体判定牌')
+})
+test('a counter window names the exact victim being cancelled, never the whole card',()=>{
+ let s=fixture('yangjian',1),spell=card(s,1,'snatch');card(s,0,'shan');card(s,0,'nullify')
+ s=step(s,{type:'play',ids:[spell.id],as:'snatch',targets:[0]})
+ const v=playerView(s,0);assert.equal(v.pending.kind,'counter');assert.equal(v.pending.actor,0)
+ const html=renderControls(ui(s),v)
+ assert.ok(html.includes('fs-counter-note'),'破法按钮旁必须点名本次抵消的目标')
+ assert.ok(html.includes('抵消')&&html.includes('摄宝')&&html.includes(seatName(v,0)))
+ // 二次破法恢复效果时，提示同样点名目标。
+ const restored=renderControls(ui(s),{...v,pending:{...v.pending,negated:true}})
+ assert.ok(restored.includes('恢复')&&restored.includes(seatName(v,0)))
 })
 test('Luoshen reveals black/red publicly, moves only black to hand, and emits no private hand data',()=>{
  for(const black of [true,false]){let s=fixture('shiji',4),i=s.deck.findIndex(c=>c.suit===(black?'spade':'heart')&&c.rank===5),c=s.deck.splice(i,1)[0];s.deck.unshift(c);s=step(s,{type:'end'});assert.equal(s.pending.skill,'luoshen');s=step(s,{type:'choose',value:'yes'});assert.equal(s.pending.kind,'reveal');assert.equal(s.pending.hit,black);assert.equal(playerView(s,3).pending.card.id,c.id);const before=s;s=step(s,{type:'ack'});const effects=judgmentEffects(before,s);assert.equal(effects.length,black?1:0);if(black){assert.equal(effects[0].card.id,c.id);assert.deepEqual(Object.keys(effects[0]).sort(),['card','id','kind','target']);assert.deepEqual(playerView(s,3).players[0].hand,[]);assert.equal(playerView(s,3).logs.find(l=>l.cue?.kind==='judgment-keep').cue.card.id,c.id)}assert.deepEqual(judgmentEffects(s,s),[])}
