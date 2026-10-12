@@ -1,0 +1,108 @@
+.private/fengshen/theme.mjs
+  5058ed3dc1a97a8c 80
+scripts/tmp-yiji.mjs
+  5058ed3dc1a97a8c 3,5,7,9-30
+.private/fengshen/arena-table.css
+  5058ed3dc1a97a8c 93-97
+.private/fengshen/table.mjs
+  5058ed3dc1a97a8c 79-86
+scripts/test-fengshen-table-visuals.mjs
+  5058ed3dc1a97a8c 106-111
+scripts/test-fengshen-sunwukong.mjs
+  5058ed3dc1a97a8c 39-40
+.private/fengshen/app.js
+  5058ed3dc1a97a8c 379
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.8",
+  "base_commit_sha": "7b3c5934e6170b4c627ee98f46a523bd5308f18a",
+  "prompts": {
+    "5058ed3dc1a97a8c": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6ac848ce090dc5dc9234c7bc",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 100,
+      "total_deletions": 47,
+      "accepted_lines": 85,
+      "overriden_lines": 0
+    }
+  },
+  "commit_stats": {
+    "git_diff_added_lines": 49,
+    "git_diff_deleted_lines": 37,
+    "ai_additions": 48,
+    "ai_accepted": 48,
+    "BYMC": 1,
+    "mixed_additions": 0,
+    "BYAC": 48,
+    "BYRC": 0,
+    "per_file": {
+      ".private/fengshen/app.js": {
+        "BYMC": [],
+        "BYAC": [
+          "379"
+        ],
+        "BYRC": []
+      },
+      ".private/fengshen/arena-table.css": {
+        "BYMC": [],
+        "BYAC": [
+          "93-97"
+        ],
+        "BYRC": []
+      },
+      ".private/fengshen/table.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "79-86"
+        ],
+        "BYRC": []
+      },
+      ".private/fengshen/theme.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "80"
+        ],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-military-browser.mjs": {
+        "BYMC": [
+          "23"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-sunwukong.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "39-40"
+        ],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-table-visuals.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "106-111"
+        ],
+        "BYRC": []
+      },
+      "scripts/tmp-yiji.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "3",
+          "5",
+          "7",
+          "9-30"
+        ],
+        "BYRC": []
+      }
+    }
+  },
+  "commit_timestamp": 1791768744,
+  "requirement_id": ""
+}
