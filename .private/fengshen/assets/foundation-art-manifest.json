@@ -1,0 +1,62 @@
+{
+  "tool": "built-in imagegen",
+  "date": "2026-10-12",
+  "assets": [
+    {
+      "id": "luoxuan",
+      "name": "罗宣",
+      "source": "/Users/Jiao/.codex/generated_images/019ffe24-0691-79c0-9329-ff854e9d5202/exec-95da39f2-f347-428e-a24f-5c21c01fb88c.png",
+      "image": "heroes/luoxuan.jpg",
+      "thumbnail": "heroes/luoxuan-thumb.jpg",
+      "prompt": "Use case: stylized-concept. Asset type: ONE original Chinese mythology strategy-game hero illustration, vertical 2:3 portrait. Subject: 罗宣: a fierce mature fire immortal, crimson hair tied high, dark red beard, heavy engraved bronze armor over crimson robes, one fire-bronze bell in hand, blazing temple clouds and concentrated gold flame; imposing broad silhouette. Premium realistic painterly fantasy, believable human anatomy and hands, detailed engraved metal, silk weave, cinematic atmospheric depth, natural dramatic rim light. Match the existing game aesthetic: realistic hand-painted collectible hero portrait, serious elegant Chinese mythological art, rich muted hues with gold highlights, NOT cartoon or vector. Composition: waist-up or three-quarter figure large in center, face in upper third, readable silhouette for mobile card thumbnail, small breathing room above head and around hands, immersive background, no card frame. ONE coherent character only. Entirely original, no commercial game art reference. No text, no writing, no letters, no numbers, no watermark, no logos, no UI."
+    },
+    {
+      "id": "nanji",
+      "name": "南极仙翁",
+      "source": "/Users/Jiao/.codex/generated_images/019ffe24-0691-79c0-9329-ff854e9d5202/exec-efce2e84-4141-4972-82aa-950500596fb2.png",
+      "image": "heroes/nanji.jpg",
+      "thumbnail": "heroes/nanji-thumb.jpg",
+      "prompt": "Use case: stylized-concept. Asset type: ONE original Chinese mythology strategy-game hero illustration, vertical 2:3 portrait. Subject: 南极仙翁: an amiable longevity immortal with a distinctive rounded high forehead, long white beard, ivory sage robes with peach and emerald embroidery, curved dragonwood crane staff, a peach in the other hand, white crane and cloud garden behind; wise grandfatherly calm. Premium realistic painterly fantasy, believable human anatomy and hands, detailed engraved metal, silk weave, cinematic atmospheric depth, natural dramatic rim light. Match the existing game aesthetic: realistic hand-painted collectible hero portrait, serious elegant Chinese mythological art, rich muted hues with gold highlights, NOT cartoon or vector. Composition: waist-up or three-quarter figure large in center, face in upper third, readable silhouette for mobile card thumbnail, small breathing room above head and around hands, immersive background, no card frame. ONE coherent character only. Entirely original, no commercial game art reference. No text, no writing, no letters, no numbers, no watermark, no logos, no UI."
+    },
+    {
+      "id": "yangren",
+      "name": "杨任",
+      "source": "/Users/Jiao/.codex/generated_images/019ffe24-0691-79c0-9329-ff854e9d5202/exec-c6680aa9-23a8-4bf1-8ac0-e45640aef8ba.png",
+      "image": "heroes/yangren.jpg",
+      "thumbnail": "heroes/yangren-thumb.jpg",
+      "prompt": "Use case: stylized-concept. Asset type: ONE original Chinese mythology strategy-game hero illustration, vertical 2:3 portrait. Subject: 杨任: a scholarly adult celestial seer with swept black hair, rich moss-green and ivory Taoist robes with gold embroidery, one raised palm bears a clearly legible luminous eye sigil, the other holds a feather fan; bronze divination motifs and misty jade mountains; serene analytical expression. Premium realistic painterly fantasy, believable human anatomy and hands, detailed engraved metal, silk weave, cinematic atmospheric depth, natural dramatic rim light. Match the existing game aesthetic: realistic hand-painted collectible hero portrait, serious elegant Chinese mythological art, rich muted hues with gold highlights, NOT cartoon or vector. Composition: waist-up or three-quarter figure large in center, face in upper third, readable silhouette for mobile card thumbnail, small breathing room above head and around hands, immersive background, no card frame. ONE coherent character only. Entirely original, no commercial game art reference. No text, no writing, no letters, no numbers, no watermark, no logos, no UI."
+    },
+    {
+      "id": "zhangkui",
+      "name": "张奎",
+      "source": "/Users/Jiao/.codex/generated_images/019ffe24-0691-79c0-9329-ff854e9d5202/exec-bcc108d9-acd1-4dae-8cd4-e875ce42e086.png",
+      "image": "heroes/zhangkui.jpg",
+      "thumbnail": "heroes/zhangkui-thumb.jpg",
+      "prompt": "Use case: stylized-concept. Asset type: ONE original Chinese mythology strategy-game hero illustration, vertical 2:3 portrait. Subject: 张奎: a rugged powerful earth-travelling male warrior with angular tanned face, short black beard, black and ochre engraved lamellar armor, broad curved bronze sabre, cloak blowing through a narrow rocky gorge, dust and golden rock shards; dynamic strategic commander. Premium realistic painterly fantasy, believable human anatomy and hands, detailed engraved metal, silk weave, cinematic atmospheric depth, natural dramatic rim light. Match the existing game aesthetic: realistic hand-painted collectible hero portrait, serious elegant Chinese mythological art, rich muted hues with gold highlights, NOT cartoon or vector. Composition: waist-up or three-quarter figure large in center, face in upper third, readable silhouette for mobile card thumbnail, small breathing room above head and around hands, immersive background, no card frame. ONE coherent character only. Entirely original, no commercial game art reference. No text, no writing, no letters, no numbers, no watermark, no logos, no UI."
+    },
+    {
+      "id": "juliusun",
+      "name": "惧留孙",
+      "source": "/Users/Jiao/.codex/generated_images/019ffe24-0691-79c0-9329-ff854e9d5202/exec-d03d0877-fd6d-4eee-b257-928ce15e0d61.png",
+      "image": "heroes/juliusun.jpg",
+      "thumbnail": "heroes/juliusun-thumb.jpg",
+      "prompt": "Use case: stylized-concept. Asset type: ONE original Chinese mythology strategy-game hero illustration, vertical 2:3 portrait. Subject: 惧留孙: a lean ancient earth sage with silver eyebrows and neat white beard, saffron ochre and pale jade layered Taoist robes, a coiling luminous golden binding rope held in one hand, carved jade token in the other, sacred stone terraces and drifting earth mist; composed inventive expression. Premium realistic painterly fantasy, believable human anatomy and hands, detailed engraved metal, silk weave, cinematic atmospheric depth, natural dramatic rim light. Match the existing game aesthetic: realistic hand-painted collectible hero portrait, serious elegant Chinese mythological art, rich muted hues with gold highlights, NOT cartoon or vector. Composition: waist-up or three-quarter figure large in center, face in upper third, readable silhouette for mobile card thumbnail, small breathing room above head and around hands, immersive background, no card frame. ONE coherent character only. Entirely original, no commercial game art reference. No text, no writing, no letters, no numbers, no watermark, no logos, no UI."
+    },
+    {
+      "id": "yinjiao",
+      "name": "殷郊",
+      "source": "/Users/Jiao/.codex/generated_images/019ffe24-0691-79c0-9329-ff854e9d5202/exec-e444237f-c718-4abf-a700-a461e5e03869.png",
+      "image": "heroes/yinjiao.jpg",
+      "thumbnail": "heroes/yinjiao-thumb.jpg",
+      "prompt": "Use case: stylized-concept. Asset type: ONE original Chinese mythology strategy-game hero illustration, vertical 2:3 portrait. Subject: 殷郊: a tall young royal celestial warrior with proud stern face, long black hair and gold crown, deep blue and bronze ornate armor, crimson silk cape, broad ceremonial sword and bronze handbell, distant Shang palace under dramatic indigo storm clouds; heroic powerful silhouette. Premium realistic painterly fantasy, believable human anatomy and hands, detailed engraved metal, silk weave, cinematic atmospheric depth, natural dramatic rim light. Match the existing game aesthetic: realistic hand-painted collectible hero portrait, serious elegant Chinese mythological art, rich muted hues with gold highlights, NOT cartoon or vector. Composition: waist-up or three-quarter figure large in center, face in upper third, readable silhouette for mobile card thumbnail, small breathing room above head and around hands, immersive background, no card frame. ONE coherent character only. Entirely original, no commercial game art reference. No text, no writing, no letters, no numbers, no watermark, no logos, no UI."
+    },
+    {
+      "id": "laozi",
+      "name": "老子",
+      "source": "/Users/Jiao/.codex/generated_images/019ffe24-0691-79c0-9329-ff854e9d5202/exec-8aa74dd9-302f-44e6-8aab-d9ac3e611938.png",
+      "image": "heroes/laozi.jpg",
+      "thumbnail": "heroes/laozi-thumb.jpg",
+      "prompt": "Use case: stylized-concept. Asset type: ONE original Chinese mythology strategy-game hero illustration, vertical 2:3 portrait. Subject: 老子: a dignified ancient Taoist patriarch with flowing pure white hair and beard, deep indigo and cream layered robes with restrained gold cloud embroidery, jade ruyi sceptre, subtle glowing yin-yang-like celestial mist without drawn text, dark water buffalo silhouette on a mountain path behind; still contemplative authority. Premium realistic painterly fantasy, believable human anatomy and hands, detailed engraved metal, silk weave, cinematic atmospheric depth, natural dramatic rim light. Match the existing game aesthetic: realistic hand-painted collectible hero portrait, serious elegant Chinese mythological art, rich muted hues with gold highlights, NOT cartoon or vector. Composition: waist-up or three-quarter figure large in center, face in upper third, readable silhouette for mobile card thumbnail, small breathing room above head and around hands, immersive background, no card frame. ONE coherent character only. Entirely original, no commercial game art reference. No text, no writing, no letters, no numbers, no watermark, no logos, no UI."
+    }
+  ]
+}

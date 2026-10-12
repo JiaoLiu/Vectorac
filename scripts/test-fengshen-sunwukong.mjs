@@ -13,6 +13,13 @@ test('Sun Wukong starts with two distinct private unused forms and mandatory ski
  const s=setup(),p=s.players[0];assert.equal(s.pending.kind,'incarnation');assert.equal(s.pending.required,true);assert.equal(p.incarnation.pool.length,2);assert.equal(new Set(p.incarnation.pool).size,2);assert.ok(p.incarnation.pool.every(id=>!s.players.some(p=>p.alive&&p.heroId===id)));assert.ok(!playerView(s,0).legal.some(a=>a.type==='pass'));assert.ok(playerView(s,0).legal.every(a=>catalog.SKILLS[a.skill][2]!=='lord'))
  const publicView=playerView(s,1);assert.equal(publicView.players[0].incarnation.pool,undefined);assert.deepEqual(publicView.legal,[]);assert.ok(restoreGame(s))
 })
+test('the starting player is asked for a form once, not once at setup plus once at turn start',()=>{
+ const s=createAssignedGame({roles:['lord','loyal','rebel','rebel','renegade'],heroIds:['sunwukong','jifa','nezha','yangjian','dixin'],seed:71})
+ assert.equal(s.pending.kind,'incarnation');assert.equal(s.pending.reason,'start');assert.equal(s.pending.required,true);assert.equal(s.players[0].incarnation.pool.length,2)
+ const after=step(s,playerView(s,0).legal.find(a=>a.type==='transform'))
+ assert.notEqual(after.pending?.kind,'incarnation','选完形态后不应该立刻再弹一次同样的窗口')
+ assert.ok(restoreGame(after))
+})
 test('borrow exactly one skill, change faction/sex but never base identity or maximum HP',()=>{
  const s=prepared(),p=s.players[0];assert.equal(p.heroId,'zuoci');assert.equal(p.maxHp,3);assert.equal(hero(p).sex,'female');assert.equal(hero(p).faction,'wu');assert.ok(hasSkill(p,'guose'));assert.ok(!hasSkill(p,'liuli'));assert.ok(hasSkill(p,'huashen')&&hasSkill(p,'xinsheng'));assert.ok(restoreGame(s));assert.equal(playerView(s,1).players[0].incarnation.activeSkill,'guose')
 })

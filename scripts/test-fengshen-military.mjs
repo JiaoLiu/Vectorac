@@ -63,7 +63,7 @@ test('Huangtian donor must be Qun; gives actual Shan/Lightning once, disabled in
 test('Duanliang black basic/equipment conversion, range two, saves and skips draw only',()=>{
  for(const suit of ['heart','club']){let s=fixture({heroes:['muzha','yuanshi','randeng','taiyi','nezha']});const c=give(s,0,'sha',c=>c.suit==='spade');assert.ok(playerView(s,0).legal.some(a=>a.as==='supplyshortage'&&a.targets[0]===2));assert.ok(!playerView(s,0).legal.some(a=>a.as==='supplyshortage'&&a.targets.includes(0)));s=step(s,{type:'play',as:'supplyshortage',ids:[c.id],targets:[2]});assert.equal(s.players[2].virtualJudgments[c.id],'supplyshortage');s.current=1;top(s,suit);s=step(s,{type:'end'});while(s.pending)s=step(s,{type:s.pending.kind==='reveal'?'ack':'pass'});assert.equal(s.current,2);assert.equal(s.phase,'play');assert.equal(s.players[2].hand.length,suit==='club'?2:0);assert.equal(s.players[2].judgment.length,0)}
 })
-test('all 57 profiles finish military AI matches with 160 conserved cards and restorable prompts',()=>{
+test('all 64 profiles finish military AI matches with 160 conserved cards and restorable prompts',()=>{
  for(let i=0;i<PLAYABLE_HEROES.length;i++){const heroes=[PLAYABLE_HEROES[i].id,...PLAYABLE_HEROES.filter((_,j)=>j!==i).slice(0,4).map(h=>h.id)];let s=createAssignedGame({heroIds:heroes,roles:['lord','loyal','rebel','rebel','renegade'],seed:i+31,deckVersion:2}),n=0;while(!s.winner&&n++<3500)s=step(s,chooseAI(playerView(s,s.pending?.actor??s.current)));assert.ok(s.winner,heroes[0]+' did not finish')}
 })
 test('virtual supply remains restorable on Hongyan recipient; original physical suit never mutates',()=>{

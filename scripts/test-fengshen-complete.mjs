@@ -24,9 +24,9 @@ const pass=s=>step(s,playerView(s,s.pending.actor).legal.find(a=>a.type==='pass'
 const sha=(s,c,target)=>step(s,{type:'play',as:'sha',ids:[c.id],targets:[target]})
 function drain(s,stop=()=>!s.pending,limit=60){for(let i=0;!stop(s)&&i<limit;i++){assert.ok(s.pending);s=pass(s)}assert.ok(stop(s),JSON.stringify(s.pending));return s}
 const ui=s=>({state:s,selected:[],targets:[],skill:null,paused:false,header:()=>'',matching:()=>[],currentAs:()=>null,targetable:()=>[],equipment:()=>'',skills:()=>'',won:()=>false,pendingText:()=>''})
-test('all 57 existing independent portraits are complete, certified, uniquely mapped and selectable',async()=>{
- assert.equal(HEROES.length,57);assert.equal(PLAYABLE_HEROES.length,57);assert.deepEqual(auditCanonicalRoster(HEROES,ALLIANCES),[])
- const files=(await readdir(new URL('../.private/fengshen/assets/heroes/',import.meta.url))).filter(s=>s.endsWith('.jpg')&&!s.endsWith('-thumb.jpg'));assert.equal(files.length,57)
+test('all 64 existing independent portraits are complete, certified, uniquely mapped and selectable',async()=>{
+ assert.equal(HEROES.length,64);assert.equal(PLAYABLE_HEROES.length,64);assert.deepEqual(auditCanonicalRoster(HEROES,ALLIANCES),[])
+ const files=(await readdir(new URL('../.private/fengshen/assets/heroes/',import.meta.url))).filter(s=>s.endsWith('.jpg')&&!s.endsWith('-thumb.jpg'));assert.equal(files.length,64)
  for(const h of HEROES){assert.ok(h.playable);assert.equal(h.missingSkills.length,0);assert.ok(await stat(new URL('../.private/fengshen/'+h.image,import.meta.url)));for(const skill of Object.keys(h.skillNames))assert.ok(skillHelp(h,skill));assert.ok(createGame({heroId:h.id,seed:2}))}
  assert.ok(!displayText('恢复体力，获得手牌').includes('undefined'))
 })
@@ -167,6 +167,6 @@ test('turn-scoped Tianyi, Shuangxiong and Wine expire after finish, not during l
 test('Guhuo includes registered skill-only tricks/basic cards but cannot bluff-recast Iron Chain',()=>{
  const s=fixture('shengongbao'),c=card(s,0,'shan');const legal=playerView(s,0).legal;assert.ok(legal.some(a=>a.as==='wine'));assert.ok(legal.some(a=>a.as==='ironchain'&&a.targets.length));assert.ok(!legal.some(a=>a.as==='ironchain'&&!a.targets.length));assert.ok(!catalog.makeDeck().some(c=>c.type==='wine'))
 })
-test('all 57 heroes run identity/team AI with conserved cards, restored prompts and private hand isolation',()=>{
+test('all 64 heroes run identity/team AI with conserved cards, restored prompts and private hand isolation',()=>{
  for(const h of HEROES)for(const mode of ['identity','team']){let s=createAssignedGame({roles:['lord','loyal','rebel','rebel','renegade'],heroIds:[h.id,...['jifa','nezha','yangjian','jinling','dixin'].filter(id=>id!==h.id).slice(0,4)],seed:37,...(mode==='team'?{roles:null,sides:[0,1,0,1,1],firstSeat:0}:{})}),n=0;while(!s.winner&&n++<3000){const v=playerView(s,s.pending?.actor??s.current);assert.ok(v.players.every(p=>p.seat===v.seat||p.hand.length===0));const a=chooseAI(v);assert.ok(a,h.id+' no AI '+JSON.stringify(v.pending));s=step(s,a)}assert.ok(s.winner,h.id+' '+mode+' did not finish')}
 })

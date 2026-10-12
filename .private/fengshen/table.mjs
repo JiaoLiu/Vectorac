@@ -17,7 +17,7 @@ const roleBadge=(p,view,own=false)=>{
 const roleName=(p,view)=>view?.teamMode?(view.sides[p.seat]===view.sides[view.seat]?'友方':'敌方'):ROLES[p.role].name
 const formMarker=p=>p.incarnation?.activeHero?`<b class="fs-form-mark" title="七十二变：${esc(display({heroId:p.incarnation.activeHero}).name)}形态">形 · ${esc(display({heroId:p.incarnation.activeHero}).name)}</b>`:''
 const faceMarker=p=>p.faceDown?'<span class="fs-face-down" aria-label="背面朝上，下次轮到自己时翻回正面并跳过回合">翻面 · 下回合休整</span>':''
-export const stateMarkers=p=>`<span class="fs-state-marks">${p.chained?'<b class="fs-chain-mark" title="已连环：属性伤害将传导" aria-label="已连环">⚭</b>':''}${p.buquPile?.length?`<b title="公开护道牌 ${p.buquPile.length} 张；点击人物查看点数" aria-label="护道牌${p.buquPile.length}张">护${p.buquPile.length}</b>`:''}${p.skillsSealed?'<b title="人物技能已失效" aria-label="人物技能已失效">封</b>':''}</span>`
+export const stateMarkers=p=>`<span class="fs-state-marks">${p.chained?'<b class="fs-chain-mark" title="已连环：属性伤害将传导" aria-label="已连环">⚭</b>':''}${p.buquPile?.length?`<b title="公开护道牌 ${p.buquPile.length} 张；点击人物查看点数" aria-label="护道牌${p.buquPile.length}张">护${p.buquPile.length}</b>`:''}${p.fieldPile?.length?`<b aria-label="仙田${p.fieldPile.length}张" title="仙田减少距离；觉醒后可作为摄宝使用">田${p.fieldPile.length}</b>`:''}${p.skillsSealed?'<b title="人物技能已失效" aria-label="人物技能已失效">封</b>':''}</span>`
 export const turnActive=(p,v)=>p.alive&&v.current===p.seat&&!v.winner
 const turnBadge=(p,v)=>turnActive(p,v)?`<span class="fs-turn-badge" data-turn-seat="${p.seat}" aria-label="${display(p).name}当前回合">${v.phase==='play'?'出牌中':v.phase==='discard'?'弃牌中':v.phase==='judge'?'判定中':'回合中'}</span>`:''
 export const delayLabel=type=>cardTitle(type)
@@ -122,7 +122,7 @@ function playedCenter(view,ui){
   }).join('')}</div>${publicRows}</div>`
 }
 function playInstruction(ui,view){
-  if(EXT_ACTIVE.has(ui.skill)){const n=skillName(view.players[0],ui.skill),help={luanji:'选两张相同花色手牌，作为飞剑齐发使用；保留原牌面',huangtian:'选一张闪或天雷劫，再点亮主公交牌',quhu:'选择体力更高且有手牌的对手，确认后拼点',tianyi:'选择有手牌的对手，确认后拼点',ganlu:'选择两名角色交换装备，可选自己',dimeng:'选两名其他角色，再弃等于其手牌差的牌',anxu:'选择手牌数不同的两名其他角色',xueji:'选一张红色牌，再选范围内的伤害目标',luanwu:'每局一次：令其他角色攻击最近的人，否则失体力',jiushi:'翻面，下一张杀伤害加一；下次自己的回合将休整',lianhuan:'选一张梅花手牌重铸摸一张；直接选牌也可转换为缚神索'};return n+' · '+(help[ui.skill]||'按技能说明选牌与目标')}
+  if(EXT_ACTIVE.has(ui.skill)){const n=skillName(view.players[0],ui.skill),help={tiaoxin:'选择攻击范围包含你的对手：要求他对你出杀，否则弃置其一张牌',zhijian:'选一张装备手牌，再选择对应装备槽为空的其他角色',jixi:'先从中央选择一张仙田，再选择摄宝目标',zhiba:'选择主公拼点：若你未赢，主公可收取两张拼点牌',luanji:'选两张相同花色手牌，作为飞剑齐发使用；保留原牌面',huangtian:'选一张闪或天雷劫，再点亮主公交牌',quhu:'选择体力更高且有手牌的对手，确认后拼点',tianyi:'选择有手牌的对手，确认后拼点',ganlu:'选择两名角色交换装备，可选自己',dimeng:'选两名其他角色，再弃等于其手牌差的牌',anxu:'选择手牌数不同的两名其他角色',xueji:'选一张红色牌，再选范围内的伤害目标',luanwu:'每局一次：令其他角色攻击最近的人，否则失体力',jiushi:'翻面，下一张杀伤害加一；下次自己的回合将休整',lianhuan:'选一张梅花手牌重铸摸一张；直接选牌也可转换为缚神索'};return n+' · '+(help[ui.skill]||'按技能说明选牌与目标')}
   if(ui.skill==='qiangxi')return ui.selected.length?'雷锤：弃选中的武器，对范围内目标造成一点伤害':'雷锤：直接选目标将失去一点体力；也可先选武器作为代价'
   if(ui.skill)return `${skillName(view.players[0],ui.skill)}：${ui.skill==='lijian'?'弃一张牌，先选决斗发起者，再选先出杀者（两名其他男性）':ui.skill==='rende'?'选择要交出的手牌，再选择接收者':ui.skill==='zhiheng'?'选择要替换的手牌或装备':ui.skill==='jieyin'?'选择两张手牌，再选择一名受伤男性':ui.skill==='kurou'?'失去一点体力，摸两张牌；可以连续发动，请留意濒死风险':ui.skill==='qingnang'?'选择一张手牌，再选择受伤角色（包括自己）':'点击人物选择目标'}`
   const as=ui.currentAs(view)

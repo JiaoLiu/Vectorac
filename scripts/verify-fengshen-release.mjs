@@ -9,5 +9,6 @@ const files=[...new Set(['index.html','blogs/other/games.html','blogs/other/game
 const errors=[];let next=0,checked=0,bytes=0
 async function worker(){while(next<files.length){const path=files[next++];try{const local=await readFile(root+path);let r;for(let attempt=0;attempt<2;attempt++){try{r=await fetch('https://vectorac.com/'+path+'?verify='+revision,{signal:AbortSignal.timeout(20000)});if(r.ok)break}catch(e){if(attempt===1)throw e}}if(!r?.ok)throw Error('HTTP '+r?.status);const body=Buffer.from(await r.arrayBuffer());if(hash(body)!==hash(local))throw Error('SHA256 mismatch');if(path.endsWith('.svg')&&!r.headers.get('content-type')?.includes('image/svg+xml'))throw Error('SVG MIME '+r.headers.get('content-type'));checked++;bytes+=body.length;if(checked%60===0)process.stdout.write('checked '+checked+'/'+files.length+'\n')}catch(e){errors.push({path,error:e.message})}}}
 await Promise.all(Array.from({length:4},worker))
+for(const name of ['fireattack.svg','hualiu.svg','supplyshortage.svg']){const path='games/fengshen/assets/cards/'+name;const r=await fetch('https://vectorac.com/'+path+'?verify='+revision,{signal:AbortSignal.timeout(20000)});if(![404,410].includes(r.status))errors.push({path,error:'obsolete asset still public: HTTP '+r.status})}
 console.log(JSON.stringify({revision,heroes:HEROES.length,voices:AUDIO_ENTRIES.length*2,bundles,checked,total:files.length,bytes,errors},null,2))
-if(errors.length||HEROES.length!==57)process.exitCode=1
+if(errors.length||HEROES.length!==64)process.exitCode=1

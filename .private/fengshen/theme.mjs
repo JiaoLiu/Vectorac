@@ -1,5 +1,7 @@
 // Internal prototype: aliases do not constitute a cleared commercial design.
-import { HERO_BY_ID as STANDARD_HERO_BY_ID, CARDS, SKILLS, makeDeck } from './core/catalog.mjs'
+import { HERO_BY_ID as STANDARD_HERO_BY_ID, CARDS, SKILLS as BASE_SKILLS, makeDeck } from './core/catalog.mjs'
+import {FOUNDATION_HEROES,FOUNDATION_SKILLS,FOUNDATION_NAMES} from './foundation-roster.mjs'
+export const SKILLS={...BASE_SKILLS,...FOUNDATION_SKILLS}
 import {EXPANSION_BY_ID} from './classic-expansion.mjs'
 import {SKILL_CARDS} from './complete-roster.mjs'
 const HERO_BY_ID={...STANDARD_HERO_BY_ID,...EXPANSION_BY_ID}
@@ -42,7 +44,7 @@ const draftHeroes = rows.map(([id,name,title,faction,baseHero,hp,sex,skillNames,
  {id:'randeng',name:'燃灯道人',title:'灵灯照劫',faction:'chan',skillNames:{leiji:'灯雷',guidao:'移劫',huangtian:'归灯'},artDirection:'ancient slender lamp-bearing immortal monk, clean-shaven wise face, ivory saffron robes, bronze lamp, indigo lightning',image:'assets/heroes/randeng.jpg',thumbnail:'assets/heroes/randeng-thumb.jpg'},
  {id:'yuanshi',name:'元始天尊',title:'玉清御法',faction:'chan',skillNames:{luanji:'万剑',xueyi:'仙统'},artDirection:'elder celestial sovereign, jade crown and ruyi sceptre, white beard, ivory ice-blue gold robes, cloud palace and swords',image:'assets/heroes/yuanshi.jpg',thumbnail:'assets/heroes/yuanshi-thumb.jpg'},
  {id:'muzha',name:'木吒',title:'吴钩断道',faction:'zhou',skillNames:{duanliang:'断道'},artDirection:'young male guardian, bronze-grey lotus armor, twin hooked Wu blades, green mountain wind',image:'assets/heroes/muzha.jpg',thumbnail:'assets/heroes/muzha-thumb.jpg'},
-])
+],FOUNDATION_HEROES)
 const newSkillNames={jieyin:'生命之契',xiaoji:'圣翼',kurou:'吐气',jushou:'镇塔',qianxun:'五色护体',lianying:'明光',ganglie:'反震',liegong:'射日',kuanggu:'摄魂',shensu:'疾行',buqu:'护道',bazhen:'卢恩护阵',huoji:'神焰',kanpo:'万智',lianhuan:'月链',niepan:'月生',quhu:'驱兽',jieming:'传卦',qiangxi:'雷锤',tianyi:'天剑',mengjin:'钉魂',shuangxiong:'双魄',huoshou:'海御',zaiqi:'潮生',juxiang:'五光',lieren:'飞石',songwei:'尊道',haoshi:'神赐',dimeng:'神盟',yinghun:'日魂',wansha:'禁生',luanwu:'幻乱',weimu:'诡幕',huashen:'七十二变',xinsheng:'再化',beige:'碧曲',duanchang:'绝曲',ganlu:'补天',buyi:'护生',luoying:'晨辉',jiushi:'醇光',jueqing:'灵刃',shangshi:'夜巡',zhenlie:'圣守',miji:'神谋',anxu:'日恩',zhuiyi:'神恩',xueji:'月矢',huxiao:'狩月',wuji:'破界',zhuikong:'云惧',qiuyuan:'云援'}
 // A source general is indivisible: art factions never determine mechanical aid.
 // Incomplete source profiles remain a gallery entry, not a replacement combo.
@@ -50,7 +52,7 @@ export const HEROES=draftHeroes.map(h=>{
  const c=CANONICAL_BY_ID[h.id],base=HERO_BY_ID[c.referenceId]
  const complete=!!base&&base.skills.slice().sort().join('|')===c.skills.slice().sort().join('|')
  return {...h,baseHero:c.referenceId,engineId:c.referenceId,referenceId:c.referenceId,referenceName:c.referenceName,ruleset:c.ruleset,sourcePack:c.pack,mechanicalFaction:c.mechanicalFaction,hp:c.hp,sex:c.sex,
-   skillNames:Object.fromEntries(c.skills.map((s,i)=>[s,h.id==='luya'&&s==='mashu'?'游仙':h.skillNames[s]||newSkillNames[s]||c.sourceSkillNames[i]])),
+   skillNames:Object.fromEntries(c.skills.map((s,i)=>[s,h.id==='luya'&&s==='mashu'?'游仙':h.skillNames[s]||newSkillNames[s]||FOUNDATION_NAMES[s]||c.sourceSkillNames[i]])),
    playable:complete,missingSkills:complete?[]:c.skills.filter(s=>!SKILLS[s]),
  }
 })
@@ -77,7 +79,7 @@ export function displayText(text) {
   const result=String(text??'').replace(displayPattern,word=>replacements.get(word))
   return result.replace(/其他蜀将/g,'其他青盟角色').replace(/其他魏将/g,'其他赤盟角色').replace(/其他吴将/g,'其他金盟角色')
 }
-export function skillName(heroId,skill){const p=typeof heroId==='object'?heroId:null,id=p?(skill!=null&&p.incarnation?.activeSkill===skill?p.incarnation.activeHero:p.heroId):heroId;return heroForBase(id)?.skillNames[skill]||PLAYABLE_HEROES.find(h=>h.skillNames[skill])?.skillNames[skill]||'技能'}
+export function skillName(heroId,skill){const p=typeof heroId==='object'?heroId:null,id=p?(skill!=null&&p.incarnation?.activeSkill===skill?p.incarnation.activeHero:p.heroId):heroId;return heroForBase(id)?.skillNames[skill]||PLAYABLE_HEROES.find(h=>h.skillNames[skill])?.skillNames[skill]||FOUNDATION_NAMES[skill]||newSkillNames[skill]||'技能'}
 export function skillHelp(h,skill){
  let text=displayText(SKILLS[skill]?.[1]||'技能待接入')
  if(skill==='jijiang')text='主公技：需要杀时，可请其他青盟角色提供。'

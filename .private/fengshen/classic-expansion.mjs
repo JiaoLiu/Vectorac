@@ -1,5 +1,6 @@
 // Full original profiles, separate from the baseline Standard catalog.
 import {COMPLETE_BY_ID} from './complete-roster.mjs'
+import {FOUNDATION_PROFILES} from './foundation-roster.mjs'
 export const CLASSIC_EXPANSION=[
  {id:'huangzhong',name:'黄忠',faction:'shu',hp:4,sex:'male',skills:['liegong']},
  {id:'weiyan',name:'魏延',faction:'shu',hp:4,sex:'male',skills:['kuanggu']},
@@ -8,4 +9,4 @@ export const CLASSIC_EXPANSION=[
  {id:'dianwei',name:'典韦',faction:'wei',hp:4,sex:'male',skills:['qiangxi']},
  {id:'pangde',name:'庞德',faction:'qun',hp:4,sex:'male',skills:['mashu','mengjin']},
 ]
-export const EXPANSION_BY_ID={...COMPLETE_BY_ID,...Object.fromEntries(CLASSIC_EXPANSION.map(h=>[h.id,h]))}
+export const EXPANSION_BY_ID={...COMPLETE_BY_ID,...Object.fromEntries(CLASSIC_EXPANSION.concat(FOUNDATION_PROFILES).map(h=>[h.id,h]))}

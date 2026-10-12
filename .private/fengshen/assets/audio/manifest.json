@@ -566,8 +566,80 @@
       "text": "断道"
     },
     {
+      "key": "skill-jiuchi",
+      "text": "焰酿"
+    },
+    {
+      "key": "skill-roulin",
+      "text": "炽威"
+    },
+    {
+      "key": "skill-benghuai",
+      "text": "焚身"
+    },
+    {
+      "key": "skill-baonue",
+      "text": "炎统"
+    },
+    {
+      "key": "skill-xiangle",
+      "text": "安仙"
+    },
+    {
+      "key": "skill-fangquan",
+      "text": "授道"
+    },
+    {
+      "key": "skill-ruoyu",
+      "text": "归真"
+    },
+    {
+      "key": "skill-tiaoxin",
+      "text": "观战"
+    },
+    {
+      "key": "skill-zhiji",
+      "text": "通明"
+    },
+    {
+      "key": "skill-qiaobian",
+      "text": "地变"
+    },
+    {
+      "key": "skill-tuntian",
+      "text": "仙田"
+    },
+    {
+      "key": "skill-zaoxian",
+      "text": "破土"
+    },
+    {
+      "key": "skill-jiang",
+      "text": "王气"
+    },
+    {
+      "key": "skill-hunzi",
+      "text": "神觉"
+    },
+    {
+      "key": "skill-zhiba",
+      "text": "王令"
+    },
+    {
+      "key": "skill-zhijian",
+      "text": "传宝"
+    },
+    {
+      "key": "skill-guzhen",
+      "text": "守道"
+    },
+    {
       "key": "skill-luya-mashu",
       "text": "游仙"
+    },
+    {
+      "key": "skill-jixi",
+      "text": "夺域"
     }
   ],
   "files": [
@@ -711,7 +783,25 @@
     "male/skill-luanji.mp3",
     "male/skill-xueyi.mp3",
     "male/skill-duanliang.mp3",
+    "male/skill-jiuchi.mp3",
+    "male/skill-roulin.mp3",
+    "male/skill-benghuai.mp3",
+    "male/skill-baonue.mp3",
+    "male/skill-xiangle.mp3",
+    "male/skill-fangquan.mp3",
+    "male/skill-ruoyu.mp3",
+    "male/skill-tiaoxin.mp3",
+    "male/skill-zhiji.mp3",
+    "male/skill-qiaobian.mp3",
+    "male/skill-tuntian.mp3",
+    "male/skill-zaoxian.mp3",
+    "male/skill-jiang.mp3",
+    "male/skill-hunzi.mp3",
+    "male/skill-zhiba.mp3",
+    "male/skill-zhijian.mp3",
+    "male/skill-guzhen.mp3",
     "male/skill-luya-mashu.mp3",
+    "male/skill-jixi.mp3",
     "female/card-sha.mp3",
     "female/card-shan.mp3",
     "female/card-tao.mp3",
@@ -852,6 +942,24 @@
     "female/skill-luanji.mp3",
     "female/skill-xueyi.mp3",
     "female/skill-duanliang.mp3",
-    "female/skill-luya-mashu.mp3"
+    "female/skill-jiuchi.mp3",
+    "female/skill-roulin.mp3",
+    "female/skill-benghuai.mp3",
+    "female/skill-baonue.mp3",
+    "female/skill-xiangle.mp3",
+    "female/skill-fangquan.mp3",
+    "female/skill-ruoyu.mp3",
+    "female/skill-tiaoxin.mp3",
+    "female/skill-zhiji.mp3",
+    "female/skill-qiaobian.mp3",
+    "female/skill-tuntian.mp3",
+    "female/skill-zaoxian.mp3",
+    "female/skill-jiang.mp3",
+    "female/skill-hunzi.mp3",
+    "female/skill-zhiba.mp3",
+    "female/skill-zhijian.mp3",
+    "female/skill-guzhen.mp3",
+    "female/skill-luya-mashu.mp3",
+    "female/skill-jixi.mp3"
   ]
 }

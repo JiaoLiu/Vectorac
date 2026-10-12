@@ -1,5 +1,6 @@
 // Authoritative one-to-one target mapping. This is NOT an enabled hero pool.
 import {COMPLETE_BY_ID} from './complete-roster.mjs'
+import {FOUNDATION_PROFILES} from './foundation-roster.mjs'
 // Historical classic skill names identify the full source general, not a mix
 // of freely selectable primitives. Detailed event versions still need audit.
 const rows=[
@@ -71,7 +72,8 @@ const rows=[
 // Every illustrated profile has timing, AI and save tests. Unillustrated
 // planning entries remain disabled and are not part of the selectable pool.
 const completedExpansion=new Set(['houyi','hades','huangtianhua','lijing','thor','luya'])
-export const CANONICAL_ROSTER=rows.map(([pack,referenceId,referenceName,id,name,hp,sex,mechanicalFaction,skills,skillNames])=>({pack:referenceId==='guanyinping'?'sp-original':pack,referenceId,referenceName,id,name,hp,sex,mechanicalFaction,skills:skills.split(' '),sourceSkillNames:skillNames.split(' '),ruleset:'classic-identity-original',verification:pack==='standard'||id==='sunwukong'||completedExpansion.has(id)||COMPLETE_BY_ID[referenceId]?'verified':'pending-full-text-review'}))
+const foundationIds=new Set(FOUNDATION_PROFILES.map(h=>h.id))
+export const CANONICAL_ROSTER=rows.map(([pack,referenceId,referenceName,id,name,hp,sex,mechanicalFaction,skills,skillNames])=>({pack:referenceId==='guanyinping'?'sp-original':pack,referenceId,referenceName,id,name,hp,sex,mechanicalFaction,skills:skills.split(' '),sourceSkillNames:skillNames.split(' '),ruleset:'classic-identity-original',verification:pack==='standard'||id==='sunwukong'||completedExpansion.has(id)||COMPLETE_BY_ID[referenceId]||foundationIds.has(referenceId)?'verified':'pending-full-text-review'}))
 export const CANONICAL_BY_ID=Object.fromEntries(CANONICAL_ROSTER.map(h=>[h.id,h]))
 export const PACK_NAMES={standard:'标准',wind:'风',fire:'火',forest:'林',mountain:'山',yijiang2011:'一将成名2011',yijiang2012:'一将成名2012',yijiang2013:'一将成名2013','sp-original':'原版SP'}
 export function auditCanonicalRoster(heroes,alliances){

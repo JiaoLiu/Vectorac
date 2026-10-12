@@ -1,10 +1,11 @@
-import {CARDS_BY_TYPE,PLAYABLE_HEROES,heroForBase} from './theme.mjs'
+import {CARDS_BY_TYPE,PLAYABLE_HEROES,heroForBase,skillName} from './theme.mjs'
 export const VOICES={male:'zh-CN-YunxiNeural',female:'zh-CN-XiaoxiaoNeural'}
 export const AUDIO_ENTRIES=[
   ...Object.values(CARDS_BY_TYPE).map(c=>({key:`card-${c.type}`,text:c.name})),
   ...[...new Set(PLAYABLE_HEROES.filter(h=>h.baseHero).flatMap(h=>Object.keys(h.skillNames)))].map(s=>({key:`skill-${s}`,text:PLAYABLE_HEROES.find(h=>h.baseHero&&h.skillNames[s]).skillNames[s]})),
   ...PLAYABLE_HEROES.filter(h=>!h.baseHero).flatMap(h=>Object.entries(h.skillNames).map(([s,text])=>({key:`skill-${h.id}-${s}`,text}))),
   {key:'skill-luya-mashu',text:'游仙'},
+  {key:'skill-jixi',text:skillName(null,'jixi')},
 ]
 export function skillAudioKey(actor,skill){const heroId=typeof actor==='string'?actor:actor?.incarnation?.activeSkill===skill?actor.incarnation.activeHero:actor?.heroId,h=heroForBase(heroId);return h&&(h.id==='luya'&&skill==='mashu'||!h.baseHero)?`skill-${h.id}-${skill}`:`skill-${skill}`}
 export const audioPath=(key,sex='male')=>`assets/audio/${sex==='female'?'female':'male'}/${key}.mp3`

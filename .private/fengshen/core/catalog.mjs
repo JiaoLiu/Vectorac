@@ -1,5 +1,6 @@
 // Classic skill mechanics; descriptions are independently written for this UI.
 import {COMPLETE_SKILLS} from '../complete-roster.mjs'
+import {FOUNDATION_SKILLS} from '../foundation-roster.mjs'
 export const SUITS = { spade: '♠', heart: '♥', club: '♣', diamond: '♦' }
 export const ROLES = {
   lord: { name: '主公', goal: '消灭反贼与内奸，与忠臣共同获胜', color: '#d3ac62' },
@@ -10,6 +11,7 @@ export const ROLES = {
 export const FACTIONS = { shu: '蜀', wei: '魏', wu: '吴', qun: '群' }
 export const SKILLS = {
   ...COMPLETE_SKILLS,
+  ...FOUNDATION_SKILLS,
   liegong:['烈弓','出牌阶段使用杀指定目标后，若目标手牌数不少于你的体力，或不多于你的攻击范围，可令其不能用闪响应本次杀。','trigger'],
   kuanggu:['狂骨','锁定技：对伤害发生前距离一以内的角色每造成一点实际伤害，回复一点体力。','locked'],
   shensu:['神速','可跳过判定和摸牌阶段，或跳过出牌阶段并弃一张手牌／装备区的装备牌；每选择一项，视为使用一张无距离限制的杀。两项可在同一回合分别使用。','trigger'],

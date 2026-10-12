@@ -44,7 +44,7 @@ try{
  // Updated private identity cycle remains an independent action, not a hero modal.
  load(fixture('yangjian',['jifa','nezha','dixin','jinling']));click('[data-action="role-mark"][data-value="1"]');assert.equal(ui.roleMarks[1],'loyal');assert.equal(ui.modal,null);count++
  // Full hero guide: all portraits are enabled and none of the new cards is undefined.
- ui.openModal('heroes');assert.equal(ui.root.querySelectorAll('.fs-collection-grid button').length,57);assert.equal(ui.root.querySelectorAll('.fs-collection-grid .not-ready').length,0);assert.ok(!ui.root.textContent.includes('undefined'));count++
+ ui.openModal('heroes');assert.equal(ui.root.querySelectorAll('.fs-collection-grid button').length,64);assert.equal(ui.root.querySelectorAll('.fs-collection-grid .not-ready').length,0);assert.ok(!ui.root.textContent.includes('undefined'));count++
  // Feedback entry opens the built-in popup shell (same form other card games use), not a page jump.
  // This is an offline shell test: never initialize the real comment service.
  ui.feedback.ensureValine=async()=>{}

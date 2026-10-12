@@ -2,15 +2,15 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {readFile,stat} from 'node:fs/promises'
 import {HEROES,PLAYABLE_HEROES,CARDS_BY_TYPE,PLANNED_EQUIPMENT,ALLIANCES,heroForBase,displayText} from '../.private/fengshen/theme.mjs'
-import {catalog,createGame,dispatch,playerView,restoreGame,allCards,THEME_VERSION} from '../.private/fengshen/engine.mjs'
+import {catalog,createGame,createAssignedGame,dispatch,playerView,restoreGame,allCards,THEME_VERSION} from '../.private/fengshen/engine.mjs'
 import {createGame as classicGame,restoreGame as classicRestore,hero as classicHero} from '../.private/fengshen/core/engine.mjs'
 import {HERO_BY_ID,CARDS,makeDeck} from '../.private/fengshen/core/catalog.mjs'
 import {chooseAI} from '../.private/fengshen/engine.mjs'
 import {ART_PROMPTS} from '../.private/fengshen/art-prompts.mjs'
 
-test('57 unique portraits and complete playable profiles',()=>{
-  assert.equal(HEROES.length,57);assert.equal(new Set(HEROES.map(h=>h.id)).size,57)
-  assert.equal(PLAYABLE_HEROES.length,57)
+test('64 unique portraits and complete playable profiles',()=>{
+  assert.equal(HEROES.length,64);assert.equal(new Set(HEROES.map(h=>h.id)).size,64)
+  assert.equal(PLAYABLE_HEROES.length,64)
   for(const h of HEROES){if(h.playable){assert.ok(catalog.HERO_BY_ID[h.engineId]);assert.deepEqual(Object.keys(h.skillNames),catalog.HERO_BY_ID[h.engineId].skills)}else assert.throws(()=>createGame({heroId:h.id}))}
   assert.equal(HEROES.find(h=>h.baseHero==='xiaoqiao').name,'龙吉公主');assert.equal(HEROES.find(h=>h.baseHero==='xiaoqiao').sex,'female')
 })
@@ -28,10 +28,10 @@ test('deck physical identities and all equipment stats remain unchanged',()=>{
   assert.ok(!catalog.makeDeck().some(c=>c.type==='wine'));assert.ok(!catalog.makeDeck().some(c=>CARDS_BY_TYPE[c.type].attackNature))
 })
 test('lord support uses exact original faction, including Huang Yueying',()=>{
-  const s=createGame({heroId:'jifa',role:'lord',seed:7})
+  const s=createAssignedGame({heroIds:['jifa','jinling','nezha','yangjian','leizhenzi'],roles:['lord','loyal','rebel','rebel','renegade'],seed:7})
   s.deck=catalog.makeDeck();s.discard=[];s.processing=[];s.harvestPool=[];s.queue=[];s.pending=null;s.phase='play';s.current=0
   const ids=['liubei','huangyueying','zhangfei','zhaoyun','machao']
-  for(const p of s.players){p.heroId=ids[p.seat];p.hp=p.maxHp=catalog.HERO_BY_ID[p.heroId].hp+(p.role==='lord'?1:0);p.hand=[];p.judgment=[];p.equip={weapon:null,armor:null,offenseHorse:null,defenseHorse:null};p.marks={sha:0}}
+  for(const p of s.players){p.heroId=ids[p.seat];p.hp=p.maxHp=catalog.HERO_BY_ID[p.heroId].hp+(p.role==='lord'?1:0);p.hand=[];p.judgment=[];p.equip={weapon:null,armor:null,offenseHorse:null,defenseHorse:null};p.marks={sha:0};delete p.persistent;delete p.gainedSkills;delete p.fieldPile;delete p.maxHpLoss}
   const r=dispatch(s,{seat:0,type:'skill',skill:'jijiang',target:1})
   assert.ok(r.ok,r.error);assert.equal(r.state.pending.kind,'support');assert.equal(r.state.pending.actor,1)
   assert.deepEqual(r.state.pending.candidates,[1,2,3,4]);assert.equal(r.state.pending.candidates.includes(1),true)
@@ -66,8 +66,8 @@ test('180 seeded matches complete legally across every enabled character and rol
   }
   console.log('Fengshen prototype simulations (not a balance result):',winners)
 })
-test('57 hero and 43 card artwork prompts and workspace assets exist',async()=>{
-  assert.equal(ART_PROMPTS.length,100);assert.equal(new Set(ART_PROMPTS.map(a=>a.kind+'/'+a.id)).size,100)
+test('64 hero and 43 card artwork prompts and workspace assets exist',async()=>{
+  assert.equal(ART_PROMPTS.length,107);assert.equal(new Set(ART_PROMPTS.map(a=>a.kind+'/'+a.id)).size,107)
   for(const a of ART_PROMPTS){assert.ok(a.prompt.includes('no watermark'));const path=a.kind==='heroes'?HEROES.find(h=>h.id===a.id).image:CARDS_BY_TYPE[a.id].image;const s=await stat(new URL(`../.private/fengshen/${path}`,import.meta.url));assert.ok(s.size>1000)}
   for(const h of HEROES){const full=await stat(new URL(`../.private/fengshen/${h.image}`,import.meta.url)),thumb=await stat(new URL(`../.private/fengshen/${h.thumbnail}`,import.meta.url));assert.ok(thumb.size>1000&&thumb.size<full.size)}
 })

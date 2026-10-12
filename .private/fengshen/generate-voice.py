@@ -5,6 +5,7 @@ Only card/skill names are sent; no project files, credentials or game saves.
 """
 import asyncio
 import json
+import os
 import subprocess
 from pathlib import Path
 import edge_tts
@@ -32,7 +33,7 @@ async def main():
             for attempt in range(6):
                 try:
                     await asyncio.sleep(0.6)
-                    await edge_tts.Communicate(entry['text'] + '！', voice, rate='+8%').save(str(path))
+                    await edge_tts.Communicate(entry['text'] + '！', voice, rate='+8%', proxy=os.environ.get('HTTPS_PROXY')).save(str(path))
                     if path.stat().st_size < 1000:
                         raise RuntimeError('Empty audio')
                     print(f"OK {sex}/{entry['key']} {entry['text']}", flush=True)

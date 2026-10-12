@@ -1,5 +1,6 @@
 import * as defaultCatalog from './catalog.mjs'
 import {extensionResponse,expansionSkill} from './complete-ai.mjs'
+import {foundationResponse,foundationSkill} from './foundation-ai.mjs'
 export function createAI(catalog=defaultCatalog){
 const {CARDS,HERO_BY_ID,isRed}=catalog
 const viewHero=p=>({...HERO_BY_ID[p.heroId],skills:p.effectiveSkills||HERO_BY_ID[p.heroId].skills,sex:p.effectiveSex||HERO_BY_ID[p.heroId].sex,faction:p.effectiveFaction||HERO_BY_ID[p.heroId].faction})
@@ -20,6 +21,9 @@ function hostility(view, target) {
   if(role==='lord'||role==='loyal') {
     if(known==='lord'||known==='loyal')return -4
     if(known==='rebel'||known==='renegade')return 4
+    // A living loyalist plus the public lord and one final survivor means
+    // that survivor must be an enemy while the game is still unfinished.
+    if(role==='loyal'&&remaining===3&&view.players.some(p=>p.alive&&p.role==='lord'))return 4
     // Public death identities suffice: with both rebels gone, a loyalist knows
     // the sole other non-lord survivor is the renegade. A lord only infers the
     // least trusted survivor; never read concealed roles to choose correctly.
@@ -40,6 +44,7 @@ function hostility(view, target) {
   return 1.2+Math.sign(leaning||1)*(view.suspicion[target]||0)*.7
 }
 function cardValue(card,view) {
+  if(!card)return 0
   const p=view.players[view.seat]
   if(card.type==='tao')return p.hp<p.maxHp?9:6
   if(card.type==='shan')return p.hand.filter(c=>c.type==='shan').length>2?2:5
@@ -53,7 +58,7 @@ function cardValue(card,view) {
   return 3.5
 }
 const ownCards = view => {const p=view.players[view.seat];return p.hand.concat(Object.values(p.equip).filter(Boolean))}
-const cost = (view,ids=[]) => ids.reduce((n,id)=>n+cardValue(ownCards(view).find(c=>c.id===id),view),0)
+const cost = (view,ids=[]) => ids.reduce((n,id)=>n+cardValue(ownCards(view).concat(view.players[view.seat].fieldPile||[]).find(c=>c.id===id),view),0)
 const orderByValue = view => view.players[view.seat].hand.slice().sort((a,b)=>cardValue(a,view)-cardValue(b,view))
 function slashResources(view,HERO_BY_ID,isRed) {
   const p=view.players[view.seat],skills=viewHero(p).skills
@@ -62,7 +67,7 @@ function slashResources(view,HERO_BY_ID,isRed) {
 }
 function response(view,HERO_BY_ID,isRed) {
   const pending=view.pending,opts=view.legal,pass=opts.find(o=>o.type==='pass')
-  if(pending.kind==='ext')return extensionResponse(view,{hostility,cardValue,ownCards})
+  if(pending.kind==='ext')return foundationResponse(view,{hostility,cardValue,ownCards})||extensionResponse(view,{hostility,cardValue,ownCards})
   if(pending.kind==='incarnation'){
     const p=view.players[view.seat],rank={jizhi:8,yingzi:8,luoshen:7,zhiheng:7,qingguo:5,longdan:5,wusheng:5,paoxiao:4,qicai:3,mashu:3,qianxun:5,jijiu:6,yiji:7,tiandu:4}
     const score=a=>(rank[a.skill]||4)+(a.skill==='kongcheng'&&!p.hand.length?8:0)+(a.skill==='qingnang'&&p.hp<p.maxHp?5:0)+(a.skill==='keji'&&p.hand.length>p.hp?5:0)+(a.skill==='xiaoji'&&Object.values(p.equip).some(Boolean)?3:0)
@@ -173,7 +178,7 @@ const chooseAI=function chooseAI(view) {
         else if(action.as==='collateral')score=hostility(view,action.targets[1])*2+Math.max(0,rel)+1
         else if(action.as==='lightning')score=-2
       } else if(action.type==='skill') {
-        const expansion=expansionSkill(view,action,{hostility,cardValue,ownCards});if(expansion){candidate=expansion.action;score=expansion.score}
+        const expansion=foundationSkill(view,action,{hostility,cardValue,ownCards})||expansionSkill(view,action,{hostility,cardValue,ownCards});if(expansion){candidate=expansion.action;score=expansion.score}
         else if(action.skill==='qiangxi')score=hostility(view,action.target)*2+(view.players[action.target].hp<=1?5:0)-(action.ids.length?cost(view,action.ids)*.45:self.hp<=1?50:4)
         else if(action.skill==='zhiheng') {
           const cards=ownCards(view).filter(c=>cardValue(c,view)<3.5||CARDS[c.type].category==='equip'&&self.equip[CARDS[c.type].slot]?.id===c.id&&CARDS[c.type].slot==='weapon'&&self.hand.some(h=>CARDS[h.type].slot==='weapon'&&CARDS[h.type].range>CARDS[c.type].range))

@@ -1,12 +1,12 @@
 import * as baseline from './core/catalog.mjs'
 import { createEngine } from './core/engine.mjs'
 import {createAI} from './core/ai.mjs'
-import { ALLIANCES, PLAYABLE_HEROES, CARDS_BY_TYPE, skillName,makeMilitaryDeck } from './theme.mjs'
+import { ALLIANCES, PLAYABLE_HEROES, CARDS_BY_TYPE, SKILLS,skillName,makeMilitaryDeck } from './theme.mjs'
 export const THEME_VERSION='fengshen-classic-original-v2'
 // Mechanical factions are an explicit alliance adapter, never the old hero's
 // hard-coded nationality. Public base IDs stay intact for the existing local AI.
 const heroes=PLAYABLE_HEROES.map(h=>({...baseline.HERO_BY_ID[h.baseHero],id:h.engineId,name:h.name,hp:h.hp,sex:h.sex,skills:Object.keys(h.skillNames),faction:h.mechanicalFaction}))
-export const catalog={...baseline,theme:THEME_VERSION,HEROES:heroes,HERO_BY_ID:Object.fromEntries(heroes.map(h=>[h.id,h])),CARDS:CARDS_BY_TYPE,
+export const catalog={...baseline,SKILLS,theme:THEME_VERSION,HEROES:heroes,HERO_BY_ID:Object.fromEntries(heroes.map(h=>[h.id,h])),CARDS:CARDS_BY_TYPE,
   makeDeck:baseline.makeDeck,deckVersion:1,
   individualHandChoices:true,trackBattle:true,animatedJudgments:true,automaticSkills:['xinsheng','jizhi','yingzi','jianxiong','tieji','liegong','xiaoji','lianying','tiandu','yiji','biyue'],
   skillNames:Object.assign({},...PLAYABLE_HEROES.map(h=>h.skillNames)),
