@@ -175,8 +175,11 @@ test('a fallen player lays their whole hand on the table so everyone can see it'
 test('passive responder highlight targets real choices only, never pure public reveals',()=>{
  const base={seat:0,current:2,players:[],extension:null}
  // 真抉择：出杀闪、五谷选牌、濒死求桃、借刀响应、拼点——高亮该玩家
- for(const pending of [{kind:'response',actor:3},{kind:'pick',actor:3},{kind:'rescue',actor:3},{kind:'counter',actor:3},{kind:'ext',actor:3}])
+ for(const pending of [{kind:'response',actor:3},{kind:'pick',actor:3},{kind:'rescue',actor:3},{kind:'ext',actor:3}])
   assert.equal(responderHighlight({...base,pending}),3,`${pending.kind} 应高亮`)
+ // 破法（无懈）询问是私密信息：绝不公开高亮持无懈者，否则全场据此推断身份；本人屏幕仍可提示。
+ assert.equal(responderHighlight({...base,pending:{kind:'counter',actor:3}}),null)
+ assert.equal(responderHighlight({...base,pending:{kind:'counter',actor:0}}),0)
  // 纯公开展示：判定翻开、ext 展示阶段——不高亮（否则两人轮流闪黄框）
  assert.equal(responderHighlight({...base,pending:{kind:'reveal',actor:3}}),null)
  assert.equal(responderHighlight({...base,pending:{kind:'ext',actor:3},extension:{stage:'reveal'}}),null)

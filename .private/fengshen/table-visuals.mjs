@@ -32,6 +32,9 @@ export function responderHighlight(view){
  const p=view.pending
  if(!p||p.actor==null||p.actor===view.current)return null
  if(p.kind==='reveal'||p.kind==='ext'&&view.extension?.stage==='reveal')return null
+ // 破法（无懈）询问是私密信息，只有持无懈者本人屏幕可以提示，绝不公开高亮：
+ // 否则全场都能看出谁攥着无懈，进而推断他是不是忠臣，等于把身份牌亮了。三国杀/英雄杀均如此。
+ if(p.kind==='counter'&&p.actor!==view.seat)return null
  return p.actor
 }
 export function counterSelection(view,previousKey,selected=[]){
