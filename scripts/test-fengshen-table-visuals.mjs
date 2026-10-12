@@ -103,9 +103,12 @@ test('yiji pool renders as a private flip-card dialog for the owner and card bac
  v.pending={id:1,kind:'yiji',actor:0,count:2};v.yijiPool=[{id:'t1',type:'sha',suit:'spade',rank:7},{id:'t2',type:'shan',suit:'heart',rank:3}]
  const own=renderCenter(model,v)
  assert.ok(own.includes('fs-yiji-choice')&&own.includes('data-yiji-card="t1"')&&own.includes('data-yiji-card="t2"')&&own.includes('原有手牌不能送出'))
- // 选好牌后弹窗收成不挡玩家的提示条，露出全场接收者；重选返回挑牌。
- model.selected=['t1'];const mini=renderCenter(model,v)
- assert.ok(mini.includes('fs-yiji-mini')&&mini.includes('已选 1 张')&&!mini.includes('data-yiji-card'))
+ // 选好牌后牌池保持可见，可继续多选；接收者做进面板内，配合确认一次性把多张牌交给同一人。
+ model.selected=['t1','t2'];model.targets=[];model.targetable=()=>[1,2];const multi=renderCenter(model,v)
+ assert.ok(multi.includes('data-yiji-card="t1"')&&multi.includes('data-yiji-card="t2"'),'多选后牌池列表仍可见')
+ assert.ok(multi.includes('fs-yiji-targets')&&multi.includes('data-action="target"')&&!multi.includes('data-action="target" data-value="0"'),'面板内选择接收者且不把自己列为接收者')
+ assert.ok(multi.includes('已选 2 张'),'提示已选张数')
+ model.targets=[2];const chose=renderCenter(model,v);assert.ok(chose.includes('已选 2 张 → '),'选好接收者后提示去向')
  const other=renderCenter(model,{...v,yijiPool:undefined,pending:{...v.pending,actor:1}})
  // 他人传道不再显示暗牌背（会被窄面板裁断且无信息量），只留等待提示；给牌靠飞牌动画表达。
  assert.ok(other.includes('fs-yiji-wait')&&other.includes('等待')&&!other.includes('fs-yiji-back')&&!other.includes('data-yiji-card'))

@@ -36,6 +36,8 @@ test('AI uses private owner options only and every borrowed skill remains dispat
 test('player rules and every character detail never expose comparison or engine labels',()=>{
  const forbidden=/三国杀|曹操|刘备|左慈|测试基准|完整原型|经典原版|映射|pending-full|huashen/;assert.ok(!forbidden.test(gameRules()));for(const h of HEROES)assert.ok(!forbidden.test(heroDetails(h)),h.name)
  assert.equal(skillName({heroId:'zuoci',incarnation:{activeHero:'sunquan',activeSkill:'zhiheng'}},'zhiheng'),'炼化');assert.equal(skillName('zuoci','zhiheng'),'炼化')
+ // 无技能字段的响应（如传道/弃牌）不应因立即求值而崩；缺 skill 时安全回退。
+ assert.equal(skillName({heroId:'zuoci'},undefined),'技能')
 })
 test('detail closes back to the originating catalog with scroll and focus metadata',()=>{
  const source={kind:'gallery'},entry=modalReturnEntry(source,'card-detail',{scroll:420,focus:'sha'});assert.deepEqual(entry,{modal:{kind:'gallery'},scroll:420,focus:'sha'});assert.notEqual(entry.modal,source);assert.equal(modalReturnEntry({kind:'hand'},'card-detail'),null);assert.equal(modalReturnEntry({kind:'heroes'},'rules'),null)

@@ -76,10 +76,14 @@ export function renderCenter(ui,view){
   if(view.pending?.kind==='liuli')return `<section class="fs-center-choice fs-skill-prompt"><header><strong>${skillName(view.players[view.pending.actor],'liuli')} · 转移攻击</strong></header><p>弃一张手牌或装备，选择弃牌后仍在你攻击范围内的角色；不能转给原攻击者。</p></section>`
   if(view.pending?.kind==='yiji'){
     const own=view.pending.actor===0,pool=view.yijiPool||[]
-    // 本人：中央弹窗翻出本次摸的牌（不进手牌区），点选牌再点接收者分发；他人：只看背面与等待提示。
-    // 选好牌后弹窗收成不挡人的提示条，露出全场玩家供点选接收者；点「重选」返回挑牌。
-    if(own&&pool.length&&ui.selected.length)return `<section class="fs-center-choice fs-pool-choice fs-yiji-choice fs-yiji-mini" role="status" aria-label="传道分牌"><header><strong>${skillName(view.players[0],'yiji')} · 已选 ${ui.selected.length} 张</strong><small>点亮接收者后点「确认赠牌」；「重选」返回挑牌</small></header></section>`
-    if(own&&pool.length)return `<section class="fs-center-choice fs-pool-choice fs-yiji-choice" role="group" aria-label="传道分牌"><header><strong>${skillName(view.players[0],'yiji')} · 分配新摸的 ${pool.length} 张牌</strong><small>翻开的牌只有你能看见，原有手牌不能送出</small></header><div class="fs-center-card-list" data-scroll="pool">${pool.map((c,i)=>`<button class="fs-choice-card ${ui.selected.includes(c.id)?'selected':''}" style="animation-delay:${i*70}ms" data-yiji-card="${c.id}" data-action="card" data-id="${c.id}" aria-pressed="${ui.selected.includes(c.id)}" aria-label="${cardTitle(c.type)}">${cardFace(c)}</button>`).join('')}</div><footer><span aria-live="polite">点选要送出的牌；也可以保留剩余牌</span></footer></section>`
+    // 本人：中央弹窗翻出本次摸的牌（不进手牌区），可一次多选后统一交给同一名接收者。
+    // 牌池列表始终可见（选牌不再收起弹窗），接收者做进面板内，配合底部「确认赠牌」一次交出多张。
+    if(own&&pool.length){
+      const targets=ui.targetable(view).filter(t=>t!==0),chosen=ui.targets[0]
+      const recipients=targets.length?`<div class="fs-yiji-targets" role="group" aria-label="选择接收者"><span>交给</span>${targets.map(t=>`<button data-action="target" data-value="${t}" class="${chosen===t?'selected':''}" aria-pressed="${chosen===t}">${esc(display(view.players[t]).name)}</button>`).join('')}</div>`:''
+      const note=ui.selected.length?(chosen?`已选 ${ui.selected.length} 张 → ${esc(display(view.players[chosen]).name)}，点「确认赠牌」送出`:`已选 ${ui.selected.length} 张，请选择接收者`):'点选要送出的牌，可一次选多张；也可以保留剩余牌'
+      return `<section class="fs-center-choice fs-pool-choice fs-yiji-choice" role="group" aria-label="传道分牌"><header><strong>${skillName(view.players[0],'yiji')} · 分配新摸的 ${pool.length} 张牌</strong><small>翻开的牌只有你能看见，原有手牌不能送出</small></header><div class="fs-center-card-list" data-scroll="pool">${pool.map((c,i)=>`<button class="fs-choice-card ${ui.selected.includes(c.id)?'selected':''}" style="animation-delay:${i*70}ms" data-yiji-card="${c.id}" data-action="card" data-id="${c.id}" aria-pressed="${ui.selected.includes(c.id)}" aria-label="${cardTitle(c.type)}">${cardFace(c)}</button>`).join('')}</div>${recipients}<footer><span aria-live="polite">${note}</span></footer></section>`
+    }
     // 他人（含 AI）传道：不展示对方的暗牌背——牌背既看不出内容，又会被窄面板裁断；
     // 给牌去向已由飞牌动画表达，这里只留一句等待提示。
     return `<section class="fs-center-choice fs-skill-prompt fs-yiji-wait"><header><strong>${skillName(view.players[view.pending.actor],'yiji')} · 分配新获得的牌</strong></header><p>${'等待'+seatName(view,view.pending.actor)+'分配'}</p></section>`

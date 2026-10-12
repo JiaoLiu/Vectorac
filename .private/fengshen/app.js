@@ -376,7 +376,7 @@ export class FengshenUI {
         const spear=!this.skill&&own.equip.weapon?.type==='spear'&&(!view.pending||view.pending.as==='sha'),multi=['zhiheng','rende','jieyin','dimeng','luanji'].includes(this.skill)||['discard','axe','yiji'].includes(view.pending?.kind)||view.pending?.kind==='ext'&&view.extension.spec?.max>1
         this.selected=multi?this.selected.concat(id):spear&&this.selected.length<2?this.selected.concat(id):[id]
       }
-      if(this.skill==='dimeng'||view.pending?.kind==='ext')this.targets=this.targets.filter(t=>this.targetable(view).includes(t));else this.targets=[];this.as=null;this.render();return
+      if(this.skill==='dimeng'||view.pending?.kind==='ext'||view.pending?.kind==='yiji')this.targets=this.targets.filter(t=>this.targetable(view).includes(t));else this.targets=[];this.as=null;this.render();return
     }
     if(action==='target'){
       const t=Number(value)

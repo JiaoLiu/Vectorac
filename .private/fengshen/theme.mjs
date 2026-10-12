@@ -77,7 +77,7 @@ export function displayText(text) {
   const result=String(text??'').replace(displayPattern,word=>replacements.get(word))
   return result.replace(/其他蜀将/g,'其他青盟角色').replace(/其他魏将/g,'其他赤盟角色').replace(/其他吴将/g,'其他金盟角色')
 }
-export function skillName(heroId,skill){const p=typeof heroId==='object'?heroId:null,id=p?(p.incarnation?.activeSkill===skill?p.incarnation.activeHero:p.heroId):heroId;return heroForBase(id)?.skillNames[skill]||PLAYABLE_HEROES.find(h=>h.skillNames[skill])?.skillNames[skill]||'技能'}
+export function skillName(heroId,skill){const p=typeof heroId==='object'?heroId:null,id=p?(skill!=null&&p.incarnation?.activeSkill===skill?p.incarnation.activeHero:p.heroId):heroId;return heroForBase(id)?.skillNames[skill]||PLAYABLE_HEROES.find(h=>h.skillNames[skill])?.skillNames[skill]||'技能'}
 export function skillHelp(h,skill){
  let text=displayText(SKILLS[skill]?.[1]||'技能待接入')
  if(skill==='jijiang')text='主公技：需要杀时，可请其他青盟角色提供。'

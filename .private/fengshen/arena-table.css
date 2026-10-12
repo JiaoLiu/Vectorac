@@ -90,9 +90,11 @@
 .fs-playing .fs-compact-table .fs-discard-card{position:relative;padding:0;height:var(--table-card-height,90px);width:calc(var(--table-card-height,90px)/1.44);flex:none;animation:fs-reveal .5s ease-out both;filter:drop-shadow(0 0 8px #ffd76f88)}
 /* 传道分牌：中央弹窗依次翻出新摸的牌（牌面仅本人可见）；等待方只看背面与张数。 */
 .fs-playing .fs-yiji-choice .fs-choice-card{animation:fs-reveal .5s ease-out both}
-/* 选好牌后收成提示条，落在上方人物之下，不挡玩家，方便点选接收者。 */
-.fs-playing .fs-center-choice.fs-pool-choice.fs-yiji-mini{top:calc(var(--center-top) + 4px);bottom:auto;height:auto;max-height:46px;justify-content:center;pointer-events:none;background:#142b32e6;z-index:8}
-.fs-yiji-mini>header{min-height:0}
+/* 传道接收者：面板内直接选人，配合底部「确认赠牌」把多张牌一次交给同一人。 */
+.fs-playing .fs-yiji-targets{flex:none;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px;font-size:12px;color:#e7d095}
+.fs-playing .fs-yiji-targets>span{opacity:.75}
+.fs-playing .fs-yiji-targets button{min-height:32px;padding:5px 12px;border-radius:6px;border:1px solid #b49b6155;background:#1d3a44;color:#e8e0cf;font-size:12px;cursor:pointer}
+.fs-playing .fs-yiji-targets button.selected{background:#c8973c;border-color:#ffe08b;color:#1b2a2e;font-weight:700}
 @media(prefers-reduced-motion:reduce){.fs-playing .fs-yiji-choice .fs-choice-card{animation:none}}
 /* Complete CJK name face; the card calligraphy font is only a subset. */
 .fs-app :is(.fs-player-info>strong,.fs-own-hero strong,.fs-hero-pick strong){font-family:"PingFang SC","Microsoft YaHei","Noto Sans CJK SC",sans-serif;font-weight:700}
