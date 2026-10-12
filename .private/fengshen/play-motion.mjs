@@ -4,7 +4,7 @@ export const PLAY_FLIGHT_MS=600
 const damage=new Set(['sha','firesha','thundersha','arrows','savage','duel','fireattack','collateral','lightning'])
 export function impactFor(type,target,{source=null,negated=false}={}){
  if(target==null)return null
- const kind=damage.has(type)?'damage':['draw2','harvest'].includes(type)?'gain':['tao','garden'].includes(type)?'heal':['snatch','dismantle'].includes(type)?'take':'spell'
+ const kind=damage.has(type)?'damage':['draw','harvest'].includes(type)?'gain':['tao','garden'].includes(type)?'heal':['snatch','dismantle'].includes(type)?'take':'spell'
  return {kind,target,source,type,negated}
 }
 export function pendingImpact(view){
@@ -17,7 +17,7 @@ export function pendingImpact(view){
 export function publicPlayMotions(before,after){
  const motions=[],p=after.lastPlayed,r=after.lastResponse
  if(p&&(p.id!==before.lastPlayed?.id||p.turn!==before.lastPlayed?.turn)&&(p.cards?.length||p.virtualType)){
-  const target=after.pending?.target??p.targets?.[0]??(['tao','draw2'].includes(p.as)?p.source:null)
+  const target=after.pending?.target??p.targets?.[0]??(['tao','draw'].includes(p.as)?p.source:null)
   motions.push({key:`play:${p.turn??after.turns}:${p.id}`,trailKey:`play:${p.id}`,source:p.source,cards:p.cards||[],virtualType:p.virtualType,as:p.as,focus:impactFor(p.as,target,{source:p.source}),counter:false})
  }
  if(r&&(r.id!==before.lastResponse?.id||r.turn!==before.lastResponse?.turn)&&r.cards?.length){

@@ -17,7 +17,7 @@ import {TargetBeams} from './target-beams.mjs'
 import {mountOnline,onlineCredential} from './online.mjs'
 import './online.css'
 import './home-entry.css'
-import {tableTrail as updateTableTrail,counterTrail,takeJudgmentCard} from './table-trail.mjs'
+import {tableTrail as updateTableTrail,counterTrail,takeJudgmentCard,tableChainKey} from './table-trail.mjs'
 import {createSetup,dispatchSetup,setupView,chooseSetupAI,restoreSession,MODE_LIST,modeById} from './setup.mjs'
 import {renderHome,renderSetup,heroGallery} from './setup-ui.mjs'
 import {CardVoice,cuesForAction} from './voice.mjs'
@@ -41,6 +41,7 @@ import {advanceUnavailable,DecisionClock} from './flow.mjs'
 import {BackgroundMusic} from './music.mjs'
 import {drawEffects,judgmentEffects,harvestEffects,yijiEffects,transferEffects,rescueEffects,discardEffects} from './draw-effects.mjs'
 import {PlayMotionQueue,publicPlayMotions,pendingImpact,PLAY_FLIGHT_MS} from './play-motion.mjs'
+import {TableSettlement} from './table-settlement.mjs'
 import './play-motion.css'
 import {FeedbackModal} from './feedback.mjs'
 
@@ -82,7 +83,7 @@ export class FengshenUI {
     this.resumeSession=restoreSession(load(SAVE,null));this.resumeState=this.resumeSession?.kind==='game'?this.resumeSession.game:null;this.legacySave=load('vectorac.fengshen.internal.save.v1',null)!=null;root.className='fs-app'
     this.feedback=new FeedbackModal()
     this.onClick=e=>this.click(e);this.onKey=e=>this.key(e)
-    this.moves=[];this.discards=null;this.recoveries=[];this.beams=new TargetBeams();this.playMotions=new PlayMotionQueue()
+    this.moves=[];this.discards=null;this.recoveries=[];this.beams=new TargetBeams();this.playMotions=new PlayMotionQueue();this.tableSettlement=new TableSettlement()
     this.onVisibility=()=>{clearTimeout(this.timer);if(document.hidden){this.voice.stop();this.music.pause()}else{if(this.transfer?.until<Date.now())this.transfer=null;if(this.draws?.every(d=>(d.started||0)+1300<Date.now()))this.draws=[];if(this.moves?.every(m=>m.until<Date.now()))this.moves=[];this.recoveries=this.recoveries.filter(h=>h.until>Date.now());this.decorateBattle();if(!this.lobby)this.music.unlock();this.keepAwake(!this.lobby);this.schedule()}this.syncClock()}
     this.onViewport=()=>{layoutArena(root);layoutHand(root);if(this.selected.length)revealHandCard(root,this.selected.at(-1));this.decorateBattle();scaleCards(root);this.online?.afterRender()}
     this.viewport=bindGameViewport(root,this.onViewport)
@@ -145,7 +146,7 @@ export class FengshenUI {
     // 公开弃置/拆牌：丢掉的牌在牌桌中间内联展示一会再自动收起，让人看清丢了什么。
     // 自己弃牌同样展示——碧曲（悲歌）等技能代价、弃牌阶段的弃牌都是公开流程，不能只给别人看。
     const discarded=discardEffects(before,this.state).at(-1)
-    if(discarded){this.discards={seat:discarded.seat,by:discarded.by??null,cards:discarded.cards||[],until:Date.now()+2200};clearTimeout(this.discardTimer);this.discardTimer=setTimeout(()=>{this.discards=null;if(!this.destroyed)this.render()},2250)}
+    if(discarded){const p=beforeView.pending,chainKey=p&&!(p.kind==='discard'&&!p.skill&&beforeView.phase==='resolve')&&this.closedTableChain!==tableChainKey(beforeView)?tableChainKey(beforeView):null;this.discards={seat:discarded.seat,by:discarded.by??null,cards:discarded.cards||[],chainKey,until:Date.now()+2200};clearTimeout(this.discardTimer);this.discardTimer=setTimeout(()=>{this.discards=null;if(!this.destroyed)this.render()},2250)}
     const draws=drawEffects(before,this.state)
     if(draws.length){const started=Date.now();this.draws=draws.map(d=>({...d,started}));clearTimeout(this.drawTimer);this.drawTimer=setTimeout(()=>{this.draws=[];if(!this.destroyed)this.render()},1300)}
     const moves=transferEffects(before,this.state)
@@ -153,7 +154,7 @@ export class FengshenUI {
     const previousIds=new Set(before.players[0].hand.map(c=>c.id)),received=this.state.players[0].hand.filter(c=>!previousIds.has(c.id))
     this.handRevealId=received.at(-1)?.id||null
     this.reset();this.save();this.render();return true}
-  clearEffects(){clearTimeout(this.playMotionTimer);this.playMotions?.clear();clearTimeout(this.hitTimer);clearTimeout(this.beamTimer);this.beams.clear();clearTimeout(this.recoveryTimer);clearTimeout(this.transferTimer);clearTimeout(this.drawTimer);clearTimeout(this.moveTimer);clearTimeout(this.discardTimer);clearTimeout(this.counterLockTimer);this.hits=[];this.recoveries=[];this.transfer=null;this.draws=[];this.moves=[];this.discards=null;this.tableTrail=[];this.counterKey=null;this.counterLockUntil=0}
+  clearEffects(){clearTimeout(this.tableSettleTimer);this.tableSettlement?.clear();clearTimeout(this.playMotionTimer);this.playMotions?.clear();clearTimeout(this.hitTimer);clearTimeout(this.beamTimer);this.beams.clear();clearTimeout(this.recoveryTimer);clearTimeout(this.transferTimer);clearTimeout(this.drawTimer);clearTimeout(this.moveTimer);clearTimeout(this.discardTimer);clearTimeout(this.counterLockTimer);this.hits=[];this.recoveries=[];this.transfer=null;this.draws=[];this.moves=[];this.discards=null;this.tableTrail=[];this.counterKey=null;this.counterLockUntil=0}
   syncClock(){
     if(this.online){const m=this.online.meta,s=this.state,human=s&&!s.winner&&(s.pending?.actor??s.current)===0&&!this.auto&&!isRevealing(s);this.clock.running=false;this.clock.key=human?'online:'+m?.windowId:null;this.clock.left=Math.max(0,(m?.deadlineAt||0)-Date.now()+(this.online.offset||0));return}
     const s=this.state,human=!this.lobby&&!this.setup&&s&&!s.winner&&(s.pending?.actor??s.current)===0&&!isRevealing(s)&&(s.players[0].alive||s.pending?.kind==='ext'&&s.pending.skill==='zhuiyi')
@@ -507,7 +508,16 @@ export class FengshenUI {
     clearTimeout(this.timer)
     const scrolls=Object.fromEntries([...this.root.querySelectorAll('[data-scroll]')].map(e=>[e.dataset.scroll,{left:e.scrollLeft,top:e.scrollTop}]))
     const wasModal=!!this.root.querySelector('.fs-modal'),prior=document.activeElement
-    if(this.state&&!this.setup){const v=playerView(this.state,0),choice=counterSelection(v,this.counterKey,this.selected);this.counterKey=choice.key;this.selected=choice.selected;this.tableTrail=updateTableTrail(this.tableTrail||[],v)}
+    clearTimeout(this.tableSettleTimer)
+    if(this.state&&!this.setup){
+      const v=playerView(this.state,0),choice=counterSelection(v,this.counterKey,this.selected);this.counterKey=choice.key;this.selected=choice.selected
+      const busy=this.playMotions.busy||!!this.transfer||!!this.draws.length||!!this.moves.length||this.hits.some(h=>h.until>Date.now())||this.recoveries.some(h=>h.until>Date.now())
+      this.tableSettleFrame=this.tableSettlement.frame(v,{busy});this.closedTableChain=this.tableSettleFrame.closedChain
+      if(this.discards?.chainKey&&(this.discards.chainKey===this.closedTableChain||this.discards.chainKey!==tableChainKey(v)))this.discards=null
+      this.tableTrail=updateTableTrail(this.tableTrail||[],v,{closedChain:this.closedTableChain})
+      if(this.tableSettleFrame.remaining)this.tableSettleTimer=setTimeout(()=>{if(!this.destroyed)this.render()},this.tableSettleFrame.remaining+15)
+      else if(busy&&!v.pending&&!this.playMotions.busy)this.tableSettleTimer=setTimeout(()=>{if(!this.destroyed)this.render()},250)
+    }
     if(this.modal&&!wasModal)this.returnFocus={action:prior?.dataset?.action,id:prior?.dataset?.id}
     this.viewport.setImmersive(!this.lobby&&!this.online?.waiting);this.syncClock()
     this.root.classList.toggle('fs-network-room',!!this.online?.waiting)

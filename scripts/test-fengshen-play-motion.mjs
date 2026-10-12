@@ -12,7 +12,7 @@ test('nullify uses actual public caster and the current AOE victim, not next act
  before.pending.negated=true;assert.equal(publicPlayMotions(before,after)[0].focus.negated,false,'counter-counter restores effect, not another shield')
 })
 test('own nullify prompt shows pending damage, cards or healing without exposing holder',()=>{
- for(const [cardType,kind]of [['arrows','damage'],['savage','damage'],['harvest','gain'],['draw2','gain'],['garden','heal'],['snatch','take']]){
+ for(const [cardType,kind]of [['arrows','damage'],['savage','damage'],['harvest','gain'],['draw','gain'],['garden','heal'],['snatch','take']]){
   const f=pendingImpact({pending:{kind:'counter',actor:4,source:2,target:0,cardType,negated:false}})
   assert.equal(f.kind,kind);assert.equal(f.target,0);assert.equal(f.source,2);assert.equal('actor' in f,false)
  }

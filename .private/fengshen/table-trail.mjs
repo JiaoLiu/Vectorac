@@ -1,19 +1,21 @@
 // Presentation-only copies of PUBLIC played/revealed cards. No engine state or
-// opponents' hands enter this short current-turn trail; it is not a second deck.
-export function tableTrail(previous=[],view){
- const trail=previous.filter(e=>e.turn===view.turns).map(e=>({...e,currentEffect:false})),add=e=>{const old=trail.findIndex(x=>x.key===e.key);if(old<0)trail.push(e);else trail[old]={...trail[old],...e}}
+// opponents' hands enter this CURRENT resolution chain; not turn history.
+export const tableChainKey=view=>view.lastPlayed&&(view.lastPlayed.turn==null||view.lastPlayed.turn===view.turns)?`play:${view.turns}:${view.lastPlayed.id}`:`turn:${view.turns}`
+export function tableTrail(previous=[],view,{closedChain=null}={}){
+ const chainKey=tableChainKey(view),closed=closedChain===chainKey
+ const trail=(closed?[]:previous.filter(e=>e.turn===view.turns&&e.chainKey===chainKey&&!e.key.startsWith('private:'))).map(e=>({...e,currentEffect:false})),add=e=>{e={...e,chainKey};const old=trail.findIndex(x=>x.key===e.key);if(old<0)trail.push(e);else trail[old]={...trail[old],...e}}
  const played=view.lastPlayed,current=played&&(played.turn==null||played.turn===view.turns)
- if(current){
+ if(current&&!closed){
   const global=['arrows','savage','garden','harvest'].includes(played.as),counterCount=(view.exchange||[]).filter(e=>e.as==='nullify').length
   add({key:`play:${played.id}`,turn:view.turns,source:played.source,cards:played.cards,as:played.nature==='fire'&&played.as==='sha'?'firesha':played.as,virtualType:played.virtualType,currentEffect:true,...(global?{negated:false}:counterCount?{negated:counterCount%2===1}:{})})
   for(const [i,e]of (view.exchange||[]).entries())if(i)add({key:`response:${played.id}:${i}`,turn:view.turns,source:e.source,cards:e.cards,as:e.as,response:true})
  }
  const p=view.pending
- if(view.publicReveal?.turn===view.turns){const r=view.publicReveal;add({key:`extra:${r.id}`,turn:view.turns,source:r.owner,cards:r.cards,judgment:r.hit!=null,hit:r.hit,label:r.skill,currentEffect:true})}
+ if(view.publicReveal?.turn===view.turns&&view.pending?.kind==='ext'&&view.extension?.stage==='reveal'){const r=view.publicReveal;add({key:`extra:${r.id}`,turn:view.turns,source:r.owner,cards:r.cards,judgment:r.hit!=null,hit:r.hit,label:r.skill,currentEffect:true})}
  if(p?.kind==='ext'&&view.extension?.privateCards&&p.actor===view.seat&&view.extension.cards.length)add({key:`private:${p.id}`,turn:view.turns,source:p.actor,cards:view.extension.cards,currentEffect:true,label:'当前私有技能牌'})
  if(p?.kind==='counter'&&p.source==null){const c=view.players[p.target]?.judgment.find(c=>c.type===p.cardType);if(c)add({key:`delay:${view.turns}:${c.id}`,turn:view.turns,source:p.target,cards:[c],as:p.cardType,delay:true,currentEffect:true,negated:p.negated})}
  if(p?.kind==='counter'&&p.source!=null&&current){const e=trail.find(e=>e.key===`play:${played.id}`);if(e)e.negated=p.negated}
- if(!current&&view.lastResponse?.turn===view.turns){const e=view.lastResponse;add({key:`standalone:${e.id}`,turn:view.turns,source:e.source,cards:e.cards,as:e.as,response:true})}
+ if(!closed&&!current&&view.lastResponse?.turn===view.turns){const e=view.lastResponse;add({key:`standalone:${e.id}`,turn:view.turns,source:e.source,cards:e.cards,as:e.as,response:true})}
  // 判定牌只占一个牌位：改判询问阶段先亮出这张牌，判定完成后命中/落空直接盖在同一张牌上，
  // 不再另起一张复制牌，否则玩家会看到「一张原牌 + 一张带勾的复制牌」。
  if(p?.kind==='reveal')add({key:`judge:${p.card.id}`,turn:view.turns,source:p.target,cards:[p.effectiveSuit?{...p.card,suit:p.effectiveSuit,physicalSuit:p.card.suit}:p.card],as:p.card.type,judgment:true,currentEffect:true,judgeKind:p.delayType,hit:p.hit,label:view.judgmentLabel})

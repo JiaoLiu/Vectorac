@@ -4,3 +4,4 @@
 /* One simple response/caster frame: no extra icons, beams or pulsing glows. */
 .fs-public-caster,.fs-impact-target{border-color:#efd58b!important;outline:2px solid #efd58b!important;outline-offset:1px}
 @media(prefers-reduced-motion:reduce){.fs-play-flight{animation:none;transform:translate(var(--to-x),var(--to-y));opacity:1}}
+.fs-table-trail.is-settled{opacity:0;transform:translateY(7px);transition:opacity 180ms ease-out,transform 180ms ease-out}

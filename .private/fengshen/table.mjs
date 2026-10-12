@@ -112,11 +112,11 @@ export function renderCenter(ui,view){
   return playedCenter(view,ui)
 }
 function playedCenter(view,ui){
-  const entries=trailCards(tableTrail(ui?.tableTrail||[],view)),p=view.pending
+  const entries=trailCards(tableTrail(ui?.tableTrail||[],view,{closedChain:ui?.closedTableChain})),p=view.pending
   // 当前正在翻出的判定牌 id：改判询问牌与最终判定牌共用同一张牌面，命中/落空的戳记盖在这张牌上。
   const judgeCardId=p?.kind==='reveal'?p.card?.id:p?.kind==='judge-replace'?view.judgmentCard?.id:null
   const publicRows=ui?.discards?.cards?.length?`<div class="fs-played fs-public-discard" data-discard-seat="${ui.discards.seat}" role="status" aria-label="${display(view.players[ui.discards.seat]).name}${ui.discards.by!=null?'被拆掉':'弃置'}的牌">${ui.discards.cards.map(c=>`<span class="fs-card-play fs-discard-card" aria-label="${cardTitle(c.type)}">${cardFace(c)}</span>`).join('')}</div>`:''
-  return `<div class="fs-table-center fs-compact-table" role="group" aria-label="公开出牌与判定"><div class="fs-played fs-table-trail">${entries.map(e=>{
+  return `<div class="fs-table-center fs-compact-table" role="group" aria-label="公开出牌与判定"><div class="fs-played fs-table-trail ${ui?.tableSettleFrame?.fading?'is-settled':''}">${entries.map(e=>{
     const c=e.card,converted=e.as&&e.as!==c.type&&!CARDS_BY_TYPE[c.type]?.attackNature,face=c,judging=!!judgeCardId&&e.judgment&&e.card?.id===judgeCardId,m=e.judgment&&e.hit!=null?judgmentMark(e):null,label=seatName(view,e.source)+' · '+(e.judgment?(displayText(e.label)||'判定'):e.virtualType?'技能虚拟牌 · 无实体花色点数':converted?'作为'+cardTitle(e.as)+'使用':e.response?'响应':cardTitle(e.as||c.type))
     return `<span class="fs-card-play ${e.currentEffect?'is-current-effect':''} ${e.judgment?'fs-table-judgment':''} ${judging?'is-revealing':''} ${e.negated?'is-negated':''}" data-trail-key="${esc(e.key)}" data-table-card="${esc(c.id||'')}" data-card-source="${e.source}" ${e.judgment?`data-judge-card="${c.id}" data-judge-kind="${e.judgeKind||'replace'}"`:''} aria-label="${esc(label)}">${cardFace(face)}${m?`<b class="fs-judge-stamp ${m.hit?'hit':'miss'}" data-judge-hit="${m.hit}" aria-label="${m.label}">${m.symbol}</b>`:e.negated?'<b class="fs-effect-cancel" aria-label="效果已被抵消">×</b>':''}<small class="fs-sr-only">${esc(label)}</small></span>`
   }).join('')}</div>${publicRows}</div>`

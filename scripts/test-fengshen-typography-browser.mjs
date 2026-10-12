@@ -10,6 +10,8 @@ const html=cards.map((c,i)=>`<div data-font-card="${i}" style="width:100px;heigh
 const b=await openBrowser({name:'gods-all-card-fonts',baseUrl:process.env.FENGSHEN_TEST_ORIGIN||null,route:'/games/fengshen/'})
 try{
  await b.viewport(932,430);await b.navigate();await b.waitFor('!!window.__fengshenUI')
+ // Font contact-sheet is a fixed QA overlay, not a live settling effect.
+ await b.evaluate('window.__fengshenUI.tableSettlement.frame=()=>({closedChain:null,fading:false,remaining:0});true')
  await b.evaluate(`(async()=>{const u=window.__fengshenUI;u.schedule=()=>{};u.voice.setEnabled(false);u.music.setEnabled(false);u.clearEffects();u.state=${JSON.stringify(state)};u.lobby=false;u.setup=null;u.modal=null;u.paused=false;u.auto=false;u.reset();u.render();const sheet=document.createElement('div');sheet.id='fs-font-audit';sheet.style.cssText='position:fixed;inset:0;z-index:9999;background:#102019;overflow:auto;display:grid;grid-template-columns:repeat(auto-fit,100px);gap:12px;padding:12px;align-content:start';sheet.innerHTML=${JSON.stringify(html)};u.root.append(sheet);for(const face of sheet.querySelectorAll('.fs-clean-card'))face.style.cssText='display:block;width:100px;height:144px';for(const img of sheet.querySelectorAll('img'))img.loading='eager';(${scaleCards.toString()})(sheet);await document.fonts.ready;await Promise.all([...sheet.querySelectorAll('img')].map(img=>img.decode()));return true})()`)
  await b.send('DOM.enable');await b.send('CSS.enable')
  for(const [w,h] of [[932,430],[812,375],[568,320],[390,844]]){
