@@ -12,6 +12,6 @@
 
 7张立绘通过内置 imagegen 独立生成，已逐张检查并保存为原图与缩略图；实际提示词、源文件、最终项目路径在 `assets/foundation-art-manifest.json`。新增18条技能名称男女声报音全部生成，沿用原音色，当前共318个运行MP3。
 
-删除的停用文件仅为 `assets/cards/fireattack.svg`、`hualiu.svg`、`supplyshortage.svg`，Git可恢复；`ironchain.svg`仍有运行引用。构建会移除这三个历史产物，发布时单独移出线上公开目录；不使用全站rsync删除。
+删除的停用文件为 `assets/cards/fireattack.svg`、`hualiu.svg`、`supplyshortage.svg`，随后缚神索也重制为 JPG 并删除 `ironchain.svg`；四个旧文件均可通过 Git 恢复。构建会移除历史 SVG 产物，发布时单独移出线上公开目录；不使用全站 rsync 删除。
 
 发布前执行完整工作区构建和规则／联机回归。发布后比较线上入口JS/CSS及运行素材SHA-256，确认旧SVG不再公开，并检查服务端规则目录已同步64人。

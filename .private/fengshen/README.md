@@ -128,6 +128,6 @@ GitHub提交不等于官网部署。postbuild生成内容哈希JS/CSS，发布�
 
 ## 素材记录
 
-原创人物与原物品由内置 imagegen 生成，记录在 `assets/expansion-art-manifest.json`、`assets/classic-art-manifest.json`、`assets/foundation-art-manifest.json`；64 名角色全部有独立立绘及缩略图。当前五套基础将共57人（标准25、风火林山各8），其他扩展7人。焚天焰、闭粮阵、守山獬豸使用独立 JPG 插画，三个停用 SVG 已移除；仍使用的缚神索 SVG 保留。卡牌报音沿用 Edge TTS：男声 Yunxi、女声 Xiaoxiao；当前159条名称，共318个运行引用 MP3。生成脚本只发送名称，不发送项目代码、密钥或存档。字体许可随运行字体发布。
+原创人物与原物品由内置 imagegen 生成，记录在 `assets/expansion-art-manifest.json`、`assets/classic-art-manifest.json`、`assets/foundation-art-manifest.json`；64 名角色全部有独立立绘及缩略图。当前五套基础将共57人（标准25、风火林山各8），其他扩展7人。焚天焰、闭粮阵、守山獬豸、缚神索均使用独立 JPG 插画，四个旧 SVG 已移除；运行卡图全部使用位图插画。卡牌报音沿用 Edge TTS：男声 Yunxi、女声 Xiaoxiao；当前159条名称，共318个运行引用 MP3。生成脚本只发送名称，不发送项目代码、密钥或存档。字体许可随运行字体发布。
 
 2026-10-12 补齐罗宣、南极仙翁、杨任、张奎、惧留孙、殷郊、老子的完整技能、觉醒、额外回合、公开仙田、选牌与目标交互；验收范围和规则核对见 `FOUNDATION_ACCEPTANCE.md`。
