@@ -1,0 +1,6 @@
+.fs-live-hero-state{padding:12px;border:1px solid #bca77b77;border-radius:8px;margin-bottom:16px;background:#172b27}
+.fs-live-hero-state h3,.fs-live-hero-state h4{margin:0 0 8px}.fs-live-hero-state h4{margin-top:12px;font-size:14px}
+.fs-live-hero-state p{margin:6px 0;line-height:1.65;font-size:13px;overflow-wrap:anywhere}
+.fs-live-resources{display:flex;gap:8px 16px;flex-wrap:wrap;align-items:center}.fs-live-resources>b{font-size:16px}
+.fs-live-hero-state ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}.fs-live-hero-state li{padding:8px;border-radius:5px;background:#ffffff08}
+.fs-live-hero-state li>span{font-size:12px;margin-right:10px;color:#d3c5a4}.fs-live-hero-state li>button{min-height:34px;padding:4px 10px;color:#ffe5a8;white-space:normal;font-family:inherit;font-weight:700;font-size:14px;line-height:1.3}

@@ -88,8 +88,11 @@
 /* 公开弃置/拆牌：丢掉的牌内联摆在牌桌中间一行（与出牌同款卡片），看清后自动收起；纯展示不挡操作。 */
 .fs-playing .fs-played.fs-public-discard{display:grid!important;grid-template-columns:repeat(var(--table-columns,1),calc(var(--table-card-height,90px)/1.44));gap:5px;justify-content:center;align-items:center;flex:none;width:fit-content;max-width:100%;margin-top:4px}
 .fs-playing .fs-compact-table .fs-discard-card{position:relative;padding:0;height:var(--table-card-height,90px);width:calc(var(--table-card-height,90px)/1.44);flex:none;animation:fs-reveal .5s ease-out both;filter:drop-shadow(0 0 8px #ffd76f88)}
-/* 横屏中央高度有限：弃置牌不再缩在出牌行下方，改为压在中线上，用横排宽度决定牌面大小。 */
-@media(orientation:landscape){.fs-playing .fs-played.fs-public-discard{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);margin-top:0;z-index:5}}
+/* 横屏中央高度有限：出牌行为空时弃置牌压在中线上，用横排宽度决定牌面大小；
+   出牌行仍在且这次只弃一两张（如落宝拆牌与技能牌同屏）时，弃置牌并排在其右侧，避免盖住技能牌。 */
+@media(orientation:landscape){.fs-playing .fs-played.fs-public-discard{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);margin-top:0;z-index:5}
+.fs-playing .fs-table-center.fs-has-trail.fs-discard-small{flex-direction:row;justify-content:center;align-items:center;gap:8px}
+.fs-playing .fs-table-center.fs-has-trail.fs-discard-small>.fs-played.fs-public-discard{position:static;left:auto;top:auto;transform:none;margin-top:0}}
 /* 横屏选牌弹窗（仙山采宝）：不要铺满整屏，收成贴合牌面宽度的紧凑框，贴在手牌上方，
    露出自己的手牌，其余玩家也保留可见状态。 */
 @media(orientation:landscape){.fs-playing .fs-center-choice.fs-choice-dialog.fs-pool-choice{left:50%;right:auto;top:auto;bottom:calc(var(--dock-size) + 6px);width:fit-content;max-width:calc(100% - 2*var(--center-side));height:auto;max-height:calc(100% - var(--dock-size) - 12px);transform:translateX(-50%);justify-content:center;overflow:hidden}}
@@ -302,6 +305,9 @@
 .fs-move-count{position:absolute;left:2px;top:40%;z-index:9;padding:3px 5px;border:1px solid #ffe1a7;border-radius:3px;background:#705326ec;color:#fff0c6;font:bold 12px/1.2 sans-serif;pointer-events:none}
 @media(prefers-reduced-motion:reduce){.fs-move-flight{animation-duration:.01s;animation-delay:0s!important}}
 .fs-state-marks{position:absolute;left:3px;top:28px;z-index:9;display:flex;gap:2px;pointer-events:none}
-.fs-state-marks>b{display:grid;place-items:center;min-width:18px;height:18px;padding:1px 2px;background:#163843ec;border:1px solid #a4d9ed;border-radius:4px;color:#e0f4ff;font:bold 10px/1 sans-serif}
+.fs-state-marks>:is(b,button){display:grid;place-items:center;min-width:18px;height:18px;padding:1px 2px;background:#163843ec;border:1px solid #a4d9ed;border-radius:4px;color:#e0f4ff;font:bold 10px/1 sans-serif}
+/* 仙田标记兼作「当摄宝使用」的入口：恢复可点击并给出选中态。 */
+.fs-state-marks>button{pointer-events:auto;cursor:pointer}
+.fs-state-marks>button.selected{border-color:#ffe09c;background:#3a2f0f;color:#fff2c8}
 .fs-state-marks>.fs-chain-mark{font-size:20px;line-height:14px}
 .fs-public-pile>.fs-clean-card{width:70px;height:101px}

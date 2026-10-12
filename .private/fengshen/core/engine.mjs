@@ -797,8 +797,13 @@ function playCard(s,action,resolvedCard=null) {
       if(as==='snatch'||as==='dismantle')effect={type:'take',source:seat,target,mode:as}
       if(as==='savage'||as==='arrows')effect={type:'aoe',source:as==='savage'?(s.players.find(p=>p.alive&&hasSkill(p,'huoshou'))?.seat??seat):seat,target,as:as==='savage'?'sha':'shan',cardIds:ids}
       if(as==='fireattack')effect=X.event('fireattack',{seat,target,cardIds:ids})
-      if(as==='ironchain')effect=X.event('chain',{seat:target})
+      // 缚神索默认「连接」选中角色；已连接者再被选中保持连接，不会自动解除。
+      // 需要解除时由动作显式带 reset，避免“A-B 已连、再连 B-C 会把 B 翻掉”。
+      if(as==='ironchain')effect=X.event('chain',{seat:target,state:!action.reset})
       if(as==='collateral')effect={type:'collateral',source:seat,target,victim:targets[1],cardIds:ids}
+      // 群体回血（桃园结义）：满血目标回复无收益，不为其发起破法询问，
+      // 避免“所有人满血仍逐个问要不要使用无懈可击”。
+      if(as==='garden'&&player(s,target).hp>=player(s,target).maxHp)continue
       events.push({type:'gate',cardType:as,source:seat,target,effect})
     }
     if(as==='harvest')events.push({type:'harvestCleanup'})

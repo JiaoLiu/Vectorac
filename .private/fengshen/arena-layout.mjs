@@ -20,12 +20,14 @@ export function arenaGeometry({width,height,seats=5,safeTop=0,safeBottom=0}){
    centerTop=safeTop+heroHeight+38;centerBottom=height-dockHeight-8
  }
  const heroWidth=heroHeight/1.46,block=topSeats.length*heroWidth+(topSeats.length-1)*gap,start=(width-block)/2,top=landscape?0:safeTop+28
- topSeats.forEach((seat,i)=>positions[seat]={x:start+i*(heroWidth+gap),y:top,width:heroWidth,height:heroHeight})
+ // 引擎按座次递增推进回合，因此座次递增要对应屏幕「逆时针」，与三国杀/英雄杀一致：
+ // 自己(0)在下方，1 号在右手边，上方一排按座次自右向左，末位在左手边。
+ topSeats.forEach((seat,i)=>positions[seat]={x:start+(topSeats.length-1-i)*(heroWidth+gap),y:top,width:heroWidth,height:heroHeight})
  if(seats!==2){
    const sideY=landscape?Math.max(30,height-safeBottom-2*heroHeight-gap):top+heroHeight+gap
-   positions[1]={x:0,y:sideY,width:heroWidth,height:heroHeight}
-   positions[seats-1]={x:width-heroWidth,y:sideY,width:heroWidth,height:heroHeight}
-   if(!landscape&&seats===8){positions[2]={x:0,y:sideY,width:heroWidth,height:heroHeight};positions[1].y+=heroHeight+gap;positions[6]={x:width-heroWidth,y:sideY,width:heroWidth,height:heroHeight};positions[7].y+=heroHeight+gap}
+   positions[1]={x:width-heroWidth,y:sideY,width:heroWidth,height:heroHeight}
+   positions[seats-1]={x:0,y:sideY,width:heroWidth,height:heroHeight}
+   if(!landscape&&seats===8){positions[2]={x:width-heroWidth,y:sideY,width:heroWidth,height:heroHeight};positions[1].y+=heroHeight+gap;positions[6]={x:0,y:sideY,width:heroWidth,height:heroHeight};positions[7].y+=heroHeight+gap}
  }
  const center={left:heroWidth+gap,right:width-heroWidth-gap,top:centerTop,bottom:Math.max(centerTop+40,centerBottom)}
  const ownHeroHeight=landscape?heroHeight:clamp(height*.18,132,160)

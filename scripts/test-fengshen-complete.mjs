@@ -121,12 +121,24 @@ test('Tianyi strict Pindian win raises count, range and target count; ties prohi
  let s=fixture('susanoo'),high=card(s,0,'sha','diamond',13),low=card(s,1,'shan','diamond',2),next=card(s,0,'sha');s=step(s,{type:'skill',skill:'tianyi',target:1});s=invoke(s,{ids:[high.id]});s=invoke(s,{ids:[low.id]});s=invoke(s);assert.equal(s.players[0].marks.tianyiWin,true);assert.ok(playerView(s,0).legal.some(a=>a.as==='sha'&&a.targets.length===2&&a.targets.includes(2)))
  s=fixture('susanoo');equip(s,0,'crossbow');const a=card(s,0,'sha','club',7),b=card(s,1,'sha','spade',7);card(s,0,'sha');s=step(s,{type:'skill',skill:'tianyi',target:1});s=invoke(s,{ids:[a.id]});s=invoke(s,{ids:[b.id]});s=invoke(s);assert.ok(!playerView(s,0).legal.some(a=>a.as==='sha'))
 })
-test('Lianhuan can recast without Jizhi/use count, targets toggle chains; elemental damage transmits once and unchains',()=>{
+test('Lianhuan can recast without Jizhi/use count; targets chain additively, explicit reset unchains; elemental damage transmits once and unchains',()=>{
  let s=fixture('tsukuyomi'),cost=card(s,0,'sha','club');s=step(s,{type:'play',as:'ironchain',ids:[cost.id],targets:[1,2]});assert.equal(s.players[1].chained,true);assert.equal(s.players[2].chained,true)
+ // A-B 已连后，再对 B-C 使用缚神索：已连接的 B 保持连接，三人全连（不再把 B 翻掉）。
+ const cost2=card(s,0,'sha','club');s=step(s,{type:'play',as:'ironchain',ids:[cost2.id],targets:[2,3]});assert.equal(s.players[1].chained,true);assert.equal(s.players[2].chained,true);assert.equal(s.players[3].chained,true)
+ // 只有显式 reset（选「解除」）才会解除连环。
+ const cost3=card(s,0,'sha','club');s=step(s,{type:'play',as:'ironchain',ids:[cost3.id],targets:[1],reset:true});assert.equal(s.players[1].chained,false);assert.equal(s.players[2].chained,true)
  s=fixture('odin',['jifa','nezha','yangjian','jinling']);s.players[1].chained=s.players[2].chained=true;const fire=card(s,0,'tao'),match=card(s,0,'sha','club'),shown=card(s,1,'sha','club'),hp1=s.players[1].hp,hp2=s.players[2].hp;s=step(s,{type:'play',as:'fireattack',ids:[fire.id],targets:[1]});while(s.pending?.kind==='counter')s=pass(s);s=invoke(s,{ids:[shown.id]});s=invoke(s);s=invoke(s,{ids:[match.id]});assert.equal(s.players[1].hp,hp1-1);assert.equal(s.players[2].hp,hp2-1);assert.equal(s.players[1].chained,false);assert.equal(s.players[2].chained,false)
  s=fixture('tsukuyomi');const c=card(s,0,'sha','club');s=step(s,{type:'skill',skill:'lianhuan',ids:[c.id]});assert.equal(s.players[0].hand.length,1);assert.equal(s.players[0].marks.sha,0)
  // 连上自己时，自己的连环标记也要显示（不能只在对手身上看到）。
  const c2=card(s,0,'sha','club');s=step(s,{type:'play',as:'ironchain',ids:[c2.id],targets:[0,1]});while(s.pending?.kind==='counter')s=pass(s);assert.equal(s.players[0].chained,true);assert.equal(s.players[1].chained,true);assert.equal((renderBattle(ui(s)).match(/fs-chain-mark/g)||[]).length,2)
+})
+test('缚神索在出牌栏提供「连接/解除」切换，默认连接',()=>{
+ const s=fixture('tsukuyomi'),c=card(s,0,'sha','club'),view=playerView(s,0),iron=view.legal.filter(a=>a.type==='play'&&a.as==='ironchain')
+ const make=extra=>({...ui(s),selected:[c.id],targets:[],currentAs:()=>'ironchain',matching:()=>iron,targetable:()=>[0,1,2,3,4],...extra})
+ const on=renderControls(make(),view),off=renderControls(make({chainReset:true}),view)
+ assert.ok(on.includes('data-action="chain-mode"')&&on.includes('改为解除'),'默认连接，可切换为解除')
+ assert.ok(off.includes('改为连接'),'解除模式下按钮回到连接')
+ assert.ok(!renderControls({...ui(s),selected:[c.id],targets:[],currentAs:()=>'sha',matching:()=>view.legal.filter(a=>a.as==='sha')},view).includes('data-action="chain-mode"'),'非缚神索不出现该切换')
 })
 test('Niepan consumes its once-game flag and resets own areas/chain/face before ordinary rescue',()=>{
  let s=fixture('tsukuyomi',undefined,1);s.players[0].hp=1;s.players[0].faceDown=s.players[0].chained=true;equip(s,0,'bow');const delay=card(s,0,'indulgence');s.players[0].hand.pop();s.players[0].judgment.push(delay);const c=card(s,1,'sha');s=sha(s,c,0);s=pass(s);assert.equal(s.pending.skill,'niepan');s=invoke(s);assert.equal(s.players[0].hp,3);assert.equal(s.players[0].hand.length,3);assert.equal(s.players[0].faceDown,false);assert.equal(s.players[0].chained,false);assert.equal(s.players[0].judgment.length,0);assert.equal(s.players[0].equip.weapon,null);assert.equal(s.players[0].persistent.niepan,true)

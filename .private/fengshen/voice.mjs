@@ -44,30 +44,48 @@ export class CardVoice {
       source.start();return true
     }catch(error){this.history.push({...cue,status:'failed'});console.warn('[封神受伤音效]',error.message);return false}
   }
+  // 给任意 await 加一个上限：音频上下文 resume、fetch/decode、onended 都可能永久挂起。
+  // 只要 drain 卡在其中一步，busy 就永远不复位，schedule() 会被无限推迟，整局 AI 都不出牌。
+  deadline(promise,ms,value){
+    let timer
+    return Promise.race([Promise.resolve(promise),new Promise(resolve=>{timer=setTimeout(()=>resolve(value),ms)})]).finally(()=>clearTimeout(timer))
+  }
   async drain(){
     if(this.busy||this.closed)return
     this.busy=true;const generation=this.generation
     try{
-      if(!await this.ready){this.queue=[];return}
+      if(!await this.deadline(this.ready,2000,false)){this.queue=[];return}
       while(this.enabled&&!this.closed&&generation===this.generation&&this.queue.length){
         const cue=this.queue.shift()
         try{
-          const buffer=await this.buffer(audioPath(cue.key,cue.sex))
+          const buffer=await this.deadline(this.buffer(audioPath(cue.key,cue.sex)).catch(()=>null),4000,null)
+          if(!buffer)throw new Error('音频加载超时')
           if(this.closed||generation!==this.generation||!this.enabled)break
           const source=this.context.createBufferSource();source.buffer=buffer;source.connect(this.context.destination);this.source=source
-          // onended 在页面后台（AudioContext 挂起）可能不会触发；interrupt 给 stop() 一个
-          // 主动结束等待的出口，否则 drain 永远挂在 await 上，busy 不复位，AI 调度被无限推迟。
-          await new Promise((resolve,reject)=>{this.interrupt=()=>{try{source.disconnect()}catch{};resolve()};source.onended=()=>{this.interrupt=null;source.disconnect();resolve()};try{source.start()}catch(e){this.interrupt=null;source.disconnect();reject(e)}})
+          // onended 在页面后台（AudioContext 挂起）可能不会触发；stop() 的 interrupt 只在主动停止时生效。
+          // 再按片段时长兜底：即使 onended 始终不来，也要在有限时间内复位 busy，AI 调度才不会被永久推迟。
+          await new Promise((resolve,reject)=>{
+            let settled=false
+            const finish=ok=>{if(settled)return;settled=true;clearTimeout(guard);this.interrupt=null;try{source.disconnect()}catch{};ok?resolve():reject(new Error('播放失败'))}
+            const guard=setTimeout(()=>finish(true),Math.max(1500,((buffer.duration||2)*1000)+600))
+            this.interrupt=()=>finish(true)
+            source.onended=()=>finish(true)
+            try{source.start()}catch{finish(false)}
+          })
           this.history.push({...cue,status:'played'});this.history=this.history.slice(-80)
         }catch(error){this.history.push({...cue,status:'failed'});console.warn('[封神报牌]',cue.key,error.message)}
       }
     }finally{
-      this.source=null;this.busy=false
+      // 只在本次 drain 仍然是"当前代"时复位：stop() 会提升 generation 并抢先复位，
+      // 若此时套用旧一代的收尾，会把新一代（刚开局的语音）的 busy 提前松掉造成并发播放。
+      if(generation===this.generation){this.source=null;this.busy=false}
       if(this.queue.length&&this.enabled&&!this.closed)this.drain();else this.onIdle()
     }
   }
   setEnabled(enabled){this.enabled=!!enabled;if(!enabled)this.stop();else this.unlock()}
-  stop(){this.generation++;this.queue=[];if(this.source){try{this.source.stop()}catch{}}for(const source of this.effects){try{source.stop()}catch{}}this.effects.clear();this.interrupt?.();this.interrupt=null}
+  // stop() 清空队列并提升 generation；同时立刻复位 busy——否则若 drain 正卡在某个 await 上
+  // （音频上下文 resume、fetch/decode 或 onended 未触发），busy 会一直为真，重开一局后 AI 再也不出牌。
+  stop(){this.generation++;this.queue=[];if(this.source){try{this.source.stop()}catch{}}for(const source of this.effects){try{source.stop()}catch{}}this.effects.clear();this.interrupt?.();this.interrupt=null;this.busy=false}
   destroy(){this.closed=true;this.stop();this.context?.close().catch(()=>{})}
 }
 // Announce the effective card, not its physical disguise (e.g. Longdan Dodge

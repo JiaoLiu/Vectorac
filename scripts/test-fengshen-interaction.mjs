@@ -202,6 +202,23 @@ test('stop releases a background-suspended drain so AI scheduling resumes',async
   for(let i=0;i<10&&voice.busy;i++)await tick()
   assert.equal(voice.busy,false,'stop 必须释放挂起的 drain');voice.destroy()
 })
+test('a hanging audio resume cannot freeze a freshly restarted game',async()=>{
+  // 音频上下文一直 resume 不上（例如切后台后被系统挂起）：drain 卡在 await this.ready 上，
+  // 旧代码 busy 永不复位，回到大厅再开局后 schedule() 被 voice.busy 无限推迟，AI 再也不出牌，只能刷新。
+  const hangContext=()=>({state:'suspended',sampleRate:48000,destination:{},resume:()=>new Promise(()=>{}),createBuffer:()=>({}),close:()=>Promise.resolve(),decodeAudioData:()=>Promise.resolve({duration:.02}),createBufferSource(){return {connect(){},disconnect(){},start(){},stop(){}}}})
+  const voice=new CardVoice({createContext:hangContext,fetchAudio:async()=>({ok:true,arrayBuffer:async()=>new ArrayBuffer(4)})})
+  voice.unlock();assert.ok(voice.speak('card-sha'))
+  for(let i=0;i<10&&!voice.busy;i++)await tick()
+  assert.equal(voice.busy,true,'drain 应挂起在等待音频上下文')
+  voice.stop() // 重开一局：start() 与「再开一局」都会调用 stop()
+  assert.equal(voice.busy,false,'stop 必须立刻复位卡死的 busy，否则新局 AI 不出牌');voice.destroy()
+  // 即使没人调用 stop()，兜底超时也必须复位 busy，绝不能让调度被永久推迟。
+  const lone=new CardVoice({createContext:hangContext,fetchAudio:async()=>({ok:true,arrayBuffer:async()=>new ArrayBuffer(4)})})
+  lone.unlock();assert.ok(lone.speak('card-sha'))
+  for(let i=0;i<10&&!lone.busy;i++)await tick()
+  for(let i=0;i<600&&lone.busy;i++)await tick()
+  assert.equal(lone.busy,false,'超时必须自动复位 busy');lone.destroy()
+})
 test('all generated MP3s are present and decodable, with verified male/female voices',async()=>{
   const manifest=JSON.parse(await readFile(new URL('../.private/fengshen/assets/audio/manifest.json',import.meta.url),'utf8'));assert.deepEqual(manifest.voices,VOICES);assert.equal(manifest.files.length,AUDIO_ENTRIES.length*2);assert.equal(manifest.entries.length,AUDIO_ENTRIES.length)
   for(const file of manifest.files){

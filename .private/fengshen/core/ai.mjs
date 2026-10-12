@@ -140,6 +140,8 @@ function response(view,HERO_BY_ID,isRed) {
   if(pending.kind==='blade')return hostility(view,pending.target)>0&&answers.length?answers[0]:pass
   const armor=opts.find(o=>o.type==='bagua');if(armor)return armor
   if(pending.as==='sha'&&pending.remaining>slashResources(view,HERO_BY_ID,isRed))return opts.find(o=>o.type==='support')||pass
+  // 无双/肉林要求连续两张闪：手里凑不出这么多张时，打出的闪也是白发，直接放弃、留牌。
+  if(pending.as==='shan'&&(pending.remaining||1)>answers.length)return opts.find(o=>o.type==='support')||pass
   if(answers.length)return answers[0]
   return opts.find(o=>o.type==='support')||pass
 }

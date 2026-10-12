@@ -63,6 +63,6 @@ export const COMPLETE_SKILLS={
 }
 export const SKILL_CARDS={
  fireattack:{name:'焚天焰',baseName:'火攻',category:'trick',help:'目标展示一张手牌；你可弃一张同花色手牌，对其造成一点火焰伤害。',art:'fireattack-v2',thumbFormat:'jpg',virtualOnly:true},
- ironchain:{name:'缚神索',baseName:'铁索连环',category:'trick',help:'切换至多两名角色的连环状态；连环角色受到属性伤害时，将同属性、同基础伤害传导给其他连环角色，随后解除。也可重铸。',art:'ironchain-v2',thumbFormat:'jpg',virtualOnly:true},
+ ironchain:{name:'缚神索',baseName:'铁索连环',category:'trick',help:'将一至两名角色连接（可切换为解除连环）；连环角色受到属性伤害时，将同属性、同基础伤害传导给其他连环角色，随后解除。也可重铸。',art:'ironchain-v2',thumbFormat:'jpg',virtualOnly:true},
  wine:{name:'琼浆',baseName:'酒',category:'basic',help:'每回合一次：下次杀伤害加一；自己濒死时回复一点，不可救别人。',art:'wine',virtualOnly:true},
 }

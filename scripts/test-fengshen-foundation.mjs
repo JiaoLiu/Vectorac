@@ -32,6 +32,17 @@ test('Jiuchi only converts spade hand cards, enforces Wine use limit, and restor
 test('Roulin requires two sequential Dodges against a woman and from a female attacker',()=>{
  for(const reverse of [false,true]){let s=fixture('luoxuan',['jinling','nezha','yangjian','jifa'],reverse?1:0);const attacker=reverse?1:0,target=reverse?0:1,a=card(s,attacker,'sha'),d1=card(s,target,'shan'),d2=card(s,target,'shan'),hp=s.players[target].hp;s=slash(s,a,target);assert.equal(s.pending.remaining,2);s=step(s,{type:'respond',ids:[d1.id]});assert.equal(s.pending.remaining,1);s=step(s,{type:'respond',ids:[d2.id]});assert.equal(s.players[target].hp,hp)}
 })
+test('Double Dodge demands two Dodges: the AI keeps its only Dodge instead of wasting it',()=>{
+ // 无双/肉林要求连续两张闪：手里凑不出这么多张时，打出的闪也是白发，AI 应放弃并留牌。
+ let s=fixture('luoxuan',['jinling','nezha','yangjian','jifa']);const a=card(s,0,'sha');card(s,1,'shan')
+ s=slash(s,a,1);assert.equal(s.pending.as,'shan');assert.equal(s.pending.remaining,2)
+ assert.equal(playerView(s,1).legal.filter(o=>o.type==='respond').length,1)
+ assert.equal(chooseAI(playerView(s,1)).type,'pass')
+ // 手里凑够两张闪时正常打出。
+ let t=fixture('luoxuan',['jinling','nezha','yangjian','jifa']);const at=card(t,0,'sha');card(t,1,'shan');card(t,1,'shan')
+ t=slash(t,at,1);assert.equal(t.pending.remaining,2)
+ assert.equal(chooseAI(playerView(t,1)).type,'respond')
+})
 test('Benghuai has a mandatory HP/max-HP choice only when another living player has lower HP',()=>{
  let s=fixture('luoxuan');s.players[0].hp=5;s=phase(s,'turnEnd');assert.equal(s.pending.skill,'benghuai');assert.equal(dispatch(s,{seat:0,type:'pass',promptId:s.pending.id}).ok,false);s=invoke(s,{value:'maxhp'});assert.equal(s.players[0].maxHp,8);assert.equal(s.players[0].maxHpLoss,1)
  s=fixture('luoxuan');s.players[0].hp=2;s=phase(s,'turnEnd');assert.ok(s.pending?.skill!=='benghuai')

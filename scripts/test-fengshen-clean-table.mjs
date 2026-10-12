@@ -18,7 +18,7 @@ test('single-target tricks and skill taking draw public yellow links during coun
  const v=playerView(fixture(),0);v.pending={kind:'take',actor:0,target:1,source:0};assert.deepEqual(targetLinks(v),[{source:0,target:1}])
 })
 test('all-player tricks show every living victim before the attack response, never dead seats',()=>{
- for(const type of ['arrows','savage','garden','harvest']){let s=fixture(),c=card(s,0,type);card(s,2,'nullify');s=step(s,{type:'play',ids:[c.id],as:type,targets:[]});const v=playerView(s,0);assert.equal(v.pending.kind,'counter');assert.deepEqual(targetLinks(v).map(l=>l.target),[1,2,3,4]);v.players[4].alive=false;assert.deepEqual(targetLinks(v).map(l=>l.target),[1,2,3])}
+ for(const type of ['arrows','savage','garden','harvest']){let s=fixture(),c=card(s,0,type);card(s,2,'nullify');if(type==='garden')for(const p of s.players)p.hp=p.maxHp-1;s=step(s,{type:'play',ids:[c.id],as:type,targets:[]});const v=playerView(s,0);assert.equal(v.pending.kind,'counter');assert.deepEqual(targetLinks(v).map(l=>l.target),[1,2,3,4]);v.players[4].alive=false;assert.deepEqual(targetLinks(v).map(l=>l.target),[1,2,3])}
 })
 test('delayed nullify highlights the judging owner and cannot inherit a stale attacker',()=>{
  const v=playerView(fixture(),0);v.lastPlayed={source:3,targets:[2],as:'sha',turn:v.turns};for(const kind of ['counter','reveal','judge-replace']){v.pending={kind,target:1,source:null};assert.equal(judgingSeat(v),1);assert.deepEqual(targetLinks(v),[])}

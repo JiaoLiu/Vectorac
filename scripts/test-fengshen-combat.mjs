@@ -37,18 +37,20 @@ test('AI saves Nullify on a full-HP group-heal recipient in either counter direc
  assert.equal(chooseAI(view).type,'respond','full HP does not make enemy card-draw worthless')
  view.pending={...view.pending,target:3,cardType:'arrows'};assert.equal(chooseAI(view).type,'respond','protect full-HP allies from real damage')
 })
-test('actual group-heal counter queue preserves AI Nullify for full target and evaluates later wounded enemy independently',()=>{
+test('group-heal only opens a Nullify window for wounded recipients; full HP asks nobody',()=>{
  for(const missing of [0,1]){
   let s=createAssignedGame({roles:['lord','loyal','rebel','rebel','renegade'],heroIds:['yangjian','nezha','jifa','wenzhong','hades'],seed:23})
   Object.assign(s,{deck:catalog.makeDeck(),discard:[],processing:[],harvestPool:[],queue:[],pending:null,phase:'play',current:1,logs:[]});for(const p of s.players){p.hand=[];p.equip={weapon:null,armor:null,offenseHorse:null,defenseHorse:null};p.judgment=[];p.hp=p.maxHp}
   const heal=hand(s,1,'garden')[0],nullify=hand(s,2,'nullify')[0];s.players[0].hp-=missing
-  s=step(s,{seat:1,type:'play',as:'garden',ids:[heal.id],targets:[]});let sawTarget=false,limit=0
+  s=step(s,{seat:1,type:'play',as:'garden',ids:[heal.id],targets:[]});const asked=[];let limit=0
   while(s.pending?.kind==='counter'&&limit++<80){
-   const atTarget=s.pending.actor===2&&s.pending.target===0,decision=atTarget?chooseAI(playerView(s,2)):{type:'pass'}
-   if(atTarget){sawTarget=true;assert.equal(decision.type,missing?'respond':'pass')}
-   s=step(s,decision)
+   asked.push(s.pending.target)
+   const atEnemy=s.pending.actor===2&&s.pending.target===0
+   s=step(s,atEnemy?chooseAI(playerView(s,2)):{type:'pass'})
   }
-  assert.ok(sawTarget);assert.equal(s.players[2].hand.some(c=>c.id===nullify.id),!missing);assert.equal(s.players[0].hp,s.players[0].maxHp-missing);assert.equal(allCards(s).length,108)
+  assert.ok(asked.every(t=>t===0),'only the wounded recipient is ever asked: '+JSON.stringify(asked))
+  assert.equal(asked.length>0,!!missing,'满血群体回血不再逐个询问破法')
+  assert.equal(s.players[2].hand.some(c=>c.id===nullify.id),!missing);assert.equal(s.players[0].hp,s.players[0].maxHp-missing);assert.equal(allCards(s).length,108)
  }
 })
 test('Peach recovery exposes actual public HP gain once, with no false full-HP cue',()=>{

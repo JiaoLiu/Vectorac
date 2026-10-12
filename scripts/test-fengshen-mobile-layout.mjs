@@ -26,7 +26,10 @@ test('portrait own hero stays upright, fits full equipment/skill rail, while han
 test('take cards fit the measured row, with clearance for selected lift and check badge',()=>{
  for(const rowHeight of [64,88,116,150,220]){const height=takeCardHeight(rowHeight);assert.ok(height+24<=rowHeight);assert.ok(height<=124)}
 })
-test('large iPhone landscape keeps heroes large and top row compact, not percentage-spread',()=>{const g=arenaGeometry({width:932-118,height:430,seats:8});assert.ok(g.heroWidth>100);for(let seat=2;seat<6;seat++)assert.ok(Math.abs(g.positions[seat+1].x-g.positions[seat].x-g.heroWidth-g.gap)<.001);assert.equal(g.positions[2].y,0)})
+test('large iPhone landscape keeps heroes large and top row compact, not percentage-spread',()=>{const g=arenaGeometry({width:932-118,height:430,seats:8});assert.ok(g.heroWidth>100);for(let seat=2;seat<6;seat++)assert.ok(Math.abs(g.positions[seat].x-g.positions[seat+1].x-g.heroWidth-g.gap)<.001);assert.equal(g.positions[2].y,0)})
+test('ascending seats read counter-clockwise: seat 1 on the right, last seat on the left, top row right-to-left',()=>{
+ for(const seats of [4,5,6,8]){const g=arenaGeometry({width:932-118,height:430,seats});assert.ok(g.positions[1].x>g.positions[seats-1].x,JSON.stringify({seats,right:g.positions[1],left:g.positions[seats-1]}));const top=Object.keys(g.positions).map(Number).filter(s=>s>=2&&s<=seats-2).sort((a,b)=>a-b);for(let i=0;i<top.length-1;i++)assert.ok(g.positions[top[i]].x>g.positions[top[i+1]].x,'top row runs right-to-left')}
+})
 test('pinch frame stays in unzoomed coordinates, recovers offsets and handles zero/inactive samples',()=>{
  const a=viewportFrame({innerWidth:932,innerHeight:430,viewport:{width:466,height:215,scale:2,offsetLeft:110,offsetTop:20}});assert.deepEqual(a,{width:932,height:430,scale:2,left:110,top:20})
  assert.deepEqual(viewportFrame({innerWidth:430,innerHeight:932,viewport:{width:430,height:932,scale:1}}),{width:430,height:932,scale:1,left:0,top:0})
