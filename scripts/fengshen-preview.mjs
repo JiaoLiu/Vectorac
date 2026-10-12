@@ -3,6 +3,8 @@ import {build} from 'esbuild'
 import {createServer} from 'node:http'
 import {mkdir,copyFile,cp,readFile,readdir,rm,stat,writeFile} from 'node:fs/promises'
 import {resolve,extname} from 'node:path'
+import {checkCardFont} from './check-fengshen-card-font.mjs'
+await checkCardFont()
 const qa=process.argv.includes('--qa'),release=process.argv.includes('--release'),source=resolve('.private/fengshen'),output=release?resolve('public/games/fengshen'):resolve('.private/fengshen',qa?'qa-dist':'dist')
 if(qa&&release)throw new Error('QA fixtures must never be published')
 if(release){
