@@ -1,0 +1,80 @@
+scripts/test-fengshen-table-visuals.mjs
+  5058ed3dc1a97a8c 178,180-182
+.private/fengshen/table-visuals.mjs
+  5058ed3dc1a97a8c 35-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.8",
+  "base_commit_sha": "3347e92afd08ad19c505a231542806b63b226fae",
+  "prompts": {
+    "5058ed3dc1a97a8c": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6ac848ce090dc5dc9234c7bc",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 43,
+      "total_deletions": 4,
+      "accepted_lines": 197,
+      "overriden_lines": 0
+    },
+    "bfcf2812a5394d1a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ffe24-0691-79c0-9329-ff854e9d5202",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "f36f3bac29a5715f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ff04e-8a7a-7f23-9f72-f400e68f268d",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    }
+  },
+  "commit_stats": {
+    "git_diff_added_lines": 7,
+    "git_diff_deleted_lines": 1,
+    "ai_additions": 7,
+    "ai_accepted": 7,
+    "BYMC": 0,
+    "mixed_additions": 0,
+    "BYAC": 7,
+    "BYRC": 0,
+    "per_file": {
+      ".private/fengshen/table-visuals.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "35-37"
+        ],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-table-visuals.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "178",
+          "180-182"
+        ],
+        "BYRC": []
+      }
+    }
+  },
+  "commit_timestamp": 1791792177,
+  "requirement_id": ""
+}
