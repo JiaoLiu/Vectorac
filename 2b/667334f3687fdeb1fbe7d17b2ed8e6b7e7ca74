@@ -1,0 +1,76 @@
+.private/fengshen/voice.mjs
+  5058ed3dc1a97a8c 5-6,83-87
+.private/fengshen/app.js
+  5058ed3dc1a97a8c 115-117
+scripts/test-fengshen-interaction.mjs
+  5058ed3dc1a97a8c 168-178
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.8",
+  "base_commit_sha": "2b667334f3687fdeb1fbe7d17b2ed8e6b7e7ca74",
+  "prompts": {
+    "5058ed3dc1a97a8c": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6ac848ce090dc5dc9234c7bc",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 55,
+      "total_deletions": 9,
+      "accepted_lines": 147,
+      "overriden_lines": 0
+    },
+    "f36f3bac29a5715f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ff04e-8a7a-7f23-9f72-f400e68f268d",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 1,
+      "total_deletions": 1,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    }
+  },
+  "commit_stats": {
+    "git_diff_added_lines": 21,
+    "git_diff_deleted_lines": 2,
+    "ai_additions": 21,
+    "ai_accepted": 21,
+    "BYMC": 0,
+    "mixed_additions": 0,
+    "BYAC": 21,
+    "BYRC": 0,
+    "per_file": {
+      ".private/fengshen/app.js": {
+        "BYMC": [],
+        "BYAC": [
+          "115-117"
+        ],
+        "BYRC": []
+      },
+      ".private/fengshen/voice.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "5-6",
+          "83-87"
+        ],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-interaction.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "168-178"
+        ],
+        "BYRC": []
+      }
+    }
+  },
+  "commit_timestamp": 1791775454,
+  "requirement_id": ""
+}
