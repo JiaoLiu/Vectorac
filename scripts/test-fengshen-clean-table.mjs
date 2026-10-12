@@ -5,7 +5,7 @@ import {readFile} from 'node:fs/promises'
 import {createAssignedGame,dispatch,playerView,catalog,allCards,restoreGame} from '../.private/fengshen/engine.mjs'
 import {targetLinks,judgingSeat,counterSelection,counterAction} from '../.private/fengshen/table-visuals.mjs'
 import {seatName} from '../.private/fengshen/combat.mjs'
-import {tableTrail,trailCards,tableCardLayout,counterTrail,recentWithFocus,takeJudgmentCard} from '../.private/fengshen/table-trail.mjs'
+import {tableTrail,trailCards,tableCardLayout,publicDiscardLayout,counterTrail,recentWithFocus,takeJudgmentCard} from '../.private/fengshen/table-trail.mjs'
 import {judgmentEffects} from '../.private/fengshen/draw-effects.mjs'
 import {renderCenter,renderBattle,renderControls} from '../.private/fengshen/table.mjs'
 import {arenaGeometry} from '../.private/fengshen/arena-layout.mjs'
@@ -91,6 +91,9 @@ test('many responses cannot crowd the current spell or judgment out of a small t
 })
 test('table grid fits phone safe-area centers, keeps recent cards, can use two compact rows',()=>{
  let two=false;for(const [width,height]of [[568,320],[844,390],[932,430],[320,568],[390,844],[430,932]])for(const seats of [2,5,8])for(const count of [1,2,6,12]){const landscape=width>height,g=arenaGeometry({width:width-(landscape?118:0),height,seats,safeTop:landscape?0:47,safeBottom:landscape?21:34}),w=g.center.right-g.center.left,h=g.center.bottom-g.center.top,f=tableCardLayout({width:w,height:h,count});assert.ok(f.cardHeight*f.rows+5*(f.rows-1)<=h+.01);assert.ok(f.cardHeight/1.44*f.columns+5*(f.columns-1)<=w+.01);assert.ok(f.visible<=count);assert.ok(f.rows<=2);two||=f.rows===2}assert.ok(two)
+})
+test('public discard/reveal wraps into extra rows and never overflows the center',()=>{
+ let multi=false;for(const [width,height]of [[568,320],[844,390],[932,430],[320,568],[390,844],[430,932]])for(const seats of [2,5,8])for(const count of [1,3,8,20]){const landscape=width>height,g=arenaGeometry({width:width-(landscape?118:0),height,seats,safeTop:landscape?0:47,safeBottom:landscape?21:34}),w=g.center.right-g.center.left,h=g.center.bottom-g.center.top,f=publicDiscardLayout({width:w,height:h,count});assert.ok(f.cardHeight/1.44*f.columns+5*(f.columns-1)<=w+.01,JSON.stringify({width,height,seats,count,f,w}));assert.ok(f.cardHeight*f.rows+5*(f.rows-1)<=h+.01,JSON.stringify({width,height,seats,count,f,h}));assert.ok(f.visible<=count);assert.ok(f.visible>=Math.min(count,f.columns));multi||=f.rows>1}assert.ok(multi)
 })
 test('reduced motion and portrait table visibility are explicit; no counter full-screen panel renderer remains',async()=>{
  const css=await readFile(new URL('../.private/fengshen/arena-table.css',import.meta.url),'utf8'),code=await readFile(new URL('../.private/fengshen/table.mjs',import.meta.url),'utf8');assert.ok(css.includes('.fs-compact-table{display:flex'));assert.ok(css.includes('prefers-reduced-motion:reduce'));assert.ok(!code.includes('function counterChoices'));assert.ok(code.includes('fs-counter-controls'))

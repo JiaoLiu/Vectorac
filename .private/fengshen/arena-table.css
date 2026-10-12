@@ -86,7 +86,7 @@
 .fs-playing .fs-pool-choice .fs-choice-card{flex:0 0 calc(var(--pool-card-height)/1.44);width:calc(var(--pool-card-height)/1.44);height:var(--pool-card-height);min-height:var(--pool-card-height);padding:0;overflow:hidden}
 .fs-playing .fs-harvest-picked>b{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* 公开弃置/拆牌：丢掉的牌内联摆在牌桌中间一行（与出牌同款卡片），看清后自动收起；纯展示不挡操作。 */
-.fs-playing .fs-played.fs-public-discard{display:flex;gap:5px;justify-content:center;align-items:center;flex:none;width:fit-content;max-width:100%;margin-top:4px}
+.fs-playing .fs-played.fs-public-discard{display:grid!important;grid-template-columns:repeat(var(--table-columns,1),calc(var(--table-card-height,90px)/1.44));gap:5px;justify-content:center;align-items:center;flex:none;width:fit-content;max-width:100%;margin-top:4px}
 .fs-playing .fs-compact-table .fs-discard-card{position:relative;padding:0;height:var(--table-card-height,90px);width:calc(var(--table-card-height,90px)/1.44);flex:none;animation:fs-reveal .5s ease-out both;filter:drop-shadow(0 0 8px #ffd76f88)}
 /* 传道分牌：中央弹窗依次翻出新摸的牌（牌面仅本人可见）；等待方只看背面与张数。 */
 .fs-playing .fs-yiji-choice .fs-choice-card{animation:fs-reveal .5s ease-out both}
@@ -215,7 +215,7 @@
 /* Non-modal public table: compact rows, no explanatory text over the cards. */
 .fs-sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip-path:inset(50%)!important;white-space:nowrap!important}
 .fs-playing .fs-compact-table{display:flex;justify-content:center;padding:0;pointer-events:none;overflow:visible}
-.fs-playing .fs-played.fs-table-trail{display:grid;grid-template-columns:repeat(var(--table-columns,1),calc(var(--table-card-height,90px)/1.44));gap:5px;justify-content:center;align-items:center;max-width:100%;width:fit-content;flex:none;overflow:visible}
+.fs-playing .fs-played.fs-table-trail{display:grid!important;grid-template-columns:repeat(var(--table-columns,1),calc(var(--table-card-height,90px)/1.44));gap:5px;justify-content:center;align-items:center;max-width:100%;width:fit-content;flex:none;overflow:visible}
 .fs-playing .fs-compact-table .fs-card-play{position:relative;padding:0;height:var(--table-card-height,90px);width:calc(var(--table-card-height,90px)/1.44);flex:none}
 .fs-playing .fs-compact-table .fs-card-play[hidden]{display:none}
 .fs-playing .fs-compact-table .fs-card-play>.fs-clean-card{height:100%;width:100%;transform:none}

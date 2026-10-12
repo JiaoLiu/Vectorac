@@ -1,6 +1,6 @@
 // One coordinate system for the board, seats and hand. Never use zoomed screen
 // rectangles or equipment count to decide a portrait's dimensions.
-import {tableCardLayout} from './table-trail.mjs'
+import {tableCardLayout,publicDiscardLayout} from './table-trail.mjs'
 import {choicePanelGeometry} from './panel-selection.mjs'
 const clamp=(n,min,max)=>Math.max(min,Math.min(max,n))
 export function arenaGeometry({width,height,seats=5,safeTop=0,safeBottom=0}){
@@ -46,6 +46,9 @@ export function layoutArena(root){
  root.style.setProperty('--center-card-height',centerCardHeight(g.center)+'px')
  const trail=root.querySelector('.fs-table-trail')
  if(trail){const cards=[...trail.querySelectorAll('.fs-card-play')],fit=tableCardLayout({width:g.center.right-g.center.left,height:g.center.bottom-g.center.top,count:cards.length}),focus=cards.filter(c=>c.classList.contains('is-current-effect')).slice(-fit.visible),rest=cards.filter(c=>!focus.includes(c)).slice(-Math.max(0,fit.visible-focus.length));trail.style.setProperty('--table-columns',fit.columns);trail.style.setProperty('--table-card-height',fit.cardHeight+'px');cards.forEach(c=>c.hidden=!focus.includes(c)&&!(fit.visible>focus.length&&rest.includes(c)))}
+ // 公开弃置/阵亡亮牌一次可能摆出整副手牌：竖屏上下有空间就多行铺开，横屏按宽度压小牌面，绝不横向裁切。
+ const discard=root.querySelector('.fs-played.fs-public-discard')
+ if(discard){const cards=[...discard.querySelectorAll('.fs-card-play')],avail=Math.max(24,(g.center.bottom-g.center.top)-(trail?.offsetHeight||0)-8),fit=publicDiscardLayout({width:g.center.right-g.center.left,height:avail,count:cards.length});discard.style.setProperty('--table-columns',fit.columns);discard.style.setProperty('--table-card-height',fit.cardHeight+'px');cards.forEach((c,i)=>c.hidden=i<cards.length-fit.visible)}
  root.style.setProperty('--pool-card-height',Math.max(32,Math.min(120,g.height-g.dockHeight-60))+'px')
  const pool=root.querySelector('.fs-pool-choice'),list=pool?.querySelector('.fs-center-card-list')
  if(list)pool.style.setProperty('--pool-card-height',poolCardHeight({width:list.clientWidth,height:Math.max(32,list.clientHeight-16),count:list.querySelectorAll('.fs-choice-card').length})+'px')
