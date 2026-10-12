@@ -75,6 +75,7 @@ try{
  for(const b of clients)await b.waitFor(`window.__fengshenUI.state?.revision===${s.revision}`)
  const attack=clients[1],defense=clients[0];await attack.tap('.fs-hand-card[data-id="'+sha.id+'"]');await attack.tap('[data-player="1"] .fs-player-main');await attack.tap('.fs-actions [data-action="confirm"]')
  await defense.waitFor('window.__fengshenUI.state.pending?.actor===0');assert.equal(await defense.evaluate('window.__fengshenUI.state.pending.source'),1)
+ await defense.waitFor('!document.querySelector(".fs-dock").inert') // See the public card land before answering.
  await defense.tap('.fs-actions [data-action="response"][data-value="'+await defense.evaluate('window.__fengshenUI.state.networkView.legal.findIndex(a=>a.type==="pass")')+'"]')
  await attack.waitFor('window.__fengshenUI.state.players[0].hp===3');assert.equal(await defense.evaluate('window.__fengshenUI.state.players[0].hp'),1)
  assert.equal(await attack.evaluate('document.querySelector(".fs-own-hero .fs-heal-number")?.textContent'),'+1')
@@ -99,7 +100,7 @@ try{
  // Finish through a real killing Slash; keep the ended board and prepare there.
  const oldGame=gs.gameId,fin=gs.state.s;fin.players[0].hp=1;fin.players[0].hand=[];fin.players[1].marks.sha=0;fin.current=1;fin.phase='play';fin.pending=null;const kill=fin.deck.splice(fin.deck.findIndex(c=>c.type==='sha'),1)[0];fin.players[1].hand=[kill];fin.revision++;gs.state.version++;gs.closeWindow();gs.syncWindow();service.hub.pushGameState(room,gs)
  await attack.waitFor(`window.__fengshenUI.state.revision===${fin.revision}`);await attack.tap('.fs-hand-card[data-id="'+kill.id+'"]');await attack.tap('[data-player="1"] .fs-player-main');await attack.tap('.fs-actions [data-action="confirm"]')
- for(const b of clients){await b.waitFor('!window.__fengshenUI.online.waiting&&!!document.querySelector(".fs-table-settle")');assert.equal(await b.evaluate('document.querySelector(".fs-app").classList.contains("fs-playing")'),true);assert.equal(await b.evaluate('!!document.querySelector(".fs-network-wait")'),false);assert.equal(await b.evaluate('document.querySelector(".fs-actions [data-online=ready]").textContent'),'准备下一轮')}
+ for(const b of clients){await b.waitFor('!window.__fengshenUI.online.waiting&&!!document.querySelector(".fs-table-settle")');await b.waitFor('!document.querySelector(".fs-dock").inert');assert.equal(await b.evaluate('document.querySelector(".fs-app").classList.contains("fs-playing")'),true);assert.equal(await b.evaluate('!!document.querySelector(".fs-network-wait")'),false);assert.equal(await b.evaluate('document.querySelector(".fs-actions [data-online=ready]").textContent'),'准备下一轮')}
  assert.equal(room.status,'WAITING');const savedCode=room.roomCode
  await clients[0].tap('.fs-actions [data-online="view-room"]');await clients[0].waitFor('!!document.querySelector(".fs-network-wait")');assert.equal(room.summary().humanCount,2);await clients[0].tap('[data-online="view-table"]');await clients[0].waitFor('!!document.querySelector(".fs-table-settle")')
  await clients[0].navigate('/games/fengshen/?room='+savedCode);await clients[0].waitFor('window.__fengshenUI.online?.ready&&!!document.querySelector(".fs-table-settle")');assert.equal(await clients[0].evaluate('window.__fengshenUI.online.waiting'),false)

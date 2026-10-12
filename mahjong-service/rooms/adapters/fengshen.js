@@ -33,7 +33,9 @@ export function adapterFor(input){const r=rules(input),mode=r.mode,deckVersion=r
  eligibleSeatsOf:eligible,windowIdentityOf:state=>state.setup?'draft:'+state.setup.stage:state.s.winner?null:state.s.pending?'prompt:'+state.s.pending.id:'turn:'+state.s.turns+':'+state.s.current,
  windowTypeOf:state=>state.setup?WINDOW_TYPE.EXCHANGE_SELECTION:state.s.pending?WINDOW_TYPE.DISCARD_RESPONSE:WINDOW_TYPE.SELF_TURN,
  windowTimeoutMs:(state,room)=>automatic(state)?1800:(room.turnTimeoutSeconds||60)*1000,isAutomaticWindow:automatic,
- aiPaceMs:state=>automatic(state)?1800:650,aiDecide:decide,aiFallback:decide,aiLastResort:l=>l.find(a=>a.type==='pass')||l.find(a=>a.type==='end')||l[0]||null,
+ // Every client needs time to see the public card leave its actual caster and
+ // land. Private passes remain quick; they must not reveal who holds Nullify.
+ aiPaceMs:state=>automatic(state)?1800:['play','respond','skill'].includes(state.action?.type)?1700:650,aiDecide:decide,aiFallback:decide,aiLastResort:l=>l.find(a=>a.type==='pass')||l.find(a=>a.type==='end')||l[0]||null,
  aiLevelOf:()=>null,nextRoundCtx:()=>({})
 }}
 export const adapter=adapterFor()

@@ -40,6 +40,8 @@ import {bindStarDrag} from './star-drag.mjs'
 import {advanceUnavailable,DecisionClock} from './flow.mjs'
 import {BackgroundMusic} from './music.mjs'
 import {drawEffects,judgmentEffects,harvestEffects,yijiEffects,transferEffects,rescueEffects,discardEffects} from './draw-effects.mjs'
+import {PlayMotionQueue,publicPlayMotions,pendingImpact,PLAY_FLIGHT_MS} from './play-motion.mjs'
+import './play-motion.css'
 import {FeedbackModal} from './feedback.mjs'
 
 // Keep the old mixed-playtest save intact; never reinterpret its hero rules.
@@ -80,7 +82,7 @@ export class FengshenUI {
     this.resumeSession=restoreSession(load(SAVE,null));this.resumeState=this.resumeSession?.kind==='game'?this.resumeSession.game:null;this.legacySave=load('vectorac.fengshen.internal.save.v1',null)!=null;root.className='fs-app'
     this.feedback=new FeedbackModal()
     this.onClick=e=>this.click(e);this.onKey=e=>this.key(e)
-    this.moves=[];this.discards=null;this.recoveries=[];this.beams=new TargetBeams()
+    this.moves=[];this.discards=null;this.recoveries=[];this.beams=new TargetBeams();this.playMotions=new PlayMotionQueue()
     this.onVisibility=()=>{clearTimeout(this.timer);if(document.hidden){this.voice.stop();this.music.pause()}else{if(this.transfer?.until<Date.now())this.transfer=null;if(this.draws?.every(d=>(d.started||0)+1300<Date.now()))this.draws=[];if(this.moves?.every(m=>m.until<Date.now()))this.moves=[];this.recoveries=this.recoveries.filter(h=>h.until>Date.now());this.decorateBattle();if(!this.lobby)this.music.unlock();this.keepAwake(!this.lobby);this.schedule()}this.syncClock()}
     this.onViewport=()=>{layoutArena(root);layoutHand(root);if(this.selected.length)revealHandCard(root,this.selected.at(-1));this.decorateBattle();scaleCards(root);this.online?.afterRender()}
     this.viewport=bindGameViewport(root,this.onViewport)
@@ -115,7 +117,10 @@ export class FengshenUI {
   // 页面在后台时 AudioContext 被挂起，drain 卡在当前这句上不再消费队列；若继续入队，
   // 回到前台会一次性把期间攒下的报牌全播一遍（AI 早出下一张了还在念前面的牌）。所以后台不入队。
   present(before,action){if(!document.hidden)for(const cue of cuesForAction(before,action,this.state))this.voice.speak(cue.key,cue.sex);const hits=damageCues(before,this.state);if(hits.length){this.hits=hits.map(h=>({...h,until:Date.now()+900}));for(const h of hits)this.voice.hurt(h.amount);clearTimeout(this.hitTimer);this.hitTimer=setTimeout(()=>{this.hits=[];if(!this.destroyed)this.decorateBattle()},920)}
-    this.beams.record(playerView(this.state,0))
+    const beforeView=playerView(before,0),afterView=playerView(this.state,0)
+    const publicMotions=publicPlayMotions(beforeView,afterView).map(e=>{const c=e.cards[0],a=(e.source===0?this.root.querySelector(`.fs-hand-card[data-id="${c?.id}"]`)||this.root.querySelector('.fs-own-hero>button'):this.root.querySelector(`[data-player="${e.source}"] .fs-player-main`))?.getBoundingClientRect();return {...e,origin:a&&localPoint(this.root,a.x+a.width/2,a.y+a.height/2)}})
+    if(document.hidden)this.playMotions.clear();else this.playMotions.enqueue(publicMotions)
+    this.beams.record(afterView)
     const recovered=recoveryCues(before,this.state)
     if(recovered.length){const started=Date.now();this.recoveries=this.recoveries.filter(h=>h.until>started).concat(recovered.map(h=>({...h,started,until:started+RECOVERY_DURATION})));clearTimeout(this.recoveryTimer);this.recoveryTimer=setTimeout(()=>{this.recoveries=[];if(!this.destroyed)this.decorateBattle()},RECOVERY_DURATION+20)}
     if(before.pending?.kind==='take'&&action.type==='choose'){
@@ -148,12 +153,12 @@ export class FengshenUI {
     const previousIds=new Set(before.players[0].hand.map(c=>c.id)),received=this.state.players[0].hand.filter(c=>!previousIds.has(c.id))
     this.handRevealId=received.at(-1)?.id||null
     this.reset();this.save();this.render();return true}
-  clearEffects(){clearTimeout(this.hitTimer);clearTimeout(this.beamTimer);this.beams.clear();clearTimeout(this.recoveryTimer);clearTimeout(this.transferTimer);clearTimeout(this.drawTimer);clearTimeout(this.moveTimer);clearTimeout(this.discardTimer);clearTimeout(this.counterLockTimer);this.hits=[];this.recoveries=[];this.transfer=null;this.draws=[];this.moves=[];this.discards=null;this.tableTrail=[];this.counterKey=null;this.counterLockUntil=0}
+  clearEffects(){clearTimeout(this.playMotionTimer);this.playMotions?.clear();clearTimeout(this.hitTimer);clearTimeout(this.beamTimer);this.beams.clear();clearTimeout(this.recoveryTimer);clearTimeout(this.transferTimer);clearTimeout(this.drawTimer);clearTimeout(this.moveTimer);clearTimeout(this.discardTimer);clearTimeout(this.counterLockTimer);this.hits=[];this.recoveries=[];this.transfer=null;this.draws=[];this.moves=[];this.discards=null;this.tableTrail=[];this.counterKey=null;this.counterLockUntil=0}
   syncClock(){
     if(this.online){const m=this.online.meta,s=this.state,human=s&&!s.winner&&(s.pending?.actor??s.current)===0&&!this.auto&&!isRevealing(s);this.clock.running=false;this.clock.key=human?'online:'+m?.windowId:null;this.clock.left=Math.max(0,(m?.deadlineAt||0)-Date.now()+(this.online.offset||0));return}
     const s=this.state,human=!this.lobby&&!this.setup&&s&&!s.winner&&(s.pending?.actor??s.current)===0&&!isRevealing(s)&&(s.players[0].alive||s.pending?.kind==='ext'&&s.pending.skill==='zhuiyi')
     const key=human?`${s.revision}:${s.pending?.id||s.phase}`:null
-    this.clock.sync(key,!!human&&!this.draggingStars&&!this.auto&&!this.paused&&!document.hidden&&!this.transfer&&!this.draws.length&&!this.moves.length)
+    this.clock.sync(key,!!human&&!this.draggingStars&&!this.auto&&!this.paused&&!document.hidden&&!this.transfer&&!this.draws.length&&!this.moves.length&&!this.playMotions.busy)
   }
   tickClock(){
     if(this.destroyed)return
@@ -190,6 +195,8 @@ export class FengshenUI {
     const roles=counterBlade?[[counterBlade.source,'借刀者'],[counterBlade.target,'持刀者'],[counterBlade.victim,'指定被杀']]:battle?.kind==='command'?[[battle.commandedBy,'借刀者'],[battle.source,'持刀者'],[battle.target,'指定被杀']]:battle&&['attack','duel','aoe'].includes(battle.kind)?[[battle.source,'攻击者'],[battle.target,'受击者']]:[]
     for(const [seat,role]of roles){const e=anchor(seat);if(e){e.dataset.combatRole=role;const tag=document.createElement('span');tag.className='fs-combat-tag';tag.textContent=role;e.append(tag)}}
     this.root.querySelector('.fs-target-lines')?.remove()
+    // Keep the original 2.5s group attack beams. Public response flights do
+    // not add a second dashed source-to-target overlay or restart these beams.
     const beam=this.beams.frame(v,{targets:this.targets,as:this.currentAs(v)}),links=beam.links
     clearTimeout(this.beamTimer)
     if(links.length&&!beam.preview)this.beamTimer=setTimeout(()=>{if(!this.destroyed)this.decorateBattle()},beam.remaining+20)
@@ -200,7 +207,6 @@ export class FengshenUI {
     // 与回合提示一样挂在人物外框；内层头像的光晕会被 overflow:hidden 裁掉，自己的按钮还会被 border:0 覆盖。
     const responder=responderHighlight(v);if(responder!=null)this.root.querySelector(responder===0?'.fs-own-hero':`[data-player="${responder}"]`)?.classList.add('fs-responding')
     for(const link of links){anchor(link.source)?.classList.add('fs-effect-source');anchor(link.target)?.classList.add('fs-effect-target')}
-    if(v.pending?.kind==='counter')anchor(v.pending.target)?.classList.add('fs-effect-focus')
     // 五谷选牌轮到的用泛黄边框提示（与被动抉择统一，见下方 fs-responding）；
     // 紫色"取宝"只保留取牌飞行动画，避免选牌时整张人物卡被紫色内发光覆盖。
     const picker=this.transfer?.mode==='harvest'?this.transfer.to:null;if(picker!=null)anchor(picker)?.classList.add('fs-pick-focus')
@@ -251,6 +257,37 @@ export class FengshenUI {
         e.style.setProperty('--from-x',`${deckPoint.x+i*4}px`);e.style.setProperty('--from-y',`${deckPoint.y}px`);e.style.setProperty('--to-x',`${x}px`);e.style.setProperty('--to-y',`${y}px`);e.style.setProperty('--mid-x',`${(deckPoint.x+x)/2}px`);e.style.setProperty('--mid-y',`${(deckPoint.y+y)/2-25}px`);e.style.setProperty('--draw-delay',`${i*140-Math.max(0,Date.now()-(d.started??Date.now()))}ms`);this.root.append(e)
       }
     }
+    this.decoratePlayMotion(v,anchor)
+  }
+  decoratePlayMotion(view,anchor){
+    this.root.querySelectorAll('.fs-play-flight,.fs-play-links,.fs-play-source-symbol,.fs-impact-symbol').forEach(e=>e.remove())
+    this.root.querySelectorAll('.fs-public-caster,.fs-impact-target').forEach(e=>{e.classList.remove('fs-public-caster','fs-impact-target');e.removeAttribute('data-impact-kind');e.removeAttribute('data-impact-negated');e.removeAttribute('data-caster-seat');e.removeAttribute('data-impact-target')})
+    this.root.querySelectorAll('[data-play-hidden]').forEach(e=>{e.style.removeProperty('visibility');e.removeAttribute('data-play-hidden')})
+    clearTimeout(this.playMotionTimer)
+    const frame=this.playMotions.frame(),event=frame?.event,focus=event?.focus&&event.counter&&frame.elapsed<PLAY_FLIGHT_MS?{...event.focus,negated:!event.focus.negated}:event?.focus||pendingImpact(view)
+    if(frame||view.pending?.kind==='counter')this.root.querySelectorAll('.fs-responding').forEach(e=>e.classList.remove('fs-responding'))
+    if(!frame&&focus){const inner=anchor(focus.target),node=inner?.closest('.fs-player,.fs-own-hero')||inner;if(node){node.classList.add('fs-impact-target');node.dataset.impactKind=focus.kind;node.dataset.impactNegated=String(!!focus.negated);node.dataset.impactTarget=focus.target}}
+    if(!frame)return
+    const caster=anchor(event.source)
+    if(caster){const node=caster.closest('.fs-player,.fs-own-hero')||caster;node.classList.add('fs-public-caster');node.dataset.casterSeat=event.source}
+    // Upcoming cards stay hidden in their final table slots until their flight
+    // lands. IDs, not artwork/type, keep equal-looking physical cards distinct.
+    for(const [q,item]of this.playMotions.items.entries())for(const [i,c]of item.cards.entries()){
+      if(q===0&&frame.elapsed>=PLAY_FLIGHT_MS+Math.min(i,4)*80)continue
+      this.root.querySelectorAll(`[data-table-card="${c.id}"]`).forEach(e=>{e.dataset.playHidden='true';e.style.visibility='hidden'})
+    }
+    for(const [q,item]of this.playMotions.items.entries())if(item.virtualType&&(q>0||frame.elapsed<PLAY_FLIGHT_MS)){const node=this.root.querySelector(`[data-trail-key="${item.trailKey}"]`);if(node){node.dataset.playHidden='true';node.style.visibility='hidden'}}
+    const cards=event.cards.length?event.cards:[{type:event.virtualType,virtual:true}]
+    for(const [i,c]of cards.entries()){
+      const stagger=Math.min(i,4)*80,elapsed=frame.elapsed-stagger;if(elapsed>=PLAY_FLIGHT_MS)continue
+      const slot=c.id?this.root.querySelector(`[data-table-card="${c.id}"]`):this.root.querySelector(`[data-trail-key="${event.trailKey}"]`)
+      const from=event.origin||(caster&&(()=>{const r=caster.getBoundingClientRect();return localPoint(this.root,r.x+r.width/2,r.y+r.height/2)})()),r=(slot||this.root.querySelector('.fs-table-center'))?.getBoundingClientRect()
+      if(!from||!r)continue
+      const to=localPoint(this.root,r.x+r.width/2,r.y+r.height/2),w=slot?.clientWidth||54,h=slot?.clientHeight||78,e=document.createElement('div');e.className='fs-play-flight';e.dataset.playSource=event.source;e.dataset.playKey=event.key;e.dataset.playCard=c.id||'virtual';e.innerHTML=cardFace(c)
+      e.style.setProperty('--play-width',w+'px');e.style.setProperty('--play-height',h+'px');e.style.setProperty('--from-x',from.x-w/2+i*3+'px');e.style.setProperty('--from-y',from.y-h/2+'px');e.style.setProperty('--to-x',to.x-w/2+'px');e.style.setProperty('--to-y',to.y-h/2+'px');e.style.animationDelay=(-elapsed)+'ms';this.root.append(e);scaleCards(e)
+    }
+    const flyingUntil=PLAY_FLIGHT_MS+Math.min(4,Math.max(0,cards.length-1))*80
+    this.playMotionTimer=setTimeout(()=>{if(!this.destroyed)this.render()},Math.max(16,Math.min(frame.remaining,frame.elapsed<flyingUntil?flyingUntil-frame.elapsed:frame.remaining)+15))
   }
   schedule(){
     clearTimeout(this.timer)
@@ -275,7 +312,7 @@ export class FengshenUI {
       return
     }
     if(!this.state||this.state.winner)return
-    if(this.transfer||this.draws.length||this.moves.length)return
+    if(this.transfer||this.draws.length||this.moves.length||this.playMotions.busy)return
     if(isRevealing(this.state)){
       const p=this.state.pending,revision=this.state.revision
       this.timer=setTimeout(()=>{if(!this.destroyed&&this.state.revision===revision&&!this.paused&&!document.hidden&&!this.modal)this.act(p.kind==='reveal'?{type:'ack',seat:p.actor}:{type:'invoke',value:'ack',seat:p.actor})},1800)
@@ -493,7 +530,7 @@ export class FengshenUI {
     if(ownIds.length)revealHandCard(this.root,ownIds.at(-1))
     if(this.handRevealId){revealHandCard(this.root,this.handRevealId);this.handRevealId=null}
     if(this.state?.pending?.kind==='counter'&&this.state.pending.actor===0&&this.selected.length)revealHandCard(this.root,this.selected.at(-1))
-    if(this.transfer||this.draws.length||this.moves.length||isRevealing(this.state))this.root.querySelector('.fs-dock')?.setAttribute('inert','')
+    if(this.transfer||this.draws.length||this.moves.length||this.playMotions.busy||isRevealing(this.state))this.root.querySelector('.fs-dock')?.setAttribute('inert','')
     if(this.modal){this.root.querySelectorAll('.fs-header,.fs-lobby,.fs-entry,.fs-setup,.fs-hud,.fs-arena,.fs-status,.fs-dock').forEach(e=>e.inert=true);this.root.querySelector('[data-action="close"]')?.focus()}
     else if(wasModal&&this.returnFocus?.action){const s=`[data-action="${this.returnFocus.action}"]${this.returnFocus.id?`[data-id="${this.returnFocus.id}"]`:''}`;this.root.querySelector(s)?.focus()}
     scaleCards(this.root);this.online?.afterRender();this.schedule()

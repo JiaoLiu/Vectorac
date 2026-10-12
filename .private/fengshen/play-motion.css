@@ -1,0 +1,6 @@
+.fs-play-flight{position:absolute;left:0;top:0;width:var(--play-width,54px);height:var(--play-height,78px);z-index:36;pointer-events:none;animation:fs-public-play 600ms cubic-bezier(.2,.65,.3,1) both}
+.fs-play-flight>.fs-clean-card{display:block;width:100%;height:100%;padding:0}
+@keyframes fs-public-play{from{transform:translate(var(--from-x),var(--from-y)) rotate(-9deg) scale(.6);opacity:.35}55%{opacity:1}to{transform:translate(var(--to-x),var(--to-y)) rotate(0deg) scale(1);opacity:1}}
+/* One simple response/caster frame: no extra icons, beams or pulsing glows. */
+.fs-public-caster,.fs-impact-target{border-color:#efd58b!important;outline:2px solid #efd58b!important;outline-offset:1px}
+@media(prefers-reduced-motion:reduce){.fs-play-flight{animation:none;transform:translate(var(--to-x),var(--to-y));opacity:1}}
