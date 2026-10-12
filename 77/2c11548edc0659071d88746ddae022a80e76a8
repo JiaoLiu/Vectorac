@@ -1,0 +1,44 @@
+.private/fengshen/index.html
+  5058ed3dc1a97a8c 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.8",
+  "base_commit_sha": "772c11548edc0659071d88746ddae022a80e76a8",
+  "prompts": {
+    "5058ed3dc1a97a8c": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6ac848ce090dc5dc9234c7bc",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 1,
+      "total_deletions": 1,
+      "accepted_lines": 6,
+      "overriden_lines": 0
+    }
+  },
+  "commit_stats": {
+    "git_diff_added_lines": 1,
+    "git_diff_deleted_lines": 1,
+    "ai_additions": 1,
+    "ai_accepted": 1,
+    "BYMC": 0,
+    "mixed_additions": 0,
+    "BYAC": 1,
+    "BYRC": 0,
+    "per_file": {
+      ".private/fengshen/index.html": {
+        "BYMC": [],
+        "BYAC": [
+          "8"
+        ],
+        "BYRC": []
+      }
+    }
+  },
+  "commit_timestamp": 1791799916,
+  "requirement_id": ""
+}
