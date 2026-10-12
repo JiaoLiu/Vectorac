@@ -45,5 +45,16 @@ try{
  await act({seat:0,type:'respond',ids:c.costs.map(x=>x.id)});assert.equal(await b.evaluate('window.__fengshenUI.state.players[1].hp'),3);await empty()
  assert.equal(await b.evaluate('document.querySelectorAll(".fs-public-discard .fs-card-play").length'),0,'forced-hit discard costs leave with their completed chain')
  console.log('PASS Axe: Dodge does not clear prematurely, forced hit completes then the entire chain clears')
+ // 横屏弃置/拆牌：牌桌中央会随结算清空，弃置牌必须压在中线上按横排放大，而不是缩在出牌行下方一小条。
+ await b.viewport(812,375)
+ {const {s}=fixture();await load(s)
+  await b.evaluate(`(()=>{const u=window.__fengshenUI;u.discards={seat:1,by:0,cards:u.state.deck.slice(0,8),until:Date.now()+9e8};u.render();u.onViewport();return true})()`)
+  await b.waitFor('[...document.querySelectorAll(".fs-public-discard .fs-card-play")].every(c=>c.getAnimations().every(a=>a.playState==="finished"))',3000)
+  const dd=await b.evaluate(`(()=>{const row=document.querySelector('.fs-played.fs-public-discard'),card=row.querySelector('.fs-card-play'),c=document.querySelector('.fs-table-center').getBoundingClientRect(),r=row.getBoundingClientRect(),cr=card.getBoundingClientRect();return {h:Math.round(cr.height),pos:getComputedStyle(row).position,mid:Math.round((r.top+r.bottom)/2),bandMid:Math.round((c.top+c.bottom)/2)}})()`)
+  assert.ok(dd.h>=60,'landscape public discard stays readable, not a tiny strip: '+JSON.stringify(dd))
+  assert.equal(dd.pos,'absolute','landscape public discard overlays the table center instead of stacking below the play row')
+  assert.ok(Math.abs(dd.mid-dd.bandMid)<24,'landscape public discard sits on the table midline: '+JSON.stringify(dd))
+  console.log('PASS landscape public discard: '+JSON.stringify(dd))
+ }
  assert.deepEqual(b.errors,[])
 }finally{await b.close()}

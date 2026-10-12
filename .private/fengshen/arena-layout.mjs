@@ -46,9 +46,10 @@ export function layoutArena(root){
  root.style.setProperty('--center-card-height',centerCardHeight(g.center)+'px')
  const trail=root.querySelector('.fs-table-trail')
  if(trail){const cards=[...trail.querySelectorAll('.fs-card-play')],fit=tableCardLayout({width:g.center.right-g.center.left,height:g.center.bottom-g.center.top,count:cards.length}),focus=cards.filter(c=>c.classList.contains('is-current-effect')).slice(-fit.visible),rest=cards.filter(c=>!focus.includes(c)).slice(-Math.max(0,fit.visible-focus.length));trail.style.setProperty('--table-columns',fit.columns);trail.style.setProperty('--table-card-height',fit.cardHeight+'px');cards.forEach(c=>c.hidden=!focus.includes(c)&&!(fit.visible>focus.length&&rest.includes(c)))}
- // 公开弃置/阵亡亮牌一次可能摆出整副手牌：竖屏上下有空间就多行铺开，横屏按宽度压小牌面，绝不横向裁切。
+ // 公开弃置/阵亡亮牌一次可能摆出整副手牌：竖屏在出牌行下方多行铺开；横屏牌桌中央
+ // 会随结算清空，弃置牌改为压在中线上、占满中央高度，用宽度决定牌面大小，不再缩成一小条。
  const discard=root.querySelector('.fs-played.fs-public-discard')
- if(discard){const cards=[...discard.querySelectorAll('.fs-card-play')],avail=Math.max(24,(g.center.bottom-g.center.top)-(trail?.offsetHeight||0)-8),fit=publicDiscardLayout({width:g.center.right-g.center.left,height:avail,count:cards.length});discard.style.setProperty('--table-columns',fit.columns);discard.style.setProperty('--table-card-height',fit.cardHeight+'px');cards.forEach((c,i)=>c.hidden=i<cards.length-fit.visible)}
+ if(discard){const cards=[...discard.querySelectorAll('.fs-card-play')],centerHeight=g.center.bottom-g.center.top,stacked=Math.max(24,centerHeight-(trail?.offsetHeight||0)-8),avail=g.landscape?centerHeight:stacked,fit=publicDiscardLayout({width:g.center.right-g.center.left,height:avail,count:cards.length});discard.style.setProperty('--table-columns',fit.columns);discard.style.setProperty('--table-card-height',fit.cardHeight+'px');cards.forEach((c,i)=>c.hidden=i<cards.length-fit.visible)}
  root.style.setProperty('--pool-card-height',Math.max(32,Math.min(120,g.height-g.dockHeight-60))+'px')
  const pool=root.querySelector('.fs-pool-choice'),list=pool?.querySelector('.fs-center-card-list')
  if(list)pool.style.setProperty('--pool-card-height',poolCardHeight({width:list.clientWidth,height:Math.max(32,list.clientHeight-16),count:list.querySelectorAll('.fs-choice-card').length})+'px')

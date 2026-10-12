@@ -88,6 +88,8 @@
 /* 公开弃置/拆牌：丢掉的牌内联摆在牌桌中间一行（与出牌同款卡片），看清后自动收起；纯展示不挡操作。 */
 .fs-playing .fs-played.fs-public-discard{display:grid!important;grid-template-columns:repeat(var(--table-columns,1),calc(var(--table-card-height,90px)/1.44));gap:5px;justify-content:center;align-items:center;flex:none;width:fit-content;max-width:100%;margin-top:4px}
 .fs-playing .fs-compact-table .fs-discard-card{position:relative;padding:0;height:var(--table-card-height,90px);width:calc(var(--table-card-height,90px)/1.44);flex:none;animation:fs-reveal .5s ease-out both;filter:drop-shadow(0 0 8px #ffd76f88)}
+/* 横屏中央高度有限：弃置牌不再缩在出牌行下方，改为压在中线上，用横排宽度决定牌面大小。 */
+@media(orientation:landscape){.fs-playing .fs-played.fs-public-discard{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);margin-top:0;z-index:5}}
 /* 传道分牌：中央弹窗依次翻出新摸的牌（牌面仅本人可见）；等待方只看背面与张数。 */
 .fs-playing .fs-yiji-choice .fs-choice-card{animation:fs-reveal .5s ease-out both}
 /* 传道接收者：面板内直接选人，配合底部「确认赠牌」把多张牌一次交给同一人。 */
