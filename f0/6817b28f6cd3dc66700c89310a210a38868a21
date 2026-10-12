@@ -1,0 +1,63 @@
+.private/fengshen/arena-layout.mjs
+  5058ed3dc1a97a8c 49-50,52
+scripts/test-fengshen-table-settlement-browser.mjs
+  5058ed3dc1a97a8c 48-58
+.private/fengshen/arena-table.css
+  5058ed3dc1a97a8c 91-92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.8",
+  "base_commit_sha": "f06817b28f6cd3dc66700c89310a210a38868a21",
+  "prompts": {
+    "5058ed3dc1a97a8c": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6ac848ce090dc5dc9234c7bc",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 53,
+      "total_deletions": 9,
+      "accepted_lines": 51,
+      "overriden_lines": 0
+    }
+  },
+  "commit_stats": {
+    "git_diff_added_lines": 16,
+    "git_diff_deleted_lines": 2,
+    "ai_additions": 16,
+    "ai_accepted": 16,
+    "BYMC": 0,
+    "mixed_additions": 0,
+    "BYAC": 16,
+    "BYRC": 0,
+    "per_file": {
+      ".private/fengshen/arena-layout.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "49-50",
+          "52"
+        ],
+        "BYRC": []
+      },
+      ".private/fengshen/arena-table.css": {
+        "BYMC": [],
+        "BYAC": [
+          "91-92"
+        ],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-table-settlement-browser.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "48-58"
+        ],
+        "BYRC": []
+      }
+    }
+  },
+  "commit_timestamp": 1791800662,
+  "requirement_id": ""
+}
