@@ -50,9 +50,10 @@ export function layoutArena(root){
  // 会随结算清空，弃置牌改为压在中线上、占满中央高度，用宽度决定牌面大小，不再缩成一小条。
  const discard=root.querySelector('.fs-played.fs-public-discard')
  if(discard){const cards=[...discard.querySelectorAll('.fs-card-play')],centerHeight=g.center.bottom-g.center.top,stacked=Math.max(24,centerHeight-(trail?.offsetHeight||0)-8),avail=g.landscape?centerHeight:stacked,fit=publicDiscardLayout({width:g.center.right-g.center.left,height:avail,count:cards.length});discard.style.setProperty('--table-columns',fit.columns);discard.style.setProperty('--table-card-height',fit.cardHeight+'px');cards.forEach((c,i)=>c.hidden=i<cards.length-fit.visible)}
- root.style.setProperty('--pool-card-height',Math.max(32,Math.min(120,g.height-g.dockHeight-60))+'px')
+ // 横屏选牌弹窗贴在手牌上方：牌面按「手牌上方可用高度」收小，避免铺满整屏。
+ root.style.setProperty('--pool-card-height',Math.max(32,Math.min(g.landscape?Math.min(96,g.height-g.dockHeight-106):120,g.height-g.dockHeight-60))+'px')
  const pool=root.querySelector('.fs-pool-choice'),list=pool?.querySelector('.fs-center-card-list')
- if(list)pool.style.setProperty('--pool-card-height',poolCardHeight({width:list.clientWidth,height:Math.max(32,list.clientHeight-16),count:list.querySelectorAll('.fs-choice-card').length})+'px')
+ if(list)pool.style.setProperty('--pool-card-height',poolCardHeight({width:list.clientWidth,height:g.landscape?Math.max(32,Math.min(96,g.height-g.dockHeight-106)):Math.max(32,list.clientHeight-16),count:list.querySelectorAll('.fs-choice-card').length})+'px')
  const take=root.querySelector('.fs-take-choice'),takeRow=take?.querySelector('.fs-center-card-list')
  if(takeRow)take.style.setProperty('--take-card-height',takeCardHeight(takeRow.clientHeight)+'px')
  for(const name of root.querySelectorAll('.fs-player-info>strong,.fs-own-hero strong')){const own=name.closest('.fs-own-hero'),panel=own?.closest('.fs-own-panel'),equipped=own?!!panel.querySelector('.fs-equip'):Number(name.closest('.fs-player')?.dataset.equipCount)>0,three=panel?.dataset.skillCount==='3',reserved=own?(equipped?(three?73:57):(three?44:29)):(equipped?76:46);name.style.setProperty('--hero-name-size',heroNameSize({height:own?g.ownHeroHeight:g.heroHeight,count:[...name.textContent].length,reserved})+'px')}
