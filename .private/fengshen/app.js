@@ -480,6 +480,18 @@ export class FengshenUI {
   }[p.kind]||'等待响应'}
   renderActions(view){return renderControls(this,view)}
   won(){const s=this.state;if(s.teamMode)return s.winner===String(s.sides[0]);const role=s.players[0].role;return role===s.winner||role==='loyal'&&s.winner==='lord'}
+  settleTable(){
+    if(this.destroyed||!this.state||this.lobby||this.setup||this.online?.waiting)return
+    const v=playerView(this.state,0),busy=this.playMotions.busy||!!this.transfer||!!this.draws.length||!!this.moves.length||this.hits.some(h=>h.until>Date.now())||this.recoveries.some(h=>h.until>Date.now())
+    const f=this.tableSettlement.frame(v,{busy});this.tableSettleFrame=f;this.closedTableChain=f.closedChain
+    const row=this.root.querySelector('.fs-table-trail');row?.classList.toggle('is-settled',f.fading)
+    if(f.closedChain){this.tableTrail=updateTableTrail(this.tableTrail||[],v,{closedChain:f.closedChain});if(!this.tableTrail.length)row?.replaceChildren();if(this.discards?.chainKey===f.closedChain){this.discards=null;this.root.querySelector('.fs-public-discard')?.remove()}}
+    // Clear just the public table, not the entire app. Rebuilding the online
+    // social layer here would interrupt an unrelated drag/recording gesture.
+    clearTimeout(this.tableSettleTimer)
+    if(f.remaining)this.tableSettleTimer=setTimeout(()=>this.settleTable(),f.remaining+15)
+    else if(busy&&!v.pending&&!this.playMotions.busy)this.tableSettleTimer=setTimeout(()=>this.settleTable(),250)
+  }
   renderGame(){return renderBattle(this)}
   modalContent(){
     if(!this.modal)return ''
@@ -515,8 +527,8 @@ export class FengshenUI {
       this.tableSettleFrame=this.tableSettlement.frame(v,{busy});this.closedTableChain=this.tableSettleFrame.closedChain
       if(this.discards?.chainKey&&(this.discards.chainKey===this.closedTableChain||this.discards.chainKey!==tableChainKey(v)))this.discards=null
       this.tableTrail=updateTableTrail(this.tableTrail||[],v,{closedChain:this.closedTableChain})
-      if(this.tableSettleFrame.remaining)this.tableSettleTimer=setTimeout(()=>{if(!this.destroyed)this.render()},this.tableSettleFrame.remaining+15)
-      else if(busy&&!v.pending&&!this.playMotions.busy)this.tableSettleTimer=setTimeout(()=>{if(!this.destroyed)this.render()},250)
+      if(this.tableSettleFrame.remaining)this.tableSettleTimer=setTimeout(()=>this.settleTable(),this.tableSettleFrame.remaining+15)
+      else if(busy&&!v.pending&&!this.playMotions.busy)this.tableSettleTimer=setTimeout(()=>this.settleTable(),250)
     }
     if(this.modal&&!wasModal)this.returnFocus={action:prior?.dataset?.action,id:prior?.dataset?.id}
     this.viewport.setImmersive(!this.lobby&&!this.online?.waiting);this.syncClock()
