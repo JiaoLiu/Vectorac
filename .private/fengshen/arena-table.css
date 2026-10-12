@@ -228,24 +228,31 @@
 .fs-playing .fs-hand-card.counter-ready>.fs-clean-card{box-shadow:0 0 0 2px #ffd878,0 0 12px #ffce6955}
 .fs-playing .fs-counter-controls button{font-size:14px;min-height:38px}
 .fs-playing .fs-counter-note{font-size:11px;line-height:1.35;color:#f3e6c4;padding:0 8px;max-width:46%}
-.fs-playing .fs-judging{box-shadow:inset 0 0 0 3px #ffd76f;animation:fs-judging-glow 1.1s ease-in-out infinite}
-.fs-judging:after{content:'判';position:absolute;right:3px;top:25px;width:22px;height:22px;display:grid;place-items:center;border:1px solid #ffe69b;border-radius:50%;background:#655119ef;color:#fff5c6;font:bold 13px/1 sans-serif;pointer-events:none;z-index:10}
+/* 判定中的角色本身就是当前回合者，回合提示已经是蓝绿：判定这里也用蓝绿内发光，不再叠一圈黄。 */
+.fs-playing .fs-judging{box-shadow:inset 0 0 0 3px #77ffdc;animation:fs-judging-glow 1.1s ease-in-out infinite}
+.fs-judging:after{content:'判';position:absolute;right:3px;top:25px;width:22px;height:22px;display:grid;place-items:center;border:1px solid #86ffda;border-radius:50%;background:#104d43ef;color:#edfff7;font:bold 13px/1 sans-serif;pointer-events:none;z-index:10}
 .fs-player:has(.fs-judging) .fs-turn-badge,.fs-own-hero:has(.fs-judging) .fs-turn-badge{display:none}
 .fs-playing .fs-effect-source{box-shadow:inset 0 0 0 2px #ffe5a1}
 .fs-playing .fs-effect-target{box-shadow:inset 0 0 0 2px #f0c55a}
 .fs-playing .fs-effect-focus{box-shadow:inset 0 0 0 4px #ffe18b,inset 0 0 18px #ffdb7955}
-/* 被动抉择者（万妖/飞剑出杀闪、借刀、濒死求桃、五谷选牌等轮到谁做决定）：
-   与回合中的蓝绿边框同款、换成淡黄色边框高亮，一眼看出现在轮到谁响应。 */
+/* 被动抉择者（万妖/飞剑出杀闪、借刀与借刀杀人的持刀/被杀、五谷选牌等轮到谁做决定）：
+   与回合中的蓝绿边框同款、换成淡黄色边框高亮，一眼看出现在轮到谁响应。
+   注意：濒死求桃、无懈询问走的是逐个私下询问，绝不在此高亮（会暴露谁有桃/无懈）。 */
 .fs-playing :is(.fs-player,.fs-own-hero).fs-responding{border:3px solid #ffe08a;box-shadow:0 0 0 2px #4a3a12,0 0 16px #ffd76faa;animation:fs-respond-pulse 1.1s ease-in-out infinite}
 .fs-playing :is(.fs-player,.fs-own-hero).fs-responding:after{content:'';position:absolute;inset:0;box-shadow:inset 0 0 12px #ffe08a88;pointer-events:none;z-index:9}
 @keyframes fs-respond-pulse{50%{box-shadow:0 0 0 2px #6b5520,0 0 22px #ffe49dcc}}
+/* 濒死求药：谁濒死是全场公开信息，用红色提示；但绝不因此高亮"被询问的救援者"，
+   否则等于公开谁手里有桃/无懈，等于替全场记牌（见 table-visuals responderHighlight）。 */
+.fs-playing :is(.fs-player,.fs-own-hero).fs-dying{border:3px solid #ff7a6d;box-shadow:0 0 0 2px #4a1f1a,0 0 18px #ff6b5ba8;animation:fs-dying-pulse 1.2s ease-in-out infinite}
+.fs-playing .fs-dying:not(.turn-active):after{content:'濒死';position:absolute;left:2px;right:2px;top:40%;z-index:12;padding:3px 1px;background:#7a231bf2;color:#ffe4de;border-block:1px solid #ffb3a8;font:bold 11px/1.2 "PingFang SC",sans-serif;letter-spacing:1px;text-align:center;pointer-events:none}
+@keyframes fs-dying-pulse{50%{box-shadow:0 0 0 2px #6b2a23,0 0 26px #ff8978cc}}
 .fs-target-lines>.fs-beam-glow{stroke-width:7;opacity:.3}
 .fs-target-lines>.fs-beam-core{stroke-width:2.3}
 .fs-target-lines[data-beam-mode="effect"]{animation:fs-beam-fade 2.5s linear both}
 @keyframes fs-beam-fade{0%,76%{opacity:1}100%{opacity:0}}
 @media(prefers-reduced-motion:reduce){.fs-target-lines[data-beam-mode="effect"]{animation:none}}
-@keyframes fs-judging-glow{50%{box-shadow:inset 0 0 0 3px #ffe49d,inset 0 0 15px #ffd56c66}}
-@media(prefers-reduced-motion:reduce){.fs-playing .fs-judging,.fs-playing .fs-responding,.fs-playing .fs-responding:after,.fs-table-judgment.is-revealing{animation:none}}
+@keyframes fs-judging-glow{50%{box-shadow:inset 0 0 0 3px #a6ffe9,inset 0 0 15px #43ffd866}}
+@media(prefers-reduced-motion:reduce){.fs-playing .fs-judging,.fs-playing .fs-responding,.fs-playing .fs-responding:after,.fs-playing .fs-dying,.fs-table-judgment.is-revealing{animation:none}}
 /* Choice content scrolls; headers and touch-sized actions never scroll away.
    All interactive central panels share the same safe-area height budget. */
 .fs-playing .fs-center-choice:is(.fs-choice-dialog,.fs-star-choice){display:flex;flex-direction:column;position:absolute;left:8px;right:8px;top:var(--choice-top,28px);bottom:auto;width:auto;height:var(--choice-height,280px);max-height:none;transform:none;overflow:hidden;z-index:20;padding:8px;gap:6px;justify-content:flex-start}
@@ -263,10 +270,12 @@
 .fs-form-portrait>.fs-portrait{width:100%;height:100%;object-fit:cover}
 .fs-playing .fs-star-choice>.fs-star-rows{display:grid;align-content:start}
 .fs-star-choice>footer>.fs-star-actions{margin:0;flex:none}
-/* Violet is the current harvest recipient, distinct from cyan turn/gold target. */
-.fs-playing .fs-pick-focus,.fs-playing .fs-replace-focus{box-shadow:inset 0 0 0 4px #f0a3ff,inset 0 0 18px #be5ce888}
+/* Violet is the current harvest recipient, distinct from cyan turn/gold target.
+   变法改判的等待者改用更淡的黄色：比响应黄框柔和，一眼分清"该改判"与"该出杀闪"。 */
+.fs-playing .fs-pick-focus{box-shadow:inset 0 0 0 4px #f0a3ff,inset 0 0 18px #be5ce888}
+.fs-playing .fs-replace-focus{box-shadow:inset 0 0 0 4px #ffe9b0,inset 0 0 18px #ffdd8f66}
 .fs-pick-focus:after,.fs-replace-focus:after{content:'取宝';position:absolute;top:30%;right:3px;z-index:10;background:#6e267ef2;color:#ffe9ff;border:1px solid #f3bbff;padding:3px 5px;border-radius:3px;font:bold 12px/1.2 sans-serif;pointer-events:none}
-.fs-replace-focus:after{content:'改判'}
+.fs-replace-focus:after{content:'改判';background:#6b5320f2;color:#fff6da;border-color:#ffe9b0}
 .fs-playing .fs-role-marker{position:absolute;right:2px;top:2px;z-index:14;min-width:32px;min-height:32px;padding:2px 6px;font-size:14px;pointer-events:auto}
 .fs-role-marker>i{font:8px/1 sans-serif;position:absolute;bottom:1px;right:1px;font-style:normal;opacity:.8}
 .fs-player:has(.fs-role-marker) .fs-player-main>.fs-identity{visibility:hidden}

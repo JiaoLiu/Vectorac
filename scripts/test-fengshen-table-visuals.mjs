@@ -174,16 +174,29 @@ test('a fallen player lays their whole hand on the table so everyone can see it'
 })
 test('passive responder highlight targets real choices only, never pure public reveals',()=>{
  const base={seat:0,current:2,players:[],extension:null}
- // 真抉择：出杀闪、五谷选牌、濒死求桃、借刀响应、拼点——高亮该玩家
- for(const pending of [{kind:'response',actor:3},{kind:'pick',actor:3},{kind:'rescue',actor:3},{kind:'ext',actor:3}])
+ // 真抉择：出杀闪、五谷选牌、借刀响应等——高亮该玩家
+ for(const pending of [{kind:'response',actor:3},{kind:'pick',actor:3},{kind:'ext',actor:3}])
   assert.equal(responderHighlight({...base,pending}),3,`${pending.kind} 应高亮`)
  // 破法（无懈）询问是私密信息：绝不公开高亮持无懈者，否则全场据此推断身份；本人屏幕仍可提示。
  assert.equal(responderHighlight({...base,pending:{kind:'counter',actor:3}}),null)
  assert.equal(responderHighlight({...base,pending:{kind:'counter',actor:0}}),0)
+ // 濒死求桃逐个私下询问：公开高亮等于告诉全场谁手里有桃，涉及记牌与后续计算，一律不亮。
+ assert.equal(responderHighlight({...base,pending:{kind:'rescue',actor:3}}),null)
+ // 变法改判的等待者走 fs-replace-focus 淡黄标记，不再叠响应黄框。
+ assert.equal(responderHighlight({...base,pending:{kind:'judge-replace',actor:3}}),null)
  // 纯公开展示：判定翻开、ext 展示阶段——不高亮（否则两人轮流闪黄框）
  assert.equal(responderHighlight({...base,pending:{kind:'reveal',actor:3}}),null)
  assert.equal(responderHighlight({...base,pending:{kind:'ext',actor:3},extension:{stage:'reveal'}}),null)
  // 当前回合玩家保持蓝绿 turn-active，不被泛黄覆盖
  assert.equal(responderHighlight({...base,pending:{kind:'response',actor:2}}),null)
  assert.equal(responderHighlight({...base,pending:null}),null)
+})
+test('turn, judgment, judge-replace and dying keep distinct cues without an extra yellow ring',async()=>{
+ const css=await readFile(new URL('../.private/fengshen/arena-table.css',import.meta.url),'utf8')
+ // 判定中的角色同时就是当前回合者：判定内发光改用蓝绿，不再在蓝绿边框外再叠一圈黄。
+ assert.match(css,/\.fs-playing \.fs-judging\{box-shadow:inset 0 0 0 3px #77ffdc/)
+ // 变法改判的等待者用更淡的黄色内发光，与"该出杀闪"的响应黄框区分开。
+ assert.match(css,/\.fs-playing \.fs-replace-focus\{box-shadow:inset 0 0 0 4px #ffe9b0/)
+ // 濒死角色用红色状态框公开提示；被询问的救援者不在此高亮（见 responderHighlight）。
+ assert.match(css,/\.fs-dying\{border:3px solid #ff7a6d/)
 })

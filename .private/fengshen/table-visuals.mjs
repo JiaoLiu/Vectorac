@@ -35,6 +35,11 @@ export function responderHighlight(view){
  // 破法（无懈）询问是私密信息，只有持无懈者本人屏幕可以提示，绝不公开高亮：
  // 否则全场都能看出谁攥着无懈，进而推断他是不是忠臣，等于把身份牌亮了。三国杀/英雄杀均如此。
  if(p.kind==='counter'&&p.actor!==view.seat)return null
+ // 濒死求桃同样按座次逐个私下询问：一圈问下来，谁被问到就说明谁手里有桃，
+ // 公开亮黄框等于替全场记牌（桃还剩几张、谁可能能救），直接影响后续打法，所以绝不公开高亮。
+ if(p.kind==='rescue')return null
+ // 变法改判的等待者用更淡的黄色单独标注（见 fs-replace-focus），不走响应黄框，避免身上叠两圈黄。
+ if(p.kind==='judge-replace')return null
  return p.actor
 }
 export function counterSelection(view,previousKey,selected=[]){

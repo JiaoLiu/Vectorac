@@ -200,12 +200,15 @@ export class FengshenUI {
     const beam=this.beams.frame(v,{targets:this.targets,as:this.currentAs(v)}),links=beam.links
     clearTimeout(this.beamTimer)
     if(links.length&&!beam.preview)this.beamTimer=setTimeout(()=>{if(!this.destroyed)this.decorateBattle()},beam.remaining+20)
-    this.root.querySelectorAll('.fs-judging,.fs-effect-source,.fs-effect-target,.fs-effect-focus,.fs-pick-focus,.fs-replace-focus,.fs-responding').forEach(e=>e.classList.remove('fs-judging','fs-effect-source','fs-effect-target','fs-effect-focus','fs-pick-focus','fs-replace-focus','fs-responding'))
+    this.root.querySelectorAll('.fs-judging,.fs-effect-source,.fs-effect-target,.fs-effect-focus,.fs-pick-focus,.fs-replace-focus,.fs-responding,.fs-dying').forEach(e=>e.classList.remove('fs-judging','fs-effect-source','fs-effect-target','fs-effect-focus','fs-pick-focus','fs-replace-focus','fs-responding','fs-dying'))
     const judge=judgingSeat(v);if(judge!=null)anchor(judge)?.classList.add('fs-judging')
-    // 被动抉择者淡黄色边框：轮到某人做响应/选牌等被动决定时提示（万妖/飞剑出杀闪、借刀、濒死求桃、五谷选牌…）。
-    // 排除纯公开展示（判定翻开、ext 展示阶段）——那些只需自动 ack，不是抉择，否则会两人轮流闪黄框。
+    // 被动抉择者淡黄色边框：轮到某人做响应/选牌等被动决定时提示（万妖/飞剑出杀闪、借刀、五谷选牌…）。
+    // 排除纯公开展示（判定翻开、ext 展示阶段）——那些只需自动 ack，不是抉择，否则会两人轮流闪黄框；
+    // 濒死求桃、无懈询问也排除（逐个私下询问，高亮会暴露谁有桃/无懈）。
     // 与回合提示一样挂在人物外框；内层头像的光晕会被 overflow:hidden 裁掉，自己的按钮还会被 border:0 覆盖。
     const responder=responderHighlight(v);if(responder!=null)this.root.querySelector(responder===0?'.fs-own-hero':`[data-player="${responder}"]`)?.classList.add('fs-responding')
+    // 濒死角色：谁濒死是全场公开信息，给本人一个"濒死"红框状态；被询问的救援者一律不给高亮。
+    const dying=v.pending?.kind==='rescue'?v.pending.target:null;if(dying!=null)this.root.querySelector(dying===0?'.fs-own-hero':`[data-player="${dying}"]`)?.classList.add('fs-dying')
     for(const link of links){anchor(link.source)?.classList.add('fs-effect-source');anchor(link.target)?.classList.add('fs-effect-target')}
     // 五谷选牌轮到的用泛黄边框提示（与被动抉择统一，见下方 fs-responding）；
     // 紫色"取宝"只保留取牌飞行动画，避免选牌时整张人物卡被紫色内发光覆盖。
@@ -269,7 +272,9 @@ export class FengshenUI {
     if(!frame&&focus){const inner=anchor(focus.target),node=inner?.closest('.fs-player,.fs-own-hero')||inner;if(node){node.classList.add('fs-impact-target');node.dataset.impactKind=focus.kind;node.dataset.impactNegated=String(!!focus.negated);node.dataset.impactTarget=focus.target}}
     if(!frame)return
     const caster=anchor(event.source)
-    if(caster){const node=caster.closest('.fs-player,.fs-own-hero')||caster;node.classList.add('fs-public-caster');node.dataset.casterSeat=event.source}
+    // 当前回合者已经有蓝绿边框：出牌/响应时不再叠一圈金色外框。否则金色会盖住蓝绿，
+    // 自己出杀、出闪时明明轮到自己却看不出蓝绿，等于把回合提示作废。
+    if(caster){const node=caster.closest('.fs-player,.fs-own-hero')||caster;if(!node.classList.contains('turn-active')){node.classList.add('fs-public-caster');node.dataset.casterSeat=event.source}}
     // Upcoming cards stay hidden in their final table slots until their flight
     // lands. IDs, not artwork/type, keep equal-looking physical cards distinct.
     for(const [q,item]of this.playMotions.items.entries())for(const [i,c]of item.cards.entries()){

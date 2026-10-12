@@ -14,6 +14,8 @@ try{
   await b.viewport(w,h)
   await b.evaluate(`(()=>{const u=window.__fengshenUI;u.schedule=()=>{};u.voice.setEnabled(false);u.music.setEnabled(false);u.clearEffects();u.state=${JSON.stringify(s)};u.lobby=false;u.setup=null;u.modal=null;u.paused=false;u.auto=false;u.reset();u.render();return u.act({seat:4,type:'play',as:'arrows',ids:[${JSON.stringify(attack.id)}],targets:[]})})()`)
   assert.equal(await b.evaluate('document.querySelector(".fs-play-flight").dataset.playSource'),'4')
+  // 4 号席是当前回合者（蓝绿）：出牌时不再叠一圈金色外框，否则蓝绿被盖住看不出轮到谁。
+  assert.equal(await b.evaluate('document.querySelector(\'[data-player="4"]\').classList.contains("fs-public-caster")'),false,'current turn player keeps blue-green instead of an extra gold caster frame')
   assert.equal(await b.evaluate(`getComputedStyle(document.querySelector('[data-table-card="${attack.id}"]')).visibility`),'hidden')
   await b.waitFor('!window.__fengshenUI.playMotions.busy')
   await b.waitFor('!document.querySelector(".fs-dock").inert')
@@ -31,6 +33,8 @@ try{
   await b.evaluate(`window.__fengshenUI.act({seat:3,type:'respond',ids:[${JSON.stringify(helperCounter.id)}],as:'nullify'});true`)
   const shown=await b.evaluate(`(()=>{const u=window.__fengshenUI,f=document.querySelector('.fs-play-flight'),q=u.playMotions.frame();return {source:f?.dataset.playSource,target:q?.event.focus.target,blocked:q?.event.focus.negated,kind:q?.event.focus.kind,privateRole:document.querySelector('[data-player="3"] .fs-player-role')?.textContent}})()`)
   assert.equal(shown.source,'3');assert.equal(shown.target,0);assert.equal(shown.blocked,true);assert.equal(shown.kind,'damage')
+  // 3 号席不是当前回合者：响应出牌仍保留"刚才是谁出的"金色外框。
+  assert.ok(await b.evaluate('document.querySelector(\'[data-player="3"]\').classList.contains("fs-public-caster")'),'a non-turn responder still gets the gold caster frame')
   const started=await b.evaluate('window.__fengshenUI.playMotions.frame().event.started')
   await b.evaluate('window.__fengshenUI.render();window.__fengshenUI.decorateBattle();true')
   assert.equal(await b.evaluate('window.__fengshenUI.playMotions.frame().event.started'),started,'render cannot restart flying card')
