@@ -30,7 +30,7 @@ export function renderHome(ui){
           ${ui.networkCredential?`<a class="fs-secondary fs-online-entry" href="/games/fengshen/?room=${encodeURIComponent(ui.networkCredential.roomCode)}">继续联机房 ${esc(ui.networkCredential.roomCode)}</a>`:''}
         </div>
         ${legacy}
-        <div class="fs-entry-links"><a class="fs-entry-catalog fs-entry-back" href="/blogs/other/games.html">游戏列表</a><button class="fs-entry-catalog" data-action="heroes">人物图鉴</button><button class="fs-entry-catalog fs-entry-feedback" data-action="feedback">意见反馈</button></div>
+        <div class="fs-entry-links"><a class="fs-entry-catalog fs-entry-back" href="/blogs/other/games.html"><span class="fs-entry-glyph" aria-hidden="true">←</span>游戏列表</a><button class="fs-entry-catalog" data-action="heroes">人物图鉴<span class="fs-entry-glyph" aria-hidden="true">↗</span></button><button class="fs-entry-catalog fs-entry-feedback" data-action="feedback">意见反馈<span class="fs-entry-glyph" aria-hidden="true">↗</span></button></div>
         <small class="fs-entry-note">${mode.name} · ${PLAYABLE_HEROES.length} 名可用武将 · ${team?'敌友公开，掷骰定先手':'身份不可自选'}</small>
       </div>
     </section>

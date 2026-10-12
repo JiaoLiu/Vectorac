@@ -21,7 +21,9 @@
 .fs-entry-arrow{flex:none;font-size:16px;line-height:1}
 .fs-app .fs-entry .fs-legacy-notice{margin:0;padding:8px 10px;border-left:2px solid #c7ae73;background:#c9ab7010;border-radius:4px;font:12px/1.55 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;letter-spacing:0;color:#c6d0c5;overflow-wrap:anywhere}
 .fs-app .fs-entry .fs-entry-links{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;width:100%;margin:0}
-.fs-app .fs-entry .fs-entry-catalog{display:flex;align-items:center;justify-content:center;min-width:0;min-height:36px;margin:0;padding:6px 4px;font-size:12px;line-height:1.4;letter-spacing:0;white-space:nowrap}
+.fs-app .fs-entry .fs-entry-catalog{display:flex;align-items:center;justify-content:center;gap:6px;min-width:0;min-height:36px;margin:0;padding:6px 4px;font-size:12px;line-height:1.4;letter-spacing:0;white-space:nowrap}
+/* 入口链接的箭头图标：文字前/后的小金标，作为可点的视觉提示（此前被去掉后三个入口看起来像纯文本）。 */
+.fs-entry-glyph{flex:none;font-style:normal;font-size:13px;line-height:1;color:#e6cd8f}
 .fs-app .fs-entry .fs-entry-note{font-size:10px;line-height:1.5;letter-spacing:0;color:#aebfb6}
 @media(orientation:portrait) and (max-width:699px){
  .fs-app .fs-entry{padding:20px 16px;align-items:flex-start}
