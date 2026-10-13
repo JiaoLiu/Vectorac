@@ -1,0 +1,1795 @@
+site/.vuepress/components/fengshen/arena-table.css
+  5058ed3dc1a97a8c 91-95,238-241,311-314
+scripts/test-fengshen-mobile-layout.mjs
+  875a8aa1955ae81b 3-6,8-9,51
+scripts/test-fengshen-interaction.mjs
+  875a8aa1955ae81b 6-8,10-15,251,253
+site/.vuepress/components/fengshen/core/foundation-skills.mjs
+  5058ed3dc1a97a8c 17-18
+scripts/test-fengshen-table-visuals.mjs
+  875a8aa1955ae81b 4-10,204,300
+scripts/test-fengshen-field-use-browser.mjs
+  875a8aa1955ae81b 3
+scripts/test-fengshen-dismantle-cue-browser.mjs
+  875a8aa1955ae81b 3
+site/.vuepress/components/fengshen/arena-layout.mjs
+  5058ed3dc1a97a8c 23-25,28-30
+scripts/test-fengshen-chain-mode-browser.mjs
+  875a8aa1955ae81b 3
+scripts/test-fengshen-auto-end-safety.mjs
+  875a8aa1955ae81b 3-4
+site/.vuepress/components/fengshen/table-visuals.mjs
+  5058ed3dc1a97a8c 2,51-62
+site/.vuepress/components/fengshen/voice.mjs
+  5058ed3dc1a97a8c 15-17,33-38,69-74,79,83-84,87-96,101-103,108-110
+scripts/test-fengshen-foundation-browser.mjs
+  875a8aa1955ae81b 3-4
+site/.vuepress/components/fengshen/engine.mjs
+  5058ed3dc1a97a8c 11-13
+scripts/test-fengshen-sunwukong.mjs
+  875a8aa1955ae81b 3-7
+site/.vuepress/components/fengshen/table.mjs
+  5058ed3dc1a97a8c 20-22,121-123,137,170,172-175,196-197,210
+scripts/test-fengshen-clean-table.mjs
+  875a8aa1955ae81b 5-11,114
+scripts/test-fengshen-rescue-browser.mjs
+  875a8aa1955ae81b 3
+site/.vuepress/components/fengshen/complete-roster.mjs
+  5058ed3dc1a97a8c 66
+site/.vuepress/components/fengshen/extension-table.mjs
+  5058ed3dc1a97a8c 6
+scripts/test-fengshen-judgment-cinematics.mjs
+  875a8aa1955ae81b 3-5
+scripts/test-fengshen-complete.mjs
+  875a8aa1955ae81b 4-11,29-30
+site/.vuepress/components/fengshen/app.js
+  27f41da6c57a495d 1-614
+site/.vuepress/components/fengshen/theme.mjs
+  5058ed3dc1a97a8c 88
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.8",
+  "base_commit_sha": "b7a55e87f15bb4aa60326e3cb12f932f851ca98e",
+  "prompts": {
+    "27f41da6c57a495d": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6acdda8ef9e87c4613dc6b4e",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 810,
+      "total_deletions": 28,
+      "accepted_lines": 782,
+      "overriden_lines": 0
+    },
+    "5058ed3dc1a97a8c": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6ac848ce090dc5dc9234c7bc",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 746,
+      "overriden_lines": 0
+    },
+    "875a8aa1955ae81b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1340c-f451-7db3-8b46-8547d69e496a",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 104,
+      "total_deletions": 63,
+      "accepted_lines": 103,
+      "overriden_lines": 0
+    },
+    "bfcf2812a5394d1a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ffe24-0691-79c0-9329-ff854e9d5202",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 9,
+      "overriden_lines": 0
+    }
+  },
+  "commit_stats": {
+    "git_diff_added_lines": 1211,
+    "git_diff_deleted_lines": 712,
+    "ai_additions": 63,
+    "ai_accepted": 63,
+    "BYMC": 1148,
+    "mixed_additions": 0,
+    "BYAC": 63,
+    "BYRC": 0,
+    "per_file": {
+      ".github/workflows/build-usermgr-linux.yml": {
+        "BYMC": [
+          "29",
+          "40",
+          "51",
+          "58-61"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      ".gitignore": {
+        "BYMC": [
+          "4",
+          "16-19"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      ".gitlab-ci.yml": {
+        "BYMC": [
+          "1",
+          "9",
+          "13"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "AGENTS.md": {
+        "BYMC": [
+          "3"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "README.md": {
+        "BYMC": [
+          "1-14"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "dev/DEVELOPMENT.md": {
+        "BYMC": [
+          "1-76"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "dev/DIRECTORY_LAYOUT.md": {
+        "BYMC": [
+          "1-74"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "dev/MIGRATION_ACCEPTANCE.md": {
+        "BYMC": [
+          "1-24"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "dev/SEARCH_ACCEPTANCE.md": {
+        "BYMC": [
+          "1-12"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "dev/deploy.md": {
+        "BYMC": [
+          "1-2",
+          "30",
+          "40",
+          "42-43",
+          "101",
+          "152",
+          "195",
+          "200",
+          "202",
+          "206",
+          "234",
+          "341",
+          "412-414",
+          "424",
+          "427",
+          "432-433",
+          "435",
+          "442",
+          "445-446",
+          "460",
+          "469",
+          "507",
+          "511",
+          "513",
+          "804-805"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "dev/flasher.md": {
+        "BYMC": [
+          "9",
+          "14",
+          "52-54",
+          "56",
+          "76"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "dev/games/SANGUO.md": {
+        "BYMC": [
+          "53"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "dev/games/fengshen/DEVELOPMENT.md": {
+        "BYMC": [
+          "5"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "dev/games/fengshen/README.md": {
+        "BYMC": [
+          "19",
+          "121-122"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "dev/games/通用游戏服务升级.md": {
+        "BYMC": [
+          "1-92"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "package.json": {
+        "BYMC": [
+          "11",
+          "26",
+          "28-32"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/balatro-cover-prompt.txt": {
+        "BYMC": [
+          "1"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/browser-cdp.mjs": {
+        "BYMC": [
+          "5",
+          "9-14",
+          "16-18",
+          "25-29",
+          "31",
+          "34-65"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/build-slime-worker.js": {
+        "BYMC": [
+          "7-8",
+          "11"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/build-wardrobe-v17-catalog.mjs": {
+        "BYMC": [
+          "7-8",
+          "10",
+          "15"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/build-wardrobe-v20-catalog.mjs": {
+        "BYMC": [
+          "6-7",
+          "9",
+          "13"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/character-effect-fixtures.mjs": {
+        "BYMC": [
+          "2"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/check-fengshen-card-font.mjs": {
+        "BYMC": [
+          "4",
+          "20"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/check-slime-worker.js": {
+        "BYMC": [
+          "6",
+          "12",
+          "16"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/clean-build-cache.mjs": {
+        "BYMC": [
+          "1-5"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/compose-fengshen-cover.mjs": {
+        "BYMC": [
+          "2",
+          "6",
+          "14",
+          "17"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/compose-xiangqi-cover.mjs": {
+        "BYMC": [
+          "5-6"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/dressup-art-prompts.txt": {
+        "BYMC": [
+          "3"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/dressup-expansion-prompts.txt": {
+        "BYMC": [
+          "1"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/fengshen-judgment-fixtures.mjs": {
+        "BYMC": [
+          "2"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/fengshen-preview.mjs": {
+        "BYMC": [
+          "1",
+          "8",
+          "11-12"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/fixtures/gods-stable.mjs": {
+        "BYMC": [
+          "3"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/fixtures/sanguo.mjs": {
+        "BYMC": [
+          "1-2"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/gen-doudizhu-edge-tts.py": {
+        "BYMC": [
+          "10",
+          "22",
+          "100"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/gen-doudizhu-tts.mjs": {
+        "BYMC": [
+          "26"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/gen-mahjong-tts.mjs": {
+        "BYMC": [
+          "29"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/gen-slime-sounds.mjs": {
+        "BYMC": [
+          "1",
+          "11"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/gomoku-smoke.js": {
+        "BYMC": [
+          "2-3"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/junqi-cover-prompt.txt": {
+        "BYMC": [
+          "1"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/prepare-dressup-assets.mjs": {
+        "BYMC": [
+          "9"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/prepare-slime-recordings.mjs": {
+        "BYMC": [
+          "11",
+          "72"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/prepare-wardrobe-brows.mjs": {
+        "BYMC": [
+          "7"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/prepare-wardrobe-v10.mjs": {
+        "BYMC": [
+          "7"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/prepare-wardrobe-v11.mjs": {
+        "BYMC": [
+          "7",
+          "11",
+          "18",
+          "32",
+          "82"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/prepare-wardrobe-v12.mjs": {
+        "BYMC": [
+          "7",
+          "11"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/prepare-wardrobe-v13.mjs": {
+        "BYMC": [
+          "6",
+          "17",
+          "46"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/prepare-wardrobe-v14.mjs": {
+        "BYMC": [
+          "6"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/prepare-wardrobe-v15.mjs": {
+        "BYMC": [
+          "6",
+          "19"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/prepare-wardrobe-v16-reference.mjs": {
+        "BYMC": [
+          "6-7"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/prepare-wardrobe-v16.mjs": {
+        "BYMC": [
+          "7",
+          "11",
+          "17",
+          "48",
+          "53"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/prepare-wardrobe-v17-reference.mjs": {
+        "BYMC": [
+          "6-7",
+          "12"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/prepare-wardrobe-v17.mjs": {
+        "BYMC": [
+          "8"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/prepare-wardrobe-v18-reference.mjs": {
+        "BYMC": [
+          "3",
+          "6-7",
+          "9"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/prepare-wardrobe-v18.mjs": {
+        "BYMC": [
+          "9"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/prepare-wardrobe-v19-reference.mjs": {
+        "BYMC": [
+          "6"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/prepare-wardrobe-v19.mjs": {
+        "BYMC": [
+          "5",
+          "7"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/prepare-wardrobe-v20-reference.mjs": {
+        "BYMC": [
+          "6"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/prepare-wardrobe-v20.mjs": {
+        "BYMC": [
+          "6-7"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/prepare-wardrobe-v3.mjs": {
+        "BYMC": [
+          "6",
+          "14"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/prepare-wardrobe-v4.mjs": {
+        "BYMC": [
+          "6",
+          "14"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/prepare-wardrobe-v5.mjs": {
+        "BYMC": [
+          "8",
+          "84"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/prepare-wardrobe-v6.mjs": {
+        "BYMC": [
+          "6",
+          "113"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/prepare-wardrobe-v7.mjs": {
+        "BYMC": [
+          "5",
+          "7",
+          "9"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/prune-release-packages.mjs": {
+        "BYMC": [
+          "1-24"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/sanguo-cover-prompt.txt": {
+        "BYMC": [
+          "5"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-balatro-browser.mjs": {
+        "BYMC": [
+          "7"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-balatro-cover-browser.mjs": {
+        "BYMC": [
+          "8-10"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-balatro-cues-browser.mjs": {
+        "BYMC": [
+          "6"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-balatro-selection-browser.mjs": {
+        "BYMC": [
+          "8",
+          "14",
+          "19"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-balatro.mjs": {
+        "BYMC": [
+          "4-9",
+          "58-60",
+          "64-65"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-doudizhu.mjs": {
+        "BYMC": [
+          "7-8"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-dressup-accessories.mjs": {
+        "BYMC": [
+          "7-12",
+          "19",
+          "26",
+          "32",
+          "43",
+          "45",
+          "74-75"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-dressup-audio.mjs": {
+        "BYMC": [
+          "3"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-dressup-beauty-browser.mjs": {
+        "BYMC": [
+          "6-7"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-dressup-beauty.mjs": {
+        "BYMC": [
+          "7-8",
+          "12",
+          "16",
+          "68"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-dressup-beret-seam.mjs": {
+        "BYMC": [
+          "6",
+          "10"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-dressup-cap-decoration.mjs": {
+        "BYMC": [
+          "11"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-dressup-details.mjs": {
+        "BYMC": [
+          "3-16"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-dressup-editions.mjs": {
+        "BYMC": [
+          "6",
+          "15"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-dressup-hair-back.mjs": {
+        "BYMC": [
+          "6",
+          "9-11",
+          "14",
+          "18"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-dressup-hair-browser.mjs": {
+        "BYMC": [
+          "6"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-dressup-hair-registration.mjs": {
+        "BYMC": [
+          "7",
+          "12",
+          "17",
+          "23",
+          "26"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-dressup-head-art.mjs": {
+        "BYMC": [
+          "8-9",
+          "12",
+          "15-16",
+          "46",
+          "56"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-dressup-jewellery.mjs": {
+        "BYMC": [
+          "7-9",
+          "14-15",
+          "20",
+          "24",
+          "28",
+          "49"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-dressup-layering-browser.mjs": {
+        "BYMC": [
+          "6"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-dressup-registered-art.mjs": {
+        "BYMC": [
+          "6-7",
+          "16",
+          "29",
+          "33",
+          "48"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-dressup-renderer.mjs": {
+        "BYMC": [
+          "3-5"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-dressup-wear-depth.mjs": {
+        "BYMC": [
+          "6-8",
+          "10",
+          "63"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-dressup.mjs": {
+        "BYMC": [
+          "3"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-auto-end-safety.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "3-4"
+        ],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-beams-browser.mjs": {
+        "BYMC": [
+          "4-5"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-browser.mjs": {
+        "BYMC": [
+          "3-5"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-canonical-roster.mjs": {
+        "BYMC": [
+          "3-4"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-card-face-browser.mjs": {
+        "BYMC": [
+          "4"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-chain-mode-browser.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "3"
+        ],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-character-effects.mjs": {
+        "BYMC": [
+          "3-6"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-choice-panel-browser.mjs": {
+        "BYMC": [
+          "3"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-choice-panels.mjs": {
+        "BYMC": [
+          "5-9",
+          "62",
+          "75-76"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-classic-skills.mjs": {
+        "BYMC": [
+          "3-5"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-clean-table.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "5-11",
+          "114"
+        ],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-combat.mjs": {
+        "BYMC": [
+          "5-6",
+          "8-17",
+          "219"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-complete-dom.mjs": {
+        "BYMC": [
+          "6-7",
+          "9"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-complete.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "4-11",
+          "29-30"
+        ],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-dismantle-cue-browser.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "3"
+        ],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-expansion.mjs": {
+        "BYMC": [
+          "3-8",
+          "14"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-field-use-browser.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "3"
+        ],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-foundation-browser.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "3-4"
+        ],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-foundation.mjs": {
+        "BYMC": [
+          "3-7"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-health-browser.mjs": {
+        "BYMC": [
+          "4"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-hero-state-browser.mjs": {
+        "BYMC": [
+          "3"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-hero-state.mjs": {
+        "BYMC": [
+          "3-5"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-interaction.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "6-8",
+          "10-15",
+          "251",
+          "253"
+        ],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-judgment-audio.mjs": {
+        "BYMC": [
+          "3-4"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-judgment-browser.mjs": {
+        "BYMC": [
+          "3"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-judgment-cinematics-browser.mjs": {
+        "BYMC": [
+          "4",
+          "63"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-judgment-cinematics.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "3-5"
+        ],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-military-browser.mjs": {
+        "BYMC": [
+          "3-4"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-military.mjs": {
+        "BYMC": [
+          "3-7"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-mobile-layout.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "3-6",
+          "8-9",
+          "51"
+        ],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-modal-play-browser.mjs": {
+        "BYMC": [
+          "3-4"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-modes.mjs": {
+        "BYMC": [
+          "3-7"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-online-browser.mjs": {
+        "BYMC": [
+          "5-6",
+          "8"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-play-motion-browser.mjs": {
+        "BYMC": [
+          "3"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-play-motion.mjs": {
+        "BYMC": [
+          "3-4"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-rescue-browser.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "3"
+        ],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-resources-browser.mjs": {
+        "BYMC": [
+          "4-5"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-response-ring-browser.mjs": {
+        "BYMC": [
+          "4"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-room-teams-browser.mjs": {
+        "BYMC": [
+          "5"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-round-break-browser.mjs": {
+        "BYMC": [
+          "5-6"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-screen-mode.mjs": {
+        "BYMC": [
+          "4-5",
+          "37",
+          "40"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-setup.mjs": {
+        "BYMC": [
+          "3-6",
+          "8"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-sunwukong.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "3-7"
+        ],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-table-settlement-browser.mjs": {
+        "BYMC": [
+          "3"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-table-settlement.mjs": {
+        "BYMC": [
+          "3-5"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-table-visuals.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "4-10",
+          "204",
+          "300"
+        ],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-target-layout.mjs": {
+        "BYMC": [
+          "4-6",
+          "22"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-toolbar.mjs": {
+        "BYMC": [
+          "3"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-typography-browser.mjs": {
+        "BYMC": [
+          "3-5"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-wind-fire.mjs": {
+        "BYMC": [
+          "3-7"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-fengshen.mjs": {
+        "BYMC": [
+          "4-9",
+          "71-72",
+          "75"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-game-cover-cache.mjs": {
+        "BYMC": [
+          "5-6",
+          "8-9",
+          "12"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-gods.mjs": {
+        "BYMC": [
+          "3-6"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-junqi-audio.mjs": {
+        "BYMC": [
+          "4"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-junqi-perspective-browser.mjs": {
+        "BYMC": [
+          "9",
+          "14"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-junqi-presentation.mjs": {
+        "BYMC": [
+          "3-4"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-junqi.mjs": {
+        "BYMC": [
+          "3"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-mahjong-adapter.mjs": {
+        "BYMC": [
+          "1-2"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-mahjong-ai.mjs": {
+        "BYMC": [
+          "33-34"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-mahjong-layout-browser.mjs": {
+        "BYMC": [
+          "14",
+          "21-22"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-mahjong-layout.mjs": {
+        "BYMC": [
+          "3"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-mahjong-voice-browser.mjs": {
+        "BYMC": [
+          "15",
+          "20"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-mahjong-voice.mjs": {
+        "BYMC": [
+          "4"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-mahjong.mjs": {
+        "BYMC": [
+          "34",
+          "45",
+          "53-56"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-public-blog-search-browser.mjs": {
+        "BYMC": [
+          "1-62"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-public-blog-search.mjs": {
+        "BYMC": [
+          "1-45"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-release-package-cleanup.mjs": {
+        "BYMC": [
+          "1-25"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-slime-audio.mjs": {
+        "BYMC": [
+          "4",
+          "25",
+          "27",
+          "35",
+          "47",
+          "51",
+          "69"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-slime-browser.mjs": {
+        "BYMC": [
+          "11",
+          "16",
+          "20-21"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-slime-model.mjs": {
+        "BYMC": [
+          "5",
+          "9",
+          "21",
+          "252",
+          "305",
+          "309",
+          "313-314",
+          "317"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-sunshangxiang-classic.mjs": {
+        "BYMC": [
+          "3-5"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/test-xiangqi.mjs": {
+        "BYMC": [
+          "6-7"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/update-fengshen-font.py": {
+        "BYMC": [
+          "16",
+          "19"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/validate-fengshen-roster.mjs": {
+        "BYMC": [
+          "1-2"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/verify-dressup-v12-live.mjs": {
+        "BYMC": [
+          "6",
+          "8"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/verify-dressup-v13-live.mjs": {
+        "BYMC": [
+          "7-8"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/verify-dressup-v14-live.mjs": {
+        "BYMC": [
+          "7-8"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/verify-fengshen-release.mjs": {
+        "BYMC": [
+          "3-5",
+          "8"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/wardrobe-category-browser.mjs": {
+        "BYMC": [
+          "1"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/wardrobe-v15-art.json": {
+        "BYMC": [
+          "4",
+          "18-19"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/wardrobe-v16-art.json": {
+        "BYMC": [
+          "5"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/wardrobe-v17-art.json": {
+        "BYMC": [
+          "81"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/wardrobe-v4-art.json": {
+        "BYMC": [
+          "33"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "scripts/xiangqi-cover-prompt.txt": {
+        "BYMC": [
+          "4-5"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "services/mahjong/README.md": {
+        "BYMC": [
+          "1-2",
+          "31",
+          "59",
+          "65-66",
+          "110",
+          "112",
+          "119",
+          "287",
+          "316",
+          "339",
+          "341"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "services/mahjong/engine/ai.js": {
+        "BYMC": [
+          "2"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "services/mahjong/engine/contract.js": {
+        "BYMC": [
+          "4",
+          "9"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "services/mahjong/engine/doudizhu/ai.js": {
+        "BYMC": [
+          "1-2"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "services/mahjong/engine/doudizhu/engine.js": {
+        "BYMC": [
+          "1-2"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "services/mahjong/engine/engine.js": {
+        "BYMC": [
+          "2"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "services/mahjong/engine/fengshen/engine.js": {
+        "BYMC": [
+          "1-6"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "services/mahjong/engine/gomoku/ai.js": {
+        "BYMC": [
+          "2"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "services/mahjong/engine/gomoku/engine.js": {
+        "BYMC": [
+          "4"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "services/mahjong/engine/junqi/engine.js": {
+        "BYMC": [
+          "1-3"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "services/mahjong/engine/rules.js": {
+        "BYMC": [
+          "2"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "services/mahjong/engine/xiangqi/engine.js": {
+        "BYMC": [
+          "1-3"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "services/mahjong/rooms/adapters/doudizhu.js": {
+        "BYMC": [
+          "4"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "services/mahjong/rooms/adapters/gomoku.js": {
+        "BYMC": [
+          "7"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "services/mahjong/rooms/adapters/junqi.js": {
+        "BYMC": [
+          "15"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "services/mahjong/rooms/adapters/xiangqi.js": {
+        "BYMC": [
+          "9"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "services/mahjong/scripts/bundle.sh": {
+        "BYMC": [
+          "3",
+          "10",
+          "24",
+          "26",
+          "37",
+          "48",
+          "57",
+          "66",
+          "77",
+          "101"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "services/shorturl/README.md": {
+        "BYMC": [
+          "1-2",
+          "16",
+          "29",
+          "55",
+          "57-58",
+          "105",
+          "107-108"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "services/shorturl/scripts/bundle.sh": {
+        "BYMC": [
+          "3",
+          "11-12",
+          "17-18",
+          "22",
+          "38",
+          "75"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "services/usermgr/README.md": {
+        "BYMC": [
+          "1-2",
+          "29"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "site/.vuepress/components/PublicBlogSearch.vue": {
+        "BYMC": [
+          "1-19"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "site/.vuepress/components/fengshen/AGENTS.md": {
+        "BYMC": [
+          "3"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "site/.vuepress/components/fengshen/app.js": {
+        "BYMC": [],
+        "BYAC": [
+          "83",
+          "100"
+        ],
+        "BYRC": []
+      },
+      "site/.vuepress/components/fengshen/assets/classic-art-manifest.json": {
+        "BYMC": [
+          "8",
+          "14"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "site/.vuepress/components/fengshen/assets/expansion-art-manifest.json": {
+        "BYMC": [
+          "9",
+          "16",
+          "23",
+          "30",
+          "37",
+          "44",
+          "51",
+          "58",
+          "65",
+          "72",
+          "79",
+          "86",
+          "93",
+          "100",
+          "107",
+          "114",
+          "121",
+          "128",
+          "135"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "site/.vuepress/components/fengshen/feedback.mjs": {
+        "BYMC": [
+          "6"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "site/.vuepress/components/fengshen/generate-voice.py": {
+        "BYMC": [
+          "3",
+          "20-21"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "site/.vuepress/components/fengshen/online.mjs": {
+        "BYMC": [
+          "1-3"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "site/.vuepress/components/fengshen/review-art.mjs": {
+        "BYMC": [
+          "2"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "site/.vuepress/components/fengshen/smoke-online.mjs": {
+        "BYMC": [
+          "4"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "site/.vuepress/components/public-blog-search.js": {
+        "BYMC": [
+          "1-7"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "site/.vuepress/config.js": {
+        "BYMC": [
+          "1",
+          "7-9",
+          "11-15",
+          "18-21",
+          "37"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "site/README.md": {
+        "BYMC": [
+          "1-33"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "site/blogs/other/shorturl.md": {
+        "BYMC": [
+          "36"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      }
+    }
+  },
+  "commit_timestamp": 1791881151,
+  "requirement_id": ""
+}
