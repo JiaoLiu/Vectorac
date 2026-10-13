@@ -480,7 +480,7 @@ export class FengshenUI {
     if(!this.modal)return
     if(event.key==='Escape'){event.preventDefault();this.closeModal();return}
     if(event.key==='Tab'){
-      const controls=[...this.root.querySelectorAll('.fs-modal button:not(:disabled),.fs-modal a[href]')],first=controls[0],last=controls.at(-1)
+      const controls=[...this.root.querySelectorAll('.fs-modal button:not(:disabled),.fs-modal a[href],.fs-modal summary')],first=controls[0],last=controls.at(-1)
       if(controls.length&&(event.shiftKey&&document.activeElement===first||!event.shiftKey&&document.activeElement===last||!this.root.querySelector('.fs-modal').contains(document.activeElement))){event.preventDefault();(event.shiftKey?last:first).focus()}
     }
   }
@@ -523,7 +523,7 @@ export class FengshenUI {
     if(kind==='identity'&&this.state){const v=playerView(this.state,0),p=v.players[0]
       if(v.teamMode){const ally=v.sides[0]===0;title='你的阵营';body=`<section class="fs-identity-help"><strong class="fs-identity ${ally?'role-ally':'role-enemy'}">${ally?'友方':'敌方'}</strong><h3>胜利条件</h3><p>消灭敌方全部角色即获胜；我方全部阵亡则失败。</p><p>座位穿插：你之后依次是敌方、队友、敌方循环。开局掷骰，点数最高者先手。</p></section>`}
       else{const r=ROLES[p.role];title='你的身份：'+r.name;body=`<section class="fs-identity-help"><strong class="fs-identity role-${p.role}">${r.name}</strong><h3>你的胜利条件</h3><p>${r.goal}。</p><p>${p.alive?'其他玩家不能看到你的身份，主公除外。':'你已阵亡，身份已公开；仍可在牌桌观看结算。'}</p></section>`}}
-    if(kind==='hero-detail'){const p=this.state&&playerView(this.state,0).players.find(p=>display(p).id===id),h=p?display(p):HERO_BY_THEME_ID[id];title=h.name+' · '+h.title;body=heroDetails(h)}
+    if(kind==='hero-detail'){const v=this.state&&playerView(this.state,0),p=v?.players.find(p=>display(p).id===id),h=p?display(p):HERO_BY_THEME_ID[id];title=h.name+' · '+h.title;body=heroDetails(h,p?heroBattleDetails(p,v,{expanded:this.modal.statusExpanded,heroId:id}):'')}
     if(kind==='card-detail'){const c=deck.find(c=>c.id===id)||deck.find(c=>c.type===id)||(CARDS_BY_TYPE[id]?sampleCard(id):null),d=c&&CARDS_BY_TYPE[c.type],count=d?deck.filter(c=>c.type===d.type).length:0;title=d?.name||'卡牌';body=d?`<div class="fs-card-detail">${cardFace(c)}<div><b>${{basic:'基本牌',trick:'即时法术',delay:'延时阵法',equip:'法宝'}[d.category]}</b><p>${esc(displayText(d.help))}</p><small>${count?'本局牌堆中共有 '+count+' 张':'本局无此实体牌；部分技能可转化使用'}</small></div></div>`:''}
     if(kind==='gallery'){title='法宝与卡牌图鉴';body=`<p>当前${deck.length===160?'军争160张':'标准108张'}牌堆。军争增加炎杀、雷杀、焚天焰、缚神索、琼浆、闭粮阵及配套法宝。点击查看用途，返回后可以继续浏览。</p><div class="fs-gallery">${Object.values(CARDS_BY_TYPE).map(d=>`<button data-action="card-detail" data-id="${d.type}">${cardFace(deck.find(c=>c.type===d.type)||sampleCard(d.type))}</button>`).join('')}</div>`}
     if(kind==='report'){title=this.state?.winner?(playerView(this.state,0).teamMode?'终局 · 胜负一览':'终局 · 身份揭晓'):'战场记录';if(this.state){const v=playerView(this.state,0);body=`${v.winner?`<div class="fs-role-reveal">${v.players.map(p=>`<span>${display(p).name}<b>${v.teamMode?(v.sides[p.seat]===v.sides[v.seat]?'友方':'敌方'):ROLES[p.role].name}</b></span>`).join('')}</div>`:''}<ol class="fs-report">${v.logs.map(l=>`<li>${esc(displayText(l.text))}</li>`).join('')}</ol>`}}
@@ -538,6 +538,8 @@ export class FengshenUI {
     clearTimeout(this.timer)
     const scrolls=Object.fromEntries([...this.root.querySelectorAll('[data-scroll]')].map(e=>[e.dataset.scroll,{left:e.scrollLeft,top:e.scrollTop}]))
     const wasModal=!!this.root.querySelector('.fs-modal'),prior=document.activeElement
+    const heroStatus=this.root.querySelector('.fs-live-hero-state')
+    if(this.modal?.kind==='hero-detail'&&heroStatus?.dataset.heroStateId===this.modal.id)this.modal.statusExpanded=!!heroStatus.querySelector('details')?.open
     clearTimeout(this.tableSettleTimer)
     if(this.state&&!this.setup){
       const v=playerView(this.state,0),choice=counterSelection(v,this.counterKey,this.selected);this.counterKey=choice.key;this.selected=choice.selected
@@ -562,7 +564,7 @@ export class FengshenUI {
       this.root.querySelector('.fs-modal header>small').textContent+=' · 你的身份：'+ROLES[role].name
       if(this.modal.kind==='hero-detail'&&this.state){
         const v=playerView(this.state,0),p=v.players.find(p=>display(p).id===this.modal.id)
-        if(p){const info=document.createElement('div');info.innerHTML=heroBattleDetails(p,v);this.root.querySelector('.fs-modal-body').prepend(info.firstElementChild);if(p.buquPile.length){const pile=document.createElement('div');pile.className='fs-gallery fs-public-pile';pile.innerHTML='<h3>公开护道牌</h3>'+p.buquPile.map(c=>cardFace(c)).join('');this.root.querySelector('.fs-modal-body').append(pile)}}
+        if(p?.buquPile.length){const pile=document.createElement('div');pile.className='fs-gallery fs-public-pile';pile.innerHTML='<h3>公开护道牌</h3>'+p.buquPile.map(c=>cardFace(c)).join('');this.root.querySelector('.fs-modal-body').append(pile)}
       }
     }
     // 大厅主视觉与详情大图在渲染时直接出原图（见 renderHome/modalContent 的 full=true）。

@@ -38,7 +38,19 @@ test('damage while face-down offers Jiushi flip-back; correct skill action turns
 })
 test('hero details show real public equipment/delays and current counts, not concealed cards or role',()=>{
  const s=fixture();s.players[1].equip.armor=take(s,'bagua');s.players[1].equip.defenseHorse=take(s,'dilu');s.players[1].judgment.push(take(s,'indulgence'));s.players[1].faceDown=true;s.players[1].chained=true;take(s,'sha',1)
- const v=playerView(s,0),html=heroBattleDetails(v.players[1],v);for(const text of ['体力 4/4','手牌 1 张','身份未公开','防具','戊己杏黄旗','防御坐骑','迷魂阵','背面朝上','已连环'])assert.ok(html.includes(text),text)
+ const v=playerView(s,0),html=heroBattleDetails(v.players[1],v);for(const text of ['体力 4/4','手牌 1 张','防具','戊己杏黄旗','防御坐骑','迷魂阵','背面朝上','已连环'])assert.ok(html.includes(text),text)
  assert.ok(!html.includes('忠臣'));assert.ok(!html.includes(s.players[1].hand[0].id))
  v.pending={kind:'reveal',target:1,delayType:'supplyshortage'};assert.ok(heroBattleDetails(v.players[1],v).includes('闭粮阵 · 正在判定'))
+})
+test('ordinary empty state has no placeholders, identity, normal flags or empty disclosure',()=>{
+ const s=fixture(),v=playerView(s,0),html=heroBattleDetails(v.players[1],v)
+ for(const text of ['存活','正面朝上','未连环','身份','阵营','未装备','没有待判定','fs-live-equipment','fs-live-delays','<details'])assert.ok(!html.includes(text),text)
+ assert.ok(html.includes('体力 4/4'));assert.ok(html.includes('手牌 0 张'))
+})
+test('populated state defaults to compact chips with effect explanations collapsed',()=>{
+ const s=fixture();s.players[1].equip.armor=take(s,'bagua');s.players[1].judgment.push(take(s,'indulgence'))
+ const v=playerView(s,0),html=heroBattleDetails(v.players[1],v)
+ assert.ok(html.includes('aria-label="当前装备"'));assert.ok(html.includes('aria-label="判定区"'))
+ assert.ok(html.includes('<details class="fs-live-state-more">'));assert.ok(!html.includes(' open'))
+ assert.ok(heroBattleDetails(v.players[1],v,{expanded:true}).includes('<details class="fs-live-state-more" open>'))
 })

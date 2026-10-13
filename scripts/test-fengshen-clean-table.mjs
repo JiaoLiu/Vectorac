@@ -20,6 +20,18 @@ test('single-target tricks and skill taking draw public yellow links during coun
 test('all-player tricks show every living victim before the attack response, never dead seats',()=>{
  for(const type of ['arrows','savage','garden','harvest']){let s=fixture(),c=card(s,0,type);card(s,2,'nullify');if(type==='garden')for(const p of s.players)p.hp=p.maxHp-1;s=step(s,{type:'play',ids:[c.id],as:type,targets:[]});const v=playerView(s,0);assert.equal(v.pending.kind,'counter');assert.deepEqual(targetLinks(v).map(l=>l.target),[1,2,3,4]);v.players[4].alive=false;assert.deepEqual(targetLinks(v).map(l=>l.target),[1,2,3])}
 })
+test('「本轮不出」按钮只出现在群体锦囊的破法面板，单目标锦囊保持原样',()=>{
+ let s=fixture('yangjian',1),c=card(s,1,'arrows');card(s,0,'nullify')
+ s=step(s,{type:'play',ids:[c.id],as:'arrows',targets:[]})
+ const v=playerView(s,0);assert.equal(v.pending.kind,'counter');assert.equal(v.pending.actor,0)
+ assert.ok(v.legal.some(a=>a.type==='decline'),'群体锦囊的破法面板要提供「本轮不出」')
+ assert.ok(renderControls(ui(s),v).includes('本轮不出'))
+ let t=fixture('yangjian',1),d=card(t,1,'dismantle');card(t,0,'shan');card(t,0,'nullify')
+ t=step(t,{type:'play',ids:[d.id],as:'dismantle',targets:[0]})
+ const tv=playerView(t,0);assert.equal(tv.pending.kind,'counter');assert.equal(tv.pending.actor,0)
+ assert.equal(tv.legal.some(a=>a.type==='decline'),false,'单目标锦囊不提供「本轮不出」')
+ assert.ok(!renderControls(ui(t),tv).includes('本轮不出'))
+})
 test('delayed nullify highlights the judging owner and cannot inherit a stale attacker',()=>{
  const v=playerView(fixture(),0);v.lastPlayed={source:3,targets:[2],as:'sha',turn:v.turns};for(const kind of ['counter','reveal','judge-replace']){v.pending={kind,target:1,source:null};assert.equal(judgingSeat(v),1);assert.deepEqual(targetLinks(v),[])}
  v.pending=null;v.lastPlayed.turn--;assert.deepEqual(targetLinks(v),[])

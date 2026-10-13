@@ -53,6 +53,22 @@ test('group-heal only opens a Nullify window for wounded recipients; full HP ask
   assert.equal(s.players[2].hand.some(c=>c.id===nullify.id),!missing);assert.equal(s.players[0].hp,s.players[0].maxHp-missing);assert.equal(allCards(s).length,108)
  }
 })
+test('「本轮不出」对同一张群体锦囊只询问一次破法，新的一张牌重新询问',()=>{
+ let s=createAssignedGame({roles:['lord','loyal','rebel','rebel','renegade'],heroIds:['yangjian','nezha','jifa','wenzhong','hades'],seed:23})
+ Object.assign(s,{deck:catalog.makeDeck(),discard:[],processing:[],harvestPool:[],queue:[],pending:null,phase:'play',current:1,logs:[]})
+ for(const p of s.players){p.hand=[];p.equip={weapon:null,armor:null,offenseHorse:null,defenseHorse:null};p.judgment=[];p.hp=p.maxHp}
+ const arrows=hand(s,1,'arrows')[0],nullify=hand(s,0,'nullify')[0]
+ s=step(s,{seat:1,type:'play',as:'arrows',ids:[arrows.id],targets:[]})
+ assert.equal(s.pending?.kind,'counter');assert.equal(s.pending.actor,0)
+ assert.ok(playerView(s,0).legal.some(a=>a.type==='decline'),'群体锦囊的破法面板要提供「本轮不出」')
+ const asks=[];let guard=0
+ while(s.pending&&guard++<120){if(s.pending.kind==='counter'){asks.push(s.pending.actor);s=step(s,{type:'decline'})}else s=step(s,{type:'pass'})}
+ assert.deepEqual(asks,[0],'「本轮不出」后，同一张万箭齐发不再逐个目标追问破法')
+ assert.equal(s.players[0].hand.some(c=>c.id===nullify.id),true,'「本轮不出」不消耗无懈可击')
+ const harvest=hand(s,1,'harvest')[0]
+ s=step(s,{seat:1,type:'play',as:'harvest',ids:[harvest.id],targets:[]})
+ assert.equal(s.pending?.kind,'counter','新的一张牌（新 batch）必须重新询问破法');assert.equal(s.pending.actor,0)
+})
 test('Peach recovery exposes actual public HP gain once, with no false full-HP cue',()=>{
  let s=fixture(),[c]=hand(s,0,'tao');s.players[0].hp--;const before=s;s=step(s,{type:'play',as:'tao',ids:[c.id],targets:[]})
  const cues=recoveryCues(before,s);assert.equal(cues.length,1);assert.equal(cues[0].amount,1);assert.equal(cues[0].target,0);assert.deepEqual(Object.keys(cues[0]).sort(),['amount','id','kind','target'])

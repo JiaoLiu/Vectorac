@@ -209,6 +209,9 @@ function responseOptions(s, pending) {
     if(pending.kind==='rescue'&&pending.actor===pending.target&&CARDS.wine)opts.push(...conversions(p,'wine',s).map(a=>({...a,type:'respond'})))
     if (as === 'shan' && (p.equip.armor?.type === 'bagua'||!p.equip.armor&&hasSkill(p,'bazhen')) && !pending.ignoreArmor && !pending.baguaTried) opts.push({ type:'bagua' })
     if (pending.kind === 'response' && !pending.supportTried && supportCandidates(s,pending.actor,as).length) opts.push({ type:'support' })
+    // 群体锦囊（万箭齐发/南蛮入侵/桃园结义/五谷丰登等）一次结算多个目标，共用一个 batch。
+    // 提供「本轮不出」：对整张牌都不再破法，避免被逐个目标反复询问。
+    if (pending.kind === 'counter' && pending.chain?.batch != null) opts.push({ type:'decline' })
   } else if (pending.kind === 'discard') {if(p.hand.length>=pending.count)opts.push({ type:'discard', count:pending.count });if(pending.canPass)opts.push({type:'pass'})}
   else if (pending.kind === 'choice') opts.push(...pending.choices.map(choice => ({ type:'choose', value:choice.value, label:choice.label })))
   else if (pending.kind === 'guess') opts.push(...Object.keys({spade:1,heart:1,club:1,diamond:1}).map(value => ({type:'choose',value})))
@@ -365,10 +368,12 @@ function counter(s, chain) {
   }
   const seat=nextAlive(s,chain.cursor)
   chain.cursor=seat
-  if(!conversions(player(s,seat),'nullify').length) {chain.passes++;enqueue(s,{type:'counter',chain});return}
+  // 「本轮不出」：群体锦囊一次结算多个目标，玩家对同一 batch 放弃后，剩余目标不再逐个询问破法。
+  const skipped=chain.batch!=null&&s.counterDecline?.batch===chain.batch&&s.counterDecline.seats.includes(seat)
+  if(skipped||!conversions(player(s,seat),'nullify').length) {chain.passes++;enqueue(s,{type:'counter',chain});return}
   makePending(s,{kind:'counter',actor:seat,as:'nullify',target:chain.target,source:chain.source,chain})
 }
-function gate(s, effect, cardType, source, target, cancel=null) { enqueue(s,{type:'counter',chain:{effect,cardType,source,target,cancel,cursor:(s.current+s.players.length-1)%s.players.length,passes:0,negated:false}}) }
+function gate(s, effect, cardType, source, target, cancel=null, batch=null) { enqueue(s,{type:'counter',chain:{effect,cardType,source,target,cancel,batch,cursor:(s.current+s.players.length-1)%s.players.length,passes:0,negated:false}}) }
 function takeCard(s, pending, choice) {
   const target=player(s,pending.target)
   const wasJudgment=target.judgment.some(c=>c.id===choice)
@@ -568,7 +573,7 @@ function settleEvent(s,event) {
     case 'dodgeFollow':dodgeWeapons(s,event);break
     case 'finishCard': finishCards(s,event.ids,event);break
     case 'counter': counter(s,event.chain);break
-    case 'gate': gate(s,event.effect,event.cardType,event.source,event.target,event.cancel);break
+    case 'gate': gate(s,event.effect,event.cardType,event.source,event.target,event.cancel,event.batch);break
     case 'attack': attacking(s,event);break
     case 'attackDamage': attackDamage(s,event);break
     case 'duel': {
@@ -788,6 +793,7 @@ function playCard(s,action,resolvedCard=null) {
     if(hasSkill(p,'jizhi'))events.push({type:'jizhi',seat})
     const targetOrder=(['draw'].includes(as)?[seat]:['ironchain'].includes(as)?targets:['savage','arrows'].includes(as)?orderFrom(s,(seat+1)%s.players.length).filter(t=>t!==seat):['garden','harvest'].includes(as)?orderFrom(s,seat):[targets[0]]).filter(t=>(!hasSkill(player(s,t),'weimu')||cardColor(used,p)!=='black')&&(as!=='savage'||!hasSkill(player(s,t),'huoshou')&&!hasSkill(player(s,t),'juxiang')))
     if(as==='harvest')for(let i=0;i<targetOrder.length;i++){const card=topCard(s);if(card)s.harvestPool.push(card)}
+    const gates=[]
     for(const target of targetOrder) {
       let effect
       if(as==='duel')effect={type:'duel',jiangChecked:true,source:seat,target,cardIds:ids}
@@ -804,8 +810,12 @@ function playCard(s,action,resolvedCard=null) {
       // 群体回血（桃园结义）：满血目标回复无收益，不为其发起破法询问，
       // 避免“所有人满血仍逐个问要不要使用无懈可击”。
       if(as==='garden'&&player(s,target).hp>=player(s,target).maxHp)continue
-      events.push({type:'gate',cardType:as,source:seat,target,effect})
+      gates.push({type:'gate',cardType:as,source:seat,target,effect})
     }
+    // 一次结算多个目标的群体锦囊共用一个 batch：玩家可选「本轮不出」，之后剩余目标不再逐个询问破法；
+    // 单目标锦囊不设 batch，保持原有「不发动」语义。
+    if(gates.length>1){const batch=(s.batchSeq=(s.batchSeq||0)+1);for(const g of gates)g.batch=batch}
+    events.push(...gates)
     if(as==='harvest')events.push({type:'harvestCleanup'})
   }
   enqueue(s,...events,{type:'finishCard',ids,source:seat,as,virtual:!!resolvedCard||!!action.guhuo})
@@ -914,6 +924,13 @@ function answer(s,action,resolvedCard=null,forcedPending=null) {
     return
   }
   if(action.type==='ack'){enqueue(s,pending.event);return}
+  // 本轮不出：记录本次群体锦囊的 batch，之后该牌剩余目标不再询问破法；新的一张牌（新 batch）会重新询问。
+  if(action.type==='decline'){
+    if(pending.kind!=='counter'||pending.chain?.batch==null)throw new Error('当前不能放弃整张锦囊的破法')
+    if(!s.counterDecline||s.counterDecline.batch!==pending.chain.batch)s.counterDecline={batch:pending.chain.batch,seats:[]}
+    if(!s.counterDecline.seats.includes(action.seat))s.counterDecline.seats.push(action.seat)
+    note(s,`${name(s,action.seat)}本轮不再使用破法`);failedResponse(s,pending);return
+  }
   if(action.type==='pass'){if(pending.kind==='choice')choice(s,pending,pending.choices[pending.choices.length-1].value);else failedResponse(s,pending);return}
   if(action.type==='discard') {
     if(action.ids?.length!==pending.count||!action.ids.every(id=>player(s,action.seat).hand.some(c=>c.id===id)))throw new Error(`请弃置 ${pending.count} 张手牌`)
