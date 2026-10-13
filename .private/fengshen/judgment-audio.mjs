@@ -1,7 +1,7 @@
 // Original procedural Foley: no external downloads, samples, or decode waits.
 export const JUDGMENT_SOUND_SECONDS=1.08
 export function judgmentSamples(kind,sampleRate=48000){
- if(!['prison','ration','thunder'].includes(kind))return null
+ if(!['prison','ration','thunder','fire','chain','unchain'].includes(kind))return null
  const out=new Float32Array(Math.ceil(sampleRate*JUDGMENT_SOUND_SECONDS));let seed=kind==='prison'?37:kind==='ration'?73:101,low=0
  const burst=(t,start,length)=>t<start||t>start+length?0:Math.exp(-(t-start)*7/length)
  for(let i=0;i<out.length;i++){
@@ -17,6 +17,16 @@ export function judgmentSamples(kind,sampleRate=48000){
    v=noise*paper*.075+low*paper*.15
    v+=burst(t,.57,.25)*(Math.sin(t*2*Math.PI*164)*.3+low*.25)
    v+=burst(t,.65,.16)*Math.sin(t*2*Math.PI*1050)*.065
+  }else if(kind==='fire'){
+   const gust=t>.04?Math.sin(Math.min(1,(t-.04)/.82)*Math.PI):0
+   const crackle=Math.pow(Math.max(0,noise),12)*(t>.2&&t<.9?1:0)
+   v=gust*(low*.55+noise*.045)+crackle*.17
+   v+=burst(t,.15,.28)*low*.5
+  }else if(kind==='chain'||kind==='unchain'){
+   const slide=t>.04&&t<.58?Math.sin((t-.04)/.54*Math.PI):0
+   v=slide*(noise*.04+low*.24)
+   for(const start of kind==='chain'?[.18,.38,.52]:[.12,.33,.66])v+=burst(t,start,.24)*(Math.sin(t*2*Math.PI*1180)*.12+Math.sin(t*2*Math.PI*1840)*.06+low*.16)
+   if(kind==='chain')v+=burst(t,.42,.3)*Math.sin(t*2*Math.PI*125)*.27
   }else{
    v=burst(t,.2,.17)*(noise*.42+Math.sin(t*2*Math.PI*2300)*.065)
    const rumble=t>.23?Math.exp(-(t-.23)*3.3):0

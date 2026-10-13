@@ -2,7 +2,7 @@ import {stableOpponents} from './fixtures/gods-stable.mjs'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {readFile} from 'node:fs/promises'
-import {createGame,createAssignedGame,dispatch,playerView,allCards,restoreGame,catalog,chooseAI} from '../.private/fengshen/engine.mjs'
+import {createGame,createAssignedGame,dispatch,playerView,allCards,restoreGame,catalog,militaryCatalog,chooseAI} from '../.private/fengshen/engine.mjs'
 import {makeDeck} from '../.private/fengshen/core/catalog.mjs'
 import {hand,equipment} from './fixtures/sanguo.mjs'
 import {combatContext,damageCues,collateralSelection} from '../.private/fengshen/combat.mjs'
@@ -50,6 +50,24 @@ test('AI holds a lone Peach for teammates while healthy, and eats one when carry
  assert.notEqual(chooseAI(healthy).as,'tao','血量健康且只有一张桃时必须留着救队友')
  assert.equal(chooseAI(playerView(build(2,3),1)).as,'tao','血量健康但有多张桃时吃一张')
  assert.equal(chooseAI(playerView(build(1,1),1)).as,'tao','贫血时即使只有一张桃也自保')
+})
+test('AI stops wasting black slashes on Renwang Shield, yet keeps attacking red, qinggang or unarmored targets',()=>{
+ const build=(armor,slashType='sha',suit='spade',weapon=null)=>{
+  const military=slashType!=='sha'
+  const s=createAssignedGame({roles:['lord','rebel','loyal','rebel','renegade'],heroIds:['yangjian','nezha','jifa','wenzhong','hades'],seed:23,...(military?{deckVersion:2}:{})})
+  Object.assign(s,{deck:(military?militaryCatalog:catalog).makeDeck(),discard:[],processing:[],harvestPool:[],queue:[],pending:null,phase:'play',current:1,logs:[]})
+  for(const p of s.players){p.hand=[];p.equip={weapon:null,armor:null,offenseHorse:null,defenseHorse:null};p.judgment=[];p.hp=p.maxHp}
+  if(armor)equipment(s,0,armor)
+  if(weapon)equipment(s,1,weapon)
+  hand(s,1,[slashType,suit])
+  return playerView(s,1)
+ }
+ const attacks=v=>{const a=chooseAI(v);return a.type==='play'&&['sha','firesha','thundersha'].includes(a.as)}
+ assert.ok(!attacks(build('renwang')),'黑色的杀打仁王盾必被挡，AI 不该白送一张牌')
+ assert.ok(!attacks(build('renwang','thundersha','spade')),'黑色雷杀同样是黑杀，也会被仁王盾挡下')
+ assert.ok(attacks(build('renwang','sha','heart')),'红色的杀照常进攻仁王盾')
+ assert.ok(attacks(build('renwang','sha','spade','qinggang')),'青釭剑无视防具，黑杀也能穿透仁王盾')
+ assert.ok(attacks(build(null)),'无防具时黑杀正常进攻')
 })
 test('group-heal only opens a Nullify window for wounded recipients; full HP asks nobody',()=>{
  for(const missing of [0,1]){

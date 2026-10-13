@@ -596,7 +596,7 @@ function settleEvent(s,event) {
         if(p.equip.armor?.type==='silverlion')event.amount=Math.min(1,event.amount)
       }
       const source=event.source!=null?player(s,event.source):null,recover=source?.alive&&hasSkill(source,'kuanggu')&&distance(s,event.source,event.target)<=1
-      p.hp-=event.amount;suspect(s,event.source,event.target,true);note(s,`${name(s,event.source)}使${name(s,event.target)}受到 ${event.amount} 点伤害`,catalog.trackBattle?{kind:'damage',source:event.source,target:event.target,amount:event.amount}:null)
+      p.hp-=event.amount;suspect(s,event.source,event.target,true);note(s,`${name(s,event.source)}使${name(s,event.target)}受到 ${event.amount} 点伤害`,catalog.trackBattle?{kind:'damage',source:event.source,target:event.target,amount:event.amount,nature:event.nature||'normal',chain:!!event.chain}:null)
       s.lastEvent={id:s.eventId,source:event.source,targets:[event.target],label:'伤害',amount:event.amount,cards:[]}
       enqueue(s,...X.hpEvents(s,event.target),{type:'rescue',target:event.target,source:event.source},...(recover?[{type:'kuangguRecover',seat:event.source,count:event.amount}]:[]),{...event,type:'postDamage'},X.event('post-damage',{ctx:event}));break
     }

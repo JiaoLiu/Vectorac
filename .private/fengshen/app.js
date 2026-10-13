@@ -46,6 +46,7 @@ import {heroBattleDetails,delayedTargetReason,jiushiButton} from './hero-state.m
 import './hero-state.css'
 import {JudgmentCinematics,successfulJudgments,judgmentKey,paintJudgmentCinematic} from './judgment-cinematics.mjs'
 import './judgment-cinematics.css'
+import {completedCharacterEffects} from './character-effect-cues.mjs'
 import './play-motion.css'
 import {FeedbackModal} from './feedback.mjs'
 
@@ -125,7 +126,7 @@ export class FengshenUI {
     const beforeView=playerView(before,0),afterView=playerView(this.state,0)
     const publicMotions=publicPlayMotions(beforeView,afterView).map(e=>{const c=e.cards[0],a=(e.source===0?this.root.querySelector(`.fs-hand-card[data-id="${c?.id}"]`)||this.root.querySelector('.fs-own-hero>button'):this.root.querySelector(`[data-player="${e.source}"] .fs-player-main`))?.getBoundingClientRect();return {...e,origin:a&&localPoint(this.root,a.x+a.width/2,a.y+a.height/2)}})
     if(document.hidden)this.playMotions.clear();else this.playMotions.enqueue(publicMotions)
-    if(document.hidden)this.judgmentCinematics.clear();else this.judgmentCinematics.enqueue(successfulJudgments(beforeView,afterView).map(e=>({...e,targetName:display(afterView.players[e.target]).name})))
+    if(document.hidden)this.judgmentCinematics.clear();else this.judgmentCinematics.enqueue([...successfulJudgments(beforeView,afterView),...completedCharacterEffects(beforeView,afterView)].map(e=>({...e,targetName:display(afterView.players[e.target]).name,targetNames:Object.fromEntries((e.targets||[e.target]).map(t=>[t,display(afterView.players[t]).name]))})))
     this.beams.record(afterView)
     const recovered=recoveryCues(before,this.state)
     if(recovered.length){const started=Date.now();this.recoveries=this.recoveries.filter(h=>h.until>started).concat(recovered.map(h=>({...h,started,until:started+RECOVERY_DURATION})));clearTimeout(this.recoveryTimer);this.recoveryTimer=setTimeout(()=>{this.recoveries=[];if(!this.destroyed)this.decorateBattle()},RECOVERY_DURATION+20)}
@@ -268,7 +269,8 @@ export class FengshenUI {
   }
   paintJudgment(){
     clearTimeout(this.judgmentTimer)
-    const play=this.playMotions.frame(),blocked=!!this.modal||document.hidden||!!this.transfer||!!this.draws.length||!!this.moves.length||!!play&&play.elapsed<PLAY_FLIGHT_MS
+    // 弹窗（人物介绍/设置等）只是浮层，不能冻结判定特效与出牌节奏；只在无弹窗时恢复牌桌焦点。
+    const play=this.playMotions.frame(),blocked=document.hidden||!!this.transfer||!!this.draws.length||!!this.moves.length||!!play&&play.elapsed<PLAY_FLIGHT_MS
     const frame=this.judgmentCinematics.frame({blocked});paintJudgmentCinematic(this.root,frame)
     if(frame?.event&&!frame.event.soundStarted){frame.event.soundStarted=true;void this.voice.judgmentSound(frame.event.kind,{elapsed:frame.elapsed})}
     if(frame)this.judgmentTimer=setTimeout(()=>{if(this.destroyed)return;this.paintJudgment();if(!this.judgmentCinematics.busy){if(!this.modal&&!this.transfer&&!this.draws.length&&!this.moves.length&&!this.playMotions.busy&&!isRevealing(this.state))this.root.querySelector('.fs-dock')?.removeAttribute('inert');this.syncClock();this.settleTable();this.schedule();this.maybeAutoEnd()}},frame.event?frame.remaining+15:Math.min(80,frame.remaining))
@@ -308,14 +310,15 @@ export class FengshenUI {
   schedule(){
     clearTimeout(this.timer)
     if(this.online)return
-    if(this.destroyed||this.lobby||this.paused||this.modal||document.hidden)return
+    // 弹窗（人物介绍/设置/图鉴等）不暂停牌局：AI、自动确认照常推进，只有明确的暂停按钮才算暂停。
+    if(this.destroyed||this.lobby||this.paused||document.hidden)return
     if(this.setup){
       const draft=this.setup
       if(draft.stage==='identity'||draft.stage==='ready'){
         const revision=draft.revision,type=draft.stage==='identity'?'reveal':'begin'
         // 对抗局选完将后先播掷骰动画再开局，故 ready 停顿更久。
         const delay=draft.stage==='identity'?1600:draft.sides?2400:800
-        this.timer=setTimeout(()=>{if(this.setup?.revision===revision&&!this.modal&&!this.paused&&!document.hidden)this.actSetup({type,seat:0})},delay)
+        this.timer=setTimeout(()=>{if(this.setup?.revision===revision&&!this.paused&&!document.hidden)this.actSetup({type,seat:0})},delay)
         return
       }
       // 对抗局全员同时选将：AI 替所有非本地席位选将；身份局按主公→其余顺序。
@@ -324,7 +327,7 @@ export class FengshenUI {
         :draft.stage==='lord'&&draft.lord!==0?draft.lord:draft.stage==='others'?draft.roles.findIndex((_,i)=>i!==0&&i!==draft.lord&&!draft.picks[i]):-1
       if(seat<0)return
       const revision=draft.revision
-      this.timer=setTimeout(()=>{if(!this.setup||this.setup.revision!==revision||this.modal||this.paused||document.hidden)return;const action=chooseSetupAI(setupView(this.setup,seat));if(action)this.actSetup(action)},this.pace)
+      this.timer=setTimeout(()=>{if(!this.setup||this.setup.revision!==revision||this.paused||document.hidden)return;const action=chooseSetupAI(setupView(this.setup,seat));if(action)this.actSetup(action)},this.pace)
       return
     }
     if(!this.state||this.state.winner)return
@@ -332,13 +335,13 @@ export class FengshenUI {
     if(isRevealing(this.state)){
       const p=this.state.pending,revision=this.state.revision
       const delay=p.kind==='reveal'&&this.judgmentCinematics.completed===judgmentKey(playerView(this.state,0))?180:1800
-      this.timer=setTimeout(()=>{if(!this.destroyed&&this.state.revision===revision&&!this.paused&&!document.hidden&&!this.modal)this.act(p.kind==='reveal'?{type:'ack',seat:p.actor}:{type:'invoke',value:'ack',seat:p.actor})},delay)
+      this.timer=setTimeout(()=>{if(!this.destroyed&&this.state.revision===revision&&!this.paused&&!document.hidden)this.act(p.kind==='reveal'?{type:'ack',seat:p.actor}:{type:'invoke',value:'ack',seat:p.actor})},delay)
       return
     }
     if(this.voice.busy){this.timer=setTimeout(()=>this.schedule(),80);return}
     const seat=this.state.pending?.actor??this.state.current;if(seat===0&&!this.auto)return
     const revision=this.state.revision
-    this.timer=setTimeout(()=>{if(this.destroyed||document.hidden||this.modal||this.paused||this.state.revision!==revision)return;const action=chooseAI(playerView(this.state,seat));if(action&&!this.act(action)){this.paused=true;this.inform('AI动作未通过校验，已暂停对局')}},this.pace)
+    this.timer=setTimeout(()=>{if(this.destroyed||document.hidden||this.paused||this.state.revision!==revision)return;const action=chooseAI(playerView(this.state,seat));if(action&&!this.act(action)){this.paused=true;this.inform('AI动作未通过校验，已暂停对局')}},this.pace)
   }
   matching(view){return view.legal.filter(a=>a.type==='play'&&equal(a.ids,this.selected))}
   openModal(kind,id){const e=document.activeElement,back=modalReturnEntry(this.modal,kind,{scroll:this.root.querySelector('.fs-modal-body')?.scrollTop||0,focus:e?.dataset?.id});if(back)this.modalStack.push(back);else this.modalStack=[];this.modal={kind,id};this.render()}
@@ -596,7 +599,7 @@ export class FengshenUI {
   // 出牌阶段已经没有任何牌可出、也没有技能可发动（合法动作只剩「结束出牌」）时，
   // 直接进入弃牌阶段，省一次手动点击。联机本地状态可能滞后于服务器，用 revision 去重防止重复发送。
   maybeAutoEnd(){
-    if(this.lobby||this.setup||this.paused||this.modal||this.auto||this.online?.roundBreak)return
+    if(this.lobby||this.setup||this.paused||this.auto||this.online?.roundBreak)return
     if(this.transfer||this.draws.length||this.moves.length||this.playMotions.busy||this.judgmentCinematics.busy)return
     const v=this.state&&!this.state.winner?playerView(this.state,0):null
     if(!v||v.pending||v.current!==0||v.phase!=='play')return

@@ -1,8 +1,11 @@
 import * as defaultCatalog from './catalog.mjs'
 import {extensionResponse,expansionSkill} from './complete-ai.mjs'
 import {foundationResponse,foundationSkill} from './foundation-ai.mjs'
+import {viewSuit} from '../extension-actions.mjs'
 export function createAI(catalog=defaultCatalog){
 const {CARDS,HERO_BY_ID,isRed}=catalog
+// 与引擎 cardColor 一致的有效颜色判定：红颜（黑桃视红桃）这类改色技能要算进去。
+const red=(p,c)=>['heart','diamond'].includes(viewSuit(p,c))
 const viewHero=p=>({...HERO_BY_ID[p.heroId],skills:p.effectiveSkills||HERO_BY_ID[p.heroId].skills,sex:p.effectiveSex||HERO_BY_ID[p.heroId].sex,faction:p.effectiveFaction||HERO_BY_ID[p.heroId].faction})
 
 // This module receives playerView only: no deck, concealed identities, opponent
@@ -171,9 +174,14 @@ const chooseAI=function chooseAI(view) {
           const relations=action.targets.reduce((n,t)=>n+hostility(view,t),0)
           score=relations*3+(rel>0?(view.players[target].hp<=2?3:0):0)-(action.as==='duel'&&!self.hand.some(c=>c.type==='sha')?1:0)
           if(action.as==='sha'&&view.players[target].equip.armor?.type==='vine'&&self.equip.weapon?.type!=='qinggang'&&self.equip.weapon?.type!=='fan'&&!action.ids.some(id=>CARDS[ownCards(view).find(c=>c.id===id)?.type]?.attackNature))score=-4
+          // 仁王盾挡下黑色的杀：黑杀（含黑火杀、黑雷杀）打上去必被挡，白送一张牌；只有青釭剑无视防具能穿透。
+          if(['sha','firesha','thundersha'].includes(action.as)&&view.players[target].equip.armor?.type==='renwang'&&self.equip.weapon?.type!=='qinggang'&&action.ids.every(id=>{const c=ownCards(view).find(x=>x.id===id);return c&&!red(self,c)}))score=-4
           if(action.as==='snatch'||action.as==='dismantle') {
             const ally=view.players[target]
             if(rel<0&&ally.judgment.some(c=>['indulgence','supplyshortage'].includes(c.type)))score=13
+            // 敌人身上只剩判定区的延时阵法时，偷/拆只能拿到他自己被牢的阵法，
+            // 再打回去状态毫无变化，只是白烧一张牌（仙田当摄宝更是白白耗田），不如不出。
+            else if(rel>0&&!ally.handCount&&!Object.values(ally.equip).some(Boolean)&&ally.judgment.length)score=-6
           }
           score-=Math.max(0,cost(view,action.ids)-5)*.4
           if(action.as==='duel'&&view.players[target].handCount>0&&slashResources(view,HERO_BY_ID,isRed)===0)score-=self.hp<=1?30:5

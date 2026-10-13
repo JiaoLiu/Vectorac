@@ -93,6 +93,27 @@ test('Tuntian keeps non-heart final judgment as a public field and never uses fi
 test('Zaoxian grants Jixi once, pays one field, and calculates Snatch distance after that payment',()=>{
  let s=fixture('juliusun');s.players[0].fieldPile=[];for(let i=0;i<3;i++)s.players[0].fieldPile.push(s.deck.shift());card(s,2,'shan');s=phase(s,'turnPrepare');assert.equal(s.players[0].persistent.zaoxian,true);assert.ok(hasSkill(s.players[0],'jixi'));const c=s.players[0].fieldPile[0];assert.ok(playerView(s,0).legal.some(a=>a.as==='snatch'&&a.ids[0]===c.id));assert.ok(!playerView(s,0).legal.some(a=>a.as===c.type&&a.ids[0]===c.id));s=step(s,{type:'play',as:'snatch',ids:[c.id],targets:[2]});s=step(s,{type:'choose',value:'hand:0'});assert.equal(s.players[0].fieldPile.length,2);assert.ok(s.discard.some(x=>x.id===c.id));s.players[0].fieldPile.splice(1).forEach(c=>s.deck.push(c));assert.ok(!playerView(s,0).legal.some(a=>a.as==='snatch'&&a.targets.includes(2)))
 })
+test('Snatch and Jixi never burn cards or fields to re-steal an enemy judgment trick',()=>{
+ // 主公没牌被牢时，反复用仙田把判定区的牢偷回来再打出去只是白烧田：目标身上只剩判定区阵法就不动手。
+ let s=fixture('jifa',['nezha','juliusun','yangjian','jinling'],2)
+ s.players[2].fieldPile=[];for(let i=0;i<3;i++)s.players[2].fieldPile.push(s.deck.shift())
+ s=phase(s,'turnPrepare',2);assert.ok(hasSkill(s.players[2],'jixi'))
+ s.players[2].hand.splice(0).forEach(c=>s.deck.push(c))// 只留仙田，还原「除了田没什么可出」的现场
+ const jail=()=>{const i=s.deck.findIndex(c=>c.type==='indulgence');assert.ok(i>=0);return s.deck.splice(i,1)[0]}
+ const turn=()=>{s.current=2;s.phase='play';s.pending=null;s.queue=[];return playerView(s,2)}
+ s.players[0].judgment.push(jail())
+ let v=turn()
+ const steal=v.legal.find(a=>a.type==='play'&&a.as==='snatch'&&a.targets.includes(0))
+ assert.ok(steal,'牢中的主公仍是合法摄宝目标');assert.ok(s.players[2].fieldPile.some(f=>f.id===steal.ids[0]))
+ assert.equal(chooseAI(v).type,'end','只剩牢可偷的敌人不值得发动夺域')
+ // 真实的顺手牵羊同理：不拿实体牌去换一张只会打回去的牢。
+ card(s,2,'snatch');assert.equal(chooseAI(turn()).type,'end')
+ // 主公手里还有别的牌可偷时照常动手。
+ card(s,0,'shan');assert.ok(chooseAI(turn()).targets.includes(0))
+ // 队友被牢时照常解救：把牢拿回来才是净收益。
+ s.players[0].hand=[];s.players[1].judgment.push(jail())
+ assert.deepEqual(chooseAI(turn()).targets,[1])
+})
 test('Jiang draws for a red Slash target even when armor blocks it, and for both Duel participants before counters',()=>{
  let s=fixture('yinjiao',undefined,0,2);const a=card(s,0,'sha','heart');equip(s,1,'vine');const own=s.players[0].hand.length;s=slash(s,a,1);assert.equal(s.players[0].hand.length,own);assert.equal(s.players[1].hp,s.players[1].maxHp)
  s=fixture('jifa',['yinjiao','nezha','yangjian','jinling']);const duel=card(s,0,'duel'),counter=card(s,1,'nullify');s=step(s,{type:'play',as:'duel',ids:[duel.id],targets:[1]});assert.equal(s.players[1].hand.length,2);assert.equal(s.pending.kind,'counter');s=step(s,{type:'respond',ids:[counter.id]});while(s.pending?.kind==='counter')s=pass(s);assert.equal(s.players[1].hand.length,1)

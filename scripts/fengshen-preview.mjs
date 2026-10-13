@@ -27,7 +27,7 @@ if(release){
  for(const dir of ['heroes','cards','audio/male','audio/female','fonts'])await cp(resolve(source,'assets',dir),resolve(output,'assets',dir),{recursive:true,filter:p=>!p.endsWith('.json')})
  for(const name of ['fireattack.svg','hualiu.svg','supplyshortage.svg','ironchain.svg'])await rm(resolve(output,'assets/cards',name),{force:true})
  await mkdir(resolve(output,'assets/audio/sfx'),{recursive:true})
- for(const name of ['damage.wav','heavenly-duel.mp3'])await copyFile(resolve(source,'assets/audio/sfx',name),resolve(output,'assets/audio/sfx',name))
+ for(const name of ['damage.wav','heavenly-duel.mp3','CREDITS.md'])await copyFile(resolve(source,'assets/audio/sfx',name),resolve(output,'assets/audio/sfx',name))
  await copyFile(resolve(source,'assets/heavenly-arena.jpg'),resolve(output,'assets/heavenly-arena.jpg'))
 }else{
  await copyFile(resolve(source,qa?'qa.html':'index.html'),resolve(output,'index.html'))

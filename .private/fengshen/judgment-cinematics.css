@@ -34,4 +34,25 @@
 @keyframes fs-character-sparks{0%,25%{opacity:0;transform:scale(.3)}37%{opacity:1}76%,100%{opacity:0;transform:scale(1.18)}}
 @keyframes fs-character-flash{0%,19%{opacity:0}28%{opacity:.75}48%,100%{opacity:0}}
 @keyframes fs-character-hit{0%,20%,65%,100%{filter:none;transform:translateX(0)}28%{filter:brightness(1.7);transform:translateX(-2px)}33%{filter:brightness(1.25);transform:translateX(2px)}39%{filter:brightness(1.1);transform:translateX(-1px)}}
+.fs-character-fire,.fs-character-chains{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.fs-character-heat{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 70%,#ff9b404d,transparent 78%);animation-name:fs-character-heat}
+.fs-character-flame-outer{animation-name:fs-character-flame;transform-origin:50% 100%;filter:drop-shadow(0 0 2px #d659244f)}
+.fs-character-flame-inner{animation-name:fs-character-flame-inner;transform-origin:50% 100%}
+.fs-character-embers{position:absolute;inset:12% 8% 8%;animation-name:fs-character-embers}
+.fs-character-embers i{position:absolute;width:3px;height:5px;border-radius:50%;background:#ffe6ad;box-shadow:0 0 4px #fb8a35}
+.fs-character-embers i:nth-child(1){left:15%;top:50%}.fs-character-embers i:nth-child(2){left:42%;top:20%}.fs-character-embers i:nth-child(3){left:69%;top:65%}.fs-character-embers i:nth-child(4){left:89%;top:7%}
+[data-judgment-afflicted=fire]>.fs-portrait{animation:fs-character-scorch 1080ms ease both;animation-delay:var(--judgment-elapsed,0ms)}
+.fs-character-chain-left,.fs-character-chain-right{transform-box:fill-box;transform-origin:center;filter:drop-shadow(0 2px 1px #052020a0)}
+.is-chain .fs-character-chain-left{animation-name:fs-character-chain-left}.is-chain .fs-character-chain-right{animation-name:fs-character-chain-right}
+.is-unchain .fs-character-chain-left{animation-name:fs-character-unchain-left}.is-unchain .fs-character-chain-right{animation-name:fs-character-unchain-right}
+@keyframes fs-character-heat{0%{opacity:0}18%,65%{opacity:1}100%{opacity:0}}
+@keyframes fs-character-flame{0%{opacity:0;transform:translateY(35%) scaleY(.35)}28%{opacity:.85;transform:translateY(0) scaleY(1)}46%{transform:translateY(-3%) scaleX(1.07)}65%{opacity:.75;transform:translateY(-6%) scaleX(.95)}100%{opacity:0;transform:translateY(-20%) scaleX(1.1)}}
+@keyframes fs-character-flame-inner{0%,10%{opacity:0;transform:translateY(30%) scaleY(.3)}35%{opacity:.85;transform:translateY(0) scaleY(1)}60%{opacity:.6;transform:translateY(-4%) scaleX(1.08)}100%{opacity:0;transform:translateY(-15%)}}
+@keyframes fs-character-embers{0%,10%{opacity:0;transform:translateY(16px)}32%{opacity:1}85%,100%{opacity:0;transform:translateY(-22px)}}
+@keyframes fs-character-scorch{0%,100%{filter:none}25%{filter:sepia(.18) saturate(1.2) brightness(1.12)}52%{filter:sepia(.3) saturate(1.3) brightness(1.08)}}
+@keyframes fs-character-chain-left{0%{opacity:0;transform:translateX(-80%) scaleX(.7)}40%{opacity:1;transform:translateX(2%) scaleX(1.02)}58%,100%{opacity:1;transform:translateX(0) scaleX(1)}}
+@keyframes fs-character-chain-right{0%{opacity:0;transform:translateX(80%) scaleX(.7)}40%{opacity:1;transform:translateX(-2%) scaleX(1.02)}58%,100%{opacity:1;transform:translateX(0) scaleX(1)}}
+@keyframes fs-character-unchain-left{0%,15%{opacity:1;transform:translateX(0)}40%{opacity:1;transform:translateX(-10%)}80%,100%{opacity:0;transform:translateX(-105%) translateY(18%)}}
+@keyframes fs-character-unchain-right{0%,15%{opacity:1;transform:translateX(0)}40%{opacity:1;transform:translateX(10%)}80%,100%{opacity:0;transform:translateX(105%) translateY(18%)}}
 @media(prefers-reduced-motion:reduce){.fs-character-judgment,.fs-character-judgment [data-motion],[data-judgment-afflicted=thunder]>.fs-portrait{animation:none}.fs-character-door{transform:none}.fs-character-lock{transform:translate(-50%,-50%)}.fs-character-seal-left{transform:rotate(34deg)}.fs-character-seal-right{transform:rotate(-34deg)}.fs-character-stamp{transform:translate(-50%,-50%)}.fs-character-flash,.fs-character-sparks,.fs-character-grain{display:none}.fs-cinema-bolt{filter:none}}
+@media(prefers-reduced-motion:reduce){[data-judgment-afflicted=fire]>.fs-portrait{animation:none}.fs-character-embers{display:none}.fs-character-chain-left,.fs-character-chain-right{transform:none}.is-unchain .fs-character-chain-left{opacity:.4;transform:translateX(-25%)}.is-unchain .fs-character-chain-right{opacity:.4;transform:translateX(25%)}}
