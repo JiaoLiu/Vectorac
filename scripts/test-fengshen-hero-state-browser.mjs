@@ -24,6 +24,7 @@ try{
   s=fixture('yangjian','jifa',2);for(const [slot,type]of Object.entries({weapon:'blade',armor:'bagua',offenseHorse:'chitu',defenseHorse:'dilu'}))s.players[1].equip[slot]=take(s,type)
   for(const type of ['indulgence','supplyshortage','lightning'])s.players[1].judgment.push(take(s,type))
   s.players[1].faceDown=true;s.players[1].chained=true;take(s,'sha',1);await load(s);await b.tap('[data-player="1"] .fs-player-info>strong')
+  await b.waitFor('document.querySelector(".fs-hero-detail>.fs-portrait")?.complete&&document.querySelector(".fs-hero-detail>.fs-portrait")?.naturalWidth>0',20000)
   const text=await b.evaluate('document.querySelector(".fs-live-hero-state").textContent');for(const word of ['戊己杏黄旗','青鸾','迷魂阵','背面朝上','已连环','手牌 1 张'])assert.ok(text.includes(word),word);assert.ok(!text.includes('忠臣'));assert.ok(!text.includes('身份未公开'))
   const visibleSkill=await b.evaluate(`(()=>{const body=document.querySelector('.fs-modal-body'),p=body.querySelector('.fs-hero-skill p'),r=p.getBoundingClientRect(),c=body.getBoundingClientRect();return {scroll:body.scrollTop,inside:r.top>=c.top-1&&r.bottom<=c.bottom+1&&r.left>=c.left-1&&r.right<=c.right+1,collapsed:!body.querySelector('details').open,statusInHeader:!!body.querySelector('.fs-hero-detail .fs-live-hero-state')}})()`)
   assert.equal(visibleSkill.scroll,0);assert.equal(visibleSkill.inside,true,`${w}x${h} first skill explanation visible`);assert.equal(visibleSkill.collapsed,true);assert.equal(visibleSkill.statusInHeader,true)
