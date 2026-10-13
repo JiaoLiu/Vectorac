@@ -31,7 +31,7 @@ import {
   tileSuit,
   TOTAL_TILES,
   YAOJI_TILE
-} from '../.vuepress/components/mahjong/contract.js'
+} from '../site/.vuepress/components/mahjong/contract.js'
 import {
   isWinHand,
   winShape,
@@ -42,7 +42,7 @@ import {
   handShanten,
   tingTiles,
   hasVoidTiles
-} from '../.vuepress/components/mahjong/rules.js'
+} from '../site/.vuepress/components/mahjong/rules.js'
 import {
   createGame,
   legalActions,
@@ -50,10 +50,10 @@ import {
   playerView,
   settlementOf,
   mulberry32
-} from '../.vuepress/components/mahjong/engine.js'
-import { aiDecide } from '../.vuepress/components/mahjong/ai.js'
-import { createLocalGame } from '../.vuepress/components/mahjong/local-game.js'
-import { ringMask, WALL_SIDE_SLOTS } from '../.vuepress/components/mahjong/ui.js'
+} from '../site/.vuepress/components/mahjong/engine.js'
+import { aiDecide } from '../site/.vuepress/components/mahjong/ai.js'
+import { createLocalGame } from '../site/.vuepress/components/mahjong/local-game.js'
+import { ringMask, WALL_SIDE_SLOTS } from '../site/.vuepress/components/mahjong/ui.js'
 
 const W = r => tileId('wan', r)
 const T = r => tileId('tong', r)

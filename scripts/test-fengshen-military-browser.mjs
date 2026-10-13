@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import {openBrowser} from './browser-cdp.mjs'
-import {createAssignedGame,dispatch,catalog} from '../.private/fengshen/engine.mjs'
-import {makeMilitaryDeck} from '../.private/fengshen/theme.mjs'
+import {createAssignedGame,dispatch,catalog} from '../site/.vuepress/components/fengshen/engine.mjs'
+import {makeMilitaryDeck} from '../site/.vuepress/components/fengshen/theme.mjs'
 function fixture(hero='yuanshi'){
  const ids=[hero,...['yuanshi','randeng','muzha','taiyi','nezha','jifa','yangjian','dixin'].filter(id=>id!==hero)].slice(0,8),s=createAssignedGame({heroIds:ids,roles:['lord','loyal','loyal','rebel','rebel','rebel','rebel','renegade'],seed:37,deckVersion:2});s.deck=makeMilitaryDeck();s.discard=[];s.processing=[];s.harvestPool=[];s.pending=null;s.queue=[];s.phase='play';s.current=0;s.logs=[];s.lastPlayed=null;s.lastEvent=null;s.lastResponse=null
  for(const p of s.players){p.hand=[];p.judgment=[];p.equip={weapon:null,armor:null,offenseHorse:null,defenseHorse:null};p.marks={sha:0}}

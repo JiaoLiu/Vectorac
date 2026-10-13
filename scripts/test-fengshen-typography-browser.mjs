@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
 import {openBrowser} from './browser-cdp.mjs'
-import {CARDS_BY_TYPE} from '../.private/fengshen/theme.mjs'
-import {cardFace,scaleCards} from '../.private/fengshen/presentation.mjs'
-import {createAssignedGame} from '../.private/fengshen/engine.mjs'
+import {CARDS_BY_TYPE} from '../site/.vuepress/components/fengshen/theme.mjs'
+import {cardFace,scaleCards} from '../site/.vuepress/components/fengshen/presentation.mjs'
+import {createAssignedGame} from '../site/.vuepress/components/fengshen/engine.mjs'
 const cards=Object.values(CARDS_BY_TYPE)
 const state=createAssignedGame({roles:['lord','loyal','rebel','rebel','renegade'],heroIds:['yangjian','jifa','nezha','jinling','daji'],seed:23})
 Object.assign(state,{queue:[],pending:null,phase:'play',current:0,logs:[],lastPlayed:null,lastResponse:null,publicReveal:null})

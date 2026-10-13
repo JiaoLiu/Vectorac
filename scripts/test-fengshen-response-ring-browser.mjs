@@ -1,7 +1,7 @@
 // Real CSS/DOM regression in isolated Chromium; never joins a room or submits feedback.
 import assert from 'node:assert/strict'
 import {openBrowser} from './browser-cdp.mjs'
-import {createAssignedGame,catalog,dispatch} from '../.private/fengshen/engine.mjs'
+import {createAssignedGame,catalog,dispatch} from '../site/.vuepress/components/fengshen/engine.mjs'
 
 function fixture(count,current,target){
  const roles=count===5?['lord','loyal','rebel','rebel','renegade']:['lord','loyal','loyal','rebel','rebel','rebel','rebel','renegade']

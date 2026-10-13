@@ -3,7 +3,7 @@ import {createRequire} from 'node:module'
 import {readFile,mkdir} from 'node:fs/promises'
 import {existsSync} from 'node:fs'
 const sharp=createRequire(import.meta.url)(process.env.SHARP_PATH||'sharp')
-const root='.vuepress/public/img/games/dressup/layers/v14',W=512,H=1024
+const root='site/.vuepress/public/img/games/dressup/layers/v14',W=512,H=1024
 await mkdir(root,{recursive:true});await mkdir('scripts/fixtures/wardrobe-v14-sources',{recursive:true})
 function segment(d,w,h){
  for(let i=0;i<d.length;i+=4){const [r,g,b]=d.subarray(i,i+3);if(r-g>24&&b-g>24&&b>90||r>170&&g<75&&b<100||r>210&&g>170&&b<60)d[i+3]=0}

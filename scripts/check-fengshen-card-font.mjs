@@ -1,7 +1,7 @@
 import {readFile} from 'node:fs/promises'
 import {createHash} from 'node:crypto'
 import {fileURLToPath} from 'node:url'
-import {CARDS_BY_TYPE} from '../.private/fengshen/theme.mjs'
+import {CARDS_BY_TYPE} from '../site/.vuepress/components/fengshen/theme.mjs'
 
 // This cmap was read from the generated WOFF2 by FontTools. Bind it to the
 // actual binary, so swapping the font cannot leave a stale passing manifest.
@@ -17,7 +17,7 @@ export function auditCardFont(cards,manifest,bytes,css){
  return errors
 }
 export async function checkCardFont(){
- const root=new URL('../.private/fengshen/',import.meta.url)
+ const root=new URL('../site/.vuepress/components/fengshen/',import.meta.url)
  const manifest=JSON.parse(await readFile(new URL('assets/fonts/coverage.json',root),'utf8'))
  const issues=auditCardFont(CARDS_BY_TYPE,manifest,await readFile(new URL(manifest.file,root)),await readFile(new URL('style.css',root),'utf8'))
  if(issues.length)throw Error('卡牌字体发布检查失败：\n'+issues.join('\n'))

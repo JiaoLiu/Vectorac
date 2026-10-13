@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {PlayMotionQueue,publicPlayMotions,pendingImpact} from '../.private/fengshen/play-motion.mjs'
-import {adapter} from '../mahjong-service/rooms/adapters/fengshen.js'
+import {PlayMotionQueue,publicPlayMotions,pendingImpact} from '../site/.vuepress/components/fengshen/play-motion.mjs'
+import {adapter} from '../services/mahjong/rooms/adapters/fengshen.js'
 const card={id:'public-1',type:'nullify',suit:'club',rank:12}
 test('nullify uses actual public caster and the current AOE victim, not next actor',()=>{
  const before={turns:2,lastResponse:null,lastPlayed:{id:1},pending:{kind:'counter',actor:3,source:1,target:0,cardType:'arrows',negated:false}}

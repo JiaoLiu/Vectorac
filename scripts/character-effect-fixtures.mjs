@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import {createAssignedGame,militaryCatalog,dispatch,playerView,allCards,restoreGame} from '../.private/fengshen/engine.mjs'
+import {createAssignedGame,militaryCatalog,dispatch,playerView,allCards,restoreGame} from '../site/.vuepress/components/fengshen/engine.mjs'
 export function effectBase(){const s=createAssignedGame({heroIds:['jifa','nezha','jinling','daji','yangjian'],roles:['lord','loyal','rebel','rebel','renegade'],seed:23,deckVersion:2});Object.assign(s,{deck:militaryCatalog.makeDeck(),discard:[],processing:[],queue:[],harvestPool:[],pending:null,phase:'play',current:0,logs:[],lastPlayed:null,lastResponse:null,publicReveal:null});for(const p of s.players){p.hand=[];p.judgment=[];p.equip={weapon:null,armor:null,offenseHorse:null,defenseHorse:null};p.marks={sha:0};p.hp=p.maxHp;p.chained=false}return s}
 export function giveEffectCard(s,seat,type,suit){const i=s.deck.findIndex(c=>c.type===type&&(!suit||c.suit===suit));assert.ok(i>=0,type);const c=s.deck.splice(i,1)[0];s.players[seat].hand.push(c);return c}
 export function effectStep(s,a){const r=dispatch(s,{seat:s.pending?.actor??s.current,...a});assert.ok(r.ok,r.error);assert.equal(allCards(r.state).length,160);assert.ok(restoreGame(r.state));return r.state}

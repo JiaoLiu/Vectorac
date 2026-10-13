@@ -3,7 +3,7 @@
 import {createRequire} from 'node:module'
 import {readFile,mkdir} from 'node:fs/promises'
 const sharp=createRequire(import.meta.url)(process.env.SHARP_PATH||'sharp')
-const root='.vuepress/public/img/games/dressup/layers/v13',W=512,H=1024
+const root='site/.vuepress/public/img/games/dressup/layers/v13',W=512,H=1024
 await mkdir(root,{recursive:true})
 const raw=async f=>sharp(f).resize(W,H,{fit:'fill'}).ensureAlpha().raw().toBuffer()
 const master=await raw('scripts/fixtures/wardrobe-v5-sources/master.webp')
@@ -14,7 +14,7 @@ function sample(d,x,y,out,p){const ix=Math.max(0,Math.min(W-2,Math.floor(x))),iy
 // often belongs to exposed abdomen or the previous outfit's blouse hem.
 const skirts=[{index:2,version:'v5',front:382},{index:12,version:'v10',front:377},{index:13,version:'v10',front:373},{index:14,version:'v10',front:365},{index:15,version:'v10',front:377},{index:16,version:'v10',front:374},{index:17,version:'v10',front:382}]
 for(const a of skirts){
- const d=await raw(`.vuepress/public/img/games/dressup/layers/${a.version}/bottom-${a.index}.webp`),out=Buffer.alloc(d.length)
+ const d=await raw(`site/.vuepress/public/img/games/dressup/layers/${a.version}/bottom-${a.index}.webp`),out=Buffer.alloc(d.length)
  const scales=[]
  for(let y=365;y<H;y++){
   const sy=y+(a.front-365)*Math.max(0,(600-y)/235),[l,r]=bounds(d,Math.round(sy))
@@ -43,7 +43,7 @@ function segment(d,w,h){
  for(let i=0;i<w*h;i++)if(!seen[i]&&d[i*4+3]>60){let n=1,j=0;q[0]=i;seen[i]=1;while(j<n){const p=q[j++],x=p%w;for(const k of [x?p-1:-1,x<w-1?p+1:-1,p-w,p+w])if(k>=0&&k<w*h&&!seen[k]&&d[k*4+3]>60){seen[k]=1;q[n++]=k}}if(n<200)for(let j=0;j<n;j++)d[q[j]*4+3]=0}
  return d
 }
-const toe=await raw('.vuepress/public/img/games/dressup/layers/v5/shoes-3.webp')
+const toe=await raw('site/.vuepress/public/img/games/dressup/layers/v5/shoes-3.webp')
 for(const a of manifest.assets){
  if(!existsSync(a.file))await sharp(a.source).webp({lossless:true}).toFile(a.file)
  const {data,info}=await sharp(a.file).ensureAlpha().raw().toBuffer({resolveWithObject:true});segment(data,info.width,info.height)

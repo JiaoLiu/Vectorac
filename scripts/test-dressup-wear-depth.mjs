@@ -3,11 +3,11 @@ import assert from 'node:assert/strict'
 import {createRequire} from 'node:module'
 import {readFile} from 'node:fs/promises'
 import {createHash} from 'node:crypto'
-import {PARTS,partAsset,partBackAsset,partThumbnail,DEFAULT_PARTS} from '../.vuepress/components/dressup/parts.mjs'
-import {paintComposite,layerSources,BASE} from '../.vuepress/components/dressup/compositor.mjs'
-import {tucksIntoWaist} from '../.vuepress/components/dressup/waist-fit.mjs'
+import {PARTS,partAsset,partBackAsset,partThumbnail,DEFAULT_PARTS} from '../site/.vuepress/components/dressup/parts.mjs'
+import {paintComposite,layerSources,BASE} from '../site/.vuepress/components/dressup/compositor.mjs'
+import {tucksIntoWaist} from '../site/.vuepress/components/dressup/waist-fit.mjs'
 const sharp=createRequire(import.meta.url)(process.env.SHARP_PATH||'sharp')
-const raw=async path=>sharp('.vuepress/public'+path).ensureAlpha().raw().toBuffer()
+const raw=async path=>sharp('site/.vuepress/public'+path).ensureAlpha().raw().toBuffer()
 const pixel=(d,x,y)=>d.subarray((y*512+x)*4,(y*512+x)*4+4)
 for(const [index,start] of [[6,888],[7,871],[8,852],[9,850],[10,800],[11,695]]){
  const p=PARTS.find(p=>p.id==='shoes-'+index),d=await raw(partAsset(p))
@@ -60,6 +60,6 @@ paintComposite(new Proxy({drawImage:img=>draws.push(img.src)},{get:(o,k)=>o[k]||
 assert.ok(draws.indexOf(partBackAsset(watch))<draws.indexOf(BASE));assert.ok(draws.indexOf(partAsset(watch))>draws.indexOf(BASE))
 let protectedAssets=0
 for(const version of ['v13','v14']){const manifest=JSON.parse(await readFile(`scripts/wardrobe-${version}-art.json`,'utf8'))
- for(const [path,hash] of Object.entries(manifest.protectedAssets||{})){assert.equal(createHash('sha256').update(await readFile('.vuepress/public'+path)).digest('hex'),hash,`product/old hairstyle/normal skirt unexpectedly changed: ${path}`);protectedAssets++}
+ for(const [path,hash] of Object.entries(manifest.protectedAssets||{})){assert.equal(createHash('sha256').update(await readFile('site/.vuepress/public'+path)).digest('hex'),hash,`product/old hairstyle/normal skirt unexpectedly changed: ${path}`);protectedAssets++}
 }
 console.log(JSON.stringify({passed:true,wornFootwear:6,proportionalSneakers:2,completeLongBands:5,frontBands:7,wrappedWatch:1,protectedAssets}))

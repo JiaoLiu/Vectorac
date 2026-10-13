@@ -6,12 +6,12 @@ import { spawn } from 'node:child_process'
 import { readFile, writeFile, mkdtemp } from 'node:fs/promises'
 import { join, resolve, extname } from 'node:path'
 import { tmpdir } from 'node:os'
-import { adapter } from '../mahjong-service/rooms/adapters/junqi.js'
+import { adapter } from '../services/mahjong/rooms/adapters/junqi.js'
 
 const require = createRequire(import.meta.url)
 const WebSocket = require('ws')
 const output = await mkdtemp(join(tmpdir(), 'junqi-perspective-'))
-const root = resolve('public')
+const root = resolve('build/site')
 const mime = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.webp': 'image/webp', '.mp3': 'audio/mpeg' }
 const server = createServer(async (req, res) => {
   const pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname)

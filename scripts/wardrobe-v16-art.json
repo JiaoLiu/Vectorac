@@ -2,7 +2,7 @@
   "mode": "built-in imagegen",
   "references": [
     "scripts/fixtures/wardrobe-v16-sources/head-registration.webp",
-    ".vuepress/public/img/games/dressup/layers/v7/catalog/hair-0.webp",
+    "site/.vuepress/public/img/games/dressup/layers/v7/catalog/hair-0.webp",
     "scripts/fixtures/wardrobe-v16-sources/outfit-style.webp"
   ],
   "note": "Four complete beauty mother faces with distinct artist-drawn jaws; fifth eye/lip variant. Uniform registration only, no per-row face deformation. Preserve all existing hair, hats, earrings, garments and catalogue illustrations outside makeup.",

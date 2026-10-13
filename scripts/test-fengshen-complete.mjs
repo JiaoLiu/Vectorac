@@ -1,14 +1,14 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {readFile,readdir,stat} from 'node:fs/promises'
-import {createAssignedGame,createGame,dispatch,playerView,restoreGame,allCards,catalog,chooseAI,hasSkill} from '../.private/fengshen/engine.mjs'
-import {HEROES,PLAYABLE_HEROES,CARDS_BY_TYPE,skillHelp,displayText,ALLIANCES} from '../.private/fengshen/theme.mjs'
-import {auditCanonicalRoster} from '../.private/fengshen/canonical-roster.mjs'
-import {COMPLETE_PROFILES} from '../.private/fengshen/complete-roster.mjs'
-import {extensionAction,extensionTargets} from '../.private/fengshen/extension-actions.mjs'
-import {panelSelection,panelAction} from '../.private/fengshen/panel-selection.mjs'
-import {renderBattle,renderCenter,renderControls} from '../.private/fengshen/table.mjs'
-import {cardFace,display,effectiveCard} from '../.private/fengshen/presentation.mjs'
+import {createAssignedGame,createGame,dispatch,playerView,restoreGame,allCards,catalog,chooseAI,hasSkill} from '../site/.vuepress/components/fengshen/engine.mjs'
+import {HEROES,PLAYABLE_HEROES,CARDS_BY_TYPE,skillHelp,displayText,ALLIANCES} from '../site/.vuepress/components/fengshen/theme.mjs'
+import {auditCanonicalRoster} from '../site/.vuepress/components/fengshen/canonical-roster.mjs'
+import {COMPLETE_PROFILES} from '../site/.vuepress/components/fengshen/complete-roster.mjs'
+import {extensionAction,extensionTargets} from '../site/.vuepress/components/fengshen/extension-actions.mjs'
+import {panelSelection,panelAction} from '../site/.vuepress/components/fengshen/panel-selection.mjs'
+import {renderBattle,renderCenter,renderControls} from '../site/.vuepress/components/fengshen/table.mjs'
+import {cardFace,display,effectiveCard} from '../site/.vuepress/components/fengshen/presentation.mjs'
 function fixture(hero='yangjian',others=['jifa','nezha','dixin','jinling'],current=0){
  const ids=[hero,...others];assert.equal(new Set(ids).size,5)
  const s=createAssignedGame({roles:['lord','loyal','rebel','rebel','renegade'],heroIds:ids,seed:23});s.deck=catalog.makeDeck();s.discard=[];s.processing=[];s.harvestPool=[];s.queue=[];s.pending=null;s.phase='play';s.current=current;s.lastPlayed=null;s.lastResponse=null;s.exchange=null;s.publicReveal=null;s.logs=[]
@@ -26,8 +26,8 @@ function drain(s,stop=()=>!s.pending,limit=60){for(let i=0;!stop(s)&&i<limit;i++
 const ui=s=>({state:s,selected:[],targets:[],skill:null,paused:false,header:()=>'',matching:()=>[],currentAs:()=>null,targetable:()=>[],equipment:()=>'',skills:()=>'',won:()=>false,pendingText:()=>''})
 test('all 64 existing independent portraits are complete, certified, uniquely mapped and selectable',async()=>{
  assert.equal(HEROES.length,64);assert.equal(PLAYABLE_HEROES.length,64);assert.deepEqual(auditCanonicalRoster(HEROES,ALLIANCES),[])
- const files=(await readdir(new URL('../.private/fengshen/assets/heroes/',import.meta.url))).filter(s=>s.endsWith('.jpg')&&!s.endsWith('-thumb.jpg'));assert.equal(files.length,64)
- for(const h of HEROES){assert.ok(h.playable);assert.equal(h.missingSkills.length,0);assert.ok(await stat(new URL('../.private/fengshen/'+h.image,import.meta.url)));for(const skill of Object.keys(h.skillNames))assert.ok(skillHelp(h,skill));assert.ok(createGame({heroId:h.id,seed:2}))}
+ const files=(await readdir(new URL('../site/.vuepress/components/fengshen/assets/heroes/',import.meta.url))).filter(s=>s.endsWith('.jpg')&&!s.endsWith('-thumb.jpg'));assert.equal(files.length,64)
+ for(const h of HEROES){assert.ok(h.playable);assert.equal(h.missingSkills.length,0);assert.ok(await stat(new URL('../site/.vuepress/components/fengshen/'+h.image,import.meta.url)));for(const skill of Object.keys(h.skillNames))assert.ok(skillHelp(h,skill));assert.ok(createGame({heroId:h.id,seed:2}))}
  assert.ok(!displayText('恢复体力，获得手牌').includes('undefined'))
 })
 test('Guhuo never exposes the concealed physical card before questions finish; false challenged card fizzles and rewards questioner',()=>{

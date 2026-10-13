@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import {openBrowser} from './browser-cdp.mjs'
-import {createGame,catalog} from '../.private/fengshen/engine.mjs'
-import {heroForBase} from '../.private/fengshen/theme.mjs'
+import {createGame,catalog} from '../site/.vuepress/components/fengshen/engine.mjs'
+import {heroForBase} from '../site/.vuepress/components/fengshen/theme.mjs'
 import {hand} from './fixtures/sanguo.mjs'
 // 弹窗（人物介绍/设置/图鉴等）只是浮层：打开后 AI 必须照常出牌、自动结束出牌照常触发，
 // 不能像旧实现那样把整个调度链一起冻住（单机表现为「AI 不动了」，联机里空过回合还会拖住全场）。

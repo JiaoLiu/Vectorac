@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import {createAssignedGame,militaryCatalog,dispatch,playerView} from '../.private/fengshen/engine.mjs'
+import {createAssignedGame,militaryCatalog,dispatch,playerView} from '../site/.vuepress/components/fengshen/engine.mjs'
 export function judgmentFixture(effect,{hit=true,owner='jifa'}={}){
  const s=createAssignedGame({heroIds:effect==='leiji'?['randeng','yangjian','jinling','daji','nezha']:[owner,'yangjian','jinling','daji','nezha'],roles:['lord','loyal','rebel','rebel','renegade'],seed:37,deckVersion:2})
  Object.assign(s,{deck:militaryCatalog.makeDeck(),discard:[],processing:[],queue:[],harvestPool:[],pending:null,phase:'play',current:effect==='leiji'?1:4,logs:[],lastPlayed:null,lastResponse:null,publicReveal:null})

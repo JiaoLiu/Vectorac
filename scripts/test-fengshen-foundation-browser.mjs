@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import {openBrowser} from './browser-cdp.mjs'
-import {createAssignedGame,catalog,dispatch} from '../.private/fengshen/engine.mjs'
-import {createEngine} from '../.private/fengshen/core/engine.mjs'
+import {createAssignedGame,catalog,dispatch} from '../site/.vuepress/components/fengshen/engine.mjs'
+import {createEngine} from '../site/.vuepress/components/fengshen/core/engine.mjs'
 const E=createEngine(catalog)
 function fixture(hero){const s=createAssignedGame({heroIds:[hero,'jifa','nezha','yangjian','jinling'],roles:['lord','loyal','rebel','rebel','renegade'],seed:3});Object.assign(s,{deck:catalog.makeDeck(),discard:[],processing:[],harvestPool:[],pending:null,queue:[],phase:'play',current:0,logs:[],lastPlayed:null,lastEvent:null});for(const p of s.players){p.hand=[];p.judgment=[];p.equip={weapon:null,armor:null,offenseHorse:null,defenseHorse:null};p.marks={sha:0};p.hp=p.maxHp=catalog.HERO_BY_ID[p.heroId].hp+(p.role==='lord'?1:0);delete p.persistent;delete p.gainedSkills;delete p.fieldPile}return s}
 function give(s,seat,type){const i=s.deck.findIndex(c=>c.type===type);assert.ok(i>=0);const c=s.deck.splice(i,1)[0];s.players[seat].hand.push(c);return c}

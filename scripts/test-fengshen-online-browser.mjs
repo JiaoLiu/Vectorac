@@ -2,10 +2,10 @@
 import assert from 'node:assert/strict'
 import {readFile} from 'node:fs/promises'
 import {resolve,extname} from 'node:path'
-import {createServer} from '../mahjong-service/server.js'
-import {createAssignedGame,catalog} from '../.private/fengshen/engine.mjs'
+import {createServer} from '../services/mahjong/server.js'
+import {createAssignedGame,catalog} from '../site/.vuepress/components/fengshen/engine.mjs'
 import {openBrowser} from './browser-cdp.mjs'
-const service=createServer({logger:()=>{}}),clients=[],root=resolve('public'),mime={'.html':'text/html','.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml','.jpg':'image/jpeg','.png':'image/png','.webp':'image/webp','.woff2':'font/woff2','.mp3':'audio/mpeg','.wav':'audio/wav'}
+const service=createServer({logger:()=>{}}),clients=[],root=resolve('build/site'),mime={'.html':'text/html','.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml','.jpg':'image/jpeg','.png':'image/png','.webp':'image/webp','.woff2':'font/woff2','.mp3':'audio/mpeg','.wav':'audio/wav'}
 const apiWrites=[];let upgrades=0;service.server.on('upgrade',()=>upgrades++)
 // Test-only static handler; no production config/server routes are modified.
 service.server.removeAllListeners('request');service.server.on('request',async(req,res)=>{

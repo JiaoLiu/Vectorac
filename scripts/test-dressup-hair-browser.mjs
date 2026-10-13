@@ -3,7 +3,7 @@ import {createRequire} from 'node:module'
 import {mkdtemp,writeFile} from 'node:fs/promises'
 import {join} from 'node:path'
 import {tmpdir} from 'node:os'
-import {PARTS,DEFAULT_PARTS} from '../.vuepress/components/dressup/parts.mjs'
+import {PARTS,DEFAULT_PARTS} from '../site/.vuepress/components/dressup/parts.mjs'
 const require=createRequire(import.meta.url),{chromium,webkit}=require(process.env.PLAYWRIGHT_PATH||'playwright')
 const base=process.env.DRESSUP_BASE||'http://127.0.0.1:8084',out=await mkdtemp(join(tmpdir(),'wardrobe-hair-ui-')),key='vectorac.flower-wardrobe.v1'
 let looks=0,rotations=0

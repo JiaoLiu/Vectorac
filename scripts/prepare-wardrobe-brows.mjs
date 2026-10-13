@@ -4,7 +4,7 @@
 import {createRequire} from 'node:module'
 import {mkdir} from 'node:fs/promises'
 const sharp=createRequire(import.meta.url)(process.env.SHARP_PATH||'sharp')
-const root='.vuepress/public/img/games/dressup/layers/v9'
+const root='site/.vuepress/public/img/games/dressup/layers/v9'
 await mkdir(root+'/catalog',{recursive:true})
 const shapes={
  2:'M216 96 C222 87 235 86 248 94 C238 90 229 88 218 97 Z',

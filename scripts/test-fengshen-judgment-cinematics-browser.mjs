@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import {openBrowser} from './browser-cdp.mjs'
 import {judgmentFixture} from './fengshen-judgment-fixtures.mjs'
-import {playerView} from '../.private/fengshen/engine.mjs'
+import {playerView} from '../site/.vuepress/components/fengshen/engine.mjs'
 
 const b=await openBrowser({name:'gods-judgment-cinematics',baseUrl:process.env.FENGSHEN_TEST_ORIGIN||null,route:'/games/fengshen/'})
 const load=(f,{sound=false}={})=>b.evaluate(`(()=>{const u=window.__fengshenUI;u.__scheduleOriginal||=(u.schedule.bind(u));u.schedule=()=>{};u.voice.setEnabled(${sound});u.music.setEnabled(false);u.clearEffects();u.judgmentCinematics.now=Date.now;u.state=${JSON.stringify(f.before)};u.lobby=false;u.setup=null;u.modal=null;u.paused=false;u.auto=false;u.reset();u.render();return u.act(${JSON.stringify(f.action)})})()`)
@@ -60,7 +60,7 @@ try{
  // The affected hero is an opponent in a seat-local online snapshot too,
  // not always the local player in the lower-left corner.
  for(const effect of ['indulgence','supplyshortage']){
-  const f=judgmentFixture(effect),projected=await import('../.private/fengshen/network-projection.mjs'),before={...f.before,networkView:projected.rotateView(playerView(f.before,1),1)},after={...f.after,networkView:projected.rotateView(playerView(f.after,1),1)}
+  const f=judgmentFixture(effect),projected=await import('../site/.vuepress/components/fengshen/network-projection.mjs'),before={...f.before,networkView:projected.rotateView(playerView(f.before,1),1)},after={...f.after,networkView:projected.rotateView(playerView(f.after,1),1)}
   before.players=before.networkView.players;after.players=after.networkView.players
   await b.evaluate(`(()=>{const u=window.__fengshenUI;u.clearEffects();u.judgmentCinematics.now=Date.now;u.state=${JSON.stringify(before)};u.reset();u.render();u.state=${JSON.stringify(after)};u.present(${JSON.stringify(before)},{});return true})()`)
   await b.waitFor(`!!document.querySelector('[data-player="${after.networkView.pending.target}"] .fs-player-main>.fs-judgment-cinematic')`)

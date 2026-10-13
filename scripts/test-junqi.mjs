@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {BOARD,TYPES,ARMIES,createGame,canDeploy,swapFormation,armyNode,legalMoves,battle,startGame,rollOpening,move,visibleType,chooseAI,restoreGame,surrender,nextClockwiseSeat,at,badgeOf} from '../.vuepress/components/junqi/engine.mjs'
+import {BOARD,TYPES,ARMIES,createGame,canDeploy,swapFormation,armyNode,legalMoves,battle,startGame,rollOpening,move,visibleType,chooseAI,restoreGame,surrender,nextClockwiseSeat,at,badgeOf} from '../site/.vuepress/components/junqi/engine.mjs'
 const piece=(id,type,seat,pos)=>({id,type,seat,pos,moved:false})
 function fixture(extra=[]){const s=createGame({seed:123});s.phase='play';s.pieces=[0,1,2,3].map(seat=>piece('flag'+seat,'flag',seat,armyNode(seat,5,1))).concat(extra);return s}
 test('129 nodes, four five-camp armies, reciprocal railway and road graph',()=>{

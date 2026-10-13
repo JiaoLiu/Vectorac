@@ -1,5 +1,5 @@
-import { createLocalGame } from '../.vuepress/components/mahjong/adapter.js'
-import { SUITS } from '../.vuepress/components/mahjong/contract.js'
+import { createLocalGame } from '../site/.vuepress/components/mahjong/adapter.js'
+import { SUITS } from '../site/.vuepress/components/mahjong/contract.js'
 
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms))
 const fail = message => { throw new Error(message) }

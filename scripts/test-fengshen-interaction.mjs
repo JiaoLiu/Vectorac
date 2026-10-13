@@ -3,16 +3,16 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {readFile,stat} from 'node:fs/promises'
 import {spawnSync} from 'node:child_process'
-import {createGame,dispatch,playerView,restoreGame,allCards,catalog,THEME_VERSION} from '../.private/fengshen/engine.mjs'
-import {createEngine} from '../.private/fengshen/core/engine.mjs'
-import {makeDeck} from '../.private/fengshen/core/catalog.mjs'
+import {createGame,dispatch,playerView,restoreGame,allCards,catalog,THEME_VERSION} from '../site/.vuepress/components/fengshen/engine.mjs'
+import {createEngine} from '../site/.vuepress/components/fengshen/core/engine.mjs'
+import {makeDeck} from '../site/.vuepress/components/fengshen/core/catalog.mjs'
 import {hand,equipment,judgeTop} from './fixtures/sanguo.mjs'
-import {renderBattle,renderCenter,renderControls,turnActive} from '../.private/fengshen/table.mjs'
-import {takeSelection} from '../.private/fengshen/take-selection.mjs'
-import {AUDIO_ENTRIES,VOICES} from '../.private/fengshen/audio-manifest.mjs'
-import {CardVoice,cuesForAction} from '../.private/fengshen/voice.mjs'
-import {playerResources} from '../.private/fengshen/presentation.mjs'
-import {roundBreakActive,showRoom,endedTableKey,readEndedTable} from '../.private/fengshen/round-break.mjs'
+import {renderBattle,renderCenter,renderControls,turnActive} from '../site/.vuepress/components/fengshen/table.mjs'
+import {takeSelection} from '../site/.vuepress/components/fengshen/take-selection.mjs'
+import {AUDIO_ENTRIES,VOICES} from '../site/.vuepress/components/fengshen/audio-manifest.mjs'
+import {CardVoice,cuesForAction} from '../site/.vuepress/components/fengshen/voice.mjs'
+import {playerResources} from '../site/.vuepress/components/fengshen/presentation.mjs'
+import {roundBreakActive,showRoom,endedTableKey,readEndedTable} from '../site/.vuepress/components/fengshen/round-break.mjs'
 
 function fixture(heroId='yangjian',role='lord',current=0){
   const s=stableOpponents(createGame({heroId,role,seed:17}));s.deck=catalog.makeDeck();s.discard=[];s.processing=[];s.harvestPool=[];s.queue=[];s.pending=null;s.phase='play';s.current=current;s.logs=[];s.lastPlayed=null;s.lastEvent=null
@@ -248,9 +248,9 @@ test('unlock rebuilds an AudioContext the browser closed during background',asyn
   assert.equal(made.length,2,'被关闭的上下文必须重建，否则 resume() 永远失败');assert.equal(voice.cache.size,0,'旧上下文的解码缓存必须清空');voice.destroy()
 })
 test('all generated MP3s are present and decodable, with verified male/female voices',async()=>{
-  const manifest=JSON.parse(await readFile(new URL('../.private/fengshen/assets/audio/manifest.json',import.meta.url),'utf8'));assert.deepEqual(manifest.voices,VOICES);assert.equal(manifest.files.length,AUDIO_ENTRIES.length*2);assert.equal(manifest.entries.length,AUDIO_ENTRIES.length)
+  const manifest=JSON.parse(await readFile(new URL('../site/.vuepress/components/fengshen/assets/audio/manifest.json',import.meta.url),'utf8'));assert.deepEqual(manifest.voices,VOICES);assert.equal(manifest.files.length,AUDIO_ENTRIES.length*2);assert.equal(manifest.entries.length,AUDIO_ENTRIES.length)
   for(const file of manifest.files){
-    const path=new URL('../.private/fengshen/assets/audio/'+file,import.meta.url);assert.ok((await stat(path)).size>1000)
+    const path=new URL('../site/.vuepress/components/fengshen/assets/audio/'+file,import.meta.url);assert.ok((await stat(path)).size>1000)
     const result=spawnSync('/opt/homebrew/bin/ffprobe',['-v','error','-show_entries','format=duration','-of','default=noprint_wrappers=1:nokey=1',path.pathname],{encoding:'utf8'});assert.equal(result.status,0,file)
     const duration=Number(result.stdout);assert.ok(duration>.15&&duration<6,`${file}: ${duration}`)
     const decoded=spawnSync('/opt/homebrew/bin/ffmpeg',['-v','error','-xerror','-i',path.pathname,'-f','null','-'],{encoding:'utf8'});assert.equal(decoded.status,0,`${file}: ${decoded.stderr}`)

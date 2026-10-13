@@ -2,11 +2,11 @@
 // Do not infer hair from skin-colour thresholds: shadowed cheeks pass them.
 import {createRequire} from 'node:module'
 import {readFile,mkdir,copyFile} from 'node:fs/promises'
-import {faceSampleX} from '../.vuepress/components/dressup/face-fit.mjs'
+import {faceSampleX} from '../site/.vuepress/components/dressup/face-fit.mjs'
 const sharp=createRequire(import.meta.url)(process.env.SHARP_PATH||'sharp')
-const root='.vuepress/public/img/games/dressup/layers/v7',old='.vuepress/public/img/games/dressup/layers'
+const root='site/.vuepress/public/img/games/dressup/layers/v7',old='site/.vuepress/public/img/games/dressup/layers'
 const fixture='scripts/fixtures/wardrobe-v7-sources',W=512,H=1024,BG={r:244,g:237,b:229,alpha:1}
-const faceRoot='.vuepress/public/img/games/dressup/layers/v8'
+const faceRoot='site/.vuepress/public/img/games/dressup/layers/v8'
 await mkdir(root+'/catalog',{recursive:true});await mkdir(fixture,{recursive:true})
 await mkdir(faceRoot,{recursive:true})
 const manifest=JSON.parse(await readFile('scripts/wardrobe-v7-art.json','utf8')),sources={}

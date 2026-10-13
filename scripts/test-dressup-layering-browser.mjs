@@ -3,7 +3,7 @@ import {createRequire} from 'node:module'
 import {mkdtemp,writeFile} from 'node:fs/promises'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
-import {PARTS,DEFAULT_PARTS,partAsset} from '../.vuepress/components/dressup/parts.mjs'
+import {PARTS,DEFAULT_PARTS,partAsset} from '../site/.vuepress/components/dressup/parts.mjs'
 import {chooseCategory} from './wardrobe-category-browser.mjs'
 const require=createRequire(import.meta.url),{chromium,webkit}=require(process.env.PLAYWRIGHT_PATH||'playwright')
 const base=process.env.DRESSUP_BASE||'http://127.0.0.1:8080',out=await mkdtemp(join(tmpdir(),'wardrobe-layering-'))

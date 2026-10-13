@@ -3,7 +3,7 @@ import {createRequire} from 'node:module'
 import {readFile,writeFile,mkdtemp} from 'node:fs/promises'
 import {join} from 'node:path'
 import {tmpdir} from 'node:os'
-import {DEFAULT_PARTS} from '../.vuepress/components/dressup/parts.mjs'
+import {DEFAULT_PARTS} from '../site/.vuepress/components/dressup/parts.mjs'
 const require=createRequire(import.meta.url),sharp=require(process.env.SHARP_PATH||'sharp'),{chromium,webkit}=require(process.env.PLAYWRIGHT_PATH||'playwright')
 const out=await mkdtemp(join(tmpdir(),'wardrobe-editions-'))
 for(const [name,engine] of [['chromium',chromium],['webkit',webkit]]){
@@ -12,7 +12,7 @@ for(const [name,engine] of [['chromium',chromium],['webkit',webkit]]){
   const page=await browser.newPage()
   await page.route('http://editions.test/**',async r=>{const path=new URL(r.request().url()).pathname
    if(path==='/')return r.fulfill({body:'<canvas width="512" height="1024"></canvas>',contentType:'text/html'})
-   return r.fulfill({body:await readFile(path.endsWith('.mjs')?'.vuepress/components/dressup'+path:'.vuepress/public'+path),contentType:path.endsWith('.mjs')?'application/javascript':'image/webp'})
+   return r.fulfill({body:await readFile(path.endsWith('.mjs')?'site/.vuepress/components/dressup'+path:'site/.vuepress/public'+path),contentType:path.endsWith('.mjs')?'application/javascript':'image/webp'})
   });await page.goto('http://editions.test/')
   const result=await page.evaluate(async defaults=>{
    const {PARTS,partAsset,partThumbnail}=await import('/parts.mjs'),{EDITIONS}=await import('/collections.mjs')

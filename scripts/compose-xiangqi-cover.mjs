@@ -2,8 +2,8 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 const root = process.cwd()
-const scenePath = path.join(root, '.vuepress/public/img/games/xiangqi-cover-scene.webp')
-const outputPath = path.join(root, '.vuepress/public/img/games/xiangqi-cover.svg')
+const scenePath = path.join(root, 'site/.vuepress/public/img/games/xiangqi-cover-scene.webp')
+const outputPath = path.join(root, 'site/.vuepress/public/img/games/xiangqi-cover.svg')
 const scene = fs.readFileSync(scenePath).toString('base64')
 
 const W = 1600

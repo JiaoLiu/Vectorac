@@ -1,0 +1,115 @@
+#!/usr/bin/env bash
+# 把联机麻将服务打成自包含 tarball（含 node_modules），上传到服务器后无需 npm install。
+# 用法：cd services/mahjong && bash scripts/bundle.sh
+# 产物：dist/mahjong-service-YYYYMMDD-HHmm.tar.gz
+set -euo pipefail
+
+HERE="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$HERE"
+
+DIST_DIR="${DIST_DIR:-$HERE/../../build/packages}"
+mkdir -p "$DIST_DIR"
+
+STAMP="$(date +%Y%m%d-%H%M)"
+OUT="$DIST_DIR/mahjong-service-${STAMP}.tar.gz"
+WORK="$(mktemp -d)"
+trap 'rm -rf "$WORK" 2>/dev/null' EXIT
+
+echo "==> 复制源码到临时目录"
+mkdir -p "$WORK/mahjong-service"
+cp -r server.js config.js errors.js engine rooms scripts package.json package-lock.json README.md \
+  "$WORK/mahjong-service/"
+
+# 规则只有一份（文档 §六十六：不要复制第二套麻将规则）：
+# 仓库内 engine/*.js 是薄 re-export，指向 site/.vuepress/components/mahjong/。
+# 打包时用真实文件覆盖，服务端才能在独立部署形态下自包含运行。
+SRC_MJ="$(cd "$HERE/../../site/.vuepress/components/mahjong" && pwd)"
+echo "==> 用真实规则引擎 / AI 覆盖 engine/ 薄转发层"
+for f in contract rules engine ai; do
+  if [ ! -f "$SRC_MJ/$f.js" ]; then
+    echo "✗ 找不到 $SRC_MJ/$f.js，无法打包" >&2
+    exit 1
+  fi
+  cp "$SRC_MJ/$f.js" "$WORK/mahjong-service/engine/$f.js"
+done
+
+# 五子棋同理：engine/gomoku/ 子目录整体覆盖（保持 ai.js 的 './engine.js' 相对引用）
+SRC_GOMOKU="$(cd "$HERE/../../site/.vuepress/components/gomoku" && pwd)"
+mkdir -p "$WORK/mahjong-service/engine/gomoku"
+for f in engine ai; do
+  if [ ! -f "$SRC_GOMOKU/$f.js" ]; then
+    echo "✗ 找不到 $SRC_GOMOKU/$f.js，无法打包" >&2
+    exit 1
+  fi
+  cp "$SRC_GOMOKU/$f.js" "$WORK/mahjong-service/engine/gomoku/$f.js"
+done
+
+# 象棋同理：engine/xiangqi/ 子目录覆盖（engine.mjs 自包含、无内部依赖，改名 .js 即可）
+SRC_XIANGQI="$(cd "$HERE/../../site/.vuepress/components/xiangqi" && pwd)"
+mkdir -p "$WORK/mahjong-service/engine/xiangqi"
+if [ ! -f "$SRC_XIANGQI/engine.mjs" ]; then
+  echo "✗ 找不到 $SRC_XIANGQI/engine.mjs，无法打包" >&2
+  exit 1
+fi
+cp "$SRC_XIANGQI/engine.mjs" "$WORK/mahjong-service/engine/xiangqi/engine.js"
+
+# 军棋同理：engine/junqi/ 子目录覆盖（engine.mjs 自包含、无内部依赖，改名 .js 即可）
+SRC_JUNQI="$(cd "$HERE/../../site/.vuepress/components/junqi" && pwd)"
+mkdir -p "$WORK/mahjong-service/engine/junqi"
+if [ ! -f "$SRC_JUNQI/engine.mjs" ]; then
+  echo "✗ 找不到 $SRC_JUNQI/engine.mjs，无法打包" >&2
+  exit 1
+fi
+cp "$SRC_JUNQI/engine.mjs" "$WORK/mahjong-service/engine/junqi/engine.js"
+
+# 斗地主：engine + ai 双文件（ai.js import './engine.mjs'，打包后同目录改名要同步改引用）
+SRC_DDZ="$(cd "$HERE/../../site/.vuepress/components/doudizhu" && pwd)"
+mkdir -p "$WORK/mahjong-service/engine/doudizhu"
+if [ ! -f "$SRC_DDZ/engine.mjs" ] || [ ! -f "$SRC_DDZ/ai.js" ]; then
+  echo "✗ 找不到 $SRC_DDZ/engine.mjs 或 ai.js，无法打包" >&2
+  exit 1
+fi
+cp "$SRC_DDZ/engine.mjs" "$WORK/mahjong-service/engine/doudizhu/engine.js"
+cp "$SRC_DDZ/ai.js" "$WORK/mahjong-service/engine/doudizhu/ai.js"
+sed -i '' "s|'./engine.mjs'|'./engine.js'|g" "$WORK/mahjong-service/engine/doudizhu/ai.js"
+
+# 众神斗法：编译同一份规则、选将和视图投影为独立服务端模块，不带美术/文档/密钥。
+"$HERE/../../node_modules/.bin/esbuild" "$HERE/engine/fengshen/engine.js" --bundle --platform=node --format=esm --target=node18 --outfile="$WORK/mahjong-service/engine/fengshen/engine.js"
+
+# 不打包开发期文件
+rm -f "$WORK/mahjong-service/test.js"
+rm -f "$WORK/mahjong-service/test-gomoku.js"
+rm -f "$WORK/mahjong-service/test-xiangqi.js"
+rm -f "$WORK/mahjong-service/test-junqi.js"
+rm -f "$WORK/mahjong-service/test-doudizhu.js"
+rm -rf "$WORK/mahjong-service/dist"
+
+# 复用本目录已装好的 node_modules（express / ws / dotenv 均为纯 JS，无原生模块）
+if [ -d "$HERE/node_modules/express" ] && [ -d "$HERE/node_modules/ws" ] && [ -d "$HERE/node_modules/dotenv" ]; then
+  echo "==> 复用本地 node_modules（已装好，跳过 npm install）"
+  cp -r "$HERE/node_modules" "$WORK/mahjong-service/"
+else
+  echo "==> 本地 node_modules 缺失，跑 npm install（首次约 20s）"
+  (cd "$WORK/mahjong-service" &&
+    npm install --omit=dev --omit=optional --no-audit --no-fund --no-progress)
+fi
+
+echo "==> 打包"
+cd "$WORK"
+tar -czf "$OUT" mahjong-service
+cd "$HERE"
+node "$HERE/../../scripts/prune-release-packages.mjs" "$DIST_DIR" mahjong-service
+
+SIZE=$(du -h "$OUT" | cut -f1)
+echo ""
+echo "✓ 已生成: $OUT  ($SIZE)"
+echo "  在 Finder 打开: open $DIST_DIR"
+echo ""
+echo "  上传并部署（中转目录用官网同级 .deploy，不要用 /tmp；详见 README.md）："
+echo "    ssh <user>@<server> 'mkdir -p /home/www/vectorac/.deploy'"
+echo "    scp $OUT <user>@<server>:/home/www/vectorac/.deploy/"
+echo "    ssh <user>@<server>"
+echo "    cd /home/www/vectorac/.deploy && rm -rf mahjong-service"
+echo "    tar -xzf $(basename "$OUT")   # 解出 .deploy/mahjong-service/"
+echo "    cd mahjong-service && sudo bash scripts/install.sh  # 升级保留已有 .env 和 ADMIN_TOKEN"
+echo "    # 安装目录：/home/www/vectorac/mahjong-service（与官网 dist/ 平级）"

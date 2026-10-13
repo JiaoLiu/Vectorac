@@ -1,15 +1,15 @@
-// This preview is deliberately outside VuePress/public. Bind only to loopback.
+// Internal previews are separate from the website output. Bind only to loopback.
 import {build} from 'esbuild'
 import {createServer} from 'node:http'
 import {mkdir,copyFile,cp,readFile,readdir,rm,stat,writeFile} from 'node:fs/promises'
 import {resolve,extname} from 'node:path'
 import {checkCardFont} from './check-fengshen-card-font.mjs'
 await checkCardFont()
-const qa=process.argv.includes('--qa'),release=process.argv.includes('--release'),source=resolve('.private/fengshen'),output=release?resolve('public/games/fengshen'):resolve('.private/fengshen',qa?'qa-dist':'dist')
+const qa=process.argv.includes('--qa'),release=process.argv.includes('--release'),source=resolve('site/.vuepress/components/fengshen'),output=release?resolve('build/site/games/fengshen'):resolve('build/preview',qa?'fengshen-qa':'fengshen')
 if(qa&&release)throw new Error('QA fixtures must never be published')
 if(release){
- const {HEROES,ALLIANCES}=await import('../.private/fengshen/theme.mjs')
- const {auditCanonicalRoster}=await import('../.private/fengshen/canonical-roster.mjs')
+ const {HEROES,ALLIANCES}=await import('../site/.vuepress/components/fengshen/theme.mjs')
+ const {auditCanonicalRoster}=await import('../site/.vuepress/components/fengshen/canonical-roster.mjs')
  const issues=auditCanonicalRoster(HEROES,ALLIANCES)
  if(issues.length)throw new Error('发布暂停：完整武将一对一映射检查未通过。'+issues.slice(0,4).join('；'))
 }

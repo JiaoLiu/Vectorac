@@ -4,8 +4,8 @@ import assert from 'node:assert/strict'
 import {
   createGame, dispatch, playerView, settlementOf,
   classifyCombo, canBeat, enumerateCombos, rankOf
-} from '../.vuepress/components/doudizhu/engine.mjs'
-import { aiDecide, evaluateBid, handsCount, hintPlay, setMonteCarlo, unseenCounts } from '../.vuepress/components/doudizhu/ai.js'
+} from '../site/.vuepress/components/doudizhu/engine.mjs'
+import { aiDecide, evaluateBid, handsCount, hintPlay, setMonteCarlo, unseenCounts } from '../site/.vuepress/components/doudizhu/ai.js'
 
 // 行为断言针对启发式层（MC 有采样随机性，专项测试里再开）
 setMonteCarlo(false)

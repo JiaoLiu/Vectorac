@@ -1,8 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {successfulJudgments,JudgmentCinematics,JUDGMENT_LEAD_MS,JUDGMENT_SCENE_MS,sceneHtml} from '../.private/fengshen/judgment-cinematics.mjs'
-import {dispatch,playerView,restoreGame} from '../.private/fengshen/engine.mjs'
-import {rotateView} from '../.private/fengshen/network-projection.mjs'
+import {successfulJudgments,JudgmentCinematics,JUDGMENT_LEAD_MS,JUDGMENT_SCENE_MS,sceneHtml} from '../site/.vuepress/components/fengshen/judgment-cinematics.mjs'
+import {dispatch,playerView,restoreGame} from '../site/.vuepress/components/fengshen/engine.mjs'
+import {rotateView} from '../site/.vuepress/components/fengshen/network-projection.mjs'
 import {judgmentFixture} from './fengshen-judgment-fixtures.mjs'
 for(const effect of ['lightning','leiji','indulgence','supplyshortage'])test(`${effect}: only final successful public judgment animates, existing rules unchanged`,()=>{
  const f=judgmentFixture(effect),events=successfulJudgments(f.beforeView,f.afterView);assert.equal(events.length,1);assert.equal(events[0].effect,effect);assert.equal(events[0].judgeId,f.after.pending.card.id)

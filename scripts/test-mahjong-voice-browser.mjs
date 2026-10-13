@@ -12,12 +12,12 @@ const root=resolve(import.meta.dirname,'..'),out=await mkdtemp(join(tmpdir(),'ma
 const md=await readFile(join(root,'blogs/other/mahjong_game.md'),'utf8')
 const template=md.slice(md.indexOf('<div id="scmjGame"'),md.indexOf('<div class="scmj-intro">'))
 const css=md.match(/<style>([\s\S]*?)<\/style>/)[1]
-const built=await build({stdin:{contents:"export {default as UI} from './.vuepress/components/mahjong/ui.js'",resolveDir:root},bundle:true,format:'iife',globalName:'VoiceTest',write:false})
+const built=await build({stdin:{contents:"export {default as UI} from './site/.vuepress/components/mahjong/ui.js'",resolveDir:root},bundle:true,format:'iife',globalName:'VoiceTest',write:false})
 const server=createServer(async(req,res)=>{
  if(req.url==='/test.js'){res.setHeader('Content-Type','text/javascript');res.end(built.outputFiles[0].text);return}
  if(/^\/mahjong\/tiles\/[mps][1-9]\.png$/.test(req.url)){
   res.setHeader('Content-Type','image/png');res.setHeader('Cache-Control','no-store')
-  res.end(await readFile(join(root,'.vuepress/public',req.url)));return
+  res.end(await readFile(join(root,'site/.vuepress/public',req.url)));return
  }
  res.setHeader('Content-Type','text/html');res.end(`<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>${css}</style>${template}<script src="/test.js"></script>`)
 })

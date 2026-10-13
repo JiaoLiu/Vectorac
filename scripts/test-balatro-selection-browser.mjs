@@ -5,18 +5,18 @@ import {tmpdir} from 'node:os'
 import {resolve, join, extname} from 'node:path'
 import {fileURLToPath} from 'node:url'
 import {createRequire} from 'node:module'
-import * as E from '../.vuepress/components/balatro/engine.mjs'
+import * as E from '../site/.vuepress/components/balatro/engine.mjs'
 
 const root=fileURLToPath(new URL('../',import.meta.url)),require=createRequire(import.meta.url)
 const {chromium,webkit}=require(process.env.PLAYWRIGHT_PATH||'playwright')
 const output=await mkdtemp(join(tmpdir(),'balatro-selection-'))
 // Serve the actual UI module and styles in isolation from unrelated site/network services.
-const html='<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/.vuepress/components/balatro/style.css"><div id="balatro-game"></div><script type="module">import PokerTable from "/.vuepress/components/balatro/ui.js";window.table=new PokerTable(document.querySelector("#balatro-game"));</script>'
+const html='<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/site/.vuepress/components/balatro/style.css"><div id="balatro-game"></div><script type="module">import PokerTable from "/site/.vuepress/components/balatro/ui.js";window.table=new PokerTable(document.querySelector("#balatro-game"));</script>'
 const server=createServer(async(req,res)=>{
  try{
   const path=new URL(req.url,'http://localhost').pathname
   if(path==='/'){res.setHeader('Content-Type','text/html');res.end(html);return}
-  const file=resolve(root,'.'+(path.startsWith('/img/')?'/.vuepress/public'+path:path))
+  const file=resolve(root,'.'+(path.startsWith('/img/')?'/site/.vuepress/public'+path:path))
   if(!file.startsWith(root)){res.writeHead(403);res.end();return}
   res.setHeader('Content-Type',({'.mjs':'text/javascript','.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml'})[extname(file)]||'application/octet-stream')
   res.end(await readFile(file))

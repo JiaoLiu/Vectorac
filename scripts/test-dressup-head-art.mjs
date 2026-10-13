@@ -5,15 +5,15 @@ import {readFile,writeFile,mkdtemp} from 'node:fs/promises'
 import {join} from 'node:path'
 import {tmpdir} from 'node:os'
 import {createHash} from 'node:crypto'
-import {HAT_HAIR_CUTS} from '../.vuepress/components/dressup/hat-coverage.mjs'
-import {PARTS,DEFAULT_PARTS,partAsset,partThumbnail} from '../.vuepress/components/dressup/parts.mjs'
+import {HAT_HAIR_CUTS} from '../site/.vuepress/components/dressup/hat-coverage.mjs'
+import {PARTS,DEFAULT_PARTS,partAsset,partThumbnail} from '../site/.vuepress/components/dressup/parts.mjs'
 const require=createRequire(import.meta.url),sharp=require(process.env.SHARP_PATH||'sharp'),{chromium}=require(process.env.PLAYWRIGHT_PATH||'playwright')
 const dir=await mkdtemp(join(tmpdir(),'wardrobe-v7-head-'))
-const raw=async id=>sharp('.vuepress/public'+partAsset(PARTS.find(p=>p.id===id))).ensureAlpha().raw().toBuffer()
+const raw=async id=>sharp('site/.vuepress/public'+partAsset(PARTS.find(p=>p.id===id))).ensureAlpha().raw().toBuffer()
 for(const p of PARTS.filter(p=>p.index>=0)){
  assert.notEqual(partThumbnail(p),partAsset(p),'product art must not point to the wearable sprite')
- const m=await sharp('.vuepress/public'+partThumbnail(p)).metadata();assert.ok(m.width>150&&m.height>150)
- const card=await sharp('.vuepress/public'+partThumbnail(p)).removeAlpha().raw().toBuffer()
+ const m=await sharp('site/.vuepress/public'+partThumbnail(p)).metadata();assert.ok(m.width>150&&m.height>150)
+ const card=await sharp('site/.vuepress/public'+partThumbnail(p)).removeAlpha().raw().toBuffer()
  assert.deepEqual([...card.subarray(0,3)],[244,237,229],'catalogue margin must match the one CSS background')
  if(p.id==='hat-1')for(let y=220;y<300;y+=10)for(let x=15;x<45;x+=10)assert.deepEqual([...card.subarray((y*360+x)*3,(y*360+x)*3+3)],[244,237,229],'neighbouring straw-hat ribbon leaked into beret card')
 }
@@ -43,7 +43,7 @@ for(const id of ['hair-0','hair-1']){const data=await raw(id);assert.ok(data[(15
 for(let hair=0;hair<4;hair++){
  // Restored ponytail is pinned to the original wearable, not the new generated
  // sprite. A skin-colour heuristic is not a registration/visual test for it.
- if(hair===2){const path=partAsset(PARTS.find(p=>p.id==='hair-2'));assert.ok(path.endsWith('/hair-2-restored.webp'));const wearable=await readFile('.vuepress/public'+path);assert.deepEqual(wearable,await readFile('.vuepress/public/img/games/dressup/layers/v6/hair-2.webp'),'catalogue regeneration must preserve the original ponytail wearable');assert.equal(createHash('sha256').update(wearable).digest('hex'),'779118293287eb733d2c0e318fa1c9e6d440467e53cabedcdcc702d4030a0331','original ponytail registration must not change');continue}
+ if(hair===2){const path=partAsset(PARTS.find(p=>p.id==='hair-2'));assert.ok(path.endsWith('/hair-2-restored.webp'));const wearable=await readFile('site/.vuepress/public'+path);assert.deepEqual(wearable,await readFile('site/.vuepress/public/img/games/dressup/layers/v6/hair-2.webp'),'catalogue regeneration must preserve the original ponytail wearable');assert.equal(createHash('sha256').update(wearable).digest('hex'),'779118293287eb733d2c0e318fa1c9e6d440467e53cabedcdcc702d4030a0331','original ponytail registration must not change');continue}
  const data=await raw('hair-'+hair);let skin=0
  for(let y=105;y<164;y++)for(let x=208;x<307;x++){const p=(y*512+x)*4,[r,g,b,a]=data.subarray(p,p+4);if(a>150&&r>165&&g>110&&r>g&&g>b&&r-g<65)skin++}
  assert.ok(skin<10,'hair sprite contains cheek/ear skin that produces stitched face edges: '+hair)
@@ -53,7 +53,7 @@ try{
  const page=await browser.newPage()
  await page.route('http://head.test/**',async r=>{
   const path=new URL(r.request().url()).pathname;if(path==='/')return r.fulfill({body:'<canvas width="512" height="1024"></canvas>',contentType:'text/html'})
-  return r.fulfill({body:await readFile(path.endsWith('.mjs')?'.vuepress/components/dressup'+path:'.vuepress/public'+path),contentType:path.endsWith('.mjs')?'application/javascript':'image/webp'})
+  return r.fulfill({body:await readFile(path.endsWith('.mjs')?'site/.vuepress/components/dressup'+path:'site/.vuepress/public'+path),contentType:path.endsWith('.mjs')?'application/javascript':'image/webp'})
  });await page.goto('http://head.test/')
  const results=await page.evaluate(async defaults=>{
   const {layerSources,paintComposite}=await import('/compositor.mjs'),{HAT_HAIR_CUTS}=await import('/hat-coverage.mjs'),cache=new Map(),canvas=document.querySelector('canvas'),ctx=canvas.getContext('2d'),tiles=[]

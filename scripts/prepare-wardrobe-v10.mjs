@@ -4,7 +4,7 @@ import {readFile,mkdir} from 'node:fs/promises'
 import {existsSync} from 'node:fs'
 const sharp=createRequire(import.meta.url)(process.env.SHARP_PATH||'sharp')
 const manifest=JSON.parse(await readFile('scripts/wardrobe-v10-art.json','utf8'))
-const root='.vuepress/public/img/games/dressup/layers/v10',fixtures='scripts/fixtures/wardrobe-v10-sources',W=512,H=1024
+const root='site/.vuepress/public/img/games/dressup/layers/v10',fixtures='scripts/fixtures/wardrobe-v10-sources',W=512,H=1024
 await mkdir(root+'/catalog',{recursive:true});await mkdir(fixtures,{recursive:true})
 function inside(x,y,poly){let yes=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++){const [a,b]=poly[i],[c,d]=poly[j];if((b>y)!==(d>y)&&x<(c-a)*(y-b)/(d-b)+a)yes=!yes}return yes}
 const mirror=p=>p.concat(p.slice().reverse().map(([x,y])=>[W-x,y]))

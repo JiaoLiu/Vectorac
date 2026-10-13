@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import {openBrowser} from './browser-cdp.mjs'
-import {createAssignedGame,catalog} from '../.private/fengshen/engine.mjs'
+import {createAssignedGame,catalog} from '../site/.vuepress/components/fengshen/engine.mjs'
 // 仙田（惧留孙/屯田积累的公开仙田）既是减距离的状态，也是觉醒后「当摄宝（探囊取物）使用」的代价。
 // 引擎允许该出牌路径，但此前 UI 没有入口、仙田标记也因 pointer-events:none 点不到。
 // 现在把自己的仙田标记渲染为可点击按钮，点击即触发 jixi（夺域）的摄宝流程（选一张仙田 → 选目标）。

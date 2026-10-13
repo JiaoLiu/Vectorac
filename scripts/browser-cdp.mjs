@@ -2,24 +2,67 @@
 import { createRequire } from 'node:module'
 import { createServer } from 'node:http'
 import { spawn } from 'node:child_process'
-import { readFile, writeFile, mkdtemp } from 'node:fs/promises'
+import { readFile, writeFile, mkdtemp, rm } from 'node:fs/promises'
 import { join, resolve, extname } from 'node:path'
 import { tmpdir } from 'node:os'
 const require=createRequire(import.meta.url),WebSocket=require('ws')
+const activeBrowsers=new Set()
+let startingBrowsers=0
+for(const [signal,code] of [['SIGINT',130],['SIGTERM',143]])process.once(signal,async()=>{
+  await Promise.allSettled([...activeBrowsers].map(close=>close()))
+  process.exit(code)
+})
 export async function openBrowser({name='game',baseUrl=null,route='/',extraArgs=[]}={}) {
-  const output=await mkdtemp(join(tmpdir(),`${name}-browser-`)),root=resolve('public')
+  if(activeBrowsers.size+startingBrowsers>=4)throw new Error('Browser test concurrency limit (4) reached; close existing clients before retrying')
+  startingBrowsers++
+  const output=await mkdtemp(join(process.env.VECTORAC_BROWSER_OUTPUT_DIR||tmpdir(),`${name}-browser-`)).catch(error=>{startingBrowsers--;throw error}),root=resolve('build/site')
   const mime={'.html':'text/html','.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.webp':'image/webp','.mp3':'audio/mpeg'}
   const server=createServer(async(req,res)=>{
     const pathname=decodeURIComponent(new URL(req.url,'http://localhost').pathname),file=resolve(root,'.'+(pathname.endsWith('/')?pathname+'index.html':pathname))
     if(!file.startsWith(root+'/')){res.writeHead(403).end();return}
     try{res.setHeader('Content-Type',mime[extname(file)]||'application/octet-stream');res.end(await readFile(file))}catch{res.writeHead(404).end()}
   })
-  await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(0,'127.0.0.1',resolve)})
+  await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(0,'127.0.0.1',resolve)}).catch(async error=>{
+    startingBrowsers--
+    await rm(output,{recursive:true,force:true})
+    throw error
+  })
   const origin=(baseUrl||`http://127.0.0.1:${server.address().port}`).replace(/\/$/,'')
-  const chrome=spawn(process.env.CHROME_PATH||'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',['--headless=new','--remote-debugging-port=0',`--user-data-dir=${join(output,'profile')}`,'--no-first-run','--no-default-browser-check',...extraArgs,'about:blank'],{stdio:['ignore','ignore','pipe']})
+  const chrome=spawn(process.env.CHROME_PATH||'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',['--headless=new','--remote-debugging-port=0',`--user-data-dir=${join(output,'profile')}`,'--no-first-run','--no-default-browser-check',...extraArgs,'about:blank'],{detached:process.platform!=='win32',stdio:['ignore','ignore','pipe']})
   let socket,session,serial=0
   const pending=new Map(),errors=[]
-  const close=async()=>{if(socket)socket.close();for(const task of pending.values())clearTimeout(task.timer);chrome.kill();await new Promise(resolve=>server.close(resolve))}
+  let closing
+  const exited=new Promise(resolve=>{chrome.once('exit',resolve);chrome.once('error',resolve)})
+  const exitedWithin=async ms=>{
+    let timer
+    try{return await Promise.race([exited.then(()=>true),new Promise(resolve=>{timer=setTimeout(()=>resolve(false),ms)})])}
+    finally{clearTimeout(timer)}
+  }
+  const stopOwnedGroup=signal=>{
+    try{if(process.platform!=='win32'&&chrome.pid)process.kill(-chrome.pid,signal);else chrome.kill(signal)}
+    catch(error){if(error.code!=='ESRCH')throw error}
+  }
+  const close=()=>closing||=(async()=>{
+    try{
+      if(socket?.readyState===WebSocket.OPEN)socket.send(JSON.stringify({id:++serial,method:'Browser.close'}))
+      if(!await exitedWithin(2000)){
+        stopOwnedGroup('SIGTERM')
+        if(!await exitedWithin(2000)){stopOwnedGroup('SIGKILL');if(!await exitedWithin(2000))throw new Error('Owned Chrome did not exit')}
+      }
+    }finally{
+      // Close only this launch's process group, including any leftover helpers.
+      stopOwnedGroup('SIGTERM')
+      if(socket)socket.terminate()
+      for(const task of pending.values()){clearTimeout(task.timer);task.reject(new Error('Browser closed'))}
+      pending.clear()
+      server.closeAllConnections()
+      await new Promise(resolve=>server.close(resolve))
+      await rm(join(output,'profile'),{recursive:true,force:true})
+      activeBrowsers.delete(close)
+    }
+  })()
+  activeBrowsers.add(close)
+  startingBrowsers--
   try {
     const endpoint=await new Promise((resolve,reject)=>{
       let stderr='';const timer=setTimeout(()=>reject(new Error('Chrome startup timeout')),15000)

@@ -30,8 +30,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 // 到脚本所在目录推导仓库根目录。
 const cwdRoot = path.resolve(process.env.SCMJ_ROOT || process.cwd())
 const directRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const ROOT = fs.existsSync(path.join(cwdRoot, '.vuepress/components/mahjong')) ? cwdRoot : directRoot
-const SRC = path.join(ROOT, '.vuepress/components/mahjong')
+const ROOT = fs.existsSync(path.join(cwdRoot, 'site/.vuepress/components/mahjong')) ? cwdRoot : directRoot
+const SRC = path.join(ROOT, 'site/.vuepress/components/mahjong')
 const TMP = path.join(os.tmpdir(), 'scmj-ai-test')
 
 // ---------- 测试内手写最小 shanten 实现（rules.js 缺失时的降级基准） ----------

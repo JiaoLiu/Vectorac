@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict'
 import {openBrowser} from './browser-cdp.mjs'
 import {build} from 'esbuild'
-const bundle=await build({entryPoints:['.private/fengshen/online.mjs'],bundle:true,write:false,format:'iife',globalName:'QAOnline',platform:'browser',loader:{'.css':'empty'}})
+const bundle=await build({entryPoints:['site/.vuepress/components/fengshen/online.mjs'],bundle:true,write:false,format:'iife',globalName:'QAOnline',platform:'browser',loader:{'.css':'empty'}})
 const b=await openBrowser({name:'gods-room-teams',route:'/games/fengshen/'})
 try{
  await b.viewport(430,932);await b.navigate();await b.waitFor('!!window.__fengshenUI')

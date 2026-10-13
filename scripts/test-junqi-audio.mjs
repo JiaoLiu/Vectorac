@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {readFile} from 'node:fs/promises'
-const source=await readFile(new URL('../.vuepress/components/junqi/audio.js',import.meta.url),'utf8')
+const source=await readFile(new URL('../site/.vuepress/components/junqi/audio.js',import.meta.url),'utf8')
 const {createJunqiAudio}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'))
 test('gesture-created audio, independent switches, pause and complete cleanup',async()=>{
  let contexts=0,notes=0,closed=0,current,media

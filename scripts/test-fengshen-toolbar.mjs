@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {renderToolbar,renderMenu} from '../.private/fengshen/toolbar.mjs'
+import {renderToolbar,renderMenu} from '../site/.vuepress/components/fengshen/toolbar.mjs'
 const state={lobby:false,setup:null,paused:false,voice:true,music:true}
 test('battle toolbar collapses to a single menu entry; menu holds every tool',()=>{
  const html=renderToolbar(state);assert.equal((html.match(/<button /g)||[]).length,1);assert.ok(html.includes('data-action="menu"'));assert.ok(html.includes('aria-label="菜单"'))

@@ -3,8 +3,8 @@ import {createRequire} from 'node:module'
 import {readFile,writeFile,mkdtemp} from 'node:fs/promises'
 import {join} from 'node:path'
 import {tmpdir} from 'node:os'
-import {DEFAULT_PARTS,PARTS,REGISTERED_CATEGORIES,partAsset} from '../.vuepress/components/dressup/parts.mjs'
-import {SOCK_VISIBLE_END} from '../.vuepress/components/dressup/compositor.mjs'
+import {DEFAULT_PARTS,PARTS,REGISTERED_CATEGORIES,partAsset} from '../site/.vuepress/components/dressup/parts.mjs'
+import {SOCK_VISIBLE_END} from '../site/.vuepress/components/dressup/compositor.mjs'
 const require=createRequire(import.meta.url),{chromium}=require(process.env.PLAYWRIGHT_PATH||'playwright'),sharp=require(process.env.SHARP_PATH||'sharp')
 const output=await mkdtemp(join(tmpdir(),'wardrobe-v5-art-'))
 const browser=await chromium.launch({headless:true,executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'})
@@ -13,7 +13,7 @@ try{
  await page.route('http://wardrobe.test/**',async route=>{
   const path=new URL(route.request().url()).pathname
   if(path==='/'){await route.fulfill({body:'<!doctype html><canvas width="512" height="1024"></canvas>',contentType:'text/html'});return}
-  const file=path.endsWith('.mjs')?`.vuepress/components/dressup${path}`:`.vuepress/public${path}`
+  const file=path.endsWith('.mjs')?`site/.vuepress/components/dressup${path}`:`site/.vuepress/public${path}`
   try{await route.fulfill({body:await readFile(file),contentType:path.endsWith('.mjs')?'application/javascript':'image/webp'})}catch(e){await route.fulfill({status:404,body:'missing asset'})}
  })
  await page.goto('http://wardrobe.test/')
@@ -26,11 +26,11 @@ try{
   const file=join(output,name+'.png');await writeFile(file,Buffer.from(bytes,'base64'));return file
  }
  for(const p of PARTS.filter(p=>p.index>=0&&REGISTERED_CATEGORIES.includes(p.category))){
-  const m=await sharp('.vuepress/public'+partAsset(p)).metadata();assert.equal(m.width,512);assert.equal(m.height,1024);assert.equal(m.hasAlpha,true)
+  const m=await sharp('site/.vuepress/public'+partAsset(p)).metadata();assert.equal(m.width,512);assert.equal(m.height,1024);assert.equal(m.hasAlpha,true)
  }
  // Pale opaque chiffon is fabric, not bare skin to flood away. This caught a
  // real extraction failure that waist-only registration checks cannot catch.
- const chiffon=await sharp('.vuepress/public'+partAsset(PARTS.find(p=>p.id==='bottom-12'))).ensureAlpha().raw().toBuffer()
+ const chiffon=await sharp('site/.vuepress/public'+partAsset(PARTS.find(p=>p.id==='bottom-12'))).ensureAlpha().raw().toBuffer()
  for(let y=650;y<815;y++)for(let x=220;x<290;x++)assert.ok(chiffon[(y*512+x)*4+3]>180,'ice skirt exposes legs through an extraction hole')
  // Every top/bottom seam, not just four matching outfits. Capture close-ups of
  // the user's actual failure areas, rather than treating visible pixels as fit proof.
@@ -45,7 +45,7 @@ try{
  }
  for(let shoes=0;shoes<4;shoes++)for(const socks of ['socks-none','socks-0','socks-1','socks-4','socks-5']){
   const f=await render({...DEFAULT_PARTS,shoes:'shoes-'+shoes,socks},`feet-${shoes}-${socks}`)
-  const actual=await sharp(f).ensureAlpha().raw().toBuffer(),shoe=await sharp(`.vuepress/public/img/games/dressup/layers/v5/shoes-${shoes}.webp`).ensureAlpha().raw().toBuffer()
+  const actual=await sharp(f).ensureAlpha().raw().toBuffer(),shoe=await sharp(`site/.vuepress/public/img/games/dressup/layers/v5/shoes-${shoes}.webp`).ensureAlpha().raw().toBuffer()
   for(let y=SOCK_VISIBLE_END[shoes];y<1024;y++)for(let x=185;x<327;x++)assert.ok(Math.abs(actual[(y*512+x)*4+3]-shoe[(y*512+x)*4+3])<=1,'bare toes or sock fabric visible outside worn shoe silhouette')
   await sharp(f).extract({left:175,top:850,width:165,height:155}).resize(495,465).png().toFile(join(output,`feet-close-${shoes}-${socks}.png`))
  }

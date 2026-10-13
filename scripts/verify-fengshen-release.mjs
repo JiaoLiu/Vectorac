@@ -1,11 +1,11 @@
 import {readFile,readdir} from 'node:fs/promises'
 import {createHash} from 'node:crypto'
-import {HEROES,CARDS_BY_TYPE} from '../.private/fengshen/theme.mjs'
-import {AUDIO_ENTRIES,audioPath} from '../.private/fengshen/audio-manifest.mjs'
-const root=new URL('../public/',import.meta.url).pathname,hash=b=>createHash('sha256').update(b).digest('hex'),revision=process.env.VECTORAC_VERIFY_REVISION||'313ec41'
+import {HEROES,CARDS_BY_TYPE} from '../site/.vuepress/components/fengshen/theme.mjs'
+import {AUDIO_ENTRIES,audioPath} from '../site/.vuepress/components/fengshen/audio-manifest.mjs'
+const root=new URL('../build/site/',import.meta.url).pathname,hash=b=>createHash('sha256').update(b).digest('hex'),revision=process.env.VECTORAC_VERIFY_REVISION||'313ec41'
 const html=await readFile(root+'games/fengshen/index.html','utf8'),bundles=[...html.matchAll(/(?:src|href)="(app-[^"]+\.(?:js|css))"/g)].map(m=>'games/fengshen/'+m[1])
 const chunks=(await readdir(root+'games/fengshen')).filter(p=>/^chunk-.*\.js$/.test(p)).map(p=>'games/fengshen/'+p)
-const fontManifest=JSON.parse(await readFile(new URL('../.private/fengshen/assets/fonts/coverage.json',import.meta.url),'utf8'))
+const fontManifest=JSON.parse(await readFile(new URL('../site/.vuepress/components/fengshen/assets/fonts/coverage.json',import.meta.url),'utf8'))
 const files=[...new Set(['index.html','blogs/other/games.html','blogs/other/gamehall.html','games/fengshen/index.html',...bundles,...chunks,...Array.from({length:8},(_,i)=>'audio/gamehall/phrase-'+i+'.mp3'),...Object.values(CARDS_BY_TYPE).flatMap(c=>[c.image,c.thumb].filter(Boolean).map(p=>'games/fengshen/'+p)),'games/fengshen/'+fontManifest.file,...HEROES.flatMap(h=>[h.image,h.thumbnail].map(p=>'games/fengshen/'+p)),...AUDIO_ENTRIES.flatMap(e=>['male','female'].map(s=>'games/fengshen/'+audioPath(e.key,s)))])]
 const errors=[],retired=[];let next=0,checked=0,bytes=0
 async function worker(){while(next<files.length){const path=files[next++];try{const local=await readFile(root+path);let r;for(let attempt=0;attempt<2;attempt++){try{r=await fetch('https://vectorac.com/'+path+'?verify='+revision,{signal:AbortSignal.timeout(20000)});if(r.ok)break}catch(e){if(attempt===1)throw e}}if(!r?.ok)throw Error('HTTP '+r?.status);const body=Buffer.from(await r.arrayBuffer());if(hash(body)!==hash(local))throw Error('SHA256 mismatch');if(path.endsWith('.svg')&&!r.headers.get('content-type')?.includes('image/svg+xml'))throw Error('SVG MIME '+r.headers.get('content-type'));checked++;bytes+=body.length;if(checked%60===0)process.stdout.write('checked '+checked+'/'+files.length+'\n')}catch(e){errors.push({path,error:e.message})}}}

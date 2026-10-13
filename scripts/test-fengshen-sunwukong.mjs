@@ -1,10 +1,10 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {createAssignedGame,dispatch,playerView,restoreGame,allCards,hasSkill,hero,chooseAI,catalog}from '../.private/fengshen/engine.mjs'
-import {heroDetails,gameRules,formCollection}from '../.private/fengshen/player-guide.mjs'
-import {HEROES,skillName}from '../.private/fengshen/theme.mjs'
-import {modalReturnEntry}from '../.private/fengshen/modal-navigation.mjs'
-import {heroNameSize}from '../.private/fengshen/arena-layout.mjs'
+import {createAssignedGame,dispatch,playerView,restoreGame,allCards,hasSkill,hero,chooseAI,catalog}from '../site/.vuepress/components/fengshen/engine.mjs'
+import {heroDetails,gameRules,formCollection}from '../site/.vuepress/components/fengshen/player-guide.mjs'
+import {HEROES,skillName}from '../site/.vuepress/components/fengshen/theme.mjs'
+import {modalReturnEntry}from '../site/.vuepress/components/fengshen/modal-navigation.mjs'
+import {heroNameSize}from '../site/.vuepress/components/fengshen/arena-layout.mjs'
 const setup=()=>createAssignedGame({roles:['loyal','lord','rebel','rebel','renegade'],heroIds:['sunwukong','moliqing','nezha','yangjian','jifa'],seed:71})
 function step(s,a){const r=dispatch(s,{seat:s.pending?.actor??s.current,revision:s.revision,promptId:s.pending?.id,...a});assert.ok(r.ok,r.error);assert.equal(allCards(r.state).length,108);return r.state}
 function prepared(){let s=setup();s.players[0].incarnation.pool=['daqiao','ganning'];s=step(s,{type:'transform',heroId:'daqiao',skill:'guose'});assert.equal(s.pending.skill,'luoyi');s=step(s,{type:'choose',value:'yes'});return s}

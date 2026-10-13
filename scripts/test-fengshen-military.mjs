@@ -1,10 +1,10 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {createAssignedGame,dispatch,playerView,restoreGame,allCards,catalog,chooseAI} from '../.private/fengshen/engine.mjs'
-import {makeMilitaryDeck,HERO_BY_THEME_ID,PLAYABLE_HEROES} from '../.private/fengshen/theme.mjs'
-import {createSetup,dispatchSetup,restoreSession} from '../.private/fengshen/setup.mjs'
-import {printedCard,cardFace,effectiveCard} from '../.private/fengshen/presentation.mjs'
-import {tableTrail,trailCards} from '../.private/fengshen/table-trail.mjs'
+import {createAssignedGame,dispatch,playerView,restoreGame,allCards,catalog,chooseAI} from '../site/.vuepress/components/fengshen/engine.mjs'
+import {makeMilitaryDeck,HERO_BY_THEME_ID,PLAYABLE_HEROES} from '../site/.vuepress/components/fengshen/theme.mjs'
+import {createSetup,dispatchSetup,restoreSession} from '../site/.vuepress/components/fengshen/setup.mjs'
+import {printedCard,cardFace,effectiveCard} from '../site/.vuepress/components/fengshen/presentation.mjs'
+import {tableTrail,trailCards} from '../site/.vuepress/components/fengshen/table-trail.mjs'
 function fixture({heroes=['randeng','yuanshi','muzha','taiyi','nezha'],deckVersion=2}={}){
  const s=createAssignedGame({heroIds:heroes,roles:['lord','loyal','rebel','rebel','renegade'],seed:7,deckVersion})
  s.deck=(deckVersion===2?makeMilitaryDeck:catalog.makeDeck)();s.discard=[];s.processing=[];s.harvestPool=[];s.pending=null;s.queue=[];s.phase='play';s.current=0;s.logs=[];s.lastPlayed=null;s.lastResponse=null;s.lastEvent=null

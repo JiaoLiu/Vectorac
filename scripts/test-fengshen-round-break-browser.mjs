@@ -2,8 +2,8 @@
 import assert from 'node:assert/strict'
 import {build} from 'esbuild'
 import {openBrowser} from './browser-cdp.mjs'
-import {createAssignedGame} from '../.private/fengshen/engine.mjs'
-const module=await build({entryPoints:['.private/fengshen/online.mjs'],bundle:true,write:false,format:'iife',globalName:'QARound',loader:{'.css':'empty'}}),b=await openBrowser({name:'gods-round-break',route:'/games/fengshen/'})
+import {createAssignedGame} from '../site/.vuepress/components/fengshen/engine.mjs'
+const module=await build({entryPoints:['site/.vuepress/components/fengshen/online.mjs'],bundle:true,write:false,format:'iife',globalName:'QARound',loader:{'.css':'empty'}}),b=await openBrowser({name:'gods-round-break',route:'/games/fengshen/'})
 try{
  await b.viewport(932,430);await b.navigate();await b.waitFor('!!window.__fengshenUI');await b.evaluate(module.outputFiles[0].text+';window.__qaRound=QARound;true')
  await b.evaluate(`(()=>{const u=window.__fengshenUI;u.schedule=()=>{};u.voice.setEnabled(false);u.music.setEnabled(false);u.online=new window.__qaRound.OnlineGame(u);u.online.cred={roomId:'fixture',roomCode:'QAROOM',playerId:'fixture-user',seatIndex:0};u.online.ready=true;u.online.status='open';return true})()`)

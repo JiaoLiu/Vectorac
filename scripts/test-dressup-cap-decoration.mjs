@@ -8,7 +8,7 @@ const {chromium}=createRequire(import.meta.url)(process.env.PLAYWRIGHT_PATH||'pl
 const browser=await chromium.launch({headless:true,executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'})
 try{
  const page=await browser.newPage()
- await page.route('http://wardrobe.test/**',async r=>{const p=new URL(r.request().url()).pathname;if(p==='/')return r.fulfill({body:'<canvas width="512" height="1024"></canvas>',contentType:'text/html'});await r.fulfill({body:await readFile(p.endsWith('.mjs')?'.vuepress/components/dressup'+p:'.vuepress/public'+p),contentType:p.endsWith('.mjs')?'application/javascript':'image/webp'})})
+ await page.route('http://wardrobe.test/**',async r=>{const p=new URL(r.request().url()).pathname;if(p==='/')return r.fulfill({body:'<canvas width="512" height="1024"></canvas>',contentType:'text/html'});await r.fulfill({body:await readFile(p.endsWith('.mjs')?'site/.vuepress/components/dressup'+p:'site/.vuepress/public'+p),contentType:p.endsWith('.mjs')?'application/javascript':'image/webp'})})
  await page.goto('http://wardrobe.test/')
  let looks=0,pixels=0
  for(const hair of ['hair-0','hair-2','hair-5'])for(const hat of ['hat-0','hat-1','hat-4','hat-5','hat-6','hat-7','hat-10'])for(const piece of ['headpiece-0','headpiece-1','headpiece-4','headpiece-5','headpiece-6','headpiece-7','headpiece-10']){

@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {CANONICAL_ROSTER,CANONICAL_BY_ID,auditCanonicalRoster}from '../.private/fengshen/canonical-roster.mjs'
-import {HEROES,ALLIANCES}from '../.private/fengshen/theme.mjs'
+import {CANONICAL_ROSTER,CANONICAL_BY_ID,auditCanonicalRoster}from '../site/.vuepress/components/fengshen/canonical-roster.mjs'
+import {HEROES,ALLIANCES}from '../site/.vuepress/components/fengshen/theme.mjs'
 test('64 one-to-one target profiles: full Standard 25, each Wind/Fire/Forest/Mountain 8, seven Yijiang profiles',()=>{
  assert.equal(CANONICAL_ROSTER.length,64);assert.equal(new Set(CANONICAL_ROSTER.map(h=>h.id)).size,64);assert.equal(new Set(CANONICAL_ROSTER.map(h=>h.referenceId)).size,64)
  for(const [pack,count]of [['standard',25],['wind',8],['fire',8],['forest',8],['mountain',8]])assert.equal(CANONICAL_ROSTER.filter(h=>h.pack===pack).length,count)

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFile, access} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
-const source = await readFile(new URL('../.vuepress/components/slime-audio.js', import.meta.url), 'utf8');
+const source = await readFile(new URL('../site/.vuepress/components/slime-audio.js', import.meta.url), 'utf8');
 const {default: Audio, TOOL_SOUNDS} = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
 
 // Recording mocks: every scheduled gain move and stop() lands in `events`.
@@ -22,9 +22,9 @@ const audio=new Audio({createContext:()=>{created++;return context;},fetchAudio:
 // The whole kit must exist on disk where the game fetches it.
 const allSamples=new Set([...Object.values(TOOL_SOUNDS).flat(),'bed_01']);
 for(const name of allSamples)
- await access(new URL('../.vuepress/public'+audio.baseUrl+name+'.wav',import.meta.url));
+ await access(new URL('../site/.vuepress/public'+audio.baseUrl+name+'.wav',import.meta.url));
 assert.equal(audio.baseUrl,'/audio/slime-v6/','new kit bypasses earlier caches');
-const manifest=JSON.parse(await readFile(new URL('../.vuepress/public'+audio.baseUrl+'manifest.json',import.meta.url),'utf8'));
+const manifest=JSON.parse(await readFile(new URL('../site/.vuepress/public'+audio.baseUrl+'manifest.json',import.meta.url),'utf8'));
 assert.deepEqual(Object.keys(manifest.samples).sort(),[...allSamples].sort(),'every runtime sample has source provenance');
 const hashes=new Set();
 for(const name of allSamples){
@@ -32,7 +32,7 @@ for(const name of allSamples){
  const chime=/^(glitter|foil)_/.test(name);
  assert.equal(manifest.sources[entry.source].license,chime?'Project-owned':'CC0-1.0');
  assert.equal(entry.source,chime?'originalChimes':name.startsWith('pop_')?'bubbles':'slime','correct action source');
- const bytes=await readFile(new URL('../.vuepress/public'+audio.baseUrl+name+'.wav',import.meta.url));
+ const bytes=await readFile(new URL('../site/.vuepress/public'+audio.baseUrl+name+'.wav',import.meta.url));
  const hash=createHash('sha256').update(bytes).digest('hex');
  assert.equal(hash,entry.sha256,'recorded clip checksum: '+name);
  assert.ok(!hashes.has(hash),'distinct samples must not secretly be identical: '+name);hashes.add(hash);
@@ -44,11 +44,11 @@ for(const name of allSamples){
  for(let offset=44;offset<bytes.length;offset+=2){const v=bytes.readInt16LE(offset)/32768;peak=Math.max(peak,Math.abs(v));sum+=v*v;}
  assert.ok(peak>.005&&peak<=(name.startsWith('pop_')?.561:.801),'audible with safe peak headroom: '+name);
  assert.ok(Math.sqrt(sum/((bytes.length-44)/2))>.005,'not an empty/near-silent excerpt: '+name);
- if(chime){assert.deepEqual(bytes,await readFile(new URL('../.vuepress/public/audio/slime-v3/'+name+'.wav',import.meta.url)),'restore original chime unchanged');}
+ if(chime){assert.deepEqual(bytes,await readFile(new URL('../site/.vuepress/public/audio/slime-v3/'+name+'.wav',import.meta.url)),'restore original chime unchanged');}
  else if(!entry.loop){assert.equal(bytes.readInt16LE(44),0);assert.equal(bytes.readInt16LE(bytes.length-2),0);}
  else assert.ok(Math.abs(bytes.readInt16LE(44)-bytes.readInt16LE(bytes.length-2))/32768<.04,'loop seam does not click');
 }
-const previousManifest=JSON.parse(await readFile(new URL('../.vuepress/public/audio/slime-v4/manifest.json',import.meta.url),'utf8'));
+const previousManifest=JSON.parse(await readFile(new URL('../site/.vuepress/public/audio/slime-v4/manifest.json',import.meta.url),'utf8'));
 for(const name of TOOL_SOUNDS.pop)assert.equal(manifest.samples[name].sha256,previousManifest.samples[name].sha256,'accepted pop audio remains byte-identical');
 
 // Sculpting actions never share a recording: each has its own timbre.
@@ -66,7 +66,7 @@ for(const material of ['butter','cotton','crystal','liquid','foam','memory','cla
  audio.stop(); assert.equal(audio.play(tool,material),true,material+' '+tool);
  if(tool!=='pop')assert.equal([...audio.voices][0].sources[0].playbackRate.value,1,'qubodup recording keeps its natural pitch: '+tool);
 }
-const studio = await readFile(new URL('../.vuepress/components/SlimeStudio.js', import.meta.url), 'utf8');
+const studio = await readFile(new URL('../site/.vuepress/components/SlimeStudio.js', import.meta.url), 'utf8');
 assert.deepEqual([...studio.matchAll(/audio\.play\(\s*['"]([a-z]+)['"]/g)].map(m=>m[1]),['pop'],'only direct bubble popping may trigger standalone playback');
 for(const key of new Set([...studio.matchAll(/audio\.(?:play|begin)\(\s*['"]([a-z]+)['"]/g)].map(match=>match[1])))
  assert.ok(TOOL_SOUNDS[key],'SlimeStudio triggers "'+key+'" but no recording is mapped to it');

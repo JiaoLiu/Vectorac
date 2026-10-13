@@ -2,11 +2,11 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 let source = await readFile(
-  new URL("../.vuepress/components/slime-model.js", import.meta.url),
+  new URL("../site/.vuepress/components/slime-model.js", import.meta.url),
   "utf8"
 );
 const volumeSource = await readFile(
-  new URL("../.vuepress/components/slime-volume.js", import.meta.url),
+  new URL("../site/.vuepress/components/slime-volume.js", import.meta.url),
   "utf8"
 );
 const volumeURL = `data:text/javascript;base64,${Buffer.from(
@@ -18,7 +18,7 @@ const { default: SlimeModel } = await import(
   `data:text/javascript;base64,${Buffer.from(source).toString("base64")}`
 );
 const sculptSource = await readFile(
-  new URL("../.vuepress/components/slime-sculpt.js", import.meta.url),
+  new URL("../site/.vuepress/components/slime-sculpt.js", import.meta.url),
   "utf8"
 );
 const {
@@ -249,7 +249,7 @@ console.log(
   heights
 );
 const fusionSource = await readFile(
-  new URL("../.vuepress/components/slime-fusion.js", import.meta.url),
+  new URL("../site/.vuepress/components/slime-fusion.js", import.meta.url),
   "utf8"
 );
 const { fuseSurface, surfacePartCount, largestPart } = await import(
@@ -302,19 +302,19 @@ const moduleURL = text =>
 const threeURL = import.meta.resolve("three");
 const THREE = await import(threeURL);
 const sprinklesSource = await readFile(
-  new URL("../.vuepress/components/SlimeSprinkles.js", import.meta.url),
+  new URL("../site/.vuepress/components/SlimeSprinkles.js", import.meta.url),
   "utf8"
 );
 let studioSource = await readFile(
-  new URL("../.vuepress/components/SlimeStudio.js", import.meta.url),
+  new URL("../site/.vuepress/components/SlimeStudio.js", import.meta.url),
   "utf8"
 );
 const dependencies = {
-  "./slime-cotton": moduleURL((await readFile(new URL("../.vuepress/components/slime-cotton.js", import.meta.url), "utf8")).replace("from 'three'", 'from '+JSON.stringify(new URL('../node_modules/three/build/three.module.js', import.meta.url).href))),
-  "./slime-audio": moduleURL(await readFile(new URL("../.vuepress/components/slime-audio.js", import.meta.url), "utf8")),
+  "./slime-cotton": moduleURL((await readFile(new URL("../site/.vuepress/components/slime-cotton.js", import.meta.url), "utf8")).replace("from 'three'", 'from '+JSON.stringify(new URL('../node_modules/three/build/three.module.js', import.meta.url).href))),
+  "./slime-audio": moduleURL(await readFile(new URL("../site/.vuepress/components/slime-audio.js", import.meta.url), "utf8")),
   "./slime-safety": moduleURL(
     await readFile(
-      new URL("../.vuepress/components/slime-safety.js", import.meta.url),
+      new URL("../site/.vuepress/components/slime-safety.js", import.meta.url),
       "utf8"
     )
   ),

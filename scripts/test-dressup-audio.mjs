@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {createWardrobeAudio} from '../.vuepress/components/dressup/audio.mjs'
+import {createWardrobeAudio} from '../site/.vuepress/components/dressup/audio.mjs'
 test('gesture unlock, independent controls, background pause and complete disposal',()=>{
  const audios=[],contexts=[],tones=[]
  class Audio{constructor(src){this.src=src;this.paused=true;audios.push(this)}play(){this.paused=false;return Promise.resolve()}pause(){this.paused=true}removeAttribute(){this.src=''}load(){}}

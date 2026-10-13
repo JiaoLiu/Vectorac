@@ -1,8 +1,8 @@
 // Actual rendering/timers in Chromium; physical iPhone Safari remains separate.
 import assert from 'node:assert/strict'
 import {openBrowser} from './browser-cdp.mjs'
-import {createAssignedGame,catalog} from '../.private/fengshen/engine.mjs'
-import {PLAYABLE_HEROES} from '../.private/fengshen/theme.mjs'
+import {createAssignedGame,catalog} from '../site/.vuepress/components/fengshen/engine.mjs'
+import {PLAYABLE_HEROES} from '../site/.vuepress/components/fengshen/theme.mjs'
 const b=await openBrowser({name:'fengshen-beams',route:'/games/fengshen/'})
 const s=createAssignedGame({roles:['lord','loyal','rebel','rebel','renegade','loyal','rebel','rebel'],heroIds:['hades',...PLAYABLE_HEROES.filter(h=>h.id!=='hades').slice(0,7).map(h=>h.id)],seed:23})
 Object.assign(s,{deck:catalog.makeDeck(),discard:[],processing:[],harvestPool:[],queue:[],pending:null,phase:'play',current:0,lastPlayed:null,logs:[]})

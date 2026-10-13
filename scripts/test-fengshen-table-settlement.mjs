@@ -1,8 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {TableSettlement} from '../.private/fengshen/table-settlement.mjs'
-import {tableTrail,tableChainKey,trailCards} from '../.private/fengshen/table-trail.mjs'
-import {createAssignedGame,catalog,dispatch,playerView,allCards} from '../.private/fengshen/engine.mjs'
+import {TableSettlement} from '../site/.vuepress/components/fengshen/table-settlement.mjs'
+import {tableTrail,tableChainKey,trailCards} from '../site/.vuepress/components/fengshen/table-trail.mjs'
+import {createAssignedGame,catalog,dispatch,playerView,allCards} from '../site/.vuepress/components/fengshen/engine.mjs'
 const fixture=()=>{const s=createAssignedGame({heroIds:['yangjian','jifa','nezha','dixin','moliqing'],roles:['lord','loyal','rebel','rebel','renegade'],seed:37});Object.assign(s,{deck:catalog.makeDeck(),discard:[],processing:[],queue:[],pending:null,lastPlayed:null,lastResponse:null,exchange:null,phase:'play',current:0});for(const p of s.players){p.hand=[];p.judgment=[];p.equip={weapon:null,armor:null,offenseHorse:null,defenseHorse:null};p.hp=p.maxHp;p.marks={sha:0}}return s}
 const card=(s,seat,type)=>{const c=s.deck.splice(s.deck.findIndex(c=>c.type===type),1)[0];assert.ok(c);s.players[seat].hand.push(c);return c}
 const step=(s,a)=>{const r=dispatch(s,{seat:s.pending?.actor??s.current,...a});assert.ok(r.ok,r.error);assert.equal(allCards(r.state).length,108);return r.state}

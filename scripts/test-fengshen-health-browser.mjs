@@ -1,7 +1,7 @@
 // Real Chromium rendering/touch checks; not physical iPhone Safari acceptance.
 import assert from 'node:assert/strict'
 import {openBrowser} from './browser-cdp.mjs'
-import {createAssignedGame,catalog} from '../.private/fengshen/engine.mjs'
+import {createAssignedGame,catalog} from '../site/.vuepress/components/fengshen/engine.mjs'
 const browser=await openBrowser({name:'fengshen-health',route:'/games/fengshen/'})
 function fixture(){
  const s=createAssignedGame({roles:['lord','loyal','rebel','rebel','renegade'],heroIds:['hades','jifa','nezha','yangjian','jinling'],seed:23})

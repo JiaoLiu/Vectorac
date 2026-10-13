@@ -26,7 +26,7 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Install Linux production dependencies
-        working-directory: usermgr-service
+        working-directory: services/usermgr
         env:
           PYTHON: /usr/bin/python3.11
           CC: /opt/rh/gcc-toolset-13/root/usr/bin/gcc
@@ -37,7 +37,7 @@ jobs:
           npm ci --omit=dev --no-audit --no-fund
 
       - name: Verify native module
-        working-directory: usermgr-service
+        working-directory: services/usermgr
         run: |
           node -e "const D=require('better-sqlite3'); const db=new D(':memory:'); console.log(db.prepare('select sqlite_version() version').get()); db.close()"
           file node_modules/better-sqlite3/build/Release/better_sqlite3.node
@@ -48,17 +48,17 @@ jobs:
           test "$(printf '%s\n' "$MAX_GLIBC" GLIBC_2.28 | sort -V | tail -1)" = GLIBC_2.28
 
       - name: Audit public routes
-        working-directory: usermgr-service
+        working-directory: services/usermgr
         run: node scripts/check-public-routes.js
 
       - name: Create deployment archive
         run: |
           SHORT_SHA="$(printf '%s' "$GITHUB_SHA" | cut -c1-7)"
           mkdir -p package/usermgr-service
-          cp -a usermgr-service/server.js usermgr-service/db.js usermgr-service/volcano.js \
-            usermgr-service/captcha.js \
-            usermgr-service/package.json usermgr-service/package-lock.json usermgr-service/README.md \
-            usermgr-service/public usermgr-service/scripts usermgr-service/docs usermgr-service/node_modules \
+          cp -a services/usermgr/server.js services/usermgr/db.js services/usermgr/volcano.js \
+            services/usermgr/captcha.js \
+            services/usermgr/package.json services/usermgr/package-lock.json services/usermgr/README.md \
+            services/usermgr/public services/usermgr/scripts services/usermgr/docs services/usermgr/node_modules \
             package/usermgr-service/
           tar -czf "usermgr-service-linux-x64-${SHORT_SHA}.tar.gz" -C package usermgr-service
 

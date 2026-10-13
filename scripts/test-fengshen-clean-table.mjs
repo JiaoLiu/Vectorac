@@ -2,13 +2,13 @@ import {stableOpponents} from './fixtures/gods-stable.mjs'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {readFile} from 'node:fs/promises'
-import {createAssignedGame,dispatch,playerView,catalog,allCards,restoreGame} from '../.private/fengshen/engine.mjs'
-import {targetLinks,judgingSeat,counterSelection,counterAction} from '../.private/fengshen/table-visuals.mjs'
-import {seatName} from '../.private/fengshen/combat.mjs'
-import {tableTrail,trailCards,tableCardLayout,publicDiscardLayout,counterTrail,recentWithFocus,takeJudgmentCard} from '../.private/fengshen/table-trail.mjs'
-import {judgmentEffects} from '../.private/fengshen/draw-effects.mjs'
-import {renderCenter,renderBattle,renderControls} from '../.private/fengshen/table.mjs'
-import {arenaGeometry} from '../.private/fengshen/arena-layout.mjs'
+import {createAssignedGame,dispatch,playerView,catalog,allCards,restoreGame} from '../site/.vuepress/components/fengshen/engine.mjs'
+import {targetLinks,judgingSeat,counterSelection,counterAction} from '../site/.vuepress/components/fengshen/table-visuals.mjs'
+import {seatName} from '../site/.vuepress/components/fengshen/combat.mjs'
+import {tableTrail,trailCards,tableCardLayout,publicDiscardLayout,counterTrail,recentWithFocus,takeJudgmentCard} from '../site/.vuepress/components/fengshen/table-trail.mjs'
+import {judgmentEffects} from '../site/.vuepress/components/fengshen/draw-effects.mjs'
+import {renderCenter,renderBattle,renderControls} from '../site/.vuepress/components/fengshen/table.mjs'
+import {arenaGeometry} from '../site/.vuepress/components/fengshen/arena-layout.mjs'
 const fixture=(own='yangjian',current=0)=>{const s=createAssignedGame({heroIds:[own,'jifa','nezha','dixin','moliqing'],roles:['lord','loyal','rebel','rebel','renegade'],seed:37});s.deck=catalog.makeDeck();s.discard=[];s.processing=[];s.queue=[];s.harvestPool=[];s.pending=null;s.lastPlayed=null;s.lastResponse=null;s.exchange=null;s.current=current;s.phase='play';for(const p of s.players){p.hand=[];p.equip={weapon:null,armor:null,offenseHorse:null,defenseHorse:null};p.judgment=[];p.hp=p.maxHp;p.marks={sha:0}}return s}
 const card=(s,seat,type)=>{const i=s.deck.findIndex(c=>c.type===type),c=s.deck.splice(i,1)[0];assert.ok(c);s.players[seat].hand.push(c);return c}
 const step=(s,a)=>{const r=dispatch(s,{seat:s.pending?.actor??s.current,revision:s.revision,promptId:s.pending?.id,...a});assert.ok(r.ok,r.error);assert.equal(allCards(r.state).length,108);assert.equal(new Set(allCards(r.state).map(c=>c.id)).size,108);return r.state}
@@ -111,7 +111,7 @@ test('public discard/reveal wraps into extra rows and never overflows the center
  let multi=false;for(const [width,height]of [[568,320],[844,390],[932,430],[320,568],[390,844],[430,932]])for(const seats of [2,5,8])for(const count of [1,3,8,20]){const landscape=width>height,g=arenaGeometry({width:width-(landscape?118:0),height,seats,safeTop:landscape?0:47,safeBottom:landscape?21:34}),w=g.center.right-g.center.left,h=g.center.bottom-g.center.top,f=publicDiscardLayout({width:w,height:h,count});assert.ok(f.cardHeight/1.44*f.columns+5*(f.columns-1)<=w+.01,JSON.stringify({width,height,seats,count,f,w}));assert.ok(f.cardHeight*f.rows+5*(f.rows-1)<=h+.01,JSON.stringify({width,height,seats,count,f,h}));assert.ok(f.visible<=count);assert.ok(f.visible>=Math.min(count,f.columns));multi||=f.rows>1}assert.ok(multi)
 })
 test('reduced motion and portrait table visibility are explicit; no counter full-screen panel renderer remains',async()=>{
- const css=await readFile(new URL('../.private/fengshen/arena-table.css',import.meta.url),'utf8'),code=await readFile(new URL('../.private/fengshen/table.mjs',import.meta.url),'utf8');assert.ok(css.includes('.fs-compact-table{display:flex'));assert.ok(css.includes('prefers-reduced-motion:reduce'));assert.ok(!code.includes('function counterChoices'));assert.ok(code.includes('fs-counter-controls'))
+ const css=await readFile(new URL('../site/.vuepress/components/fengshen/arena-table.css',import.meta.url),'utf8'),code=await readFile(new URL('../site/.vuepress/components/fengshen/table.mjs',import.meta.url),'utf8');assert.ok(css.includes('.fs-compact-table{display:flex'));assert.ok(css.includes('prefers-reduced-motion:reduce'));assert.ok(!code.includes('function counterChoices'));assert.ok(code.includes('fs-counter-controls'))
  // 横屏操作列只有 ~100px，提示若再被 max-width:46% 压到 ~45px 会折成 3 行把按钮挤下去；只有竖屏横向排布才需要限宽。
  const note=css.match(/\.fs-playing \.fs-counter-note\{([^}]*)\}/);assert.ok(note&&!note[1].includes('max-width'),'横屏破法提示不得再被压窄折行');assert.ok(css.includes('.fs-playing[data-layout=portrait] .fs-counter-note{max-width:46%'),'竖屏才限制提示宽度给按钮让位')
 })

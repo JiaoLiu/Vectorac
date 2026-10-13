@@ -1,8 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import * as C from '../.private/fengshen/core/catalog.mjs'
-import {createEngine} from '../.private/fengshen/core/engine.mjs'
-import {createAI} from '../.private/fengshen/core/ai.mjs'
+import * as C from '../site/.vuepress/components/fengshen/core/catalog.mjs'
+import {createEngine} from '../site/.vuepress/components/fengshen/core/engine.mjs'
+import {createAI} from '../site/.vuepress/components/fengshen/core/ai.mjs'
 const E=createEngine({...C,individualHandChoices:true,animatedJudgments:true,trackBattle:true,automaticSkills:['xiaoji','lianying']})
 function fixture(ids=['liubei','zhangfei','guanyu','zhaoyun','huangyueying']){
  const s=E.createAssignedGame({roles:['lord','loyal','rebel','rebel','renegade'],heroIds:ids,seed:19})

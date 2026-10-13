@@ -1,10 +1,10 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {createSetup,setupView,dispatchSetup,chooseSetupAI,restoreSetup,MODES,MODE_LIST,modeById} from '../.private/fengshen/setup.mjs'
-import {PLAYABLE_HEROES,HERO_BY_THEME_ID} from '../.private/fengshen/theme.mjs'
-import {playerView,dispatch,allCards,restoreGame,catalog,chooseAI} from '../.private/fengshen/engine.mjs'
-import {renderHome} from '../.private/fengshen/setup-ui.mjs'
-import {roomTeam,roomTeamBadge,roomTeamsGuide} from '../.private/fengshen/room-teams.mjs'
+import {createSetup,setupView,dispatchSetup,chooseSetupAI,restoreSetup,MODES,MODE_LIST,modeById} from '../site/.vuepress/components/fengshen/setup.mjs'
+import {PLAYABLE_HEROES,HERO_BY_THEME_ID} from '../site/.vuepress/components/fengshen/theme.mjs'
+import {playerView,dispatch,allCards,restoreGame,catalog,chooseAI} from '../site/.vuepress/components/fengshen/engine.mjs'
+import {renderHome} from '../site/.vuepress/components/fengshen/setup-ui.mjs'
+import {roomTeam,roomTeamBadge,roomTeamsGuide} from '../site/.vuepress/components/fengshen/room-teams.mjs'
 const DECK_SIZE=catalog.makeDeck().length
 const step=(s,a)=>{const r=dispatchSetup(s,{revision:s.revision,...a});assert.ok(r.ok,r.error);return r.setup}
 const sorted=a=>a.slice().sort()

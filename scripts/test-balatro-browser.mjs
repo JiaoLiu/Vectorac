@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs'
 import {mkdtempSync} from 'node:fs'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
-import * as E from '../.vuepress/components/balatro/engine.mjs'
+import * as E from '../site/.vuepress/components/balatro/engine.mjs'
 const require=createRequire(import.meta.url)
 const {chromium,webkit}=require(process.env.PLAYWRIGHT_PATH || 'playwright')
 const base=process.env.BASE_URL||'http://127.0.0.1:8091',url=base+'/blogs/other/cardforge.html',out=process.env.BALATRO_QA_DIR || mkdtempSync(join(tmpdir(),'balatro-qa-')),SAVE='vectorac.balatro.run.v3'

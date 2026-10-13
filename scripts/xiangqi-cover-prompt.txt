@@ -1,8 +1,8 @@
 Generated with the built-in image_gen tool; the board overlay is project-authored SVG so all pieces and lines are deterministic.
 
 Project assets:
-- .vuepress/public/img/games/xiangqi-cover-scene.webp: original cartoon character/table scene (1600x901 WebP, q84)
-- .vuepress/public/img/games/xiangqi-cover.svg: self-contained scene plus accurate vector board and pieces
+- site/.vuepress/public/img/games/xiangqi-cover-scene.webp: original cartoon character/table scene (1600x901 WebP, q84)
+- site/.vuepress/public/img/games/xiangqi-cover.svg: self-contained scene plus accurate vector board and pieces
 - scripts/compose-xiangqi-cover.mjs: source for the standard-board overlay
 
 Background-art prompt:

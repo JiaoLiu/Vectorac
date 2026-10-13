@@ -3,8 +3,8 @@
 import {createRequire} from 'node:module'
 import {mkdir,readFile,copyFile} from 'node:fs/promises'
 import {existsSync} from 'node:fs'
-import {HEAD_FRAMES} from '../.vuepress/components/dressup/head-fit.mjs'
-const sharp=createRequire(import.meta.url)(process.env.SHARP_PATH||'sharp'),m=JSON.parse(await readFile('scripts/wardrobe-v20-art.json','utf8')),S=4,W=512*S,H=1024*S,root='.vuepress/public/img/games/dressup/layers/v20'
+import {HEAD_FRAMES} from '../site/.vuepress/components/dressup/head-fit.mjs'
+const sharp=createRequire(import.meta.url)(process.env.SHARP_PATH||'sharp'),m=JSON.parse(await readFile('scripts/wardrobe-v20-art.json','utf8')),S=4,W=512*S,H=1024*S,root='site/.vuepress/public/img/games/dressup/layers/v20'
 await mkdir(root+'/catalog',{recursive:true});if(!existsSync(m.file))await copyFile(m.source,m.file)
 const {data,info}=await sharp(m.file).ensureAlpha().raw().toBuffer({resolveWithObject:true})
 for(let i=0;i<data.length;i+=4){if(data[i+3]<30)data[i+3]=0;else if(data[i+3]>240)data[i+3]=255;if(!data[i+3])data[i]=data[i+1]=data[i+2]=0}

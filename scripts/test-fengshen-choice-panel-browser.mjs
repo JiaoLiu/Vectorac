@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import {openBrowser} from './browser-cdp.mjs'
-import {createAssignedGame,catalog} from '../.private/fengshen/engine.mjs'
+import {createAssignedGame,catalog} from '../site/.vuepress/components/fengshen/engine.mjs'
 // 仙山采宝选牌弹窗：横屏下曾铺满整屏、盖住自己的手牌，只是牌面又被挤在中央留白。
 function fixture(){
  const s=createAssignedGame({heroIds:['yangjian','jifa','nezha','dixin','moliqing'],roles:['lord','loyal','rebel','rebel','renegade'],seed:37})

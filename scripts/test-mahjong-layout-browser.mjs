@@ -11,15 +11,15 @@ console.log('Screenshots:',output)
 const md=await readFile(join(root,'blogs/other/mahjong_game.md'),'utf8')
 const template=md.slice(md.indexOf('<div id="scmjGame"'),md.indexOf('<div class="scmj-intro">'))
 const css=md.match(/<style>([\s\S]*?)<\/style>/)[1]
-const compiled=await build({stdin:{contents:`export {default as UI} from './.vuepress/components/mahjong/ui.js';export {createGame,playerView} from './.vuepress/components/mahjong/engine.js'`,resolveDir:root},bundle:true,format:'iife',globalName:'MahjongTest',write:false})
+const compiled=await build({stdin:{contents:`export {default as UI} from './site/.vuepress/components/mahjong/ui.js';export {createGame,playerView} from './site/.vuepress/components/mahjong/engine.js'`,resolveDir:root},bundle:true,format:'iife',globalName:'MahjongTest',write:false})
 const html=`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0}${css}</style>${template}<script src="/test.js"></script>`
 const server=createServer(async(req,res)=>{
  try{
   const path=new URL(req.url,'http://localhost').pathname
   if(path==='/'){res.setHeader('Content-Type','text/html');res.end(html);return}
   if(path==='/test.js'){res.setHeader('Content-Type','text/javascript');res.end(compiled.outputFiles[0].text);return}
-  const file=resolve(root,'.vuepress/public','.'+path)
-  if(!file.startsWith(root+'/.vuepress/public/')){res.writeHead(403);res.end();return}
+  const file=resolve(root,'site/.vuepress/public','.'+path)
+  if(!file.startsWith(root+'/site/.vuepress/public/')){res.writeHead(403);res.end();return}
   res.setHeader('Content-Type',extname(file)==='.png'?'image/png':extname(file)==='.svg'?'image/svg+xml':'application/octet-stream');res.end(await readFile(file))
  }catch(_){res.writeHead(404);res.end()}
 })

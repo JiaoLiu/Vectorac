@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import {openBrowser} from './browser-cdp.mjs'
-import {createAssignedGame,militaryCatalog,dispatch,playerView} from '../.private/fengshen/engine.mjs'
+import {createAssignedGame,militaryCatalog,dispatch,playerView} from '../site/.vuepress/components/fengshen/engine.mjs'
 // 濒死自救时，若手里只有「琼浆（酒）」而没有仙桃：pending.as 固定是 tao，合法响应的 as 却是 wine。
 // 旧 UI 把声明当成 tao 去匹配，导致选中琼浆后「确认救援」按钮永远 disabled、也无法提交。
 function fixture(){

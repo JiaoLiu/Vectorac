@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { BOARD } from '../.vuepress/components/junqi/engine.mjs'
-import { boardViewAngle, nodeViewAngle, nodeLocalAngle } from '../.vuepress/components/junqi/presentation.mjs'
+import { BOARD } from '../site/.vuepress/components/junqi/engine.mjs'
+import { boardViewAngle, nodeViewAngle, nodeLocalAngle } from '../site/.vuepress/components/junqi/presentation.mjs'
 
 const normal = angle => ((angle + 180) % 360 + 360) % 360 - 180
 

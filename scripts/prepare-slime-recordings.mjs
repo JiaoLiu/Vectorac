@@ -8,7 +8,7 @@ import {createHash} from 'node:crypto';
 
 const sourceDir = process.argv[2];
 if (!sourceDir) throw new Error('Pass a folder containing the two approved source MP3s.');
-const out = new URL('../.vuepress/public/audio/slime-v6/', import.meta.url);
+const out = new URL('../site/.vuepress/public/audio/slime-v6/', import.meta.url);
 const rate = 22050;
 const sources = {
   slime: {
@@ -69,7 +69,7 @@ await mkdir(out,{recursive:true});
 const samples = {};
 for (const [name,[source,start,length,soft]] of Object.entries(cuts)) {
   if (/^(glitter|foil)_/.test(name)) {
-    const bytes = await readFile(new URL('../.vuepress/public/audio/slime-v3/'+name+'.wav',import.meta.url));
+    const bytes = await readFile(new URL('../site/.vuepress/public/audio/slime-v3/'+name+'.wav',import.meta.url));
     await writeFile(new URL(name+'.wav',out),bytes);
     samples[name]={source:'originalChimes',duration:(bytes.length-44)/2/rate,loop:false,
       sha256:createHash('sha256').update(bytes).digest('hex')};

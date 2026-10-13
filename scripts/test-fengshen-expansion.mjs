@@ -1,17 +1,17 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {FENGSHEN_EXPANSION,EXPANSION_CARDS}from '../.private/fengshen/fengshen-expansion.mjs'
-import{PLAYABLE_HEROES,makeExpandedDeck,HERO_BY_THEME_ID}from '../.private/fengshen/theme.mjs'
-import{makeDeck as legacyDeck}from '../.private/fengshen/core/catalog.mjs'
-import {catalog as runtimeCatalog} from '../.private/fengshen/engine.mjs'
-import {createEngine} from '../.private/fengshen/core/engine.mjs'
-import {createAI} from '../.private/fengshen/core/ai.mjs'
+import {FENGSHEN_EXPANSION,EXPANSION_CARDS}from '../site/.vuepress/components/fengshen/fengshen-expansion.mjs'
+import{PLAYABLE_HEROES,makeExpandedDeck,HERO_BY_THEME_ID}from '../site/.vuepress/components/fengshen/theme.mjs'
+import{makeDeck as legacyDeck}from '../site/.vuepress/components/fengshen/core/catalog.mjs'
+import {catalog as runtimeCatalog} from '../site/.vuepress/components/fengshen/engine.mjs'
+import {createEngine} from '../site/.vuepress/components/fengshen/core/engine.mjs'
+import {createAI} from '../site/.vuepress/components/fengshen/core/ai.mjs'
 // Expansion mechanics remain regression-tested in isolation, NOT in the shipped Standard deck.
 const experiment={...runtimeCatalog,theme:undefined,CARDS:{...runtimeCatalog.CARDS,...EXPANSION_CARDS},makeDeck:makeExpandedDeck,legacyMakeDeck:legacyDeck,deckVersion:2,animatedJudgments:true}
 const E=createEngine(experiment),chooseAI=createAI(experiment)
 const {dispatch,playerView,allCards,restoreGame}=E
 const createGame=({heroId='jinzha',...opts}={})=>E.createGame({...opts,heroId:HERO_BY_THEME_ID[heroId].engineId})
-import{cuesForAction}from '../.private/fengshen/voice.mjs'
+import{cuesForAction}from '../site/.vuepress/components/fengshen/voice.mjs'
 function fixture(id='jinzha'){
  const s=createGame({heroId:id,role:'lord',seed:17});s.deck=makeExpandedDeck();s.discard=[];s.processing=[];s.harvestPool=[];s.queue=[];s.pending=null;s.phase='play';s.current=0;s.logs=[];s.lastPlayed=null;s.lastResponse=null;s.lastEvent=null
  const other=['huangfeihu','nezha','yangjian','dixin'].filter(h=>h!==id)

@@ -2,9 +2,9 @@
 import {createRequire} from 'node:module'
 import {mkdir,readFile,copyFile} from 'node:fs/promises'
 import {existsSync} from 'node:fs'
-import {HEAD_FRAMES,AIR_BANGS_FRONT_FRAME} from '../.vuepress/components/dressup/head-fit.mjs'
+import {HEAD_FRAMES,AIR_BANGS_FRONT_FRAME} from '../site/.vuepress/components/dressup/head-fit.mjs'
 const sharp=createRequire(import.meta.url)(process.env.SHARP_PATH||'sharp'),m=JSON.parse(await readFile('scripts/wardrobe-v19-art.json','utf8'))
-const root='.vuepress/public/img/games/dressup/layers/',S=4,W=512*S,H=1024*S,F=HEAD_FRAMES.hair,B=HEAD_FRAMES.back,A=AIR_BANGS_FRONT_FRAME
+const root='site/.vuepress/public/img/games/dressup/layers/',S=4,W=512*S,H=1024*S,F=HEAD_FRAMES.hair,B=HEAD_FRAMES.back,A=AIR_BANGS_FRONT_FRAME
 await mkdir(root+'v19',{recursive:true});if(!existsSync(m.file))await copyFile(m.source,m.file)
 const {data:patch,info}=await sharp(m.file).ensureAlpha().resize(m.patch.w*S,m.patch.h*S,{fit:'fill'}).raw().toBuffer({resolveWithObject:true})
 for(let i=0;i<patch.length;i+=4){if(patch[i+3]<30||Math.max(patch[i],patch[i+1],patch[i+2])-Math.min(patch[i],patch[i+1],patch[i+2])>190)patch[i+3]=0;else if(patch[i+3]>240)patch[i+3]=255;if(!patch[i+3])patch[i]=patch[i+1]=patch[i+2]=0}

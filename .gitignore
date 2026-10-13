@@ -1,22 +1,19 @@
 node_modules/
 .DS_Store
 **/.DS_Store
-/public/
+/build/
 .claude/
 .trae/
 
 # 语音合成等第三方服务的密钥（不入 git）
 .private/doubao-tts.json
 
-# Fengshen remains an internal prototype: art and preview output are not public.
-.private/fengshen/dist/
-.private/fengshen/qa-dist/
 
 # 本地排查用的诊断截图（横竖屏 / CDP 抓图），不入库
 /diag-*.png
 
 # 固件二进制（可能含密钥，不入 git；通过 rsync 单独上传到服务器）
-.vuepress/public/firmware/**/*.bin
-.vuepress/public/firmware/**/*.hex
-.vuepress/public/firmware/**/*.img
-.vuepress/public/firmware/**/*.elf
+site/.vuepress/public/firmware/**/*.bin
+site/.vuepress/public/firmware/**/*.hex
+site/.vuepress/public/firmware/**/*.img
+site/.vuepress/public/firmware/**/*.elf

@@ -8,17 +8,17 @@ const require=createRequire(import.meta.url),{build}=require('esbuild');
 const {chromium,webkit}=require(process.env.PLAYWRIGHT_PATH||'playwright');
 const root=resolve(import.meta.dirname,'..'),out=await mkdtemp(join(tmpdir(),'slime-qa-'));
 const md=await readFile(join(root,'blogs/other/slime_game.md'),'utf8');
-const audioSource=await readFile(join(root,'.vuepress/components/slime-audio.js'),'utf8');
+const audioSource=await readFile(join(root,'site/.vuepress/components/slime-audio.js'),'utf8');
 const {TOOL_SOUNDS}=await import('data:text/javascript;base64,'+Buffer.from(audioSource).toString('base64'));
 const kitSize=new Set([...Object.values(TOOL_SOUNDS).flat(),'bed_01']).size;
 const html=md.slice(md.indexOf('<div id="slimeGame"'),md.indexOf('<div class="game-introduction">'));
 const css=md.match(/<style>([\s\S]*?)<\/style>/)[1];
-const built=await build({stdin:{contents:"export {default as Studio} from './.vuepress/components/SlimeStudio';export {default as Audio} from './.vuepress/components/slime-audio';",resolveDir:root},bundle:true,format:'iife',globalName:'SlimeTest',write:false});
+const built=await build({stdin:{contents:"export {default as Studio} from './site/.vuepress/components/SlimeStudio';export {default as Audio} from './site/.vuepress/components/slime-audio';",resolveDir:root},bundle:true,format:'iife',globalName:'SlimeTest',write:false});
 const server=createServer(async(req,res)=>{
  try{
   if(req.url==='/test.js'){res.setHeader('Content-Type','text/javascript');res.end(built.outputFiles[0].text);return;}
-  if(req.url.startsWith('/audio/')){res.setHeader('Content-Type','audio/wav');res.end(await readFile(join(root,'.vuepress/public',req.url)));return;}
-  if(req.url.startsWith('/js/')){res.setHeader('Content-Type','text/javascript');res.end(await readFile(join(root,'.vuepress/public',req.url)));return;}
+  if(req.url.startsWith('/audio/')){res.setHeader('Content-Type','audio/wav');res.end(await readFile(join(root,'site/.vuepress/public',req.url)));return;}
+  if(req.url.startsWith('/js/')){res.setHeader('Content-Type','text/javascript');res.end(await readFile(join(root,'site/.vuepress/public',req.url)));return;}
   res.setHeader('Content-Type','text/html');res.end(`<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0}${css}</style>${html}<script src="/test.js"></script>`);
  }catch(_){res.writeHead(404);res.end();}
 });

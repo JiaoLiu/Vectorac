@@ -3,7 +3,7 @@
 import {createRequire} from 'node:module'
 import {readFile,mkdir} from 'node:fs/promises'
 const sharp=createRequire(import.meta.url)(process.env.SHARP_PATH||'sharp')
-const W=512,H=1024,root='.vuepress/public/img/games/dressup/layers/v6',old='.vuepress/public/img/games/dressup/layers'
+const W=512,H=1024,root='site/.vuepress/public/img/games/dressup/layers/v6',old='site/.vuepress/public/img/games/dressup/layers'
 await mkdir(root,{recursive:true});await mkdir(root+'/catalog',{recursive:true})
 const raster=async file=>sharp(file).resize(W,H,{fit:'fill'}).ensureAlpha().raw().toBuffer()
 const master=await raster('scripts/fixtures/wardrobe-v5-sources/master.webp')
@@ -110,7 +110,7 @@ const sm=await sharp(socksSource).metadata(),rows=[0,.275,.54,1]
 for(let i=0;i<6;i++){const row=Math.floor(i/2),top=Math.round(sm.height*rows[row]),bottom=Math.round(sm.height*rows[row+1]);await sharp(socksSource).extract({left:i%2*Math.floor(sm.width/2),top,width:Math.floor(sm.width/2),height:bottom-top}).resize(360,360,{fit:'contain',background:'#f7eee6'}).webp({quality:93}).toFile(`${root}/catalog/socks-${i}.webp`)}
 // Beauty and hairstyle design cards show styled portraits or the selected
 // feature close-up, not identical bald heads or fragments of the body mask.
-const {PARTS,DEFAULT_PARTS}=await import('../.vuepress/components/dressup/parts.mjs')
+const {PARTS,DEFAULT_PARTS}=await import('../site/.vuepress/components/dressup/parts.mjs')
 for(const part of PARTS.filter(p=>p.index>=0&&['hair','face','eyes','brows','lip'].includes(p.category))){
  const selected={...DEFAULT_PARTS,[part.category]:part.id,hair:part.category==='hair'?part.id:'hair-2'}
  const body=Buffer.from(master);for(let y=25;y<163;y++)for(let x=190;x<322;x++)body[(y*W+x)*4+3]=0

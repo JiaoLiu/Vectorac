@@ -3,19 +3,19 @@ import {createRequire} from 'node:module'
 import {readFile,writeFile,mkdtemp} from 'node:fs/promises'
 import {join} from 'node:path'
 import {tmpdir} from 'node:os'
-import {PARTS,DEFAULT_PARTS,partAsset,partBackAsset} from '../.vuepress/components/dressup/parts.mjs'
+import {PARTS,DEFAULT_PARTS,partAsset,partBackAsset} from '../site/.vuepress/components/dressup/parts.mjs'
 const require=createRequire(import.meta.url),sharp=require(process.env.SHARP_PATH||'sharp'),{chromium}=require(process.env.PLAYWRIGHT_PATH||'playwright')
 const out=await mkdtemp(join(tmpdir(),'wardrobe-rear-hair-'))
-const hair=PARTS.find(p=>p.id==='hair-5'),front=await readFile('.vuepress/public'+partAsset(hair))
-assert.deepEqual(front,await readFile('.vuepress/public/img/games/dressup/layers/v11/hair-5.webp'),'original bangs, silhouette and front locks must not change')
-const meta=await sharp('.vuepress/public'+partBackAsset(hair)).metadata();assert.equal(meta.width,512);assert.equal(meta.height,1024);assert.ok(meta.hasAlpha)
+const hair=PARTS.find(p=>p.id==='hair-5'),front=await readFile('site/.vuepress/public'+partAsset(hair))
+assert.deepEqual(front,await readFile('site/.vuepress/public/img/games/dressup/layers/v11/hair-5.webp'),'original bangs, silhouette and front locks must not change')
+const meta=await sharp('site/.vuepress/public'+partBackAsset(hair)).metadata();assert.equal(meta.width,512);assert.equal(meta.height,1024);assert.ok(meta.hasAlpha)
 const protectedAssets={...JSON.parse(await readFile('scripts/wardrobe-v14-art.json','utf8')).protectedAssets,...JSON.parse(await readFile('scripts/wardrobe-v15-art.json','utf8')).protectedAssets}
 const {createHash}=await import('node:crypto')
-for(const [src,hash] of Object.entries(protectedAssets))assert.equal(createHash('sha256').update(await readFile('.vuepress/public'+src)).digest('hex'),hash,src+' changed unexpectedly')
+for(const [src,hash] of Object.entries(protectedAssets))assert.equal(createHash('sha256').update(await readFile('site/.vuepress/public'+src)).digest('hex'),hash,src+' changed unexpectedly')
 const browser=await chromium.launch({headless:true,executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'})
 try{
  const page=await browser.newPage()
- await page.route('http://wardrobe.test/**',async r=>{const path=new URL(r.request().url()).pathname;if(path==='/')return r.fulfill({body:'<canvas width="512" height="1024"></canvas>',contentType:'text/html'});await r.fulfill({body:await readFile(path.endsWith('.mjs')?'.vuepress/components/dressup'+path:'.vuepress/public'+path),contentType:path.endsWith('.mjs')?'application/javascript':'image/webp'})})
+ await page.route('http://wardrobe.test/**',async r=>{const path=new URL(r.request().url()).pathname;if(path==='/')return r.fulfill({body:'<canvas width="512" height="1024"></canvas>',contentType:'text/html'});await r.fulfill({body:await readFile(path.endsWith('.mjs')?'site/.vuepress/components/dressup'+path:'site/.vuepress/public'+path),contentType:path.endsWith('.mjs')?'application/javascript':'image/webp'})})
  await page.goto('http://wardrobe.test/')
  const samples=[];let tested=0
  for(const face of PARTS.filter(p=>p.category==='face'))for(const hat of PARTS.filter(p=>p.category==='hat'))for(const earrings of PARTS.filter(p=>p.category==='earrings')){

@@ -4,11 +4,11 @@ import {createRequire} from 'node:module'
 import {readFile,mkdir} from 'node:fs/promises'
 import {existsSync} from 'node:fs'
 const sharp=createRequire(import.meta.url)(process.env.SHARP_PATH||'sharp')
-const root='.vuepress/public/img/games/dressup/layers/v12',fixtures='scripts/fixtures/wardrobe-v12-sources',W=512,H=1024
+const root='site/.vuepress/public/img/games/dressup/layers/v12',fixtures='scripts/fixtures/wardrobe-v12-sources',W=512,H=1024
 await mkdir(root+'/catalog',{recursive:true});await mkdir(fixtures,{recursive:true})
 const manifest=JSON.parse(await readFile('scripts/wardrobe-v12-art.json','utf8'))
 const raw=async f=>sharp(f).resize(W,H,{fit:'fill'}).ensureAlpha().raw().toBuffer()
-const master=await raw('scripts/fixtures/wardrobe-v5-sources/master.webp'),feet=await raw('.vuepress/public/img/games/dressup/layers/v5/shoes-3.webp')
+const master=await raw('scripts/fixtures/wardrobe-v5-sources/master.webp'),feet=await raw('site/.vuepress/public/img/games/dressup/layers/v5/shoes-3.webp')
 async function save(id,data){await sharp(data,{raw:{width:W,height:H,channels:4}}).webp({quality:95,alphaQuality:100}).toFile(`${root}/${id}.webp`)}
 function bbox(d,w,h,left=0,right=w){let l=w,r=-1,t=h,b=-1;for(let y=0;y<h;y++)for(let x=left;x<right;x++)if(d[(y*w+x)*4+3]>90){l=Math.min(l,x);r=Math.max(r,x);t=Math.min(t,y);b=Math.max(b,y)}if(r<l)throw Error('Empty sprite');return {left:l,top:t,width:r-l+1,height:b-t+1}}
 function rowBounds(d,w,y,left=0,right=w){let l=right,r=left-1;for(let x=left;x<right;x++)if(d[(y*w+x)*4+3]>190){l=Math.min(l,x);r=Math.max(r,x)}return [l,r]}

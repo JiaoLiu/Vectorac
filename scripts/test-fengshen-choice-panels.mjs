@@ -2,11 +2,11 @@ import {stableOpponents} from './fixtures/gods-stable.mjs'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {readFile} from 'node:fs/promises'
-import {createAssignedGame,createGame,dispatch,playerView,allCards,catalog} from '../.private/fengshen/engine.mjs'
-import {restoreSession} from '../.private/fengshen/setup.mjs'
-import {panelSelection,panelAction,harvestSeat,cleanRoleMarks,nextRoleMark,choicePanelGeometry} from '../.private/fengshen/panel-selection.mjs'
-import {harvestEffects} from '../.private/fengshen/draw-effects.mjs'
-import {renderCenter,renderControls,renderOpponent} from '../.private/fengshen/table.mjs'
+import {createAssignedGame,createGame,dispatch,playerView,allCards,catalog} from '../site/.vuepress/components/fengshen/engine.mjs'
+import {restoreSession} from '../site/.vuepress/components/fengshen/setup.mjs'
+import {panelSelection,panelAction,harvestSeat,cleanRoleMarks,nextRoleMark,choicePanelGeometry} from '../site/.vuepress/components/fengshen/panel-selection.mjs'
+import {harvestEffects} from '../site/.vuepress/components/fengshen/draw-effects.mjs'
+import {renderCenter,renderControls,renderOpponent} from '../site/.vuepress/components/fengshen/table.mjs'
 const model=s=>({state:s,selected:[],targets:[],targetable:()=>[],equipment:()=>'',matching:()=>[],currentAs:()=>null})
 function fixture(){const s=stableOpponents(createGame({heroId:'yangjian',role:'lord',seed:17}));s.deck=catalog.makeDeck();s.discard=[];s.processing=[];s.harvestPool=[];s.queue=[];s.pending=null;s.phase='play';s.current=0;s.logs=[];s.lastPlayed=null;for(const p of s.players){p.hand=[];p.equip={weapon:null,armor:null,offenseHorse:null,defenseHorse:null};p.judgment=[];p.marks={sha:0};p.hp=p.maxHp;p.alive=true}return s}
 const step=(s,a)=>{const r=dispatch(s,{seat:s.pending?.actor??s.current,...a});assert.ok(r.ok,r.error);assert.equal(allCards(r.state).length,108);assert.equal(new Set(allCards(r.state).map(c=>c.id)).size,108);return r.state}
@@ -59,7 +59,7 @@ test('equipment in the take panel shows a range/±1/armor badge so horses are di
  assert.ok(html.includes('<b class="fs-choice-effect">+1</b>'),'defensive horse shows +1')
  assert.ok(html.includes('<b class="fs-choice-effect">距2</b>'),'weapon shows attack range')
  assert.ok(html.includes('<b class="fs-choice-effect">防</b>'),'armor shows 防')
- const css=await readFile(new URL('../.private/fengshen/table.css',import.meta.url),'utf8')
+ const css=await readFile(new URL('../site/.vuepress/components/fengshen/table.css',import.meta.url),'utf8')
  assert.ok(css.includes('.fs-choice-effect{'),'badge has styling')
 })
 test('private identity guesses cycle without revealing roles or changing AI state; reveal supersedes guess',()=>{
@@ -72,6 +72,6 @@ test('guess sidecar resumes with existing session format; old bare-state saves s
 })
 test('all panel geometry reserves short-landscape safe areas and fixed action footer',async()=>{
  for(const height of [240,270,320,390,430,568,844])for(const safeTop of [0,47])for(const safeBottom of [0,21,34]){const g=choicePanelGeometry({height,safeTop,safeBottom});assert.ok(g.top>=safeTop+28);assert.ok(g.top+g.height<=height-safeBottom-8+.01);assert.ok(g.height>=110)}
- const css=await readFile(new URL('../.private/fengshen/arena-table.css',import.meta.url),'utf8');assert.ok(css.includes('height:var(--choice-height'));assert.ok(css.includes('>footer{display:flex;flex:none'));assert.ok(css.includes('.fs-choice-dialog>.fs-incarnation-options'));assert.ok(css.includes('.fs-role-marker'));assert.ok(css.includes('.fs-pick-focus'))
- const flight=await readFile(new URL('../.private/fengshen/combat.css',import.meta.url),'utf8');assert.ok(flight.includes('span:last-child:not(.fs-clean-card):not(.fs-card-back)'));assert.ok(flight.includes('.fs-transfer-flight>.fs-clean-card'))
+ const css=await readFile(new URL('../site/.vuepress/components/fengshen/arena-table.css',import.meta.url),'utf8');assert.ok(css.includes('height:var(--choice-height'));assert.ok(css.includes('>footer{display:flex;flex:none'));assert.ok(css.includes('.fs-choice-dialog>.fs-incarnation-options'));assert.ok(css.includes('.fs-role-marker'));assert.ok(css.includes('.fs-pick-focus'))
+ const flight=await readFile(new URL('../site/.vuepress/components/fengshen/combat.css',import.meta.url),'utf8');assert.ok(flight.includes('span:last-child:not(.fs-clean-card):not(.fs-card-back)'));assert.ok(flight.includes('.fs-transfer-flight>.fs-clean-card'))
 })

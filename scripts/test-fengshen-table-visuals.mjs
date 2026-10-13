@@ -1,13 +1,13 @@
 import {stableOpponents} from './fixtures/gods-stable.mjs'
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {makeDeck} from '../.private/fengshen/core/catalog.mjs'
-import {createGame,dispatch,playerView,catalog,restoreGame} from '../.private/fengshen/engine.mjs'
-import {createEngine} from '../.private/fengshen/core/engine.mjs'
-import {targetLinks,judgmentMark,publicPicks,tutorialEnabled,responsePrompt,responderHighlight,responseSelection,counterSelection} from '../.private/fengshen/table-visuals.mjs'
-import {rescueEffects,discardEffects} from '../.private/fengshen/draw-effects.mjs'
-import {TargetBeams,BEAM_DURATION} from '../.private/fengshen/target-beams.mjs'
-import {renderCenter,renderBattle,renderOpponent,delayIcons} from '../.private/fengshen/table.mjs'
+import {makeDeck} from '../site/.vuepress/components/fengshen/core/catalog.mjs'
+import {createGame,dispatch,playerView,catalog,restoreGame} from '../site/.vuepress/components/fengshen/engine.mjs'
+import {createEngine} from '../site/.vuepress/components/fengshen/core/engine.mjs'
+import {targetLinks,judgmentMark,publicPicks,tutorialEnabled,responsePrompt,responderHighlight,responseSelection,counterSelection} from '../site/.vuepress/components/fengshen/table-visuals.mjs'
+import {rescueEffects,discardEffects} from '../site/.vuepress/components/fengshen/draw-effects.mjs'
+import {TargetBeams,BEAM_DURATION} from '../site/.vuepress/components/fengshen/target-beams.mjs'
+import {renderCenter,renderBattle,renderOpponent,delayIcons} from '../site/.vuepress/components/fengshen/table.mjs'
 import {hand} from './fixtures/sanguo.mjs'
 import {readFile} from 'node:fs/promises'
 function fixture(){const s=stableOpponents(createGame({heroId:'yangjian',role:'lord',seed:17}));s.deck=catalog.makeDeck();s.discard=[];s.processing=[];s.harvestPool=[];s.queue=[];s.pending=null;s.phase='play';s.current=0;s.logs=[];s.lastPlayed=null;s.lastEvent=null;for(const p of s.players){p.hand=[];p.equip={weapon:null,armor:null,offenseHorse:null,defenseHorse:null};p.judgment=[];p.marks={sha:0,rende:0};p.hp=p.maxHp;p.alive=true}return s}
@@ -201,7 +201,7 @@ test('collateral/lijian target picks get order badges naming each combat role',(
 test('recipient prompts do not intercept taps; interactive card-selection panels remain separate',async()=>{
  const s=fixture(),model=ui(s),v=playerView(s,0)
  for(const kind of ['yiji','liuli','tuxi']){v.pending={id:1,actor:0,kind};assert.ok(renderCenter(model,v).includes('fs-skill-prompt'))}
- const css=await readFile(new URL('../.private/fengshen/arena-table.css',import.meta.url),'utf8');assert.match(css,/\.fs-center-choice\.fs-skill-prompt\{pointer-events:none/)
+ const css=await readFile(new URL('../site/.vuepress/components/fengshen/arena-table.css',import.meta.url),'utf8');assert.match(css,/\.fs-center-choice\.fs-skill-prompt\{pointer-events:none/)
 })
 test('yiji pool renders as a private flip-card dialog for the owner and card backs for everyone else',()=>{
  const s=fixture(),model=ui(s),v=playerView(s,0)
@@ -297,7 +297,7 @@ test('passive responder highlight targets real choices only, never pure public r
  assert.equal(responderHighlight({...base,pending:null}),null)
 })
 test('turn, judgment, judge-replace and dying keep distinct cues without an extra yellow ring',async()=>{
- const css=await readFile(new URL('../.private/fengshen/arena-table.css',import.meta.url),'utf8')
+ const css=await readFile(new URL('../site/.vuepress/components/fengshen/arena-table.css',import.meta.url),'utf8')
  // 判定中的角色同时就是当前回合者：判定内发光改用蓝绿，不再在蓝绿边框外再叠一圈黄。
  assert.match(css,/\.fs-playing \.fs-judging\{box-shadow:inset 0 0 0 3px #77ffdc/)
  // 变法改判的等待者用更淡的黄色内发光，与"该出杀闪"的响应黄框区分开。

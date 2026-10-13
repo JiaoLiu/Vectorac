@@ -1,7 +1,7 @@
 // Real CSS and touch selection; never joins a room or submits feedback.
 import assert from 'node:assert/strict'
 import {openBrowser} from './browser-cdp.mjs'
-import {createAssignedGame,catalog} from '../.private/fengshen/engine.mjs'
+import {createAssignedGame,catalog} from '../site/.vuepress/components/fengshen/engine.mjs'
 const s=createAssignedGame({roles:['lord','loyal','rebel','rebel','renegade'],heroIds:['yangjian','jifa','nezha','jinling','daji'],seed:23})
 Object.assign(s,{deck:catalog.makeDeck(),discard:[],processing:[],harvestPool:[],queue:[],pending:null,phase:'play',current:0,logs:[],lastPlayed:null,lastResponse:null,publicReveal:null})
 for(const p of s.players){p.hand=[];p.judgment=[];p.equip={weapon:null,armor:null,offenseHorse:null,defenseHorse:null};p.marks={sha:0};p.hp=p.maxHp}

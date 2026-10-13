@@ -7,7 +7,7 @@
   python3 scripts/gen-doudizhu-edge-tts.py --voice zh-CN-XiaoyiNeural   换音色
 
 依赖：pip install edge-tts
-产物：.vuepress/public/audio/doudizhu/{key}.mp3 + manifest.json（audio.js 的加载清单，
+产物：site/.vuepress/public/audio/doudizhu/{key}.mp3 + manifest.json（audio.js 的加载清单，
       清单内条目播 mp3，清单外回退浏览器 speechSynthesis）。
 """
 import argparse
@@ -19,7 +19,7 @@ from pathlib import Path
 import edge_tts
 
 ROOT = Path(__file__).resolve().parent.parent
-OUT_DIR = ROOT / '.vuepress' / 'public' / 'audio' / 'doudizhu'
+OUT_DIR = ROOT / 'site/.vuepress' / 'build/site' / 'audio' / 'doudizhu'
 
 # 点数口播：rank 3..15 = 3..2（与 ui.js / gen-doudizhu-tts.mjs 条目一致）
 # Q/K 直接用英文字母：Edge TTS 中文音色读字母 Q 为 /kju:/、K 为 /keɪ/，
@@ -97,7 +97,7 @@ async def main():
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     # 快捷语输出目录：联机聊天面板的斗地主专属语音（与棋类共享目录分开）
-    phrase_dir = ROOT / '.vuepress' / 'public' / 'audio' / 'gamehall' / 'ddz'
+    phrase_dir = ROOT / 'site/.vuepress' / 'build/site' / 'audio' / 'gamehall' / 'ddz'
     phrase_dir.mkdir(parents=True, exist_ok=True)
     entries = build_entries()
     phrase_entries = build_phrase_entries()

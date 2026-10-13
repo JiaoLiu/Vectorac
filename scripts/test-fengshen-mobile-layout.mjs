@@ -1,12 +1,12 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {arenaGeometry,handScrollForCard,takeCardHeight} from '../.private/fengshen/arena-layout.mjs'
-import {handLayout,HAND_LIFT,HAND_TOP,HAND_BOTTOM} from '../.private/fengshen/hand.mjs'
-import {viewportFrame,bindGameViewport} from '../.private/fengshen/viewport.mjs'
-import {moveStarCard} from '../.private/fengshen/star-drag.mjs'
+import {arenaGeometry,handScrollForCard,takeCardHeight} from '../site/.vuepress/components/fengshen/arena-layout.mjs'
+import {handLayout,HAND_LIFT,HAND_TOP,HAND_BOTTOM} from '../site/.vuepress/components/fengshen/hand.mjs'
+import {viewportFrame,bindGameViewport} from '../site/.vuepress/components/fengshen/viewport.mjs'
+import {moveStarCard} from '../site/.vuepress/components/fengshen/star-drag.mjs'
 import {readFile} from 'node:fs/promises'
-import {renderBattle,renderCenter} from '../.private/fengshen/table.mjs'
-import {createGame,playerView} from '../.private/fengshen/engine.mjs'
+import {renderBattle,renderCenter} from '../site/.vuepress/components/fengshen/table.mjs'
+import {createGame,playerView} from '../site/.vuepress/components/fengshen/engine.mjs'
 const overlap=(a,b)=>Math.min(a.x+a.width,b.x+b.width)>Math.max(a.x,b.x)+.5&&Math.min(a.y+a.height,b.y+b.height)>Math.max(a.y,b.y)+.5
 test('all seat counts fit inside safe geometry with no overlapping opponents on phone and desktop',()=>{
  for(const [width,height]of [[568,320],[667,375],[844,390],[932,430],[1024,768],[1280,900],[320,568],[390,844],[430,932]])for(const seats of [2,4,5,6,8]){
@@ -48,7 +48,7 @@ test('timer belongs to hand heading, not portrait; star panel owns visible confi
  const v=playerView(state,0);v.pending={kind:'guanxing',actor:0,id:3};v.legal=[{type:'arrange',pool:state.players[0].hand.slice(0,3)},{type:'pass'}];const center=renderCenter(ui,v);assert.ok(center.includes('fs-star-choice'));assert.ok(center.includes('data-star-zone="top"'));assert.ok(center.includes('data-star-zone="bottom"'));assert.ok(center.includes('确认牌序'));assert.ok(center.includes('原序放回牌顶'))
 })
 test('legacy take-grid rules never shrink or hide Star panel; hand reveal never scrolls the document',async()=>{
- const css=await readFile(new URL('../.private/fengshen/table.css',import.meta.url),'utf8'),app=await readFile(new URL('../.private/fengshen/app.js',import.meta.url),'utf8'),hand=await readFile(new URL('../.private/fengshen/hand.mjs',import.meta.url),'utf8');assert.ok(!css.includes('.fs-center-choice:not(.fs-counter-choice)'));assert.ok(css.includes('.fs-take-choice>footer'));assert.ok(!app.includes('scrollIntoView'));assert.ok(!app.includes('syncScrollSpacer'));assert.ok(!hand.includes('visualViewport?.height'))
+ const css=await readFile(new URL('../site/.vuepress/components/fengshen/table.css',import.meta.url),'utf8'),app=await readFile(new URL('../site/.vuepress/components/fengshen/app.js',import.meta.url),'utf8'),hand=await readFile(new URL('../site/.vuepress/components/fengshen/hand.mjs',import.meta.url),'utf8');assert.ok(!css.includes('.fs-center-choice:not(.fs-counter-choice)'));assert.ok(css.includes('.fs-take-choice>footer'));assert.ok(!app.includes('scrollIntoView'));assert.ok(!app.includes('syncScrollSpacer'));assert.ok(!hand.includes('visualViewport?.height'))
 })
 test('1 to 108 cards fit the actual vertical budget including raised selection and badge clearance',()=>{
  for(const availableHeight of [70,100,130,180])for(const count of [1,6,30,60,108])for(const landscape of [true,false]){

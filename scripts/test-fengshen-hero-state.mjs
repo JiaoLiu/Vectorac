@@ -1,8 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {createAssignedGame,catalog,dispatch,playerView,distance} from '../.private/fengshen/engine.mjs'
-import {delayedTargetReason,jiushiButton,heroBattleDetails} from '../.private/fengshen/hero-state.mjs'
-import {renderControls} from '../.private/fengshen/table.mjs'
+import {createAssignedGame,catalog,dispatch,playerView,distance} from '../site/.vuepress/components/fengshen/engine.mjs'
+import {delayedTargetReason,jiushiButton,heroBattleDetails} from '../site/.vuepress/components/fengshen/hero-state.mjs'
+import {renderControls} from '../site/.vuepress/components/fengshen/table.mjs'
 function fixture(own='yangjian',other='jifa'){
  const s=createAssignedGame({heroIds:[own,other,'nezha','jinling','daji'],roles:['lord','loyal','rebel','rebel','renegade'],seed:37})
  Object.assign(s,{deck:catalog.makeDeck(),discard:[],processing:[],queue:[],pending:null,phase:'play',current:0,lastPlayed:null,lastResponse:null,exchange:null,publicReveal:null})

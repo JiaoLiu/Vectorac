@@ -4,11 +4,11 @@ const crypto = require("crypto");
 const esbuild = require("esbuild");
 
 const projectRoot = path.resolve(__dirname, "..");
-const entry = path.join(projectRoot, ".vuepress/components/slime-rebuild.worker.js");
-const outputDir = path.join(projectRoot, ".vuepress/public/js");
+const entry = path.join(projectRoot, "site/.vuepress/components/slime-rebuild.worker.js");
+const outputDir = path.join(projectRoot, "site/.vuepress/public/js");
 const generatedModule = path.join(
   projectRoot,
-  ".vuepress/components/slime-worker-url.generated.js"
+  "site/.vuepress/components/slime-worker-url.generated.js"
 );
 
 async function main() {

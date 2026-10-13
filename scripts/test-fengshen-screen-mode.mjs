@@ -1,8 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {readFile}from 'node:fs/promises'
-import {mediaMatches,logicalScreen,phoneScreen,bindVirtualMedia,localPoint}from '../.private/fengshen/screen-mode.mjs'
-import {bindGameViewport}from '../.private/fengshen/viewport.mjs'
+import {mediaMatches,logicalScreen,phoneScreen,bindVirtualMedia,localPoint}from '../site/.vuepress/components/fengshen/screen-mode.mjs'
+import {bindGameViewport}from '../site/.vuepress/components/fengshen/viewport.mjs'
 const events=()=>({handlers:new Map(),addEventListener(k,f){this.handlers.set(k,f)},removeEventListener(k){this.handlers.delete(k)}})
 const classes=()=>({set:new Set(),contains(k){return this.set.has(k)},toggle(k,on){on?this.set.add(k):this.set.delete(k)},remove(k){this.set.delete(k)}})
 function fake(){
@@ -34,8 +34,8 @@ test('real orientation releases virtual rotation; native pinch retains actual ma
 })
 test('inverse coordinate mapping keeps beams, transfers and drag positions correct after 90-degree rotation',async()=>{
  const root={clientWidth:844,clientHeight:390,classList:{contains:()=>true},getBoundingClientRect:()=>({left:0,top:0,width:390,height:844})};assert.deepEqual(localPoint(root,290,200),{x:200,y:100});root.classList.contains=()=>false;root.clientWidth=390;root.clientHeight=844;assert.deepEqual(localPoint(root,290,200),{x:290,y:200})
- const app=await readFile(new URL('../.private/fengshen/app.js',import.meta.url),'utf8');assert.ok(app.includes('`${ap.x-27}px`'));assert.ok(app.includes('`${tp.y-38}px`'))
+ const app=await readFile(new URL('../site/.vuepress/components/fengshen/app.js',import.meta.url),'utf8');assert.ok(app.includes('`${ap.x-27}px`'));assert.ok(app.includes('`${tp.y-38}px`'))
 })
 test('native zoom is not blocked by gesture handlers or scroll-area touch-action',async()=>{
- const v=await readFile(new URL('../.private/fengshen/viewport.mjs',import.meta.url),'utf8'),css=await readFile(new URL('../.private/fengshen/arena-table.css',import.meta.url),'utf8');assert.ok(!v.includes('gesturestart'));assert.ok(!v.includes('preventDefault'));assert.ok(css.includes('touch-action:pan-x pinch-zoom'));assert.ok(css.includes('touch-action:pan-y pinch-zoom'));assert.ok(css.includes('touch-action:pinch-zoom;cursor:grab'))
+ const v=await readFile(new URL('../site/.vuepress/components/fengshen/viewport.mjs',import.meta.url),'utf8'),css=await readFile(new URL('../site/.vuepress/components/fengshen/arena-table.css',import.meta.url),'utf8');assert.ok(!v.includes('gesturestart'));assert.ok(!v.includes('preventDefault'));assert.ok(css.includes('touch-action:pan-x pinch-zoom'));assert.ok(css.includes('touch-action:pan-y pinch-zoom'));assert.ok(css.includes('touch-action:pinch-zoom;cursor:grab'))
 })

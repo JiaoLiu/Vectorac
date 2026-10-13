@@ -4,17 +4,17 @@ import {createRequire} from 'node:module'
 import {readFile,mkdir,copyFile} from 'node:fs/promises'
 import {existsSync} from 'node:fs'
 const sharp=createRequire(import.meta.url)(process.env.SHARP_PATH||'sharp')
-const root='.vuepress/public/img/games/dressup/layers/v16',W=512,H=1024
+const root='site/.vuepress/public/img/games/dressup/layers/v16',W=512,H=1024
 await mkdir(root+'/catalog',{recursive:true})
 // These generated rear strands are confined beneath the existing front and
 // the new head; the original v7 long-hair wearable/catalogue are untouched.
-await copyFile('.vuepress/public/img/games/dressup/layers/v15/hair-5-back.webp',root+'/hair-1-back.webp')
+await copyFile('site/.vuepress/public/img/games/dressup/layers/v15/hair-5-back.webp',root+'/hair-1-back.webp')
 // Register only the right rear lock to the ponytail's slightly wider inner
 // boundary. The existing front is untouched; no strand is painted over skin.
 const ponyRear=await sharp(root+'/hair-1-back.webp').extract({left:280,top:102,width:24,height:113}).resize(28,113).png().toBuffer()
 await sharp({create:{width:W,height:H,channels:4,background:'#00000000'}}).composite([{input:ponyRear,left:280,top:102}]).webp({lossless:true}).toFile(root+'/hair-2-back.webp')
 const manifest=JSON.parse(await readFile('scripts/wardrobe-v16-art.json','utf8'))
-const master=await sharp('.vuepress/public/img/games/dressup/layers/v5/master.webp').ensureAlpha().raw().toBuffer()
+const master=await sharp('site/.vuepress/public/img/games/dressup/layers/v5/master.webp').ensureAlpha().raw().toBuffer()
 const raw=async path=>sharp(path).ensureAlpha().raw().toBuffer()
 const rects={eyes:[[215,101,39,24],[258,101,39,24]],brows:[[213,89,41,15],[258,89,41,15]],lip:[[236,136,40,19]]}
 const images=[]
@@ -45,12 +45,12 @@ for(const a of manifest.assets){
   await sharp(layer,{raw:{width:W,height:H,channels:4}}).webp({lossless:true}).toFile(`${root}/${category}-${a.index}.webp`)
  }
 }
-const hair=await raw('.vuepress/public/img/games/dressup/layers/v7/hair-0.webp')
+const hair=await raw('site/.vuepress/public/img/games/dressup/layers/v7/hair-0.webp')
 const bg='#f4ede5'
 const body=Buffer.from(master)
 for(let y=25;y<163;y++)for(let x=190;x<322;x++)body[(y*W+x)*4+3]=0
 async function portrait(index,feature=null){
- const pieces=[{input:body,raw:{width:W,height:H,channels:4}},{input:'.vuepress/public/img/games/dressup/layers/v5/top-0.webp'},{input:Buffer.from(images[index]),raw:{width:W,height:H,channels:4}}]
+ const pieces=[{input:body,raw:{width:W,height:H,channels:4}},{input:'site/.vuepress/public/img/games/dressup/layers/v5/top-0.webp'},{input:Buffer.from(images[index]),raw:{width:W,height:H,channels:4}}]
  if(feature)pieces.push({input:`${root}/${feature.category}-${feature.index}.webp`})
  pieces.push({input:Buffer.from(hair),raw:{width:W,height:H,channels:4}})
  return sharp({create:{width:W,height:H,channels:4,background:'#00000000'}}).composite(pieces).png().toBuffer()

@@ -30,7 +30,7 @@
     {
       "id": "base-v4",
       "prompt": "Use case: identity-preserve. Edit target: Image 1 is the existing female paper-doll game base model. Create a corrected version for layered clothing. Preserve EXACT original full-body standing pose, silhouette, limb positions, feet positions, facial features, eyes and skin tone, body size and framing. Remove ONLY all brown hair and replace it with a smooth natural bald scalp; hair is a separate game layer. Replace the cream tank top and shorts with an opaque modest fitted neutral cream strapless dance leotard (NOT nude, fully covered bust and pelvis), no shoulder straps and no sleeves. Its neckline sits below the collarbones, below an off-shoulder corset, so it will be completely covered by clothing layers. Original hand/body/foot silhouette and original scale cannot move. Entire character head to toes visible, same tall 1:2 canvas, centered, generous transparent margins. Soft realistic fantasy dress-up illustration, consistent identity. No text, no props, no shadow on background. Genuinely transparent background, preserve clean alpha edges. Do not add clothes besides the covered base leotard. This is a technical reference sprite, not a scene.",
-      "reference": ".vuepress/public/img/games/dressup/layers/base.webp"
+      "reference": "site/.vuepress/public/img/games/dressup/layers/base.webp"
     },
     {
       "id": "shoes-atlas",

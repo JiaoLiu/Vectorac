@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import {openBrowser} from './browser-cdp.mjs'
-import {createAssignedGame,catalog} from '../.private/fengshen/engine.mjs'
+import {createAssignedGame,catalog} from '../site/.vuepress/components/fengshen/engine.mjs'
 function fixture(weapon='crossbow'){
  const s=createAssignedGame({heroIds:['yangjian','jifa','nezha','dixin','moliqing'],roles:['lord','loyal','rebel','rebel','renegade'],seed:37})
  Object.assign(s,{deck:catalog.makeDeck(),discard:[],processing:[],queue:[],pending:null,lastPlayed:null,lastResponse:null,exchange:null,publicReveal:null,phase:'play',current:0,logs:[]})

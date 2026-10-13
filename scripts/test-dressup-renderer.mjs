@@ -1,8 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {createModelRenderer} from '../.vuepress/components/dressup/renderer.mjs'
-import {DEFAULT_PARTS} from '../.vuepress/components/dressup/parts.mjs'
-import {layerSources} from '../.vuepress/components/dressup/compositor.mjs'
+import {createModelRenderer} from '../site/.vuepress/components/dressup/renderer.mjs'
+import {DEFAULT_PARTS} from '../site/.vuepress/components/dressup/parts.mjs'
+import {layerSources} from '../site/.vuepress/components/dressup/compositor.mjs'
 function fixture(){
  const pending=new Map(),draws=[]
  class Img{constructor(){this.naturalWidth=512;this.naturalHeight=1024}set src(src){this.url=src;pending.set(src,this)}decode(){return this.decoding||Promise.resolve()}}

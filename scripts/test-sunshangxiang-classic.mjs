@@ -1,8 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import *as base from '../.private/fengshen/core/catalog.mjs'
-import {createEngine}from '../.private/fengshen/core/engine.mjs'
-import {createAI}from '../.private/fengshen/core/ai.mjs'
+import *as base from '../site/.vuepress/components/fengshen/core/catalog.mjs'
+import {createEngine}from '../site/.vuepress/components/fengshen/core/engine.mjs'
+import {createAI}from '../site/.vuepress/components/fengshen/core/ai.mjs'
 function engine(auto=true){const E=createEngine({...base,automaticSkills:auto?['xiaoji']:[]});return E}
 function fixture(E){
  const s=E.createAssignedGame({roles:['lord','loyal','rebel','rebel','renegade'],heroIds:['sunshangxiang','liubei','guanyu','zhangfei','huangyueying'],seed:19});s.deck=base.makeDeck();s.discard=[];s.processing=[];s.harvestPool=[];s.queue=[];s.pending=null;s.phase='play';s.current=0;s.logs=[];s.lastEvent=null;s.lastPlayed=null

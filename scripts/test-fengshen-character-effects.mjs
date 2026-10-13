@@ -1,9 +1,9 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {completedCharacterEffects} from '../.private/fengshen/character-effect-cues.mjs'
-import {JudgmentCinematics,sceneHtml} from '../.private/fengshen/judgment-cinematics.mjs'
-import {playerView} from '../.private/fengshen/engine.mjs'
-import {rotateView} from '../.private/fengshen/network-projection.mjs'
+import {completedCharacterEffects} from '../site/.vuepress/components/fengshen/character-effect-cues.mjs'
+import {JudgmentCinematics,sceneHtml} from '../site/.vuepress/components/fengshen/judgment-cinematics.mjs'
+import {playerView} from '../site/.vuepress/components/fengshen/engine.mjs'
+import {rotateView} from '../site/.vuepress/components/fengshen/network-projection.mjs'
 import {fireEffectFixture,chainEffectFixture,effectStep} from './character-effect-fixtures.mjs'
 test('Fire Attack flames only when matching cost causes actual fire damage, never on play/show/pass',()=>{
  const f=fireEffectFixture();for(const [a,b]of [[f.initial,f.played],[f.played,f.revealed],[f.revealed,f.before]])assert.deepEqual(completedCharacterEffects(playerView(a,0),playerView(b,0)),[])

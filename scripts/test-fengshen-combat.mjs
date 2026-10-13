@@ -2,19 +2,19 @@ import {stableOpponents} from './fixtures/gods-stable.mjs'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {readFile} from 'node:fs/promises'
-import {createGame,createAssignedGame,dispatch,playerView,allCards,restoreGame,catalog,militaryCatalog,chooseAI} from '../.private/fengshen/engine.mjs'
-import {makeDeck} from '../.private/fengshen/core/catalog.mjs'
+import {createGame,createAssignedGame,dispatch,playerView,allCards,restoreGame,catalog,militaryCatalog,chooseAI} from '../site/.vuepress/components/fengshen/engine.mjs'
+import {makeDeck} from '../site/.vuepress/components/fengshen/core/catalog.mjs'
 import {hand,equipment} from './fixtures/sanguo.mjs'
-import {combatContext,damageCues,collateralSelection} from '../.private/fengshen/combat.mjs'
-import {handLayout} from '../.private/fengshen/hand.mjs'
-import {cardFace} from '../.private/fengshen/presentation.mjs'
-import {CARDS_BY_TYPE} from '../.private/fengshen/theme.mjs'
-import {CardVoice} from '../.private/fengshen/voice.mjs'
-import {createEngine} from '../.private/fengshen/core/engine.mjs'
-import {advanceUnavailable,DecisionClock} from '../.private/fengshen/flow.mjs'
-import {BackgroundMusic} from '../.private/fengshen/music.mjs'
-import {drawEffects} from '../.private/fengshen/draw-effects.mjs'
-import {recoveryCues} from '../.private/fengshen/health-effects.mjs'
+import {combatContext,damageCues,collateralSelection} from '../site/.vuepress/components/fengshen/combat.mjs'
+import {handLayout} from '../site/.vuepress/components/fengshen/hand.mjs'
+import {cardFace} from '../site/.vuepress/components/fengshen/presentation.mjs'
+import {CARDS_BY_TYPE} from '../site/.vuepress/components/fengshen/theme.mjs'
+import {CardVoice} from '../site/.vuepress/components/fengshen/voice.mjs'
+import {createEngine} from '../site/.vuepress/components/fengshen/core/engine.mjs'
+import {advanceUnavailable,DecisionClock} from '../site/.vuepress/components/fengshen/flow.mjs'
+import {BackgroundMusic} from '../site/.vuepress/components/fengshen/music.mjs'
+import {drawEffects} from '../site/.vuepress/components/fengshen/draw-effects.mjs'
+import {recoveryCues} from '../site/.vuepress/components/fengshen/health-effects.mjs'
 function fixture(current=0,heroId='yangjian'){
  const s=stableOpponents(createGame({heroId,role:'lord',seed:17}));s.deck=catalog.makeDeck();s.discard=[];s.processing=[];s.harvestPool=[];s.queue=[];s.pending=null;s.phase='play';s.current=current;s.logs=[];s.lastPlayed=null;s.lastEvent=null
  for(const p of s.players){p.hand=[];p.equip={weapon:null,armor:null,offenseHorse:null,defenseHorse:null};p.judgment=[];p.marks={sha:0,rende:0};p.hp=p.maxHp}
@@ -216,7 +216,7 @@ test('music loops quietly, muted music stays paused and failed autoplay is harml
  const blocked=new BackgroundMusic({createAudio:()=>({...a,play:async()=>{throw Error('autoplay blocked')}})});assert.equal(await blocked.unlock(),false);blocked.destroy()
 })
 test('original hurt WAV is bounded PCM with a short non-silent waveform',async()=>{
- const w=await readFile(new URL('../.private/fengshen/assets/audio/sfx/damage.wav',import.meta.url));assert.equal(w.toString('ascii',0,4),'RIFF');assert.equal(w.readUInt16LE(20),1);assert.equal(w.readUInt32LE(24),24000);assert.equal(w.readUInt16LE(34),16);assert.ok(w.length>10000&&w.length<20000);assert.ok(w.subarray(44).some(v=>v!==0))
+ const w=await readFile(new URL('../site/.vuepress/components/fengshen/assets/audio/sfx/damage.wav',import.meta.url));assert.equal(w.toString('ascii',0,4),'RIFF');assert.equal(w.readUInt16LE(20),1);assert.equal(w.readUInt32LE(24),24000);assert.equal(w.readUInt16LE(34),16);assert.ok(w.length>10000&&w.length<20000);assert.ok(w.subarray(44).some(v=>v!==0))
 })
 test('hurt plays independently of speech; stop/mute cancels delayed effects',async()=>{
  let starts=0,resolveFetch;const sources=[];const context={sampleRate:24000,resume:async()=>{},createBuffer:()=>({}),decodeAudioData:async()=>({}),destination:{},close:async()=>{},createBufferSource(){const source={connect(){},disconnect(){},start(){starts++;setTimeout(()=>source.onended?.(),1)},stop(){source.onended?.()}};sources.push(source);return source}}

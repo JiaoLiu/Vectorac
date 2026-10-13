@@ -5,7 +5,7 @@ import {readFile,mkdir} from 'node:fs/promises'
 import {existsSync} from 'node:fs'
 const require=createRequire(import.meta.url),sharp=require(process.env.SHARP_PATH||'sharp')
 const manifest=JSON.parse(await readFile(new URL('./wardrobe-v5-art.json',import.meta.url),'utf8'))
-const root='.vuepress/public/img/games/dressup/layers/v5',sources='scripts/fixtures/wardrobe-v5-sources'
+const root='site/.vuepress/public/img/games/dressup/layers/v5',sources='scripts/fixtures/wardrobe-v5-sources'
 await mkdir(root,{recursive:true});await mkdir(sources,{recursive:true})
 const W=512,H=1024
 const sourceOf=a=>existsSync(a.source)?a.source:`${sources}/${a.id||'master'}.webp`
@@ -81,7 +81,7 @@ for(const a of manifest.assets){
 const masterSource=sourceOf(manifest.master)
 if(masterSource!==`${sources}/master.webp`)await sharp(masterSource).webp({quality:95,alphaQuality:100}).toFile(`${sources}/master.webp`)
 // Thumbnail cropping is UI-only; these bounds never position a model layer.
-const {PARTS,REGISTERED_CATEGORIES}=await import('../.vuepress/components/dressup/parts.mjs')
+const {PARTS,REGISTERED_CATEGORIES}=await import('../site/.vuepress/components/dressup/parts.mjs')
 for(const p of PARTS.filter(p=>p.index>=0&&REGISTERED_CATEGORIES.includes(p.category))){
  const {data}=await sharp(`${root}/${p.id}.webp`).ensureAlpha().raw().toBuffer({resolveWithObject:true})
  let l=W,t=H,r=0,b=0

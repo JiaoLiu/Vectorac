@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {createAssignedGame,dispatch,playerView,catalog} from '../.private/fengshen/engine.mjs'
-import {CARDS_BY_TYPE} from '../.private/fengshen/theme.mjs'
+import {createAssignedGame,dispatch,playerView,catalog} from '../site/.vuepress/components/fengshen/engine.mjs'
+import {CARDS_BY_TYPE} from '../site/.vuepress/components/fengshen/theme.mjs'
 import {stableOpponents} from './fixtures/gods-stable.mjs'
 // 自动结束出牌（maybeAutoEnd）依赖引擎唯一事实：legalActions 只剩 {type:'end'} 时才自动结束。
 // 本文件是安全网回归：枚举全部出牌阶段主动技能与全部实体牌，逐一证明「可发动/可出时

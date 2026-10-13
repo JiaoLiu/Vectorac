@@ -3,10 +3,10 @@
 import assert from 'node:assert/strict'
 import {createRequire} from 'node:module'
 import {build} from 'esbuild'
-import {createAssignedGame,catalog,dispatch} from '../.private/fengshen/engine.mjs'
-import {paintRecovery} from '../.private/fengshen/health-effects.mjs'
+import {createAssignedGame,catalog,dispatch} from '../site/.vuepress/components/fengshen/engine.mjs'
+import {paintRecovery} from '../site/.vuepress/components/fengshen/health-effects.mjs'
 const require=createRequire(import.meta.url),{JSDOM}=require(process.env.JSDOM_PATH||'jsdom')
-const bundle=await build({entryPoints:['.private/fengshen/app.js'],bundle:true,write:false,format:'iife',platform:'browser',loader:{'.css':'empty'},define:{__FENGSHEN_RELEASE__:'false'}})
+const bundle=await build({entryPoints:['site/.vuepress/components/fengshen/app.js'],bundle:true,write:false,format:'iife',platform:'browser',loader:{'.css':'empty'},define:{__FENGSHEN_RELEASE__:'false'}})
 const dom=new JSDOM('<!doctype html><div id="app"></div>',{url:'https://offline-gods.test/',runScripts:'outside-only',pretendToBeVisual:true}),w=dom.window,errors=[]
 w.addEventListener('error',e=>errors.push(e.error?.message||e.message))
 w.matchMedia=()=>({matches:false,addEventListener(){},removeEventListener(){},addListener(){},removeListener(){}})

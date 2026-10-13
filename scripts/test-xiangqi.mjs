@@ -3,8 +3,8 @@ import test from 'node:test'
 import {
   RED, BLACK, createInitialBoard, getLegalMoves, getMovesFrom, isInCheck,
   chooseMove, applyMove, findGeneral, resultForSideToMove
-} from '../.vuepress/components/xiangqi/engine.mjs'
-import { XIANGQI_PUZZLES, createPuzzleBoard, isCorrectPuzzleChoice, getPuzzlePage } from '../.vuepress/components/xiangqi/puzzles.mjs'
+} from '../site/.vuepress/components/xiangqi/engine.mjs'
+import { XIANGQI_PUZZLES, createPuzzleBoard, isCorrectPuzzleChoice, getPuzzlePage } from '../site/.vuepress/components/xiangqi/puzzles.mjs'
 
 function sparseBoard() {
   const board = Array.from({ length: 10 }, () => Array(9).fill(null))

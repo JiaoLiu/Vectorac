@@ -5,9 +5,9 @@ import {join} from 'node:path'
 import {createRequire} from 'node:module'
 const require=createRequire(import.meta.url)
 const {webkit,chromium}=require(process.env.PLAYWRIGHT_PATH||'playwright')
-const webp=await readFile(new URL('../.vuepress/public/img/games/balatro-cover.webp',import.meta.url))
-const svg=await readFile(new URL('../.vuepress/public/img/games/balatro-cover.svg',import.meta.url))
-const css=await readFile(new URL('../.vuepress/components/balatro/style.css',import.meta.url),'utf8')
+const webp=await readFile(new URL('../site/.vuepress/public/img/games/balatro-cover.webp',import.meta.url))
+const svg=await readFile(new URL('../site/.vuepress/public/img/games/balatro-cover.svg',import.meta.url))
+const css=await readFile(new URL('../site/.vuepress/components/balatro/style.css',import.meta.url),'utf8')
 const output=await mkdtemp(join(tmpdir(),'balatro-cover-'))
 for(const [name,engine] of [['webkit',webkit],['chromium',chromium]]){
  const browser=await engine.launch({headless:true,...(name==='chromium'&&process.env.CHROME_BINARY?{executablePath:process.env.CHROME_BINARY}:{})})

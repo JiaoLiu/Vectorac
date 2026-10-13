@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import {openBrowser} from './browser-cdp.mjs'
-import {createAssignedGame,militaryCatalog,playerView} from '../.private/fengshen/engine.mjs'
+import {createAssignedGame,militaryCatalog,playerView} from '../site/.vuepress/components/fengshen/engine.mjs'
 // 落宝（赵公明的奇袭：黑牌当【过河拆桥】）拆牌时，被拆掉的牌必须摆在出牌行旁边，
 // 不能像旧横屏那样绝对居中盖住技能牌；出牌行为空时弃置牌仍照旧居中压中线。
 function fixture(){

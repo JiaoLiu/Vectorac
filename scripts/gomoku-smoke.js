@@ -1,6 +1,6 @@
 // 临时验证脚本：五子棋引擎 + AI 正确性冒烟测试
-import { createBoard, checkWin, getCandidateMoves, BLACK, WHITE } from '../.vuepress/components/gomoku/engine.js'
-import { chooseMove, scorePoint } from '../.vuepress/components/gomoku/ai.js'
+import { createBoard, checkWin, getCandidateMoves, BLACK, WHITE } from '../site/.vuepress/components/gomoku/engine.js'
+import { chooseMove, scorePoint } from '../site/.vuepress/components/gomoku/ai.js'
 
 let pass = 0
 let fail = 0

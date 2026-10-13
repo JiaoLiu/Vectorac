@@ -1,11 +1,11 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {createSetup,setupView,dispatchSetup,chooseSetupAI,restoreSetup,restoreSession,LORD_HEROES} from '../.private/fengshen/setup.mjs'
-import {PLAYABLE_HEROES,HERO_BY_THEME_ID} from '../.private/fengshen/theme.mjs'
-import {createGame,playerView,dispatch,allCards,restoreGame,catalog} from '../.private/fengshen/engine.mjs'
-import {chooseAI} from '../.private/fengshen/engine.mjs'
+import {createSetup,setupView,dispatchSetup,chooseSetupAI,restoreSetup,restoreSession,LORD_HEROES} from '../site/.vuepress/components/fengshen/setup.mjs'
+import {PLAYABLE_HEROES,HERO_BY_THEME_ID} from '../site/.vuepress/components/fengshen/theme.mjs'
+import {createGame,playerView,dispatch,allCards,restoreGame,catalog} from '../site/.vuepress/components/fengshen/engine.mjs'
+import {chooseAI} from '../site/.vuepress/components/fengshen/engine.mjs'
 const DECK_SIZE=catalog.makeDeck().length
-import {renderHome,renderSetup} from '../.private/fengshen/setup-ui.mjs'
+import {renderHome,renderSetup} from '../site/.vuepress/components/fengshen/setup-ui.mjs'
 const step=(s,a)=>{const r=dispatchSetup(s,{revision:s.revision,...a});assert.ok(r.ok,r.error);return r.setup}
 function reveal(s){return step(s,{type:'reveal',seat:0})}
 function finish(s){s=reveal(s);s=step(s,chooseSetupAI(setupView(s,s.lord)));for(let i=0;i<5;i++)if(i!==s.lord)s=step(s,chooseSetupAI(setupView(s,i)));return s}

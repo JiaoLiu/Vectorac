@@ -13,10 +13,10 @@ parser = argparse.ArgumentParser()
 parser.add_argument("source", type=Path, help="Official MaShanZheng-Regular.ttf (OFL)")
 parser.add_argument("--version", default="v2", help="Increment for a new, cache-safe font URL")
 args = parser.parse_args()
-font_dir = root / ".private/fengshen/assets/fonts"
+font_dir = root / "site/.vuepress/components/fengshen/assets/fonts"
 names = json.loads(subprocess.check_output([
     "node", "--input-type=module", "-e",
-    "import {CARDS_BY_TYPE,HEROES} from './.private/fengshen/theme.mjs';"
+    "import {CARDS_BY_TYPE,HEROES} from './site/.vuepress/components/fengshen/theme.mjs';"
     "console.log(JSON.stringify(Object.values(CARDS_BY_TYPE).map(c=>c.name)"
     ".concat(HEROES.flatMap(h=>[h.name,h.title,...Object.values(h.skillNames)]))))"
 ], cwd=root, text=True))

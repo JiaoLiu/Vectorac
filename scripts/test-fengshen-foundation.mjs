@@ -1,10 +1,10 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {createAssignedGame,dispatch,playerView,restoreGame,allCards,catalog,militaryCatalog,hasSkill,distance,chooseAI} from '../.private/fengshen/engine.mjs'
-import {createEngine} from '../.private/fengshen/core/engine.mjs'
-import {HEROES,PLAYABLE_HEROES,skillHelp} from '../.private/fengshen/theme.mjs'
-import {extensionAction,viewDistance} from '../.private/fengshen/extension-actions.mjs'
-import {extensionPopup} from '../.private/fengshen/extension-table.mjs'
+import {createAssignedGame,dispatch,playerView,restoreGame,allCards,catalog,militaryCatalog,hasSkill,distance,chooseAI} from '../site/.vuepress/components/fengshen/engine.mjs'
+import {createEngine} from '../site/.vuepress/components/fengshen/core/engine.mjs'
+import {HEROES,PLAYABLE_HEROES,skillHelp} from '../site/.vuepress/components/fengshen/theme.mjs'
+import {extensionAction,viewDistance} from '../site/.vuepress/components/fengshen/extension-actions.mjs'
+import {extensionPopup} from '../site/.vuepress/components/fengshen/extension-table.mjs'
 const E=createEngine(catalog),ids=['luoxuan','nanji','yangren','zhangkui','juliusun','yinjiao','laozi']
 function fixture(hero,others=['jifa','nezha','yangjian','jinling'],current=0,deckVersion=1){
  const s=createAssignedGame({heroIds:[hero,...others],roles:['lord','loyal','rebel','rebel','renegade'],seed:23,deckVersion})

@@ -5,7 +5,7 @@ import {mkdir,readFile,copyFile} from 'node:fs/promises'
 import {existsSync} from 'node:fs'
 const sharp=createRequire(import.meta.url)(process.env.SHARP_PATH||'sharp')
 const manifest=JSON.parse(await readFile('scripts/wardrobe-v17-art.json','utf8'))
-const root='.vuepress/public/img/games/dressup/layers/v17',S=4,W=512*S,H=1024*S,F=manifest.frames
+const root='site/.vuepress/public/img/games/dressup/layers/v17',S=4,W=512*S,H=1024*S,F=manifest.frames
 await mkdir(root+'/catalog',{recursive:true})
 for(const a of manifest.assets)if(!existsSync(a.file))await copyFile(a.source,a.file)
 const file=id=>manifest.assets.find(a=>a.key===id).file

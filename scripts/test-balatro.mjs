@@ -1,12 +1,12 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {readFileSync} from 'node:fs'
-import * as E from '../.vuepress/components/balatro/engine.mjs'
-import { HANDS,JOKERS,TAROTS,SPECTRALS,VOUCHERS,BOSSES,DECKS,BOOSTER_PACKS } from '../.vuepress/components/balatro/catalog.mjs'
-import { cardCue, jokerProgress } from '../.vuepress/components/balatro/cues.mjs'
-import { playingCardDetails, playingCardSummary } from '../.vuepress/components/balatro/card-details.mjs'
-import { playingCard } from '../.vuepress/components/balatro/art.mjs'
-import PokerTable from '../.vuepress/components/balatro/ui.js'
+import * as E from '../site/.vuepress/components/balatro/engine.mjs'
+import { HANDS,JOKERS,TAROTS,SPECTRALS,VOUCHERS,BOSSES,DECKS,BOOSTER_PACKS } from '../site/.vuepress/components/balatro/catalog.mjs'
+import { cardCue, jokerProgress } from '../site/.vuepress/components/balatro/cues.mjs'
+import { playingCardDetails, playingCardSummary } from '../site/.vuepress/components/balatro/card-details.mjs'
+import { playingCard } from '../site/.vuepress/components/balatro/art.mjs'
+import PokerTable from '../site/.vuepress/components/balatro/ui.js'
 
 const cards=(ranks,suits=[])=>ranks.map((rank,i)=>({uid:i+1,rank,suit:suits[i]===undefined?i%4:suits[i],enh:null,edition:null,seal:null}))
 const state=(ranks=[14,14,13,12,10,8,4,2],suits=[])=>{
@@ -55,14 +55,14 @@ test('J, Q and K have distinct double-ended art while indices and seals remain l
  for(const rank of [11,12,13])assert.doesNotMatch(playingCard({rank,suit:0,seal:'blue'},true),/bp-court-|>P<\/text>/,'face-down cards reveal no court identity or seal')
 })
 test('gallery uses illustrated cover but in-game entry retains the minimal SVG',()=>{
- const cover=readFileSync(new URL('../.vuepress/public/img/games/balatro-cover.webp',import.meta.url))
- const intro=readFileSync(new URL('../blogs/other/cardforge.md',import.meta.url),'utf8')
- const gallery=readFileSync(new URL('../blogs/other/games.md',import.meta.url),'utf8')
+ const cover=readFileSync(new URL('../site/.vuepress/public/img/games/balatro-cover.webp',import.meta.url))
+ const intro=readFileSync(new URL('../site/blogs/other/cardforge.md',import.meta.url),'utf8')
+ const gallery=readFileSync(new URL('../site/blogs/other/games.md',import.meta.url),'utf8')
  assert.equal(cover.subarray(0,4).toString(),'RIFF');assert.equal(cover.subarray(8,12).toString(),'WEBP')
  assert.ok(cover.length<300*1024,'gallery cover must stay small enough to load fast')
  assert.match(gallery,/\/img\/games\/thumbs\/balatro\.webp/)
- assert.equal(readFileSync(new URL('../.vuepress/public/img/games/thumbs/balatro.webp',import.meta.url)).toString('ascii',0,4),'RIFF')
- const ui=readFileSync(new URL('../.vuepress/components/balatro/ui.js',import.meta.url),'utf8')
+ assert.equal(readFileSync(new URL('../site/.vuepress/public/img/games/thumbs/balatro.webp',import.meta.url)).toString('ascii',0,4),'RIFF')
+ const ui=readFileSync(new URL('../site/.vuepress/components/balatro/ui.js',import.meta.url),'utf8')
  assert.match(ui,/balatro-cover\.svg/);assert.doesNotMatch(ui,/balatro-cover\.webp/)
  assert.match(intro,/新版双面人像牌面/)
  assert.match(intro,/约 2.5 秒后消失/);assert.match(gallery,/双面 J\/Q\/K 人头牌/)

@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {judgmentSamples,JUDGMENT_SOUND_SECONDS} from '../.private/fengshen/judgment-audio.mjs'
-import {CardVoice} from '../.private/fengshen/voice.mjs'
+import {judgmentSamples,JUDGMENT_SOUND_SECONDS} from '../site/.vuepress/components/fengshen/judgment-audio.mjs'
+import {CardVoice} from '../site/.vuepress/components/fengshen/voice.mjs'
 for(const kind of ['prison','ration','thunder','fire','chain','unchain'])test(`${kind} Foley is finite, bounded and non-silent at mobile sample rates`,()=>{
  for(const rate of [22050,44100,48000]){const data=judgmentSamples(kind,rate);assert.equal(data.length,Math.ceil(rate*JUDGMENT_SOUND_SECONDS));let power=0;for(const v of data){assert.ok(Number.isFinite(v));assert.ok(Math.abs(v)<=.751);power+=v*v}assert.ok(Math.sqrt(power/data.length)>.015);assert.equal(Math.abs(data[0]),0)}
 })

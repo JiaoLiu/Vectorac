@@ -4,18 +4,18 @@ import {createRequire} from 'node:module'
 import {readFile,mkdir,writeFile} from 'node:fs/promises'
 import {existsSync} from 'node:fs'
 const sharp=createRequire(import.meta.url)(process.env.SHARP_PATH||'sharp')
-const root='.vuepress/public/img/games/dressup/layers/v11',fixtures='scripts/fixtures/wardrobe-v11-sources',W=512,H=1024
+const root='site/.vuepress/public/img/games/dressup/layers/v11',fixtures='scripts/fixtures/wardrobe-v11-sources',W=512,H=1024
 await mkdir(root+'/catalog',{recursive:true});await mkdir(fixtures,{recursive:true})
 const manifest=JSON.parse(await readFile('scripts/wardrobe-v11-art.json','utf8'))
 const raw=async f=>sharp(f).resize(W,H,{fit:'fill'}).ensureAlpha().raw().toBuffer()
-const master=await raw('scripts/fixtures/wardrobe-v5-sources/master.webp'),oldBoot=await raw('.vuepress/public/img/games/dressup/layers/v5/shoes-3.webp')
+const master=await raw('scripts/fixtures/wardrobe-v5-sources/master.webp'),oldBoot=await raw('site/.vuepress/public/img/games/dressup/layers/v5/shoes-3.webp')
 async function save(id,data){await sharp(data,{raw:{width:W,height:H,channels:4}}).webp({quality:95,alphaQuality:100}).toFile(`${root}/${id}.webp`)}
 function rowBounds(d,y,left=0,right=W){left=Math.max(0,Math.floor(left));right=Math.min(W,Math.ceil(right));let l=right,r=left-1;for(let x=left;x<right;x++)if(d[(y*W+x)*4+3]>190){l=Math.min(l,x);r=Math.max(r,x)}return [l,r]}
 function sample(d,x,y,out,p){const l=Math.max(0,Math.min(W-1,Math.floor(x))),r=Math.min(W-1,l+1),f=Math.max(0,Math.min(1,x-l)),a=d[(y*W+l)*4+3]*(1-f),b=d[(y*W+r)*4+3]*f,alpha=a+b;out[p+3]=alpha;if(alpha)for(let c=0;c<3;c++)out[p+c]=(d[(y*W+l)*4+c]*a+d[(y*W+r)*4+c]*b)/alpha}
 // Every skirt must cover the actual waist/hips, including BOTH sides. The
 // central opacity-only check missed skin poking out from the narrowed band.
 for(let i=12;i<18;i++){
- const d=await raw(`.vuepress/public/img/games/dressup/layers/v10/bottom-${i}.webp`),out=Buffer.from(d)
+ const d=await raw(`site/.vuepress/public/img/games/dressup/layers/v10/bottom-${i}.webp`),out=Buffer.from(d)
  for(let y=365;y<470;y++){
   const [l,r]=rowBounds(d,y),[bl,br]=rowBounds(master,y,190-(y-365)*.28,322+(y-365)*.28)
   const half=Math.min(256-l,r-256),body=Math.max(256-bl,br-256)+3,scale=Math.max(1,body/half)
@@ -29,7 +29,7 @@ const legs=Buffer.from(master);for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(y<490|
 await save('underbody',legs)
 // The original straw hat also retained a disconnected forehead island. Remove
 // that source matte only, preserving every brim/ribbon pixel and the old fit.
-const straw=await raw('.vuepress/public/img/games/dressup/layers/v7/hat-0.webp'),island=new Set([80*W+256]),queue=[80*W+256]
+const straw=await raw('site/.vuepress/public/img/games/dressup/layers/v7/hat-0.webp'),island=new Set([80*W+256]),queue=[80*W+256]
 for(let i=0;i<queue.length;i++){const p=queue[i],x=p%W;for(const n of [x?p-1:-1,x<W-1?p+1:-1,p-W,p+W])if(n>=0&&n<W*H&&!island.has(n)&&straw[n*4+3]>60){island.add(n);queue.push(n)}}
 if(queue.length>1000)throw Error('Straw scalp matte unexpectedly connects to the hat')
 for(const p of island){const x=p%W,y=Math.floor(p/W);for(let yy=y-2;yy<=y+2;yy++)for(let xx=x-2;xx<=x+2;xx++){const n=yy*W+xx;if(island.has(n)||straw[n*4+3]<=60)straw[n*4+3]=0}}
@@ -79,5 +79,5 @@ for(const a of manifest.assets){
  await save(a.item||a.id,layer)
  if(a.cap){capCuts=Array.from({length:W},(_,x)=>{for(let y=0;y<120;y++)if(layer[(y*W+x)*4+3]>96)return Math.max(0,y-1);return 0})}
 }
-if(capCuts)await writeFile('.vuepress/components/dressup/accessory-coverage.mjs','// Generated from the actual registered cloche silhouette.\nexport const NEW_CAP_CUTS='+JSON.stringify({'hat-10':capCuts})+'\n')
+if(capCuts)await writeFile('site/.vuepress/components/dressup/accessory-coverage.mjs','// Generated from the actual registered cloche silhouette.\nexport const NEW_CAP_CUTS='+JSON.stringify({'hat-10':capCuts})+'\n')
 console.log('v11: corrected waist coverage, skin-free crown, 12 new wearables and independent product designs')

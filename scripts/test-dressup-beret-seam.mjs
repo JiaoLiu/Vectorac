@@ -3,11 +3,11 @@ import {createRequire} from 'node:module'
 import {readFile,writeFile,mkdtemp} from 'node:fs/promises'
 import {join} from 'node:path'
 import {tmpdir} from 'node:os'
-import {PARTS,DEFAULT_PARTS} from '../.vuepress/components/dressup/parts.mjs'
+import {PARTS,DEFAULT_PARTS} from '../site/.vuepress/components/dressup/parts.mjs'
 const require=createRequire(import.meta.url),sharp=require(process.env.SHARP_PATH||'sharp'),{chromium}=require(process.env.PLAYWRIGHT_PATH||'playwright'),out=await mkdtemp(join(tmpdir(),'wardrobe-beret-seam-')),S=3
 const browser=await chromium.launch({headless:true,executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'})
 try{
- const page=await browser.newPage();await page.route('http://wear.test/**',async r=>{const p=new URL(r.request().url()).pathname;if(p==='/')return r.fulfill({body:'<canvas width="1536" height="3072"></canvas>',contentType:'text/html'});await r.fulfill({body:await readFile(p.endsWith('.mjs')?'.vuepress/components/dressup'+p:'.vuepress/public'+p),contentType:p.endsWith('.mjs')?'application/javascript':'image/webp'})});await page.goto('http://wear.test/')
+ const page=await browser.newPage();await page.route('http://wear.test/**',async r=>{const p=new URL(r.request().url()).pathname;if(p==='/')return r.fulfill({body:'<canvas width="1536" height="3072"></canvas>',contentType:'text/html'});await r.fulfill({body:await readFile(p.endsWith('.mjs')?'site/.vuepress/components/dressup'+p:'site/.vuepress/public'+p),contentType:p.endsWith('.mjs')?'application/javascript':'image/webp'})});await page.goto('http://wear.test/')
  async function render(parts){return Buffer.from(await page.evaluate(async({parts,forceGeneric})=>{const {layerSources,paintComposite}=await import('/compositor.mjs'),{PARTS}=await import('/parts.mjs');if(forceGeneric)PARTS.find(p=>p.id==='hair-2').capReadyByHat={};window.images||=new Map();for(const src of layerSources(parts))if(!window.images.has(src)){const i=new Image();i.src=src;await i.decode();window.images.set(src,i)}const c=document.querySelector('canvas'),ctx=c.getContext('2d');ctx.setTransform(3,0,0,3,0,0);paintComposite(ctx,window.images,parts);if(parts.hair==='hair-2'){const d=ctx.getImageData(0,0,1536,3072).data;for(const [x,y] of [[210,73],[208,80],[205,85],[205,90]])if(d[((y*3+1)*1536+x*3+1)*4+3]<240)throw Error('pony/beret left seam exposes background at '+x+','+y)}return c.toDataURL().split(',')[1]},{parts,forceGeneric:process.env.BERET_SEAM_FORCE_GENERIC==='1'}),'base64')}
  const pics=[]
  for(const hair of PARTS.filter(p=>p.category==='hair')){

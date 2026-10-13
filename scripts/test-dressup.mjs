@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {freshState,normalize,act,scoreLook,QUESTS,OUTFITS,SCENES,createWorkshop,matchColor,finishWorkshop,localDay,asset} from '../.vuepress/components/dressup/engine.mjs'
+import {freshState,normalize,act,scoreLook,QUESTS,OUTFITS,SCENES,createWorkshop,matchColor,finishWorkshop,localDay,asset} from '../site/.vuepress/components/dressup/engine.mjs'
 test('fresh state starts with wearable outfit and 100 coins',()=>{const s=freshState();assert.equal(s.coins,100);assert.deepEqual(s.owned,['blush']);assert.equal(asset('blush',2),'/img/games/dressup/blush-2.webp')})
 test('insufficient coins and unknown IDs do not change state',()=>{const s=freshState();for(const id of ['night','nope']){const r=act(s,{type:'buy',id});assert.equal(r.ok,false);assert.deepEqual(r.state,s)}})
 test('purchase is once-only and cannot spend twice',()=>{let s=freshState();s.coins=500;const r=act(s,{type:'buy',id:'mint'});assert.equal(r.state.coins,360);assert.equal(r.state.look.outfit,'mint');assert.equal(act(r.state,{type:'buy',id:'mint'}).state.coins,360);assert.equal(s.coins,500)})

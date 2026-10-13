@@ -3,7 +3,7 @@ import {createRequire} from 'node:module'
 import {mkdtempSync} from 'node:fs'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
-import * as E from '../.vuepress/components/balatro/engine.mjs'
+import * as E from '../site/.vuepress/components/balatro/engine.mjs'
 const require=createRequire(import.meta.url),{chromium,webkit}=require(process.env.PLAYWRIGHT_PATH||'playwright')
 const base=process.env.BASE_URL||'http://127.0.0.1:8091',SAVE='vectorac.balatro.run.v3',out=mkdtempSync(join(tmpdir(),'balatro-cues-'))
 const browser=await(process.env.BROWSER==='webkit'?webkit:chromium).launch({headless:true,...(process.env.BROWSER!=='webkit'&&process.env.CHROME_BINARY?{executablePath:process.env.CHROME_BINARY}:{})})

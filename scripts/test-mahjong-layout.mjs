@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {riverLayout} from '../.vuepress/components/mahjong/table-layout.mjs'
+import {riverLayout} from '../site/.vuepress/components/mahjong/table-layout.mjs'
 const overlap=(a,b)=>Math.min(a.x+a.w,b.x+b.w)-Math.max(a.x,b.x)>1e-6&&Math.min(a.y+a.h,b.y+b.h)-Math.max(a.y,b.y)>1e-6
 test('rectangular rivers stay within separate regions, including rotated footprints',()=>{
  for(const [width,height] of [[130,270],[240,480],[330,110],[640,200],[800,500]])for(const counts of [[0,0,0,0],[12,13,14,15],[30,18,24,12],[36,36,36,36]]){

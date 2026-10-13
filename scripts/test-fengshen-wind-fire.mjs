@@ -1,10 +1,10 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {createAssignedGame,dispatch,playerView,restoreGame,allCards,catalog,chooseAI,hasSkill} from '../.private/fengshen/engine.mjs'
-import {PLAYABLE_HEROES,HERO_BY_THEME_ID} from '../.private/fengshen/theme.mjs'
-import {renderControls,renderCenter} from '../.private/fengshen/table.mjs'
-import {selectingTargets} from '../.private/fengshen/target-selection.mjs'
-import {drawEffects} from '../.private/fengshen/draw-effects.mjs'
+import {createAssignedGame,dispatch,playerView,restoreGame,allCards,catalog,chooseAI,hasSkill} from '../site/.vuepress/components/fengshen/engine.mjs'
+import {PLAYABLE_HEROES,HERO_BY_THEME_ID} from '../site/.vuepress/components/fengshen/theme.mjs'
+import {renderControls,renderCenter} from '../site/.vuepress/components/fengshen/table.mjs'
+import {selectingTargets} from '../site/.vuepress/components/fengshen/target-selection.mjs'
+import {drawEffects} from '../site/.vuepress/components/fengshen/draw-effects.mjs'
 const added=['houyi','hades','lijing','huangtianhua','thor','luya']
 function fixture(id='houyi',current=0){const s=createAssignedGame({roles:['lord','loyal','rebel','rebel','renegade'],heroIds:[id,'jifa','nezha','yangjian','jinling'],seed:23});s.deck=catalog.makeDeck();s.discard=[];s.processing=[];s.harvestPool=[];s.queue=[];s.pending=null;s.phase='play';s.current=current;s.lastPlayed=null;s.logs=[];for(const p of s.players){p.hand=[];p.equip={weapon:null,armor:null,offenseHorse:null,defenseHorse:null};p.judgment=[];p.marks={sha:0};p.hp=p.maxHp;p.alive=true;delete p.faceDown}return s}
 const card=(s,seat,type)=>{const i=s.deck.findIndex(c=>c.type===type);assert.ok(i>=0);const c=s.deck.splice(i,1)[0];s.players[seat].hand.push(c);return c}

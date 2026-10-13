@@ -23,7 +23,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const OUT_DIR = path.join(ROOT, '.vuepress', 'public', 'audio', 'doudizhu')
+const OUT_DIR = path.join(ROOT, 'site/.vuepress', 'build/site', 'audio', 'doudizhu')
 
 const ENDPOINT = 'https://openspeech.bytedance.com/api/v3/tts/unidirectional'
 const RESOURCE_ID = 'seed-tts-2.0'

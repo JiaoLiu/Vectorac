@@ -1,12 +1,12 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {readFile,stat} from 'node:fs/promises'
-import {HEROES,PLAYABLE_HEROES,CARDS_BY_TYPE,PLANNED_EQUIPMENT,ALLIANCES,heroForBase,displayText} from '../.private/fengshen/theme.mjs'
-import {catalog,createGame,createAssignedGame,dispatch,playerView,restoreGame,allCards,THEME_VERSION} from '../.private/fengshen/engine.mjs'
-import {createGame as classicGame,restoreGame as classicRestore,hero as classicHero} from '../.private/fengshen/core/engine.mjs'
-import {HERO_BY_ID,CARDS,makeDeck} from '../.private/fengshen/core/catalog.mjs'
-import {chooseAI} from '../.private/fengshen/engine.mjs'
-import {ART_PROMPTS} from '../.private/fengshen/art-prompts.mjs'
+import {HEROES,PLAYABLE_HEROES,CARDS_BY_TYPE,PLANNED_EQUIPMENT,ALLIANCES,heroForBase,displayText} from '../site/.vuepress/components/fengshen/theme.mjs'
+import {catalog,createGame,createAssignedGame,dispatch,playerView,restoreGame,allCards,THEME_VERSION} from '../site/.vuepress/components/fengshen/engine.mjs'
+import {createGame as classicGame,restoreGame as classicRestore,hero as classicHero} from '../site/.vuepress/components/fengshen/core/engine.mjs'
+import {HERO_BY_ID,CARDS,makeDeck} from '../site/.vuepress/components/fengshen/core/catalog.mjs'
+import {chooseAI} from '../site/.vuepress/components/fengshen/engine.mjs'
+import {ART_PROMPTS} from '../site/.vuepress/components/fengshen/art-prompts.mjs'
 
 test('64 unique portraits and complete playable profiles',()=>{
   assert.equal(HEROES.length,64);assert.equal(new Set(HEROES.map(h=>h.id)).size,64)
@@ -68,11 +68,11 @@ test('180 seeded matches complete legally across every enabled character and rol
 })
 test('64 hero and 43 card artwork prompts and workspace assets exist',async()=>{
   assert.equal(ART_PROMPTS.length,107);assert.equal(new Set(ART_PROMPTS.map(a=>a.kind+'/'+a.id)).size,107)
-  for(const a of ART_PROMPTS){assert.ok(a.prompt.includes('no watermark'));const path=a.kind==='heroes'?HEROES.find(h=>h.id===a.id).image:CARDS_BY_TYPE[a.id].image;const s=await stat(new URL(`../.private/fengshen/${path}`,import.meta.url));assert.ok(s.size>1000)}
-  for(const h of HEROES){const full=await stat(new URL(`../.private/fengshen/${h.image}`,import.meta.url)),thumb=await stat(new URL(`../.private/fengshen/${h.thumbnail}`,import.meta.url));assert.ok(thumb.size>1000&&thumb.size<full.size)}
+  for(const a of ART_PROMPTS){assert.ok(a.prompt.includes('no watermark'));const path=a.kind==='heroes'?HEROES.find(h=>h.id===a.id).image:CARDS_BY_TYPE[a.id].image;const s=await stat(new URL(`../site/.vuepress/components/fengshen/${path}`,import.meta.url));assert.ok(s.size>1000)}
+  for(const h of HEROES){const full=await stat(new URL(`../site/.vuepress/components/fengshen/${h.image}`,import.meta.url)),thumb=await stat(new URL(`../site/.vuepress/components/fengshen/${h.thumbnail}`,import.meta.url));assert.ok(thumb.size>1000&&thumb.size<full.size)}
 })
 test('prototype stays out of VuePress public routes and binds loopback',async()=>{
-  const script=await readFile(new URL('./fengshen-preview.mjs',import.meta.url),'utf8'),html=await readFile(new URL('../.private/fengshen/index.html',import.meta.url),'utf8')
+  const script=await readFile(new URL('./fengshen-preview.mjs',import.meta.url),'utf8'),html=await readFile(new URL('../site/.vuepress/components/fengshen/index.html',import.meta.url),'utf8')
   assert.ok(script.includes("server.listen(port,'127.0.0.1'"));assert.ok(html.includes('noindex,nofollow,noarchive'))
   await assert.rejects(stat(new URL('../blogs/other/fengshen.md',import.meta.url)))
 })

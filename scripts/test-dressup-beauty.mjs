@@ -4,16 +4,16 @@ import {createRequire} from 'node:module'
 import {readFile,writeFile,mkdtemp} from 'node:fs/promises'
 import {join} from 'node:path'
 import {tmpdir} from 'node:os'
-import {PARTS,DEFAULT_PARTS,partAsset} from '../.vuepress/components/dressup/parts.mjs'
-import {BEAUTY_PRESETS} from '../.vuepress/components/dressup/beauty.mjs'
+import {PARTS,DEFAULT_PARTS,partAsset} from '../site/.vuepress/components/dressup/parts.mjs'
+import {BEAUTY_PRESETS} from '../site/.vuepress/components/dressup/beauty.mjs'
 const require=createRequire(import.meta.url),sharp=require(process.env.SHARP_PATH||'sharp'),{chromium}=require(process.env.PLAYWRIGHT_PATH||'playwright')
 const out=await mkdtemp(join(tmpdir(),'wardrobe-beauty-fit-')),browser=await chromium.launch({headless:true,executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'})
 const heads=[],hats=[],mixed=[]
-async function registeredRaw(p){const f=p.frame,input=await sharp('.vuepress/public'+partAsset(p)).resize(f.w,f.h).png().toBuffer();return sharp({create:{width:512,height:1024,channels:4,background:'#00000000'}}).composite([{input,left:f.x,top:f.y}]).ensureAlpha().raw().toBuffer()}
+async function registeredRaw(p){const f=p.frame,input=await sharp('site/.vuepress/public'+partAsset(p)).resize(f.w,f.h).png().toBuffer();return sharp({create:{width:512,height:1024,channels:4,background:'#00000000'}}).composite([{input,left:f.x,top:f.y}]).ensureAlpha().raw().toBuffer()}
 async function sheet(images,id,columns=6){const width=288,height=320;await sharp({create:{width:width*columns,height:height*Math.ceil(images.length/columns),channels:4,background:'#f4ede5'}}).composite(await Promise.all(images.map(async (input,i)=>({input:await sharp(input).extract({left:180,top:20,width:152,height:169}).resize(width,height).png().toBuffer(),left:i%columns*width,top:Math.floor(i/columns)*height})))).png().toFile(join(out,id+'.png'))}
 try{
  const page=await browser.newPage()
- await page.route('http://wardrobe.test/**',async r=>{const path=new URL(r.request().url()).pathname;if(path==='/')return r.fulfill({body:'<canvas width="512" height="1024"></canvas>',contentType:'text/html'});try{await r.fulfill({body:await readFile(path.endsWith('.mjs')?'.vuepress/components/dressup'+path:'.vuepress/public'+path),contentType:path.endsWith('.mjs')?'application/javascript':'image/webp'})}catch{await r.fulfill({status:404,body:'missing'})}})
+ await page.route('http://wardrobe.test/**',async r=>{const path=new URL(r.request().url()).pathname;if(path==='/')return r.fulfill({body:'<canvas width="512" height="1024"></canvas>',contentType:'text/html'});try{await r.fulfill({body:await readFile(path.endsWith('.mjs')?'site/.vuepress/components/dressup'+path:'site/.vuepress/public'+path),contentType:path.endsWith('.mjs')?'application/javascript':'image/webp'})}catch{await r.fulfill({status:404,body:'missing'})}})
  await page.goto('http://wardrobe.test/')
  async function render(parts){return Buffer.from(await page.evaluate(async parts=>{const {layerSources,paintComposite}=await import('/compositor.mjs');window.images=window.images||new Map();for(const src of layerSources(parts))if(!window.images.has(src)){const i=new Image();i.src=src;await i.decode();window.images.set(src,i)}const c=document.querySelector('canvas');paintComposite(c.getContext('2d'),window.images,parts);return c.toDataURL().split(',')[1]},parts),'base64')}
  // Full preset matching must be pixel-for-pixel the artist's complete face,
@@ -65,7 +65,7 @@ try{
   return green
  },DEFAULT_PARTS)
  assert.equal(oldSkin,0,'old lower-jaw skin leaks beside the new neck')
- for(const p of PARTS.filter(p=>p.frame)){const m=await sharp('.vuepress/public'+partAsset(p)).metadata();assert.ok(m.width>=p.frame.w*2&&m.height>=p.frame.h*2,'head still downsampled to old low-res sprite');assert.ok(m.width<=2048&&m.height<=2048,'oversized mobile texture')}
+ for(const p of PARTS.filter(p=>p.frame)){const m=await sharp('site/.vuepress/public'+partAsset(p)).metadata();assert.ok(m.width>=p.frame.w*2&&m.height>=p.frame.h*2,'head still downsampled to old low-res sprite');assert.ok(m.width<=2048&&m.height<=2048,'oversized mobile texture')}
  await sheet(heads,'presets-by-hair',6);await sheet(hats,'presets-by-hats',13);await sheet(mixed,'mixed-features',4)
  console.log(JSON.stringify({passed:true,exactPixels,hatHairPreset:combinations,makeupMixes,jawWidths,oldSkin,screenshots:out}))
 }finally{await browser.close()}

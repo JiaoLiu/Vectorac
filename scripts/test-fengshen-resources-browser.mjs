@@ -1,8 +1,8 @@
 // Actual responsive CSS, read-only private fixtures; no rooms or feedback writes.
 import assert from 'node:assert/strict'
 import {openBrowser} from './browser-cdp.mjs'
-import {createAssignedGame,catalog} from '../.private/fengshen/engine.mjs'
-import {CARDS_BY_TYPE} from '../.private/fengshen/theme.mjs'
+import {createAssignedGame,catalog} from '../site/.vuepress/components/fengshen/engine.mjs'
+import {CARDS_BY_TYPE} from '../site/.vuepress/components/fengshen/theme.mjs'
 const b=await openBrowser({name:'gods-resources',route:'/games/fengshen/'})
 try{
  await b.viewport(932,430);await b.navigate();await b.waitFor('!!window.__fengshenUI')

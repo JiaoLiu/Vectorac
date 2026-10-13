@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import {openBrowser} from './browser-cdp.mjs'
-import {createAssignedGame,catalog} from '../.private/fengshen/engine.mjs'
+import {createAssignedGame,catalog} from '../site/.vuepress/components/fengshen/engine.mjs'
 // 缚神索选目标后默认为「连接」；出牌栏需提供「连接/解除」切换，
 // 避免 A-B 已连、再连 B-C 时把已连接的 B 翻掉。
 function fixture(){
