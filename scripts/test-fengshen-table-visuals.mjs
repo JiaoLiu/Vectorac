@@ -2,7 +2,7 @@ import {stableOpponents} from './fixtures/gods-stable.mjs'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {makeDeck} from '../site/.vuepress/components/fengshen/core/catalog.mjs'
-import {createGame,dispatch,playerView,catalog,restoreGame} from '../site/.vuepress/components/fengshen/engine.mjs'
+import {createGame,createAssignedGame,dispatch,playerView,catalog,militaryCatalog,restoreGame} from '../site/.vuepress/components/fengshen/engine.mjs'
 import {createEngine} from '../site/.vuepress/components/fengshen/core/engine.mjs'
 import {targetLinks,judgmentMark,publicPicks,tutorialEnabled,responsePrompt,responderHighlight,responseSelection,counterSelection} from '../site/.vuepress/components/fengshen/table-visuals.mjs'
 import {rescueEffects,discardEffects} from '../site/.vuepress/components/fengshen/draw-effects.mjs'
@@ -304,4 +304,22 @@ test('turn, judgment, judge-replace and dying keep distinct cues without an extr
  assert.match(css,/\.fs-playing \.fs-replace-focus\{box-shadow:inset 0 0 0 4px #ffe9b0/)
  // 濒死角色用红色状态框公开提示；被询问的救援者不在此高亮（见 responderHighlight）。
  assert.match(css,/\.fs-dying\{border:3px solid #ff7a6d/)
+})
+test('濒死救援提示写明转化来源，琼浆救不了别人',()=>{
+ const fixture=hero0=>{const s=createAssignedGame({roles:['lord','loyal','rebel','rebel','renegade'],heroIds:[hero0,'nezha','dixin','jinling','kongxuan'],seed:23,deckVersion:2});s.deck=militaryCatalog.makeDeck();s.discard=[];s.processing=[];s.harvestPool=[];s.queue=[];s.pending=null;s.phase='play';s.current=1;s.turns=1;s.lastPlayed=null;s.lastResponse=null;s.exchange=null;s.publicReveal=null;s.logs=[];for(const p of s.players){p.hand=[];p.equip={weapon:null,armor:null,offenseHorse:null,defenseHorse:null};p.judgment=[];p.marks={sha:0};p.hp=p.maxHp;p.alive=true}return s}
+ const give=(s,seat,type,suit)=>{const i=s.deck.findIndex(c=>c.type===type&&(!suit||c.suit===suit));assert.ok(i>=0,`牌堆缺 ${type} ${suit||''}`);const c=s.deck.splice(i,1)[0];s.players[seat].hand.push(c);return c}
+ const step=(s,a)=>{const r=dispatch(s,{seat:s.pending?.actor??s.current,revision:s.revision,promptId:s.pending?.id,...a});assert.ok(r.ok,r.error);return r.state}
+ // 3 号位被打到濒死，等救援询问轮到自己（手里只有一张琼浆）
+ const dying=(hero0,suit)=>{let s=fixture(hero0);give(s,0,'wine',suit);const attack=give(s,1,'sha');s.players[2].hp=1;s=step(s,{type:'play',as:'sha',ids:[attack.id],targets:[2]});s=step(s,{type:'pass'});while(s.pending?.kind==='rescue'&&s.pending.actor!==0)s=step(s,{type:'pass'});return s}
+ const asked=s=>s.pending?.kind==='rescue'&&s.pending.actor===0
+ // 无转化技能：只有一张琼浆时压根轮不到救别人（琼浆只能自救）
+ assert.equal(asked(dying('jifa')),false,'只有一张琼浆的普通人不会被询问救别人')
+ // 妖言（扣置任意手牌假冒仙桃）：提示点明是声明假冒，不是琼浆在救人
+ let s=dying('shengongbao');assert.ok(asked(s),'妖言持有琼浆会被询问救援');assert.ok(responsePrompt(playerView(s,0)).includes('可扣置一张手牌假冒'),'妖言救援提示写明假冒来源: '+responsePrompt(playerView(s,0)))
+ // 急救（红色牌当桃）：提示点明是急救红牌转化，不是琼浆在救人
+ s=dying('taiyi','diamond');assert.ok(asked(s),'急救持有红琼浆会被询问救援');assert.ok(responsePrompt(playerView(s,0)).includes('可用红色牌当仙桃救援'),'急救救援提示写明转化来源: '+responsePrompt(playerView(s,0)))
+ // 黑琼浆对急救无效（非红牌），仍不询问
+ assert.equal(asked(dying('taiyi','spade')),false,'黑琼浆不能触发急救救援')
+ // 手里有真仙桃时保持原本的直白文案，不提技能转化
+ let s2=fixture('taiyi');give(s2,0,'tao');const atk=give(s2,1,'sha');s2.players[2].hp=1;s2=step(s2,{type:'play',as:'sha',ids:[atk.id],targets:[2]});s2=step(s2,{type:'pass'});while(s2.pending?.kind==='rescue'&&s2.pending.actor!==0)s2=step(s2,{type:'pass'});const prompt=responsePrompt(playerView(s2,0));assert.ok(prompt.includes('是否使用仙桃救援'),'真仙桃救援保持直白文案: '+prompt);assert.equal(prompt.includes('用红色牌当'),false)
 })

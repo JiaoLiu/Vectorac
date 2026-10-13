@@ -12,7 +12,7 @@ import './toolbar.css'
 import {renderToolbar,renderMenu} from './toolbar.mjs'
 import './mobile-table.css'
 import './arena-table.css'
-import {tutorialEnabled,judgingSeat,counterSelection,counterAction,responseSelection,responderHighlight} from './table-visuals.mjs'
+import {tutorialEnabled,judgingSeat,counterSelection,counterAction,responseSelection,responderHighlight,rescuePrompt} from './table-visuals.mjs'
 import {TargetBeams} from './target-beams.mjs'
 import {mountOnline,onlineCredential} from './online.mjs'
 import './online.css'
@@ -512,7 +512,7 @@ export class FengshenUI {
   pendingText(view){const p=view.pending;if(!p)return '';const source=p.source==null?'法术':display(view.players[p.source]).name,target=p.target==null?'目标':display(view.players[p.target]).name;return {
     shensu:p.mode===1?'疾行：选择目标；发动后跳过判定与摸牌':'疾行：选一张装备牌和目标；发动后跳过出牌',
     response:combatContext(view)?.hint||`${source} → ${target}：请打出${p.remaining>1?p.remaining+' 张':''}${CARDS_BY_TYPE[p.as]?.name||''}`,
-    rescue:(()=>{const n=[...new Set(view.legal.filter(a=>a.type==='respond').map(a=>a.as))].map(k=>CARDS_BY_TYPE[k]?.name).filter(Boolean).join('或')||'仙桃';return `${target}濒死：是否使用${n}救援？`})(),counter:`${p.negated?'反制破法':'使用破法'}：${CARDS_BY_TYPE[p.cardType]?.name||''} → ${target}`,
+    rescue:rescuePrompt(view),counter:`${p.negated?'反制破法':'使用破法'}：${CARDS_BY_TYPE[p.cardType]?.name||''} → ${target}`,
     incarnation:'七十二变：在中央选择形态与技能',guanxing:'推演：排列牌顶与牌底，然后确认',liuli:'移劫：弃一张牌，选择转移目标',yiji:'传道：分配本次获得的牌，或保留',tuxi:'地行：选择一至两名角色，或正常摸牌','judge-replace':`${skillName(view.players[p.actor],p.skill)}：选择合法改判牌，或放弃`,
     discard:`弃牌：请选 ${p.count} 张手牌`,guess:`${skillName(view.players[p.actor],'fanjian')}：猜测花色`,pick:'仙山采宝：选择一张牌',take:`选择${target}的一张牌`,axe:'番天印：弃两张牌，令杀命中',blade:'打神鞭：是否再出一张杀？',support:`${p.requester==null?'主公':display(view.players[p.requester]).name}请求${CARDS_BY_TYPE[p.as]?.name||''}援助`,choice:`${SKILLS[p.skill]?skillName(view.players[p.actor],p.skill):displayText({dualsword:'阴阳双剑',dualTarget:'阴阳双剑',ice:'乾坤圈',bow:'五色神光'}[p.skill]||'法宝')}：请选择`,
   }[p.kind]||'等待响应'}

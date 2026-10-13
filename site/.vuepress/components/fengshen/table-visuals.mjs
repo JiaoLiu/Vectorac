@@ -1,5 +1,6 @@
 import {combatContext} from './combat.mjs'
-import {CARDS_BY_TYPE} from './theme.mjs'
+import {CARDS_BY_TYPE,skillName} from './theme.mjs'
+import {display} from './presentation.mjs'
 export const tutorialEnabled=preferences=>preferences?.hints!==false
 export function targetLinks(view,{targets=[],as=null}={}){
  if(targets.length){if(as==='collateral')return [{source:0,target:targets[0]},...(targets.length>1?[{source:targets[0],target:targets[1]}]:[])]
@@ -66,10 +67,24 @@ export function counterAction(view,selected,{blockedUntil=0,now=Date.now()}={}){
 }
 export function judgmentMark(pending){return {symbol:pending.hit?'✓':'×',label:pending.hit?'判定生效':'判定未生效',hit:pending.hit}}
 export function publicPicks(view){return (view.logs||[]).filter(l=>l.cue?.kind==='harvest-pick'&&l.cue.playedId===view.lastPlayed?.id).slice().reverse().map(l=>l.cue)}
+// 濒死救援提示必须写明「凭什么能救」：琼浆只能自救，救别人一定是技能转化（妖言假冒、急救红牌当桃）。
+// 否则只攥着琼浆的玩家被询问救援时，会误以为琼浆能救别人。
+export function rescuePrompt(view){
+ const p=view.pending
+ if(p?.kind!=='rescue')return null
+ const target=display(view.players[p.target]||{}).name||'目标',own=view.players[view.seat]||{},answers=view.legal.filter(a=>a.type==='respond')
+ const names=[...new Set(answers.map(a=>a.as))].map(k=>CARDS_BY_TYPE[k]?.name).filter(Boolean).join('或')||'仙桃'
+ const natural=answers.some(a=>!a.guhuo&&a.ids?.some(id=>(own.hand||[]).some(c=>c.id===id&&c.type==='tao')))
+ if(p.actor===p.target||natural||!answers.length)return `${target}濒死：是否使用${names}救援？`
+ if(answers.some(a=>a.guhuo))return `${target}濒死：${skillName(own,'guhuo')}可扣置一张手牌假冒${names}救援，是否声明？`
+ if((own.effectiveSkills||[]).includes('jijiu'))return `${target}濒死：${skillName(own,'jijiu')}可用红色牌当${names}救援，是否救援？`
+ return `${target}濒死：是否使用${names}救援？`
+}
 export function responsePrompt(view){
  const p=view.pending
  if(p?.context?.type==='collateral')return '请出杀，或交出武器'
  if(p?.kind==='response')return '请出'+(p.as==='sha'?'杀':p.as==='shan'?'闪':'仙桃')+(p.remaining>1?'（共 '+p.remaining+' 张）':'')
  if(p?.kind==='support')return '是否提供援助？'
+ if(p?.kind==='rescue')return rescuePrompt(view)
  return null
 }
