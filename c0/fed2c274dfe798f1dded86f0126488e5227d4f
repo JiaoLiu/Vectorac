@@ -1,0 +1,134 @@
+site/.vuepress/components/fengshen/app.js
+  27f41da6c57a495d 384-385,436-443,483,493,510
+site/.vuepress/components/fengshen/mobile-table.css
+  27f41da6c57a495d 32-33
+site/.vuepress/components/fengshen/table.mjs
+  27f41da6c57a495d 64-77,80,148-149,209-211,214
+scripts/test-fengshen-guhuo-panel.mjs
+  27f41da6c57a495d 1-81
+site/.vuepress/components/fengshen/extension-table.mjs
+  27f41da6c57a495d 6-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.8",
+  "base_commit_sha": "c0fed2c274dfe798f1dded86f0126488e5227d4f",
+  "prompts": {
+    "27f41da6c57a495d": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6acdda8ef9e87c4613dc6b4e",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 121,
+      "total_deletions": 12,
+      "accepted_lines": 288,
+      "overriden_lines": 0
+    },
+    "5058ed3dc1a97a8c": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6ac848ce090dc5dc9234c7bc",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 213,
+      "overriden_lines": 0
+    },
+    "875a8aa1955ae81b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1340c-f451-7db3-8b46-8547d69e496a",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    },
+    "bfcf2812a5394d1a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ffe24-0691-79c0-9329-ff854e9d5202",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 9,
+      "overriden_lines": 0
+    }
+  },
+  "commit_stats": {
+    "git_diff_added_lines": 121,
+    "git_diff_deleted_lines": 12,
+    "ai_additions": 120,
+    "ai_accepted": 120,
+    "BYMC": 1,
+    "mixed_additions": 0,
+    "BYAC": 120,
+    "BYRC": 0,
+    "per_file": {
+      "scripts/test-fengshen-guhuo-panel.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "1-81"
+        ],
+        "BYRC": []
+      },
+      "scripts/test-public-blog-search-browser.mjs": {
+        "BYMC": [
+          "5"
+        ],
+        "BYAC": [],
+        "BYRC": []
+      },
+      "site/.vuepress/components/fengshen/app.js": {
+        "BYMC": [],
+        "BYAC": [
+          "384-385",
+          "436-443",
+          "483",
+          "493",
+          "510"
+        ],
+        "BYRC": []
+      },
+      "site/.vuepress/components/fengshen/extension-table.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "6-8"
+        ],
+        "BYRC": []
+      },
+      "site/.vuepress/components/fengshen/mobile-table.css": {
+        "BYMC": [],
+        "BYAC": [
+          "32-33"
+        ],
+        "BYRC": []
+      },
+      "site/.vuepress/components/fengshen/table.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "64-77",
+          "80",
+          "148-149",
+          "209-211",
+          "214"
+        ],
+        "BYRC": []
+      }
+    }
+  },
+  "commit_timestamp": 1791882321,
+  "requirement_id": ""
+}
