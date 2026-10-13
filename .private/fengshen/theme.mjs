@@ -85,7 +85,7 @@ export function skillHelp(h,skill){
  if(skill==='jijiang')text='主公技：需要杀时，可请其他青盟角色提供。'
  if(skill==='hujia')text='主公技：需要闪时，可请其他赤盟角色提供。'
  if(skill==='jiuyuan')text='主公技：其他金盟角色救你时，一张仙桃回复两点体力。'
- return text.replaceAll('经典原版','')+(h?.playable&&['xinsheng','jizhi','yingzi','jianxiong','tieji'].includes(skill)?' 有效条件满足时自动发动。':'')
+ return text.replaceAll('经典原版','')+(h?.playable&&['xinsheng','jizhi','yingzi','tieji'].includes(skill)?' 有效条件满足时自动发动。':'')
 }
 export const ALLIANCE_NAMES={shu:'青盟',wei:'赤盟',wu:'金盟',qun:'玄盟'}
 export function manifest(){return {codeName:'众神斗法',visibility:'free-demo',rules:'classic-identity-original',heroes:HEROES,cards:CARDS_BY_TYPE,plannedEquipment:PLANNED_EQUIPMENT,deckSize:makeDeck().length}}

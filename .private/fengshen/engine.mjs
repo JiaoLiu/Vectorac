@@ -8,7 +8,9 @@ export const THEME_VERSION='fengshen-classic-original-v2'
 const heroes=PLAYABLE_HEROES.map(h=>({...baseline.HERO_BY_ID[h.baseHero],id:h.engineId,name:h.name,hp:h.hp,sex:h.sex,skills:Object.keys(h.skillNames),faction:h.mechanicalFaction}))
 export const catalog={...baseline,SKILLS,theme:THEME_VERSION,HEROES:heroes,HERO_BY_ID:Object.fromEntries(heroes.map(h=>[h.id,h])),CARDS:CARDS_BY_TYPE,
   makeDeck:baseline.makeDeck,deckVersion:1,
-  individualHandChoices:true,trackBattle:true,animatedJudgments:true,automaticSkills:['xinsheng','jizhi','yingzi','jianxiong','tieji','liegong','xiaoji','lianying','tiandu','yiji','biyue'],
+  // 奸雄（帝威/收魂等）不入自动列表：原版是「受到伤害后，你可以获得造成此伤害的牌」，
+  // 是否收牌由玩家决定——有时不想要这张牌（例如怕被顺手/技能偷走），必须本人点击确认。
+  individualHandChoices:true,trackBattle:true,animatedJudgments:true,automaticSkills:['xinsheng','jizhi','yingzi','tieji','liegong','xiaoji','lianying','tiandu','yiji','biyue'],
   skillNames:Object.assign({},...PLAYABLE_HEROES.map(h=>h.skillNames)),
   skillName,
 }

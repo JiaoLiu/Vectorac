@@ -136,8 +136,17 @@ test('Jizhi and Yingzi draw automatically; Luoyi keeps its real tradeoff prompt'
   s=createGame({heroId:'guangchengzi',role:'lord',seed:8});assert.equal(s.players[0].hand.length,7);assert.notEqual(s.pending?.skill,'yingzi')
   s=createGame({heroId:'moliqing',role:'lord',seed:8});assert.equal(s.pending.skill,'luoyi');assert.equal(playerView(s,0).legal.filter(a=>a.type==='choose').length,2)
 })
-test('Jianxiong and Tieji are automatic in this theme, without changing classic defaults',()=>{
-  let s=fixture('dixin','loyal',1);const [attack]=hand(s,1,'sha');s=play(s,attack,0);s=step(s,{type:'pass'});assert.ok(s.players[0].hand.some(c=>c.id===attack.id));assert.notEqual(s.pending?.skill,'jianxiong')
+test('Jianxiong waits for the player to claim the damage card; Tieji stays automatic',()=>{
+  // 原版【奸雄】是“你可以获得造成此伤害的牌”：受伤害后必须本人点击是否收牌，
+  // 不能自动拿走（否则玩家没法因为怕被顺手/技能偷走而选择不要）。
+  let s=fixture('dixin','loyal',1);const [attack]=hand(s,1,'sha');s=play(s,attack,0);s=step(s,{type:'pass'})
+  assert.equal(s.pending?.kind,'choice');assert.equal(s.pending.skill,'jianxiong')
+  assert.ok(!s.players[0].hand.some(c=>c.id===attack.id),'未确认前不能自动收走伤害牌')
+  assert.deepEqual(playerView(s,0).legal.filter(a=>a.type==='choose').map(a=>a.value).sort(),['no','yes'])
+  s=step(s,{type:'choose',value:'no'})
+  assert.equal(s.pending,null);assert.ok(!s.players[0].hand.some(c=>c.id===attack.id),'放弃后不获得伤害牌')
+  let t=fixture('dixin','loyal',1);const [hit]=hand(t,1,'sha');t=play(t,hit,0);t=step(t,{type:'pass'});t=step(t,{type:'choose',value:'yes'})
+  assert.ok(t.players[0].hand.some(c=>c.id===hit.id),'选择收取后才拿到伤害牌')
   s=fixture('leizhenzi');const [slash]=hand(s,0,'sha');judgeTop(s,'heart',4);const hp=s.players[1].hp;s=play(s,slash,1);assert.equal(s.pending.kind,'reveal');s=step(s,{type:'ack'});assert.equal(s.players[1].hp,hp-1);assert.notEqual(s.pending?.skill,'tieji')
 })
 test('old optional Jizhi save restores, auto-confirms, and retains all physical cards',()=>{

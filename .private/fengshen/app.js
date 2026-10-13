@@ -39,7 +39,7 @@ import {extensionPopup,extensionPrompt} from './extension-table.mjs'
 import {bindStarDrag} from './star-drag.mjs'
 import {advanceUnavailable,DecisionClock} from './flow.mjs'
 import {BackgroundMusic} from './music.mjs'
-import {drawEffects,judgmentEffects,harvestEffects,yijiEffects,transferEffects,rescueEffects,discardEffects} from './draw-effects.mjs'
+import {drawEffects,judgmentEffects,harvestEffects,yijiEffects,transferEffects,discardEffects} from './draw-effects.mjs'
 import {PlayMotionQueue,publicPlayMotions,pendingImpact,PLAY_FLIGHT_MS} from './play-motion.mjs'
 import {TableSettlement} from './table-settlement.mjs'
 import {heroBattleDetails,delayedTargetReason,jiushiButton} from './hero-state.mjs'
@@ -142,9 +142,7 @@ export class FengshenUI {
     if(picked){const r=this.root.querySelector(`[data-pool-card="${picked.card.id}"]`)?.getBoundingClientRect(),origin=r&&localPoint(this.root,r.x+r.width/2,r.y+r.height/2);this.transfer={from:picked.target,to:picked.target,mode:'harvest',card:picked.card,origin,started:Date.now(),until:Date.now()+1050};clearTimeout(this.transferTimer);this.transferTimer=setTimeout(()=>{this.transfer=null;if(!this.destroyed)this.render()},1100)}
     const gifted=yijiEffects(before,this.state).at(-1)
     if(gifted){const r=(this.root.querySelector(`[data-yiji-card="${gifted.cards.at(-1)}"]`)||this.root.querySelector('.fs-yiji-choice'))?.getBoundingClientRect(),origin=r&&localPoint(this.root,r.x+r.width/2,r.y+r.height/2);this.transfer={from:gifted.seat,to:gifted.target,mode:'yiji',card:null,count:gifted.count,origin,started:Date.now(),until:Date.now()+1050};clearTimeout(this.transferTimer);this.transferTimer=setTimeout(()=>{this.transfer=null;if(!this.destroyed)this.render()},1100)}
-    // 濒死救援：桃/酒从救援者飞向濒死者，让所有人看清是谁把谁救起。
-    const rescued=rescueEffects(before,this.state).at(-1)
-    if(rescued){this.transfer={from:rescued.source,to:rescued.target,mode:'rescue',card:rescued.card||null,origin:null,started:Date.now(),until:Date.now()+1050};clearTimeout(this.transferTimer);this.transferTimer=setTimeout(()=>{this.transfer=null;if(!this.destroyed)this.render()},1100)}
+    // 救援牌只走统一的公开出牌→牌桌动画；回血光效与 +血数字由 recoveryCues 独立保留。
     // 公开弃置/拆牌：丢掉的牌在牌桌中间内联展示一会再自动收起，让人看清丢了什么。
     // 自己弃牌同样展示——碧曲（悲歌）等技能代价、弃牌阶段的弃牌都是公开流程，不能只给别人看。
     const discarded=discardEffects(before,this.state).at(-1)
@@ -234,8 +232,8 @@ export class FengshenUI {
     this.root.querySelector('.fs-transfer-flight')?.remove()
     this.root.querySelectorAll('[data-judgment-incoming]').forEach(e=>{e.style.removeProperty('visibility');e.removeAttribute('data-judgment-incoming')})
     if(this.transfer&&this.transfer.until>Date.now()){
-      const f=this.transfer,incoming=f.mode==='judgment'&&f.to===0?this.root.querySelector(`.fs-hand-card[data-id="${f.card.id}"]`):null,a=(f.mode==='harvest'?this.root.querySelector(`[data-pool-card="${f.card.id}"]`)||this.root.querySelector('.fs-pool-choice'):f.mode==='judgment'?this.root.querySelector(`[data-judge-card="${f.card.id}"]`)||this.root.querySelector('.fs-table-center'):anchor(f.from))?.getBoundingClientRect(),to=(incoming||(['judgment','harvest','yiji','rescue'].includes(f.mode)?(f.to===0?this.root.querySelector('.fs-hand'):anchor(f.to)):f.mode==='snatch'?anchor(f.to):this.root.querySelector('.fs-table-center,.fs-center-choice')))?.getBoundingClientRect()
-      if((a||f.origin)&&to){const ap=f.origin||localPoint(this.root,a.x+a.width/2,a.y+a.height/2),tp=localPoint(this.root,to.x+to.width/2,to.y+to.height/2);const e=document.createElement('div');e.className='fs-transfer-flight';e.dataset.transferMode=f.mode;e.innerHTML=(f.card?cardFace(f.card):'<span class="fs-card-back"><i>封</i><b>暗手牌</b></span>')+(['judgment','harvest'].includes(f.mode)?'':`<span>${f.mode==='yiji'?`赠予${f.count>1?'×'+f.count:''}`:f.mode==='rescue'?'救援':f.mode==='snatch'?'取走':'弃置'}</span>`);e.style.setProperty('--from-x',`${ap.x-27}px`);e.style.setProperty('--from-y',`${ap.y-38}px`);e.style.setProperty('--to-x',`${tp.x-27}px`);e.style.setProperty('--to-y',`${tp.y-38}px`);
+      const f=this.transfer,incoming=f.mode==='judgment'&&f.to===0?this.root.querySelector(`.fs-hand-card[data-id="${f.card.id}"]`):null,a=(f.mode==='harvest'?this.root.querySelector(`[data-pool-card="${f.card.id}"]`)||this.root.querySelector('.fs-pool-choice'):f.mode==='judgment'?this.root.querySelector(`[data-judge-card="${f.card.id}"]`)||this.root.querySelector('.fs-table-center'):anchor(f.from))?.getBoundingClientRect(),to=(incoming||(['judgment','harvest','yiji'].includes(f.mode)?(f.to===0?this.root.querySelector('.fs-hand'):anchor(f.to)):f.mode==='snatch'?anchor(f.to):this.root.querySelector('.fs-table-center,.fs-center-choice')))?.getBoundingClientRect()
+      if((a||f.origin)&&to){const ap=f.origin||localPoint(this.root,a.x+a.width/2,a.y+a.height/2),tp=localPoint(this.root,to.x+to.width/2,to.y+to.height/2);const e=document.createElement('div');e.className='fs-transfer-flight';e.dataset.transferMode=f.mode;e.innerHTML=(f.card?cardFace(f.card):'<span class="fs-card-back"><i>封</i><b>暗手牌</b></span>')+(['judgment','harvest'].includes(f.mode)?'':`<span>${f.mode==='yiji'?`赠予${f.count>1?'×'+f.count:''}`:f.mode==='snatch'?'取走':'弃置'}</span>`);e.style.setProperty('--from-x',`${ap.x-27}px`);e.style.setProperty('--from-y',`${ap.y-38}px`);e.style.setProperty('--to-x',`${tp.x-27}px`);e.style.setProperty('--to-y',`${tp.y-38}px`);
         // 每次重渲染都会重建飞牌节点；用负延迟对齐已流逝的时间，避免 AI 连续行动时同一张牌从起点反复飞（看起来像飞出 2-3 张）。
         if(f.started)e.style.animationDelay=`${Math.min(0,f.started-Date.now())}ms`
         this.root.append(e)

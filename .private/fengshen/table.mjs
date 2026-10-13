@@ -169,7 +169,9 @@ export function renderControls(ui,v){
       // 所以必须在按钮旁点名本次抵消的是谁，否则玩家会以为一次破法能护住整张牌（含他关心的反贼）。
       const answer=counterAction(v,ui.selected,{blockedUntil:ui.counterLockUntil}),pass=v.legal.findIndex(a=>a.type==='pass'),decline=v.legal.findIndex(a=>a.type==='decline')
       const spell=CARDS_BY_TYPE[v.pending.cardType]?.name||'该锦囊',victim=v.pending.target!=null?seatName(v,v.pending.target):null
-      const note=v.pending.negated?`再次破法：恢复${spell}对${victim||'该角色'}的效果`:victim?`破法：抵消${spell}对${victim}的效果`:`破法：抵消${spell}的效果`
+      // 精简：面板与按钮本身就是「破法」，只需保留「抵消/恢复 + 锦囊 + 目标」三个关键信息。
+      // 名字稍长就会在窄屏折成 4-5 行把按钮挤下去，所以去掉「破法：…对…的效果」这类冗余措辞。
+      const note=`${v.pending.negated?'恢复':'抵消'}${spell}${victim?`→${victim}`:''}`
       return `<div class="fs-action-row fs-counter-controls" aria-label="破法响应"><span class="fs-counter-note">${esc(note)}</span><button data-action="confirm" class="fs-primary" ${!answer?'disabled':''} aria-label="${esc(note)}">发动破法</button><button data-action="response" data-value="${pass}" class="fs-secondary">不发动</button>${decline>=0?`<button data-action="response" data-value="${decline}" class="fs-secondary">本轮不出</button>`:''}</div>`
     }
     if(v.pending.kind==='incarnation')return `<div class="fs-action-row fs-idle-controls"><span>请在变身面板选择技能</span></div>`

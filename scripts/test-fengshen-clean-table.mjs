@@ -85,6 +85,9 @@ test('a counter window names the exact victim being cancelled, never the whole c
  const html=renderControls(ui(s),v)
  assert.ok(html.includes('fs-counter-note'),'破法按钮旁必须点名本次抵消的目标')
  assert.ok(html.includes('抵消')&&html.includes('摄宝')&&html.includes(seatName(v,0)))
+ // 精简后：不再带「破法：…对…的效果」这类冗余措辞，改用「抵消+锦囊→目标」的单行形式，避免长名字折行把按钮挤下去。
+ assert.ok(!html.includes('的效果')&&!html.includes('破法：'),'破法提示不应再带冗余措辞')
+ assert.ok(/fs-counter-note">抵消摄宝→[^<]*</.test(html),'提示应为「抵消+锦囊→目标」的单行紧凑形式')
  // 二次破法恢复效果时，提示同样点名目标。
  const restored=renderControls(ui(s),{...v,pending:{...v.pending,negated:true}})
  assert.ok(restored.includes('恢复')&&restored.includes(seatName(v,0)))
