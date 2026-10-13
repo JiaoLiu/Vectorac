@@ -61,8 +61,23 @@ function takeChoices(ui,view){
     <footer><span>${zone==='hand'?'暗手牌只显示牌背':'明置牌可查看牌面'} · 再点已选牌或双击直接${mode}</span><button data-action="choose-confirm" data-prompt="${pending.id}" data-revision="${view.revision}" class="fs-primary" ${ui.choiceIndex==null?'disabled':''}>${mode}选中牌</button></footer>
   </section>`
 }
+// 妖言声明弹窗：列出当前可声明的牌型（无点数虚拟卡面），点选后再「发动」。
+// 出牌阶段只列基本牌/非延时法术；响应窗口按合法响应的声明去重（濒死救援=仙桃/琼浆）。
+function guhuoDeclareTypes(view){
+  const pool=view.pending?view.legal.filter(a=>a.type==='respond'):view.legal.filter(a=>a.type==='play')
+  const types=[...new Set(pool.map(a=>a.as).filter(as=>as&&['basic','trick'].includes(CARDS_BY_TYPE[as]?.category)))]
+  return types.filter(t=>CARDS_BY_TYPE[t].category==='basic').concat(types.filter(t=>CARDS_BY_TYPE[t].category!=='basic'))
+}
+function guhuoChoice(ui,view){
+  if(!ui.guhuoChoice)return null
+  const types=guhuoDeclareTypes(view)
+  if(!types.length){ui.guhuoChoice=false;return null}
+  const pick=types.includes(ui.as)?ui.as:null
+  return `<section class="fs-center-choice fs-choice-dialog fs-pool-choice fs-guhuo-choice" role="group" aria-label="妖言声明牌型"><header><strong>妖言 · 声明一张牌</strong><small>点选要声明的牌型，扣置打出后由其他角色质疑</small></header><div class="fs-center-card-list" data-scroll="guhuo">${types.map(as=>`<button class="fs-choice-card ${pick===as?'selected':''}" data-action="guhuo-choice" data-value="${as}" aria-pressed="${pick===as}" aria-label="声明为${cardTitle(as)}">${cardFace({type:as,virtual:true})}</button>`).join('')}</div><footer><span aria-live="polite">${pick?'已选 '+cardTitle(pick)+' · 再点卡面可直接发动':'点选要声明的牌型'}</span><button data-action="guhuo-confirm" class="fs-primary" ${pick?'':'disabled'}>发动</button><button data-action="guhuo-cancel" class="fs-secondary">取消</button></footer></section>`
+}
 export function renderCenter(ui,view){
   const extra=extensionChoice(ui,view);if(extra)return extra
+  const guhuo=guhuoChoice(ui,view);if(guhuo)return guhuo
   if(view.pending?.kind==='incarnation'){
     if(view.pending.actor!==0)return `<section class="fs-center-choice fs-skill-prompt"><header><strong>${seatName(view,view.pending.actor)}正在选择变身</strong></header><p>未展示的变身牌只有本人可见。</p></section>`
     const choices=view.legal.map((a,index)=>({...a,index})),ids=[...new Set(choices.filter(a=>a.type==='transform').map(a=>a.heroId))],pass=choices.find(a=>a.type==='pass'),selected=panelAction(view,ui.panelSelection)
@@ -130,7 +145,8 @@ function playInstruction(ui,view){
   if(ui.skill==='qiangxi')return ui.selected.length?'雷锤：弃选中的武器，对范围内目标造成一点伤害':'雷锤：直接选目标将失去一点体力；也可先选武器作为代价'
   if(ui.skill)return `${skillName(view.players[0],ui.skill)}：${ui.skill==='lijian'?'弃一张牌，先选决斗发起者，再选先出杀者（两名其他男性）':ui.skill==='rende'?'选择要交出的手牌，再选择接收者':ui.skill==='zhiheng'?'选择要替换的手牌或装备':ui.skill==='jieyin'?'选择两张手牌，再选择一名受伤男性':ui.skill==='kurou'?'失去一点体力，摸两张牌；可以连续发动，请留意濒死风险':ui.skill==='qingnang'?'选择一张手牌，再选择受伤角色（包括自己）':'点击人物选择目标'}`
   const as=ui.currentAs(view)
-  if(ui.selected.length&&(ui.guhuoMode||ui.matching(view).some(a=>a.guhuo&&a.as===as)))return '妖言 · 声明'+cardTitle(as)+'，选好目标后确认'
+  if(ui.guhuoMode&&as)return '妖言 · 声明'+cardTitle(as)+' · '+(ui.selected.length?'选好目标后确认':'选手牌扣置，再选目标')
+  if(ui.selected.length&&ui.matching(view).length&&ui.matching(view).every(a=>a.guhuo))return '这张牌只能扣置声明 · 点技能『妖言』选择要声明的牌型'
   if(!ui.selected.length)return ui.hints===false?'你的出牌阶段':'你的出牌阶段 · 先选手牌，再选目标，最后确认'
   if(!as)return '这张牌只能在对应的响应窗口使用'
   if(as==='collateral')return ui.targets.length===2?'持刀者和被杀目标已选，请确认':ui.targets.length?'再选择被杀目标，也可以选择自己':'借宝诛敌 · 先选持武器的角色'
@@ -190,11 +206,12 @@ export function renderControls(ui,v){
   if(v.pending||v.current!==0||!v.players[0].alive)return `<div class="fs-action-row fs-idle-controls"><button data-action="report" class="fs-secondary">查看战报</button><span>${v.pending?'等待'+seatName(v,v.pending.actor)+'响应':v.players[0].alive?'等待你的回合':'观战中 · 身份始终可见'}</span></div>`
   if(ui.skill==='luanji'){const can=v.legal.some(a=>a.type==='play'&&a.as==='arrows'&&a.ids.length===2&&ui.selected.length===2&&a.ids.every(id=>ui.selected.includes(id)));return `<div class="fs-action-row"><button data-action="clear" class="fs-clear">重选</button><button data-action="confirm" class="fs-primary" ${can?'':'disabled'}>发动万剑</button><button data-action="end" class="fs-secondary">结束出牌</button></div>`}
   if(ui.skill==='huangtian'){const can=ui.selected.length===1&&v.players[0].hand.some(c=>c.id===ui.selected[0]&&['shan','lightning'].includes(c.type))&&v.legal.some(a=>a.skill==='huangtian'&&a.target===ui.targets[0]);return `<div class="fs-action-row"><button data-action="clear" class="fs-clear">重选</button><button data-action="confirm" class="fs-primary" ${can?'':'disabled'}>归灯 · 交牌</button><button data-action="end" class="fs-secondary">结束出牌</button></div>`}
-  const opts=ui.matching(v),as=ui.currentAs(v),variants=[...new Set(opts.map(a=>a.as))],natural=v.players[0].hand.find(c=>c.id===ui.selected[0])?.type
-  const conversions=variants.length>1||variants.length===1&&(as!==natural||!variants.includes(as))?`<div class="fs-conversions">${variants.map(a=>`<button data-action="as" data-value="${a}" class="${a===as?'selected':''}">当${CARDS_BY_TYPE[a].name}</button>`).join('')}</div>`:''
+  // 妖言声明只走弹窗：此处只保留非妖言转化（九转、铁索重铸等）；扣置声明期间不显示转化按钮。
+  const opts=ui.matching(v),as=ui.currentAs(v),variants=[...new Set(opts.filter(a=>!a.guhuo).map(a=>a.as))],natural=v.players[0].hand.find(c=>c.id===ui.selected[0])?.type
+  const conversions=!ui.guhuoMode&&(variants.length>1||variants.length===1&&(as!==natural||!variants.includes(as)))?`<div class="fs-conversions">${variants.map(a=>`<button data-action="as" data-value="${a}" class="${a===as?'selected':''}">当${CARDS_BY_TYPE[a].name}</button>`).join('')}</div>`:''
   const selfTarget=as==='collateral'&&ui.targetable(v).includes(0)&&!ui.targets.includes(0)?'<button class="fs-self-target fs-secondary" data-action="target" data-value="0">让他杀我</button>':''
   const chainMode=as==='ironchain'?`<button class="fs-secondary" data-action="chain-mode" aria-pressed="${!!ui.chainReset}">${ui.chainReset?'改为连接':'改为解除'}</button>`:''
-  return `<div class="fs-action-row">${conversions}${selfTarget}${chainMode}<button data-action="clear" class="fs-clear">重选</button><button data-action="confirm" class="fs-primary" ${!ui.skill&&!ui.selected.length?'disabled':''}>${ui.skill?'发动'+skillName(v.players[0],ui.skill):'确认出牌'}${ui.targets.length?' · '+ui.targets.map(t=>display(v.players[t]).name).join('、'):''}</button><button data-action="end" class="fs-secondary">结束出牌</button></div>`
+  return `<div class="fs-action-row">${conversions}${selfTarget}${chainMode}<button data-action="clear" class="fs-clear">重选</button><button data-action="confirm" class="fs-primary" ${!ui.skill&&(!ui.selected.length||opts.length&&opts.every(a=>a.guhuo)&&!ui.guhuoMode)?'disabled':''}>${ui.skill?'发动'+skillName(v.players[0],ui.skill):'确认出牌'}${ui.targets.length?' · '+ui.targets.map(t=>display(v.players[t]).name).join('、'):''}</button><button data-action="end" class="fs-secondary">结束出牌</button></div>`
 }
 export function renderBattle(ui){
   const v=playerView(ui.state,0),p=v.players[0],h=display(p),selfTarget=ui.targetable(v).includes(0),selfSelected=ui.targets.includes(0)

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import {rm} from 'node:fs/promises'
 import {openBrowser} from './browser-cdp.mjs'
 
-const browser = await openBrowser({name: 'public-blog-search'})
+const browser = await openBrowser({name: 'public-blog-search', baseUrl: process.env.VECTORAC_TEST_ORIGIN || null})
 try {
   await browser.viewport(1440, 900)
   await browser.navigate('/')

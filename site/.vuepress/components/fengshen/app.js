@@ -381,7 +381,8 @@ export class FengshenUI {
       const answer=answers.find(a=>(a.as||pending.as)===respAs&&equal(a.ids,this.selected));return answer?this.act({...answer,guhuo:this.guhuoMode||answer.guhuo}):this.inform('请按提示选择可以响应的牌')
     }
     if(this.skill)return this.act({type:'skill',skill:this.skill,ids:this.selected,target:this.targets[0],targets:this.targets})
-    const as=this.currentAs(view),a=this.matching(view).find(a=>a.as===as&&a.targets.length===this.targets.length&&a.targets.every((t,i)=>as==='collateral'?t===this.targets[i]:this.targets.includes(t)))
+    // 扣置声明缚神索只能走带目标的连环结算，不能匹配到无目标的重铸动作。
+    const as=this.currentAs(view),pool=this.guhuoMode&&as==='ironchain'?this.matching(view).filter(a=>a.targets.length):this.matching(view),a=pool.find(a=>a.as===as&&a.targets.length===this.targets.length&&a.targets.every((t,i)=>as==='collateral'?t===this.targets[i]:this.targets.includes(t)))
     return a?this.act({...a,guhuo:this.guhuoMode||a.guhuo,...(as==='ironchain'?{reset:!!this.chainReset}:{})}):this.inform('先选牌，再点亮目标，最后确认')
   }
   setTarget(view,t){const as=this.currentAs(view),pair=['lijian','ganlu','dimeng','anxu'].includes(this.skill),multi=view.pending?.kind==='ext'&&view.extension.spec?.multiTargets||view.pending?.kind==='tuxi'||pair||this.skill==='xueji'||!this.skill&&['sha','ironchain'].includes(as)&&this.matching(view).some(a=>a.targets.length>1),limit=view.pending?.kind==='ext'&&view.extension.spec?.multiTargets?view.extension.spec.maxTargets:pair||view.pending?.kind==='tuxi'||as==='ironchain'?2:this.skill==='xueji'?Math.max(1,view.players[0].maxHp-view.players[0].hp):Math.max(1,...this.matching(view).filter(a=>a.as===as).map(a=>a.targets.length));this.targets=!this.skill&&as==='collateral'?collateralSelection(this.targets,t):multi?boundedTargets(this.targets,t,limit):replaceTarget(this.targets,t)}
@@ -432,7 +433,14 @@ export class FengshenUI {
     if(action==='skill-unavailable'){this.inform(jiushiButton(view).reason);return}
     if(action==='skill-trigger'){const a=jiushiButton(view).action;if(a)this.act(a);else this.inform(jiushiButton(view).reason);return}
     if(action==='ext-option'){this.extValue=value;this.render();return}
-    if(action==='guhuo'){if(view.legal.some(a=>a.type==='play'||a.type==='respond')){this.guhuoMode=!this.guhuoMode;this.render()}return}
+    if(action==='guhuo'){if(view.legal.some(a=>a.type==='play'||a.type==='respond')){this.guhuoChoice=!this.guhuoChoice;this.render()}return}
+    // 妖言声明弹窗：点卡面选中声明类型；再点已选卡面或「发动」锁定声明，「取消」只关弹窗。
+    if(action==='guhuo-choice'){
+      if(value&&this.as===value){this.guhuoMode=true;this.guhuoChoice=false;this.targets=[];this.render();return}
+      this.as=value||null;this.guhuoMode=false;this.targets=[];this.render();return
+    }
+    if(action==='guhuo-confirm'){if(this.as){this.guhuoMode=true;this.guhuoChoice=false;this.render()}return}
+    if(action==='guhuo-cancel'){this.guhuoChoice=false;this.render();return}
     if(action==='chain-mode'){this.chainReset=!this.chainReset;this.render();return}
     // 仙田标记点击：觉醒后把一张田当摄宝（探囊取物）使用。引擎只在存在合法目标时才给出 jixi 的 skill 合法项，
     // 故此处只需转交激活动作；否则按觉醒/无目标两种情况给出提示。
@@ -472,7 +480,7 @@ export class FengshenUI {
         const spear=!this.skill&&own.equip.weapon?.type==='spear'&&(!view.pending||view.pending.as==='sha'),multi=['zhiheng','rende','jieyin','dimeng','luanji'].includes(this.skill)||['discard','axe','yiji'].includes(view.pending?.kind)||view.pending?.kind==='ext'&&view.extension.spec?.max>1
         this.selected=multi?this.selected.concat(id):spear&&this.selected.length<2?this.selected.concat(id):[id]
       }
-      if(this.skill==='dimeng'||view.pending?.kind==='ext'||view.pending?.kind==='yiji')this.targets=this.targets.filter(t=>this.targetable(view).includes(t));else this.targets=[];this.as=null;this.render();return
+      if(this.skill==='dimeng'||view.pending?.kind==='ext'||view.pending?.kind==='yiji')this.targets=this.targets.filter(t=>this.targetable(view).includes(t));else this.targets=[];if(!this.guhuoMode)this.as=null;this.render();return
     }
     if(action==='target'){
       const t=Number(value)
@@ -482,7 +490,7 @@ export class FengshenUI {
       this.render();return
     }
     if(action==='skill'){this.reset();this.skill=value;this.render();return}
-    if(action==='as'){this.as=value;this.targets=[];this.render();return}
+    if(action==='as'){this.as=value;this.guhuoMode=false;this.targets=[];this.render();return}
     if(action==='clear'){this.reset();this.render();return}
     if(action==='confirm'){this.confirm();return}
     if(action==='end'){this.act({type:'end'});return}
@@ -499,7 +507,7 @@ export class FengshenUI {
   header(){const label=this.lobby?'准备大厅':this.setup?(setupView(this.setup,0).teamMode?'选将':'身份选将'):(this.state?.teamMode?'两军对垒':'身份对决');return `<header class="fs-header"><div class="fs-brand">众神<span>斗法</span><small>${this.online?'好友联机':'单机对局'} / ${label}</small></div>${renderToolbar({lobby:this.lobby,setup:this.setup,paused:this.paused,voice:this.voice.enabled,music:this.music.enabled})}</header>`}
   renderLobby(){this.networkCredential=onlineCredential();return renderHome(this)}
   equipment(p,own=false){return Object.entries(p.equip).filter(([,c])=>c).map(([slot,c])=>`<button class="fs-equip ${this.selected.includes(c.id)?'selected':''}" data-action="${own?'card':'card-detail'}" data-id="${c.id}" data-slot="${slot}" aria-label="${{weapon:'武器',armor:'防具',offenseHorse:'进攻坐骑',defenseHorse:'防御坐骑'}[slot]}：${CARDS_BY_TYPE[c.type].name}" title="${esc(displayText(CARDS_BY_TYPE[c.type].help))}"><img src="${CARDS_BY_TYPE[c.type].image}" alt="" loading="lazy">${equipmentSlot(slot)}<span>${CARDS_BY_TYPE[c.type].name}</span><small>${equipEffect(CARDS_BY_TYPE[c.type])}</small></button>`).join('')||'<small class="fs-no-equip">法宝栏为空</small>'}
-  skills(p,view){const h=display(p),donate=p.seat===0&&view.legal.some(a=>['huangtian','zhiba'].includes(a.skill)),names={...h.skillNames,...Object.fromEntries(donate?view.legal.filter(a=>['huangtian','zhiba'].includes(a.skill)).map(a=>[a.skill,skillName(p,a.skill)]):[])};return Object.keys(names).filter(s=>donate&&['huangtian','zhiba'].includes(s)||SKILLS[s][2]!=='lord'||(!view.teamMode&&p.role==='lord')).map(s=>{const jb=s==='jiushi'&&p.seat===0?jiushiButton(view):null,active=p.seat===0&&view.legal.some(a=>a.type==='skill'&&a.skill===s),guhuo=p.seat===0&&s==='guhuo'&&view.legal.some(a=>a.type==='play'||a.type==='respond');return `<button data-action="${jb?.action?'skill-trigger':guhuo?'guhuo':p.seat===0&&s==='huashen'?'forms':active?'skill':jb?'skill-unavailable':'hero-detail'}" data-value="${s}" data-id="${h.id}" class="fs-skill ${(this.skill===s||guhuo&&this.guhuoMode)&&p.seat===0?'selected':''}"><b>${names[s]}</b><small>${guhuo?(this.guhuoMode?'已扣置':'扣置声明'):jb?jb.label:active?'发动':catalog.automaticSkills.includes(s)?'自动':{lord:'主公技',locked:'锁定',convert:'转化',trigger:'触发',limited:'限定',wake:'觉醒'}[SKILLS[s][2]]||'技能'}</small></button>`}).join('')}
+  skills(p,view){const h=display(p),donate=p.seat===0&&view.legal.some(a=>['huangtian','zhiba'].includes(a.skill)),names={...h.skillNames,...Object.fromEntries(donate?view.legal.filter(a=>['huangtian','zhiba'].includes(a.skill)).map(a=>[a.skill,skillName(p,a.skill)]):[])};return Object.keys(names).filter(s=>donate&&['huangtian','zhiba'].includes(s)||SKILLS[s][2]!=='lord'||(!view.teamMode&&p.role==='lord')).map(s=>{const jb=s==='jiushi'&&p.seat===0?jiushiButton(view):null,active=p.seat===0&&view.legal.some(a=>a.type==='skill'&&a.skill===s),guhuo=p.seat===0&&s==='guhuo'&&view.legal.some(a=>a.type==='play'||a.type==='respond');return `<button data-action="${jb?.action?'skill-trigger':guhuo?'guhuo':p.seat===0&&s==='huashen'?'forms':active?'skill':jb?'skill-unavailable':'hero-detail'}" data-value="${s}" data-id="${h.id}" class="fs-skill ${(this.skill===s||guhuo&&(this.guhuoMode||this.guhuoChoice))&&p.seat===0?'selected':''}"><b>${names[s]}</b><small>${guhuo?(this.guhuoMode?'已声明·'+(CARDS_BY_TYPE[this.as]?.name||''):'扣置声明'):jb?jb.label:active?'发动':catalog.automaticSkills.includes(s)?'自动':{lord:'主公技',locked:'锁定',convert:'转化',trigger:'触发',limited:'限定',wake:'觉醒'}[SKILLS[s][2]]||'技能'}</small></button>`}).join('')}
   opponent(p,view){return renderOpponent(this,p,view)}
   pendingText(view){const p=view.pending;if(!p)return '';const source=p.source==null?'法术':display(view.players[p.source]).name,target=p.target==null?'目标':display(view.players[p.target]).name;return {
     shensu:p.mode===1?'疾行：选择目标；发动后跳过判定与摸牌':'疾行：选一张装备牌和目标；发动后跳过出牌',

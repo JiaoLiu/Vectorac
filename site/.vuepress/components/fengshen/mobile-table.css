@@ -29,6 +29,8 @@
 .fs-harvest-picked>b{top:40%;padding:5px 2px;border-top:1px solid #e5c57b;border-bottom:1px solid #e5c57b}.fs-harvest-picked>small{bottom:3px;font-size:8px;padding:2px}
 .fs-harvest-picked .fs-card-design>img{filter:grayscale(.75) saturate(.4)}
 .fs-playing .fs-pool-choice{gap:5px;padding:7px 10px}.fs-pool-choice header strong{font-size:14px}.fs-pool-choice header small{font-size:10px}.fs-pool-choice .fs-center-card-list{padding:4px;gap:8px}.fs-pool-choice .fs-choice-card{width:68px;height:98px;flex-basis:68px}
+/* 妖言声明弹窗：虚拟卡面不渲染点数/花色，隐藏空的点数角标避免残留占位；牌名已是唯一标识。 */
+.fs-guhuo-choice .fs-card-design>.fs-rank{display:none}
 .fs-playing .fs-player[data-equip-count="0"] .fs-opponent-equipment{display:none}
 /* One face everywhere: plain rounded paper, suit/rank, original art and ink
    name. Hand/table/judgment/flight only change scale, not composition. */
