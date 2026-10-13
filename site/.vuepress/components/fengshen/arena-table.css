@@ -96,6 +96,8 @@
 /* 横屏选牌弹窗（仙山采宝）：不要铺满整屏，收成贴合牌面宽度的紧凑框，贴在手牌上方，
    露出自己的手牌，其余玩家也保留可见状态。 */
 @media(orientation:landscape){.fs-playing .fs-center-choice.fs-choice-dialog.fs-pool-choice{left:50%;right:auto;top:auto;bottom:calc(var(--dock-size) + 6px);width:fit-content;max-width:calc(100% - 2*var(--center-side));height:auto;max-height:calc(100% - var(--dock-size) - 12px);transform:translateX(-50%);justify-content:center;overflow:hidden}}
+/* 声明先于选手牌：窄横屏允许弹窗临时覆盖手牌区，完整展示虚拟卡面与发动按钮。 */
+@media(orientation:landscape) and (max-height:375px){.fs-playing .fs-center-choice.fs-choice-dialog.fs-guhuo-choice{top:6px;bottom:auto;max-height:calc(100% - 12px)}}
 /* 传道分牌：中央弹窗依次翻出新摸的牌（牌面仅本人可见）；等待方只看背面与张数。 */
 .fs-playing .fs-yiji-choice .fs-choice-card{animation:fs-reveal .5s ease-out both}
 /* 传道接收者：面板内直接选人，配合底部「确认赠牌」把多张牌一次交给同一人。 */

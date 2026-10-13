@@ -17,7 +17,7 @@ const give=(s,seat,type,suit=null)=>{const i=s.deck.findIndex(c=>c.type===type&&
 const model=(s,over={})=>({state:s,selected:[],targets:[],skill:null,as:null,guhuoMode:false,guhuoChoice:false,hints:true,chainReset:false,matching:()=>[],currentAs:()=>null,targetable:()=>[],equipment:()=>'',...over})
 const declared=html=>[...html.matchAll(/data-action="guhuo-choice" data-value="([a-z]+)"/g)].map(m=>m[1])
 test('妖言弹窗列出无点数虚拟卡面，只列当前可声明牌型，基本牌在前',()=>{
- const s=fixture(),shan=give(s,0,'shan');give(s,0,'tao')
+ const s=fixture();give(s,0,'shan');give(s,0,'tao')
  const v=playerView(s,0),ui=model(s,{guhuoChoice:true}),html=renderCenter(ui,v)
  assert.ok(html.includes('fs-guhuo-choice'),'弹窗打开')
  assert.ok(html.includes('data-action="guhuo-confirm"')&&html.includes('data-action="guhuo-cancel"'),'有发动与取消')
@@ -26,13 +26,12 @@ test('妖言弹窗列出无点数虚拟卡面，只列当前可声明牌型，�
  assert.ok(pop.includes(cardFace({type:'sha',virtual:true})),'复用共用卡面入口渲染虚拟杀')
  const types=declared(html)
  assert.ok(types.includes('sha')&&types.includes('draw'),'含基本牌与普通锦囊声明')
- assert.ok(!types.includes('shan')&&types.includes('nullify')===false,'出牌阶段不含闪与破法')
+ assert.ok(!types.includes('shan')&&!types.includes('nullify'),'出牌阶段不含闪与破法')
  assert.ok(!types.includes('dilu'),'装备不可声明')
  assert.ok(!types.includes('tao'),'满血时桃不可声明，只列当前可声明的')
  assert.equal(new Set(types).size,types.length,'声明类型不重复')
  const basic=types.filter(t=>CARDS_BY_TYPE[t].category==='basic'),trick=types.filter(t=>CARDS_BY_TYPE[t].category!=='basic')
  assert.deepEqual(types,basic.concat(trick),'基本牌排在锦囊前')
- assert.equal(shan.type,'shan')
 })
 test('未选声明时发动禁用，选中后可用并高亮',()=>{
  const s=fixture();give(s,0,'shan');const v=playerView(s,0)
