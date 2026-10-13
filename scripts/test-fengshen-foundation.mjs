@@ -81,6 +81,12 @@ test('Qiaobian draw skip offers up to two private hand targets with frontend mul
 test('Qiaobian moving equipment uses public card choice and preserves its exact physical identity',()=>{
  let s=fixture('zhangkui');const c=card(s,0,'sha'),weapon=equip(s,1,'bow');s=phase(s,'playPhase');s=invoke(s,{ids:[c.id]});assert.equal(s.pending.stage,'board-pick');assert.ok(extensionPopup(playerView(s,0)));s=invoke(s,{value:weapon.id});s=invoke(s,{target:2,ids:[]});assert.equal(s.players[1].equip.weapon,null);assert.equal(s.players[2].equip.weapon.id,weapon.id)
 })
+test('Qiaobian does not ask to skip the judge phase when the judgment area is empty',()=>{
+ // 身上没有判定牌时，跳过判定阶段毫无意义（白弃一张牌），不应提示地变，直接进入摸牌阶段。
+ let s=fixture('zhangkui');card(s,0,'sha');s=phase(s,'judgeDrawStart');assert.equal(s.pending.skill,'qiaobian');assert.equal(s.pending.phase,'draw','无判定牌时应跳过判定阶段的地变提示，直接进到摸牌阶段');assert.ok(!s.players[0].marks.skipJudge)
+ // 有判定牌时才在判定阶段提示，弃牌可真正跳过判定。
+ let t=fixture('zhangkui');const cost=card(t,0,'sha'),delay=card(t,0,'indulgence');t.players[0].hand.pop();t.players[0].judgment.push(delay);t=phase(t,'judgeDrawStart');assert.equal(t.pending.skill,'qiaobian');assert.equal(t.pending.phase,'judge');assert.ok(t.pending.instruction.includes('判定'));t=invoke(t,{ids:[cost.id]});assert.equal(t.players[0].marks.skipJudge,true);assert.ok(t.discard.some(x=>x.id===cost.id));assert.ok(t.players[0].judgment.some(x=>x.id===delay.id),'跳过判定后判定牌仍在判定区')
+})
 test('Tuntian keeps non-heart final judgment as a public field and never uses fields as ordinary cards',()=>{
  let s=fixture('juliusun',undefined,1),a=card(s,1,'sha'),d=card(s,0,'shan'),judge=top(s,'club');s=slash(s,a,0);s=step(s,{type:'respond',ids:[d.id]});assert.equal(s.pending.skill,'tuntian');s=invoke(s);assert.equal(s.pending.hit,true);s=ack(s);assert.equal(s.players[0].fieldPile[0].id,judge.id);assert.equal(playerView(s,2).players[0].fieldPile[0].id,judge.id);assert.equal(distance(s,0,2),1);assert.equal(viewDistance(playerView(s,0),0,2),1)
 })

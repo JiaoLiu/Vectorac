@@ -14,7 +14,8 @@ export function createFoundationSkills(api,base){
  function finish(s,seat){const p=player(s,seat),out=[];if(hasSkill(p,'benghuai')&&s.players.some(t=>t.alive&&t.seat!==seat&&t.hp<p.hp))out.push(ev('foundation-ask',{seat,skill:'benghuai'}));return out}
  function endTurn(s,seat){const p=player(s,seat);return p.alive&&p.marks.fangquan&&p.hand.length?[ev('foundation-ask',{seat,skill:'fangquan',stage:'grant'})]:[]}
  function phase(s,seat,kind,event){const p=player(s,seat);if(event.foundationChecked)return false;const continuation={...event,foundationChecked:true}
-  if(hasSkill(p,'qiaobian')&&p.hand.length){spec(s,'qiaobian',seat,'discard',{min:1,max:1,handOnly:true},{phase:kind,continuation,instruction:`弃一张手牌跳过${{judge:'判定',draw:'摸牌',play:'出牌',discard:'弃牌'}[kind]}阶段；也可不发动`});return true}
+  // 判定区没有判定牌时，跳过判定阶段毫无意义（白弃一张牌），不提示地变。
+  if(hasSkill(p,'qiaobian')&&p.hand.length&&(kind!=='judge'||p.judgment.length)){spec(s,'qiaobian',seat,'discard',{min:1,max:1,handOnly:true},{phase:kind,continuation,instruction:`弃一张手牌跳过${{judge:'判定',draw:'摸牌',play:'出牌',discard:'弃牌'}[kind]}阶段；也可不发动`});return true}
   if(kind==='play'&&hasSkill(p,'fangquan')&&!p.marks.skipPlay){ask(s,'fangquan',seat,'yes',{continuation,instruction:'是否跳过出牌阶段，回合结束后可弃手牌授予额外回合？'});return true}
   return false
  }

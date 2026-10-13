@@ -156,7 +156,12 @@ const chooseAI=function chooseAI(view) {
       let score=0, candidate=action
       if(action.type==='play') {
         const target=action.targets[0],rel=target==null?0:hostility(view,target)
-        if(action.as==='tao')score=18
+        if(action.as==='tao'){
+          // 桃既能自愈也是抢救队友的底牌：血量健康时手里只有一张就留着救队友，
+          // 只有多张时才吃一张；贫血（hp<=2）时优先自保。
+          const peaches=self.hand.filter(c=>c.type==='tao').length
+          score=self.hp>2&&peaches<=1?-3:18
+        }
         else if(action.as==='wine')score=self.marks.wine||!view.legal.some(a=>a.type==='play'&&a.as==='sha'&&a.targets.some(t=>hostility(view,t)>0))?-3:12
         else if(action.as==='draw')score=self.hand.length>self.hp+3?4:15
         else if(CARDS[action.as].category==='equip') {

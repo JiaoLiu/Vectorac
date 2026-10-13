@@ -228,6 +228,25 @@ test('a hanging audio resume cannot freeze a freshly restarted game',async()=>{
   for(let i=0;i<600&&lone.busy;i++)await tick()
   assert.equal(lone.busy,false,'超时必须自动复位 busy');lone.destroy()
 })
+test('a hanging decode is never cached, so audio recovers instead of staying silent forever',async()=>{
+  // 页面后台时 decodeAudioData 可能一直不 resolve：若把这个进行中的 Promise 缓存下来，该音效此后每次都超时，
+  // 表现为「回到前台后所有报牌音效消失，开关音效也救不回来，只能刷新页面」。只缓存解码成功的 AudioBuffer 即可自愈。
+  const context={state:'running',sampleRate:48000,destination:{},resume:()=>Promise.resolve(),createBuffer:()=>({}),close:()=>Promise.resolve(),decodeAudioData:()=>new Promise(()=>{}),createBufferSource(){return {connect(){},disconnect(){},start(){},stop(){}}}}
+  const voice=new CardVoice({createContext:()=>context,fetchAudio:async()=>({ok:true,arrayBuffer:async()=>new ArrayBuffer(4)})})
+  await voice.unlock();assert.ok(voice.speak('card-sha','male'))
+  for(let i=0;i<10&&!voice.busy;i++)await tick()
+  assert.equal(voice.busy,true,'drain 应挂在挂起的解码上')
+  assert.equal(voice.cache.size,0,'挂起的解码绝不能进入缓存');voice.destroy()
+})
+test('unlock rebuilds an AudioContext the browser closed during background',async()=>{
+  // 长时间后台/休眠后浏览器可能直接关闭 AudioContext：沿用已关闭的上下文会让 resume() 永久失败。
+  const made=[],make=()=>{const c={state:'running',sampleRate:48000,destination:{},resume:()=>Promise.resolve(),createBuffer:()=>({}),close:()=>Promise.resolve(),decodeAudioData:()=>Promise.resolve({duration:.02}),createBufferSource(){return {connect(){},disconnect(){},start(){setTimeout(()=>this.onended?.(),3)},stop(){this.onended?.()}}}};made.push(c);return c}
+  const voice=new CardVoice({createContext:make,fetchAudio:async()=>({ok:true,arrayBuffer:async()=>new ArrayBuffer(4)})})
+  await voice.unlock();voice.cache.set('stale',{})
+  voice.context.state='closed'
+  await voice.unlock()
+  assert.equal(made.length,2,'被关闭的上下文必须重建，否则 resume() 永远失败');assert.equal(voice.cache.size,0,'旧上下文的解码缓存必须清空');voice.destroy()
+})
 test('all generated MP3s are present and decodable, with verified male/female voices',async()=>{
   const manifest=JSON.parse(await readFile(new URL('../.private/fengshen/assets/audio/manifest.json',import.meta.url),'utf8'));assert.deepEqual(manifest.voices,VOICES);assert.equal(manifest.files.length,AUDIO_ENTRIES.length*2);assert.equal(manifest.entries.length,AUDIO_ENTRIES.length)
   for(const file of manifest.files){

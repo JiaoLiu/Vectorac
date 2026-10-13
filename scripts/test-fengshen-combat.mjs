@@ -37,6 +37,20 @@ test('AI saves Nullify on a full-HP group-heal recipient in either counter direc
  assert.equal(chooseAI(view).type,'respond','full HP does not make enemy card-draw worthless')
  view.pending={...view.pending,target:3,cardType:'arrows'};assert.equal(chooseAI(view).type,'respond','protect full-HP allies from real damage')
 })
+test('AI holds a lone Peach for teammates while healthy, and eats one when carrying several or badly hurt',()=>{
+ const build=(peaches,hp)=>{
+  const s=createAssignedGame({roles:['lord','loyal','rebel','rebel','renegade'],heroIds:['yangjian','nezha','jifa','wenzhong','hades'],seed:23})
+  Object.assign(s,{deck:catalog.makeDeck(),discard:[],processing:[],harvestPool:[],queue:[],pending:null,phase:'play',current:1,logs:[]})
+  for(const p of s.players){p.hand=[];p.equip={weapon:null,armor:null,offenseHorse:null,defenseHorse:null};p.judgment=[];p.hp=p.maxHp}
+  s.players[1].hp=hp;hand(s,1,...Array(peaches).fill('tao'))
+  return s
+ }
+ const healthy=playerView(build(1,3),1)
+ assert.ok(healthy.legal.some(a=>a.type==='play'&&a.as==='tao'),'血量健康时仍可自愈（引擎照常提供）')
+ assert.notEqual(chooseAI(healthy).as,'tao','血量健康且只有一张桃时必须留着救队友')
+ assert.equal(chooseAI(playerView(build(2,3),1)).as,'tao','血量健康但有多张桃时吃一张')
+ assert.equal(chooseAI(playerView(build(1,1),1)).as,'tao','贫血时即使只有一张桃也自保')
+})
 test('group-heal only opens a Nullify window for wounded recipients; full HP asks nobody',()=>{
  for(const missing of [0,1]){
   let s=createAssignedGame({roles:['lord','loyal','rebel','rebel','renegade'],heroIds:['yangjian','nezha','jifa','wenzhong','hades'],seed:23})

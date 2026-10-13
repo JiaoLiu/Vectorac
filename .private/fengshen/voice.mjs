@@ -11,6 +11,9 @@ export class CardVoice {
   unlock(){
     if(this.closed||!this.enabled)return Promise.resolve(false)
     try{
+      // 浏览器长时间后台/休眠后可能直接关闭 AudioContext：沿用已关闭的上下文会让 resume() 永久失败，
+      // 表现为「回到前台后所有音效消失，开关音效也救不回来」。此时重建上下文并丢弃旧上下文的解码缓存。
+      if(this.context?.state==='closed'){this.context=null;this.cache.clear()}
       this.context ||= this.createContext();if(!this.context)return Promise.resolve(false)
       const c=this.context
       this.ready=Promise.resolve(c.resume()).then(()=>{
@@ -26,8 +29,12 @@ export class CardVoice {
     this.drain();return true
   }
   async buffer(url){
-    if(!this.cache.has(url))this.cache.set(url,(async()=>{const r=await this.fetchAudio(url);if(!r.ok)throw new Error('Audio '+r.status);return this.context.decodeAudioData(await r.arrayBuffer())})().catch(e=>{this.cache.delete(url);throw e}))
-    return this.cache.get(url)
+    // 只缓存解码成功的 AudioBuffer，绝不缓存"进行中的解码 Promise"：页面后台时 decodeAudioData
+    // 可能一直不 resolve，若把该 Promise 缓存下来，这一条音效此后每次都会超时，永久沉默直到刷新页面。
+    if(this.cache.has(url))return this.cache.get(url)
+    const r=await this.fetchAudio(url);if(!r.ok)throw new Error('Audio '+r.status)
+    const decoded=await this.context.decodeAudioData(await r.arrayBuffer())
+    this.cache.set(url,decoded);return decoded
   }
   async hurt(amount=1){
     if(this.closed||!this.enabled||!this.context)return false

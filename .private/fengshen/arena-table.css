@@ -235,7 +235,10 @@
 .fs-card-play.is-negated>.fs-clean-card{filter:saturate(.35);opacity:.75}
 .fs-playing .fs-hand-card.counter-ready>.fs-clean-card{box-shadow:0 0 0 2px #ffd878,0 0 12px #ffce6955}
 .fs-playing .fs-counter-controls button{font-size:14px;min-height:38px}
-.fs-playing .fs-counter-note{font-size:11px;line-height:1.35;color:#f3e6c4;padding:0 8px;max-width:46%}
+/* 横屏操作列很窄（--action-width 约 100px），此前 max-width:46% 把提示压到 ~45px，
+   「抵消万箭齐发→张飞（3号）」被硬折成 3 行把按钮挤下去。横屏改用整列宽度；竖屏是横向排布，仍用 46% 留位置给按钮。 */
+.fs-playing .fs-counter-note{font-size:11px;line-height:1.3;color:#f3e6c4;padding:0 2px;text-align:center}
+.fs-playing[data-layout=portrait] .fs-counter-note{max-width:46%;padding:0 8px}
 /* 判定中的角色本身就是当前回合者，回合提示已经是蓝绿：判定这里也用蓝绿内发光，不再叠一圈黄。 */
 .fs-playing .fs-judging{box-shadow:inset 0 0 0 3px #77ffdc;animation:fs-judging-glow 1.1s ease-in-out infinite}
 .fs-judging:after{content:'判';position:absolute;right:3px;top:25px;width:22px;height:22px;display:grid;place-items:center;border:1px solid #86ffda;border-radius:50%;background:#104d43ef;color:#edfff7;font:bold 13px/1 sans-serif;pointer-events:none;z-index:10}

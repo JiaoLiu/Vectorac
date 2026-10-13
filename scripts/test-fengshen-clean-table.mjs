@@ -112,4 +112,6 @@ test('public discard/reveal wraps into extra rows and never overflows the center
 })
 test('reduced motion and portrait table visibility are explicit; no counter full-screen panel renderer remains',async()=>{
  const css=await readFile(new URL('../.private/fengshen/arena-table.css',import.meta.url),'utf8'),code=await readFile(new URL('../.private/fengshen/table.mjs',import.meta.url),'utf8');assert.ok(css.includes('.fs-compact-table{display:flex'));assert.ok(css.includes('prefers-reduced-motion:reduce'));assert.ok(!code.includes('function counterChoices'));assert.ok(code.includes('fs-counter-controls'))
+ // 横屏操作列只有 ~100px，提示若再被 max-width:46% 压到 ~45px 会折成 3 行把按钮挤下去；只有竖屏横向排布才需要限宽。
+ const note=css.match(/\.fs-playing \.fs-counter-note\{([^}]*)\}/);assert.ok(note&&!note[1].includes('max-width'),'横屏破法提示不得再被压窄折行');assert.ok(css.includes('.fs-playing[data-layout=portrait] .fs-counter-note{max-width:46%'),'竖屏才限制提示宽度给按钮让位')
 })

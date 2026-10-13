@@ -44,6 +44,8 @@ import {PlayMotionQueue,publicPlayMotions,pendingImpact,PLAY_FLIGHT_MS} from './
 import {TableSettlement} from './table-settlement.mjs'
 import {heroBattleDetails,delayedTargetReason,jiushiButton} from './hero-state.mjs'
 import './hero-state.css'
+import {JudgmentCinematics,successfulJudgments,judgmentKey,paintJudgmentCinematic} from './judgment-cinematics.mjs'
+import './judgment-cinematics.css'
 import './play-motion.css'
 import {FeedbackModal} from './feedback.mjs'
 
@@ -85,8 +87,8 @@ export class FengshenUI {
     this.resumeSession=restoreSession(load(SAVE,null));this.resumeState=this.resumeSession?.kind==='game'?this.resumeSession.game:null;this.legacySave=load('vectorac.fengshen.internal.save.v1',null)!=null;root.className='fs-app'
     this.feedback=new FeedbackModal()
     this.onClick=e=>this.click(e);this.onKey=e=>this.key(e)
-    this.moves=[];this.discards=null;this.recoveries=[];this.beams=new TargetBeams();this.playMotions=new PlayMotionQueue();this.tableSettlement=new TableSettlement()
-    this.onVisibility=()=>{clearTimeout(this.timer);if(document.hidden){this.voice.stop();this.music.pause()}else{if(this.transfer?.until<Date.now())this.transfer=null;if(this.draws?.every(d=>(d.started||0)+1300<Date.now()))this.draws=[];if(this.moves?.every(m=>m.until<Date.now()))this.moves=[];this.recoveries=this.recoveries.filter(h=>h.until>Date.now());this.decorateBattle();if(!this.lobby)this.music.unlock();this.keepAwake(!this.lobby);this.schedule()}this.syncClock()}
+    this.moves=[];this.discards=null;this.recoveries=[];this.beams=new TargetBeams();this.playMotions=new PlayMotionQueue();this.judgmentCinematics=new JudgmentCinematics();this.tableSettlement=new TableSettlement()
+    this.onVisibility=()=>{clearTimeout(this.timer);if(document.hidden){this.voice.stop();this.music.pause();clearTimeout(this.judgmentTimer);this.judgmentCinematics.clear();paintJudgmentCinematic(this.root,null)}else{if(this.transfer?.until<Date.now())this.transfer=null;if(this.draws?.every(d=>(d.started||0)+1300<Date.now()))this.draws=[];if(this.moves?.every(m=>m.until<Date.now()))this.moves=[];this.recoveries=this.recoveries.filter(h=>h.until>Date.now());this.decorateBattle();if(!this.lobby)this.music.unlock();this.voice.unlock();this.keepAwake(!this.lobby);this.schedule()}this.syncClock()}
     this.onViewport=()=>{layoutArena(root);layoutHand(root);if(this.selected.length)revealHandCard(root,this.selected.at(-1));this.decorateBattle();scaleCards(root);this.online?.afterRender()}
     this.viewport=bindGameViewport(root,this.onViewport)
     this.starGesture=bindStarDrag(root,{getState:()=>this.state?.pending?.kind==='guanxing'?this.star:null,onMove:state=>{this.star=state;this.render()},onInteraction:active=>{this.draggingStars=active;this.syncClock()}})
@@ -123,6 +125,7 @@ export class FengshenUI {
     const beforeView=playerView(before,0),afterView=playerView(this.state,0)
     const publicMotions=publicPlayMotions(beforeView,afterView).map(e=>{const c=e.cards[0],a=(e.source===0?this.root.querySelector(`.fs-hand-card[data-id="${c?.id}"]`)||this.root.querySelector('.fs-own-hero>button'):this.root.querySelector(`[data-player="${e.source}"] .fs-player-main`))?.getBoundingClientRect();return {...e,origin:a&&localPoint(this.root,a.x+a.width/2,a.y+a.height/2)}})
     if(document.hidden)this.playMotions.clear();else this.playMotions.enqueue(publicMotions)
+    if(document.hidden)this.judgmentCinematics.clear();else this.judgmentCinematics.enqueue(successfulJudgments(beforeView,afterView).map(e=>({...e,targetName:display(afterView.players[e.target]).name})))
     this.beams.record(afterView)
     const recovered=recoveryCues(before,this.state)
     if(recovered.length){const started=Date.now();this.recoveries=this.recoveries.filter(h=>h.until>started).concat(recovered.map(h=>({...h,started,until:started+RECOVERY_DURATION})));clearTimeout(this.recoveryTimer);this.recoveryTimer=setTimeout(()=>{this.recoveries=[];if(!this.destroyed)this.decorateBattle()},RECOVERY_DURATION+20)}
@@ -154,12 +157,12 @@ export class FengshenUI {
     const previousIds=new Set(before.players[0].hand.map(c=>c.id)),received=this.state.players[0].hand.filter(c=>!previousIds.has(c.id))
     this.handRevealId=received.at(-1)?.id||null
     this.reset();this.save();this.render();return true}
-  clearEffects(){clearTimeout(this.tableSettleTimer);this.tableSettlement?.clear();clearTimeout(this.playMotionTimer);this.playMotions?.clear();clearTimeout(this.hitTimer);clearTimeout(this.beamTimer);this.beams.clear();clearTimeout(this.recoveryTimer);clearTimeout(this.transferTimer);clearTimeout(this.drawTimer);clearTimeout(this.moveTimer);clearTimeout(this.discardTimer);clearTimeout(this.counterLockTimer);this.hits=[];this.recoveries=[];this.transfer=null;this.draws=[];this.moves=[];this.discards=null;this.tableTrail=[];this.counterKey=null;this.counterLockUntil=0}
+  clearEffects(){clearTimeout(this.tableSettleTimer);this.tableSettlement?.clear();clearTimeout(this.playMotionTimer);this.playMotions?.clear();clearTimeout(this.judgmentTimer);this.judgmentCinematics?.clear();paintJudgmentCinematic(this.root,null);clearTimeout(this.hitTimer);clearTimeout(this.beamTimer);this.beams.clear();clearTimeout(this.recoveryTimer);clearTimeout(this.transferTimer);clearTimeout(this.drawTimer);clearTimeout(this.moveTimer);clearTimeout(this.discardTimer);clearTimeout(this.counterLockTimer);this.hits=[];this.recoveries=[];this.transfer=null;this.draws=[];this.moves=[];this.discards=null;this.tableTrail=[];this.counterKey=null;this.counterLockUntil=0}
   syncClock(){
     if(this.online){const m=this.online.meta,s=this.state,human=s&&!s.winner&&(s.pending?.actor??s.current)===0&&!this.auto&&!isRevealing(s);this.clock.running=false;this.clock.key=human?'online:'+m?.windowId:null;this.clock.left=Math.max(0,(m?.deadlineAt||0)-Date.now()+(this.online.offset||0));return}
     const s=this.state,human=!this.lobby&&!this.setup&&s&&!s.winner&&(s.pending?.actor??s.current)===0&&!isRevealing(s)&&(s.players[0].alive||s.pending?.kind==='ext'&&s.pending.skill==='zhuiyi')
     const key=human?`${s.revision}:${s.pending?.id||s.phase}`:null
-    this.clock.sync(key,!!human&&!this.draggingStars&&!this.auto&&!this.paused&&!document.hidden&&!this.transfer&&!this.draws.length&&!this.moves.length&&!this.playMotions.busy)
+    this.clock.sync(key,!!human&&!this.draggingStars&&!this.auto&&!this.paused&&!document.hidden&&!this.transfer&&!this.draws.length&&!this.moves.length&&!this.playMotions.busy&&!this.judgmentCinematics.busy)
   }
   tickClock(){
     if(this.destroyed)return
@@ -261,7 +264,13 @@ export class FengshenUI {
         e.style.setProperty('--from-x',`${deckPoint.x+i*4}px`);e.style.setProperty('--from-y',`${deckPoint.y}px`);e.style.setProperty('--to-x',`${x}px`);e.style.setProperty('--to-y',`${y}px`);e.style.setProperty('--mid-x',`${(deckPoint.x+x)/2}px`);e.style.setProperty('--mid-y',`${(deckPoint.y+y)/2-25}px`);e.style.setProperty('--draw-delay',`${i*140-Math.max(0,Date.now()-(d.started??Date.now()))}ms`);this.root.append(e)
       }
     }
-    this.decoratePlayMotion(v,anchor)
+    this.decoratePlayMotion(v,anchor);this.paintJudgment()
+  }
+  paintJudgment(){
+    clearTimeout(this.judgmentTimer)
+    const play=this.playMotions.frame(),blocked=!!this.modal||document.hidden||!!this.transfer||!!this.draws.length||!!this.moves.length||!!play&&play.elapsed<PLAY_FLIGHT_MS
+    const frame=this.judgmentCinematics.frame({blocked});paintJudgmentCinematic(this.root,frame)
+    if(frame)this.judgmentTimer=setTimeout(()=>{if(this.destroyed)return;this.paintJudgment();if(!this.judgmentCinematics.busy){if(!this.modal&&!this.transfer&&!this.draws.length&&!this.moves.length&&!this.playMotions.busy&&!isRevealing(this.state))this.root.querySelector('.fs-dock')?.removeAttribute('inert');this.syncClock();this.settleTable();this.schedule()}},frame.event?frame.remaining+15:Math.min(80,frame.remaining))
   }
   decoratePlayMotion(view,anchor){
     this.root.querySelectorAll('.fs-play-flight,.fs-play-links,.fs-play-source-symbol,.fs-impact-symbol').forEach(e=>e.remove())
@@ -318,10 +327,11 @@ export class FengshenUI {
       return
     }
     if(!this.state||this.state.winner)return
-    if(this.transfer||this.draws.length||this.moves.length||this.playMotions.busy)return
+    if(this.transfer||this.draws.length||this.moves.length||this.playMotions.busy||this.judgmentCinematics.busy)return
     if(isRevealing(this.state)){
       const p=this.state.pending,revision=this.state.revision
-      this.timer=setTimeout(()=>{if(!this.destroyed&&this.state.revision===revision&&!this.paused&&!document.hidden&&!this.modal)this.act(p.kind==='reveal'?{type:'ack',seat:p.actor}:{type:'invoke',value:'ack',seat:p.actor})},1800)
+      const delay=p.kind==='reveal'&&this.judgmentCinematics.completed===judgmentKey(playerView(this.state,0))?180:1800
+      this.timer=setTimeout(()=>{if(!this.destroyed&&this.state.revision===revision&&!this.paused&&!document.hidden&&!this.modal)this.act(p.kind==='reveal'?{type:'ack',seat:p.actor}:{type:'invoke',value:'ack',seat:p.actor})},delay)
       return
     }
     if(this.voice.busy){this.timer=setTimeout(()=>this.schedule(),80);return}
@@ -498,7 +508,7 @@ export class FengshenUI {
   won(){const s=this.state;if(s.teamMode)return s.winner===String(s.sides[0]);const role=s.players[0].role;return role===s.winner||role==='loyal'&&s.winner==='lord'}
   settleTable(){
     if(this.destroyed||!this.state||this.lobby||this.setup||this.online?.waiting)return
-    const v=playerView(this.state,0),busy=this.playMotions.busy||!!this.transfer||!!this.draws.length||!!this.moves.length||this.hits.some(h=>h.until>Date.now())||this.recoveries.some(h=>h.until>Date.now())
+    const v=playerView(this.state,0),busy=this.playMotions.busy||this.judgmentCinematics.busy||!!this.transfer||!!this.draws.length||!!this.moves.length||this.hits.some(h=>h.until>Date.now())||this.recoveries.some(h=>h.until>Date.now())
     const f=this.tableSettlement.frame(v,{busy});this.tableSettleFrame=f;this.closedTableChain=f.closedChain
     const row=this.root.querySelector('.fs-table-trail');row?.classList.toggle('is-settled',f.fading)
     if(f.closedChain){this.tableTrail=updateTableTrail(this.tableTrail||[],v,{closedChain:f.closedChain});if(!this.tableTrail.length)row?.replaceChildren();if(this.discards?.chainKey===f.closedChain){this.discards=null;this.root.querySelector('.fs-public-discard')?.remove()}}
@@ -541,7 +551,7 @@ export class FengshenUI {
     clearTimeout(this.tableSettleTimer)
     if(this.state&&!this.setup){
       const v=playerView(this.state,0),choice=counterSelection(v,this.counterKey,this.selected);this.counterKey=choice.key;this.selected=choice.selected
-      const busy=this.playMotions.busy||!!this.transfer||!!this.draws.length||!!this.moves.length||this.hits.some(h=>h.until>Date.now())||this.recoveries.some(h=>h.until>Date.now())
+      const busy=this.playMotions.busy||this.judgmentCinematics.busy||!!this.transfer||!!this.draws.length||!!this.moves.length||this.hits.some(h=>h.until>Date.now())||this.recoveries.some(h=>h.until>Date.now())
       this.tableSettleFrame=this.tableSettlement.frame(v,{busy});this.closedTableChain=this.tableSettleFrame.closedChain
       if(this.discards?.chainKey&&(this.discards.chainKey===this.closedTableChain||this.discards.chainKey!==tableChainKey(v)))this.discards=null
       this.tableTrail=updateTableTrail(this.tableTrail||[],v,{closedChain:this.closedTableChain})
@@ -575,7 +585,7 @@ export class FengshenUI {
     if(ownIds.length)revealHandCard(this.root,ownIds.at(-1))
     if(this.handRevealId){revealHandCard(this.root,this.handRevealId);this.handRevealId=null}
     if(this.state?.pending?.kind==='counter'&&this.state.pending.actor===0&&this.selected.length)revealHandCard(this.root,this.selected.at(-1))
-    if(this.transfer||this.draws.length||this.moves.length||this.playMotions.busy||isRevealing(this.state))this.root.querySelector('.fs-dock')?.setAttribute('inert','')
+    if(this.transfer||this.draws.length||this.moves.length||this.playMotions.busy||this.judgmentCinematics.busy||isRevealing(this.state))this.root.querySelector('.fs-dock')?.setAttribute('inert','')
     if(this.modal){this.root.querySelectorAll('.fs-header,.fs-lobby,.fs-entry,.fs-setup,.fs-hud,.fs-arena,.fs-status,.fs-dock').forEach(e=>e.inert=true);this.root.querySelector('[data-action="close"]')?.focus()}
     else if(wasModal&&this.returnFocus?.action){const s=`[data-action="${this.returnFocus.action}"]${this.returnFocus.id?`[data-id="${this.returnFocus.id}"]`:''}`;this.root.querySelector(s)?.focus()}
     scaleCards(this.root);this.online?.afterRender();this.schedule()
