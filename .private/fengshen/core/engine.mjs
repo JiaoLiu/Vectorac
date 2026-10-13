@@ -844,7 +844,12 @@ function activeSkill(s,action) {
     const recipient=player(s,target)
     if(ids.length!==2||!ids.every(id=>p.hand.some(c=>c.id===id))||!recipient?.alive||target===action.seat||hero(recipient).sex!=='male'||recipient.hp>=recipient.maxHp)throw new Error('结姻需要两张手牌和一名受伤的其他男性')
     spend(s,action.seat,ids);p.marks.jieyin=true;heal(s,action.seat,1);heal(s,target,1);suspect(s,action.seat,target,false)
-    note(s,`${name(s,action.seat)}发动${labelSkill(s,action.seat,'jieyin','结姻')}，与${name(s,target)}各恢复一点体力`)
+    const jieyinLabel=labelSkill(s,action.seat,'jieyin','结姻')
+    note(s,`${name(s,action.seat)}发动${jieyinLabel}，与${name(s,target)}各恢复一点体力`)
+    // 生命之契是「自己 + 目标」两人同时回血，像杀一样连一条黄线，玩家才知道是哪两个角色加了血。
+    // 用空牌面登记一次 lastPlayed 只借它触发连线（TargetBeams 2.5s 后自动消失），
+    // 不产出牌面，也不影响这 2 张弃牌原有的公开展示。
+    remember(s,[],jieyinLabel,action.seat,[target],'jieyin')
   } else if(skill==='qingnang'){
     const recipient=player(s,target)
     if(ids.length!==1||!p.hand.some(c=>c.id===ids[0])||!recipient?.alive||recipient.hp>=recipient.maxHp)throw new Error('青囊需要一张手牌和一名受伤角色')

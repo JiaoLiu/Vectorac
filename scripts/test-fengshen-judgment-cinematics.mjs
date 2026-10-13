@@ -24,7 +24,7 @@ test('unrelated armor judgments do not create cinematic effects',()=>{
  const f=judgmentFixture('indulgence');assert.deepEqual(successfulJudgments(f.beforeView,{...f.afterView,pending:{...f.afterView.pending,delayType:'bagua'}}),[])
 })
 test('public seat-local online projection keeps the correct cinematic recipient',()=>{
- const f=judgmentFixture('indulgence'),before=rotateView(f.beforeView,2),after=rotateView(f.afterView,2),events=successfulJudgments(before,after)
+ const f=judgmentFixture('indulgence'),before=rotateView(playerView(f.before,2),2),after=rotateView(playerView(f.after,2),2),events=successfulJudgments(before,after)
  assert.equal(events.length,1);assert.equal(events[0].target,after.pending.target);assert.equal(events[0].judgeId,f.after.pending.card.id)
 })
 test('cinematics queue once, wait for flight/lead, retain elapsed time and finish in order',()=>{
@@ -35,5 +35,8 @@ test('cinematics queue once, wait for flight/lead, retain elapsed time and finis
  q.enqueue([a,b]);assert.equal(q.busy,false);q.clear();assert.equal(q.completed,null);assert.equal(q.seen.size,0)
 })
 test('each illustration is distinct, escaped and contains no extra judgment card',()=>{
- for(const effect of ['lightning','indulgence','supplyshortage']){const f=judgmentFixture(effect),e=successfulJudgments(f.beforeView,f.afterView)[0],html=sceneHtml({...e,targetName:'<hidden>'});assert.ok(html.includes('<svg'));assert.ok(!html.includes('fs-card-face'));assert.ok(html.includes('&lt;hidden&gt;'));assert.ok(!html.includes('<hidden>'))}
+ // 角色化特效版：雷击是 SVG 闪电，迷魂阵是门扉，闭粮阵是封条盖章——按各自标志断言，三个场景互不相同。
+ const marks={lightning:'fs-character-lightning',indulgence:'fs-character-door',supplyshortage:'fs-character-stamp'},seen=new Set()
+ for(const effect of ['lightning','indulgence','supplyshortage']){const f=judgmentFixture(effect),e=successfulJudgments(f.beforeView,f.afterView)[0],html=sceneHtml({...e,targetName:'<hidden>'});assert.ok(html.includes(marks[effect]));seen.add(html);assert.ok(!html.includes('fs-card-face'));assert.ok(html.includes('&lt;hidden&gt;'));assert.ok(!html.includes('<hidden>'))}
+ assert.equal(seen.size,3)
 })

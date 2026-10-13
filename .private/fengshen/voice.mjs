@@ -1,6 +1,7 @@
 import {AUDIO_ENTRIES,audioPath} from './audio-manifest.mjs'
 import {heroForBase,CARDS_BY_TYPE} from './theme.mjs'
 import {skillAudioKey} from './audio-manifest.mjs'
+import {judgmentSamples,JUDGMENT_SOUND_SECONDS} from './judgment-audio.mjs'
 const allowed=new Set(AUDIO_ENTRIES.map(e=>e.key))
 // 一帧里最多补播几条历史事件：正常单手最多 2 条（见 cuesForAction 注释），超出说明是断线/后台补帧。
 const MAX_BACKLOG_CUES=2
@@ -50,6 +51,20 @@ export class CardVoice {
       source.onended=()=>{this.effects.delete(source);source.disconnect();gain?.disconnect();if(generation===this.generation){this.history.push({...cue,status:'played'});this.history=this.history.slice(-80);this.onIdle()}}
       source.start();return true
     }catch(error){this.history.push({...cue,status:'failed'});console.warn('[封神受伤音效]',error.message);return false}
+  }
+  async judgmentSound(kind,{elapsed=0}={}){
+    if(this.closed||!this.enabled||!this.context||this.context.state!=='running')return false
+    const generation=this.generation,started=Date.now()-elapsed,c=this.context,key='sfx-judgment-'+kind
+    let source,gain
+    try{
+      if(!await this.deadline(this.ready,200,false)||this.closed||!this.enabled||generation!==this.generation||c!==this.context||c.state!=='running')return false
+      const offset=Math.max(0,(Date.now()-started)/1000);if(offset>=JUDGMENT_SOUND_SECONDS)return false
+      const cacheKey=key+':'+c.sampleRate;let buffer=this.cache.get(cacheKey)
+      if(!buffer){const data=judgmentSamples(kind,c.sampleRate);if(!data)return false;buffer=c.createBuffer(1,data.length,c.sampleRate);buffer.getChannelData(0).set(data);this.cache.set(cacheKey,buffer)}
+      source=c.createBufferSource();gain=c.createGain();source.buffer=buffer;gain.gain.value=.6;source.connect(gain);gain.connect(c.destination);this.effects.add(source)
+      source.onended=()=>{this.effects.delete(source);source.disconnect();gain.disconnect();if(generation===this.generation){this.history.push({key,status:'played'});this.history=this.history.slice(-80)}}
+      source.start(c.currentTime,offset);this.history.push({key,status:'queued'});this.history=this.history.slice(-80);return true
+    }catch{this.effects.delete(source);try{source?.disconnect();gain?.disconnect()}catch{};return false}
   }
   // 给任意 await 加一个上限：音频上下文 resume、fetch/decode、onended 都可能永久挂起。
   // 只要 drain 卡在其中一步，busy 就永远不复位，schedule() 会被无限推迟，整局 AI 都不出牌。

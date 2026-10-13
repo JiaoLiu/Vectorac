@@ -4,13 +4,15 @@ import assert from 'node:assert/strict'
 import {makeDeck} from '../.private/fengshen/core/catalog.mjs'
 import {createGame,dispatch,playerView,catalog,restoreGame} from '../.private/fengshen/engine.mjs'
 import {createEngine} from '../.private/fengshen/core/engine.mjs'
-import {targetLinks,judgmentMark,publicPicks,tutorialEnabled,responsePrompt,responderHighlight} from '../.private/fengshen/table-visuals.mjs'
+import {targetLinks,judgmentMark,publicPicks,tutorialEnabled,responsePrompt,responderHighlight,responseSelection,counterSelection} from '../.private/fengshen/table-visuals.mjs'
 import {rescueEffects,discardEffects} from '../.private/fengshen/draw-effects.mjs'
 import {TargetBeams,BEAM_DURATION} from '../.private/fengshen/target-beams.mjs'
 import {renderCenter,renderBattle,renderOpponent,delayIcons} from '../.private/fengshen/table.mjs'
 import {hand} from './fixtures/sanguo.mjs'
 import {readFile} from 'node:fs/promises'
 function fixture(){const s=stableOpponents(createGame({heroId:'yangjian',role:'lord',seed:17}));s.deck=catalog.makeDeck();s.discard=[];s.processing=[];s.harvestPool=[];s.queue=[];s.pending=null;s.phase='play';s.current=0;s.logs=[];s.lastPlayed=null;s.lastEvent=null;for(const p of s.players){p.hand=[];p.equip={weapon:null,armor:null,offenseHorse:null,defenseHorse:null};p.judgment=[];p.marks={sha:0,rende:0};p.hp=p.maxHp;p.alive=true}return s}
+const cleanGame=heroId=>{const s=stableOpponents(createGame({heroId,role:'lord',seed:17}));s.deck=catalog.makeDeck();s.discard=[];s.processing=[];s.harvestPool=[];s.queue=[];s.pending=null;s.phase='play';s.current=0;s.logs=[];s.lastPlayed=null;s.lastEvent=null;for(const p of s.players){p.hand=[];p.equip={weapon:null,armor:null,offenseHorse:null,defenseHorse:null};p.judgment=[];p.marks={sha:0,rende:0};p.hp=p.maxHp;p.alive=true}return s}
+const fakeCard=(type,suit='spade',rank=9)=>({id:`fx-${type}-${suit}${rank}`,type,suit,rank})
 const step=(s,a)=>{const r=dispatch(s,{seat:s.pending?.actor??s.current,...a});assert.ok(r.ok,r.error);return r.state}
 const ui=(s,hints=true)=>({state:s,hints,paused:false,selected:[],targets:[],skill:null,choiceIndex:null,pace:650,header:()=>'',targetable:()=>[],matching:()=>[],currentAs:()=>null,equipment:()=>'',skills:()=>'',won:()=>false,pendingText:()=>''})
 test('first visit has hints; disabling survives preference reads',()=>{assert.equal(tutorialEnabled(null),true);assert.equal(tutorialEnabled({}),true);assert.equal(tutorialEnabled({hints:false}),false);assert.equal(tutorialEnabled({hints:true}),true)})
@@ -46,6 +48,109 @@ test('one area play expires at 2.5s even while counter/responders and revisions 
  time=BEAM_DURATION;assert.deepEqual(beams.frame(playerView(s,0)).links,[])
  s=step(s,{type:'pass'});beams.record(playerView(s,0));assert.deepEqual(beams.frame(playerView(s,0)).links,[],'the next AOE recipient cannot restart beams')
  while(s.pending)s=step(s,{type:'pass'});beams.record(playerView(s,0));assert.deepEqual(beams.frame(playerView(s,0)).links,[],'settled-card fallback cannot restart beams')
+})
+test('Life Pact (jieyin) draws a healer-to-target beam for 2.5s without touching the public discard display',()=>{
+ let time=0,s=stableOpponents(createGame({heroId:'isis',role:'lord',seed:17}));s.deck=catalog.makeDeck();s.discard=[];s.processing=[];s.harvestPool=[];s.queue=[];s.pending=null;s.phase='play';s.current=0;s.logs=[];s.lastPlayed=null;s.lastEvent=null;for(const p of s.players){p.hand=[];p.equip={weapon:null,armor:null,offenseHorse:null,defenseHorse:null};p.judgment=[];p.marks={sha:0,rende:0};p.hp=p.maxHp;p.alive=true}
+ // 自己与目标都受伤，才能看出「哪 2 个加血了」；seat 1 刘备是男性，符合生命之契目标。
+ s.players[0].hp--;s.players[1].hp--;const ids=[hand(s,0,'sha')[0].id,hand(s,0,'shan')[0].id]
+ const beams=new TargetBeams({now:()=>time}),eventId=s.eventId
+ s=step(s,{type:'skill',skill:'jieyin',ids,target:1})
+ const v=playerView(s,0)
+ // 黄线：结姻者 → 受伤男性，和杀一样 2.5s 后自动消失
+ assert.deepEqual(targetLinks(v),[{source:0,target:1}])
+ beams.record(v);assert.deepEqual(beams.frame(v).links,[{source:0,target:1}])
+ time=BEAM_DURATION;assert.deepEqual(beams.frame(v).links,[])
+ // 丢的 2 张牌展示照旧：仍进弃牌堆、仍发公开弃牌线索；连线只借 lastPlayed，不产出牌面
+ assert.ok(ids.every(id=>s.discard.some(c=>c.id===id)))
+ const cue=s.logs.find(l=>l.id>eventId&&l.cue?.kind==='discard-cue')?.cue
+ assert.ok(cue);assert.deepEqual(cue.cards.map(c=>c.id).sort(),ids.slice().sort())
+ assert.equal(v.lastPlayed.as,'jieyin');assert.equal(v.lastPlayed.cards.length,0);assert.equal(v.lastPlayed.virtualType,undefined)
+ assert.ok(restoreGame(s))
+})
+test('slash/savage responses pre-select a literal normal card; converted responses stay manual',()=>{
+ // 出杀：手里有普通闪就默认替玩家选中，但同一次询问内玩家改选不被覆盖
+ let s=fixture(),[sha]=hand(s,1,'sha');const [shan]=hand(s,0,'shan');hand(s,0,'tao')
+ s.current=1;s=step(s,{type:'play',as:'sha',ids:[sha.id],targets:[0]})
+ let v=playerView(s,0)
+ const first=responseSelection(v,null,[]),key=first.key
+ assert.ok(key&&key.startsWith(`${v.revision}:`))
+ assert.deepEqual(first.selected,[shan.id])
+ const [tao]=v.players[0].hand.filter(c=>c.type==='tao')
+ assert.deepEqual(responseSelection(v,key,[tao.id]).selected,[tao.id],'player change preserved within one query')
+ // 万妖袭营（南蛮）：需要出杀，同样默认选中普通杀
+ let s2=fixture(),[sav]=hand(s2,1,'savage');const [shaCard]=hand(s2,0,'sha');hand(s2,0,'shan')
+ s2.current=1;s2=step(s2,{type:'play',as:'savage',ids:[sav.id],targets:[]})
+ while(s2.pending&&s2.pending.actor!==0)s2=step(s2,{type:'pass'})
+ assert.equal(s2.pending?.as,'sha');const v2=playerView(s2,0)
+ assert.deepEqual(responseSelection(v2,null,[]).selected,[shaCard.id])
+ // 磐影（青刚，黑桃当闪）：转化响应绝不代选，玩家须自己确认
+ let s3=stableOpponents(createGame({heroId:'shiji',role:'lord',seed:17}));s3.deck=catalog.makeDeck();s3.discard=[];s3.processing=[];s3.harvestPool=[];s3.queue=[];s3.pending=null;s3.phase='play';s3.current=0;s3.logs=[];s3.lastPlayed=null;s3.lastEvent=null;for(const p of s3.players){p.hand=[];p.equip={weapon:null,armor:null,offenseHorse:null,defenseHorse:null};p.judgment=[];p.marks={sha:0,rende:0};p.hp=p.maxHp;p.alive=true}
+ const spade=s3.deck.find(c=>c.type==='sha'&&c.suit==='spade');assert.ok(spade);s3.players[0].hand.push(spade)
+ let s4=s3,[sha2]=hand(s4,1,'sha');s4.current=1;s4=step(s4,{type:'play',as:'sha',ids:[sha2.id],targets:[0]})
+ const v3=playerView(s4,0)
+ assert.ok(v3.legal.some(a=>a.type==='respond'&&a.ids.includes(spade.id)),'conversion is legal')
+ assert.deepEqual(responseSelection(v3,null,[99]).selected,[99],'no pre-selection for suit conversions')
+})
+test('fire/thunder slash count as literal slashes; all suit conversions never pre-selected',()=>{
+ // 需要杀：炎杀、雷杀物理上就是杀，与普通杀一样代选
+ let s=cleanGame('isis'),[sav]=hand(s,1,'savage');const fire=fakeCard('firesha');s.players[0].hand.push(fire)
+ s.current=1;s=step(s,{type:'play',as:'savage',ids:[sav.id],targets:[]})
+ while(s.pending&&s.pending.actor!==0)s=step(s,{type:'pass'})
+ assert.equal(s.pending?.as,'sha');let v=playerView(s,0)
+ assert.ok(v.legal.some(a=>a.type==='respond'&&!a.guhuo&&a.ids.includes(fire.id)),'fire slash responds')
+ assert.deepEqual(responseSelection(v,null,[]).selected,[fire.id])
+ // 雷杀同理
+ let s2=cleanGame('isis'),[sav2]=hand(s2,1,'savage');const thunder=fakeCard('thundersha');s2.players[0].hand.push(thunder)
+ s2.current=1;s2=step(s2,{type:'play',as:'savage',ids:[sav2.id],targets:[]})
+ while(s2.pending&&s2.pending.actor!==0)s2=step(s2,{type:'pass'})
+ const v2=playerView(s2,0)
+ assert.deepEqual(responseSelection(v2,null,[]).selected,[thunder.id])
+ // 龙胆·杀当闪（杨戬）：只有杀时被杀，转化合法但绝不代选
+ let s3=cleanGame('yangjian'),[atk]=hand(s3,1,'sha');const sla=fakeCard('sha','club');s3.players[0].hand.push(sla)
+ s3.current=1;s3=step(s3,{type:'play',as:'sha',ids:[atk.id],targets:[0]})
+ const v3=playerView(s3,0)
+ assert.ok(v3.legal.some(a=>a.type==='respond'&&!a.guhuo&&a.ids.includes(sla.id)),'slash-as-dodge conversion is legal')
+ assert.deepEqual(responseSelection(v3,null,[77]).selected,[77],'slash as dodge never pre-selected')
+ // 龙胆·闪当杀（杨戬）＋武圣·红桃当杀（金吒）：万妖要杀时转化闪绝不代选
+ let s4=cleanGame('yangjian'),[sav3]=hand(s4,1,'savage');const shan=fakeCard('shan');s4.players[0].hand.push(shan)
+ s4.current=1;s4=step(s4,{type:'play',as:'savage',ids:[sav3.id],targets:[]})
+ while(s4.pending&&s4.pending.actor!==0)s4=step(s4,{type:'pass'})
+ const v4=playerView(s4,0)
+ assert.ok(v4.legal.some(a=>a.type==='respond'&&!a.guhuo&&a.ids.includes(shan.id)),'dodge-as-slash conversion is legal')
+ assert.deepEqual(responseSelection(v4,null,[88]).selected,[88],'dodge as slash never pre-selected')
+ let s5=cleanGame('jinzha'),[sav4]=hand(s5,1,'savage');const red=fakeCard('shan','heart');s5.players[0].hand.push(red)
+ s5.current=1;s5=step(s5,{type:'play',as:'savage',ids:[sav4.id],targets:[]})
+ while(s5.pending&&s5.pending.actor!==0)s5=step(s5,{type:'pass'})
+ const v5=playerView(s5,0)
+ assert.ok(v5.legal.some(a=>a.type==='respond'&&!a.guhuo&&a.ids.includes(red.id)),'red-as-slash conversion is legal')
+ assert.deepEqual(responseSelection(v5,null,[66]).selected,[66],'wusheng conversion never pre-selected')
+})
+test('AOE keeps nullify prompts for others; own response pre-select then own counter never clash',()=>{
+ // 别人被无懈询问时不做杀/闪预选；自己出杀/闪预选后，轮到自己破法时由破法预选接管，二者互不覆盖
+ let s=cleanGame('isis');hand(s,1,'savage');hand(s,2,'nullify')
+ s.current=1;s=step(s,{type:'play',as:'savage',ids:[s.players[1].hand[0].id],targets:[]})
+ while(s.pending&&s.pending.actor===0)s=step(s,{type:'pass'})
+ if(s.pending?.kind==='counter'&&s.pending.actor!==0){
+  const v=playerView(s,0)
+  assert.equal(responseSelection(v,null,['kept']).key,null)
+  assert.deepEqual(responseSelection(v,null,['kept']).selected,['kept'],'others\' nullify prompt never touches my selection')
+ }
+ // 自己持无懈：万妖先按座次问破法——自己被问时由破法预选接管，杀闪预选不干扰
+ let s2=cleanGame('isis');const [sav5]=hand(s2,1,'savage');const [nullify]=hand(s2,0,'nullify');const [sha3]=hand(s2,0,'sha')
+ s2.current=1;s2=step(s2,{type:'play',as:'savage',ids:[sav5.id],targets:[]})
+ while(s2.pending&&s2.pending.actor!==0)s2=s2.pending.kind==='counter'?step(s2,{type:'decline'}):step(s2,{type:'pass'})
+ if(s2.pending?.kind==='counter'){
+  const v2=playerView(s2,0),own=counterSelection(v2,null,[])
+  assert.deepEqual(own.selected,[nullify.id],'own nullify prompt pre-selects the nullify')
+  assert.equal(responseSelection(v2,null,['kept']).key,null,'counter moment has no slash/dodge pre-select')
+  s2=step(s2,{type:'decline'})
+ }
+ // 破法问完轮到自己出杀响应（万妖要杀）：杀闪预选接管
+ while(s2.pending&&s2.pending.actor!==0)s2=step(s2,{type:'pass'})
+ assert.equal(s2.pending?.kind,'response');assert.equal(s2.pending?.as,'sha')
+ const v2=playerView(s2,0),sel=responseSelection(v2,null,[])
+ assert.deepEqual(sel.selected,[sha3.id],'own slash/dodge prompt pre-selects first')
+ assert.equal(counterSelection(v2,null,[]).key,null,'while responding there is no counter prompt to hijack')
 })
 test('new play gets a fresh lifetime, but restore/render never replays old connections',()=>{
  let time=0,s=fixture(),[c]=hand(s,0,'arrows');const beams=new TargetBeams({now:()=>time});s=step(s,{type:'play',as:'arrows',ids:[c.id],targets:[]});while(s.pending)s=step(s,{type:'pass'});let v=playerView(s,0)

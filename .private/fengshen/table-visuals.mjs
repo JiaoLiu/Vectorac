@@ -1,4 +1,5 @@
 import {combatContext} from './combat.mjs'
+import {CARDS_BY_TYPE} from './theme.mjs'
 export const tutorialEnabled=preferences=>preferences?.hints!==false
 export function targetLinks(view,{targets=[],as=null}={}){
  if(targets.length){if(as==='collateral')return [{source:0,target:targets[0]},...(targets.length>1?[{source:targets[0],target:targets[1]}]:[])]
@@ -46,6 +47,18 @@ export function counterSelection(view,previousKey,selected=[]){
  const p=view.pending,key=p?.kind==='counter'&&p.actor===view.seat?`${view.revision}:${p.id}`:null
  if(!key)return {key:null,selected}
  return {key,selected:key===previousKey?selected:((view.legal.find(a=>a.type==='respond'&&!a.guhuo)||view.legal.find(a=>a.type==='respond'))?.ids.slice()||[])}
+}
+// 被杀/万妖袭营/决斗等要求出响应牌时，若手里有「字面一致」的实体杀/闪，先替玩家选中一张，
+// 与破法询问一样只是辅助：换一张（不同点数或花色转化）、放弃仍由玩家决定。
+// 实体杀包含普通杀与炎杀、雷杀（它们物理上就是杀，只是带属性）；要闪只代选普通闪。
+// 花色/牌种转化（黑桃当闪、红桃当杀、杀当闪、闪当杀等技能）绝不代选，玩家须自己确认。
+export function responseSelection(view,previousKey,selected=[]){
+ const p=view.pending,key=p?.kind==='response'&&p.actor===view.seat?`${view.revision}:${p.id}`:null
+ if(!key)return {key:null,selected}
+ if(key===previousKey)return {key,selected}
+ const literal=c=>c.type===p.as||p.as==='sha'&&CARDS_BY_TYPE[c.type]?.attackNature
+ const match=view.legal.find(a=>a.type==='respond'&&!a.guhuo&&a.ids.length===1&&view.players[view.seat].hand.some(c=>c.id===a.ids[0]&&literal(c)))
+ return {key,selected:match?match.ids.slice():selected}
 }
 export function counterAction(view,selected,{blockedUntil=0,now=Date.now()}={}){
  if(view.pending?.kind!=='counter'||view.pending.actor!==view.seat||now<blockedUntil)return null

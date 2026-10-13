@@ -12,7 +12,7 @@ import './toolbar.css'
 import {renderToolbar,renderMenu} from './toolbar.mjs'
 import './mobile-table.css'
 import './arena-table.css'
-import {tutorialEnabled,judgingSeat,counterSelection,counterAction,responderHighlight} from './table-visuals.mjs'
+import {tutorialEnabled,judgingSeat,counterSelection,counterAction,responseSelection,responderHighlight} from './table-visuals.mjs'
 import {TargetBeams} from './target-beams.mjs'
 import {mountOnline,onlineCredential} from './online.mjs'
 import './online.css'
@@ -270,7 +270,8 @@ export class FengshenUI {
     clearTimeout(this.judgmentTimer)
     const play=this.playMotions.frame(),blocked=!!this.modal||document.hidden||!!this.transfer||!!this.draws.length||!!this.moves.length||!!play&&play.elapsed<PLAY_FLIGHT_MS
     const frame=this.judgmentCinematics.frame({blocked});paintJudgmentCinematic(this.root,frame)
-    if(frame)this.judgmentTimer=setTimeout(()=>{if(this.destroyed)return;this.paintJudgment();if(!this.judgmentCinematics.busy){if(!this.modal&&!this.transfer&&!this.draws.length&&!this.moves.length&&!this.playMotions.busy&&!isRevealing(this.state))this.root.querySelector('.fs-dock')?.removeAttribute('inert');this.syncClock();this.settleTable();this.schedule()}},frame.event?frame.remaining+15:Math.min(80,frame.remaining))
+    if(frame?.event&&!frame.event.soundStarted){frame.event.soundStarted=true;void this.voice.judgmentSound(frame.event.kind,{elapsed:frame.elapsed})}
+    if(frame)this.judgmentTimer=setTimeout(()=>{if(this.destroyed)return;this.paintJudgment();if(!this.judgmentCinematics.busy){if(!this.modal&&!this.transfer&&!this.draws.length&&!this.moves.length&&!this.playMotions.busy&&!isRevealing(this.state))this.root.querySelector('.fs-dock')?.removeAttribute('inert');this.syncClock();this.settleTable();this.schedule();this.maybeAutoEnd()}},frame.event?frame.remaining+15:Math.min(80,frame.remaining))
   }
   decoratePlayMotion(view,anchor){
     this.root.querySelectorAll('.fs-play-flight,.fs-play-links,.fs-play-source-symbol,.fs-impact-symbol').forEach(e=>e.remove())
@@ -551,6 +552,8 @@ export class FengshenUI {
     clearTimeout(this.tableSettleTimer)
     if(this.state&&!this.setup){
       const v=playerView(this.state,0),choice=counterSelection(v,this.counterKey,this.selected);this.counterKey=choice.key;this.selected=choice.selected
+      // 出杀/闪响应的辅助预选：与破法相同只在新询问出现时替换一次，之后玩家可自由改选。
+      const resp=responseSelection(v,this.responseKey,this.selected);this.responseKey=resp.key;this.selected=resp.selected
       const busy=this.playMotions.busy||this.judgmentCinematics.busy||!!this.transfer||!!this.draws.length||!!this.moves.length||this.hits.some(h=>h.until>Date.now())||this.recoveries.some(h=>h.until>Date.now())
       this.tableSettleFrame=this.tableSettlement.frame(v,{busy});this.closedTableChain=this.tableSettleFrame.closedChain
       if(this.discards?.chainKey&&(this.discards.chainKey===this.closedTableChain||this.discards.chainKey!==tableChainKey(v)))this.discards=null
@@ -588,7 +591,18 @@ export class FengshenUI {
     if(this.transfer||this.draws.length||this.moves.length||this.playMotions.busy||this.judgmentCinematics.busy||isRevealing(this.state))this.root.querySelector('.fs-dock')?.setAttribute('inert','')
     if(this.modal){this.root.querySelectorAll('.fs-header,.fs-lobby,.fs-entry,.fs-setup,.fs-hud,.fs-arena,.fs-status,.fs-dock').forEach(e=>e.inert=true);this.root.querySelector('[data-action="close"]')?.focus()}
     else if(wasModal&&this.returnFocus?.action){const s=`[data-action="${this.returnFocus.action}"]${this.returnFocus.id?`[data-id="${this.returnFocus.id}"]`:''}`;this.root.querySelector(s)?.focus()}
-    scaleCards(this.root);this.online?.afterRender();this.schedule()
+    scaleCards(this.root);this.online?.afterRender();this.schedule();this.maybeAutoEnd()
+  }
+  // 出牌阶段已经没有任何牌可出、也没有技能可发动（合法动作只剩「结束出牌」）时，
+  // 直接进入弃牌阶段，省一次手动点击。联机本地状态可能滞后于服务器，用 revision 去重防止重复发送。
+  maybeAutoEnd(){
+    if(this.lobby||this.setup||this.paused||this.modal||this.auto||this.online?.roundBreak)return
+    if(this.transfer||this.draws.length||this.moves.length||this.playMotions.busy||this.judgmentCinematics.busy)return
+    const v=this.state&&!this.state.winner?playerView(this.state,0):null
+    if(!v||v.pending||v.current!==0||v.phase!=='play')return
+    if(v.legal.length!==1||v.legal[0].type!=='end')return
+    if(this.autoEndFor===v.revision)return
+    this.autoEndFor=v.revision;this.act({type:'end'})
   }
   destroy(){this.destroyed=true;this.keepAwake(false);this.online?.close();this.voice.destroy();this.music.destroy();this.clearEffects();clearInterval(this.clockTimer);clearTimeout(this.timer);clearTimeout(this.toastTimer);this.root.removeEventListener('click',this.onClick);this.root.removeEventListener('keydown',this.onKey);document.removeEventListener('fullscreenchange',this.onScreen);document.removeEventListener('visibilitychange',this.onVisibility);this.viewport.destroy();this.starGesture.destroy()}
 }
