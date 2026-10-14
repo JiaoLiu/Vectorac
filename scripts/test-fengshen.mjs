@@ -76,3 +76,20 @@ test('prototype stays out of VuePress public routes and binds loopback',async()=
   assert.ok(script.includes("server.listen(port,'127.0.0.1'"));assert.ok(html.includes('noindex,nofollow,noarchive'))
   await assert.rejects(stat(new URL('../blogs/other/fengshen.md',import.meta.url)))
 })
+test('五谷丰登只剩一张牌时自动摸到手上，被无懈可击抵消则不摸',()=>{
+  const setup=()=>{const s=createAssignedGame({heroIds:['jifa','nezha','dixin','jinling','yangjian'],roles:['lord','loyal','rebel','rebel','renegade'],seed:7});s.deck=catalog.makeDeck();s.discard=[];s.processing=[];s.harvestPool=[];s.queue=[];s.pending=null;s.phase='play';s.current=0;s.turns=1;s.logs=[];s.lastPlayed=null;for(const p of s.players){p.hand=[];p.judgment=[];p.equip={weapon:null,armor:null,offenseHorse:null,defenseHorse:null};p.marks={sha:0};p.hp=p.maxHp;p.alive=true}return s}
+  const give=(s,seat,type)=>{const i=s.deck.findIndex(c=>c.type===type);assert.ok(i>=0,'牌堆缺 '+type);const c=s.deck.splice(i,1)[0];s.players[seat].hand.push(c);return c}
+  const step=(s,a)=>{const r=dispatch(s,{seat:s.pending?.actor??s.current,revision:s.revision,promptId:s.pending?.id,...a});assert.ok(r.ok,r.error);return r.state}
+  // 无人破法：前四家照常各选一张，最后一家只剩一张时不再弹选牌，直接摸到手上
+  let s=setup(),c=give(s,0,'harvest')
+  s=step(s,{type:'play',as:'harvest',ids:[c.id],targets:[]})
+  for(let i=0;i<4;i++){assert.equal(s.pending?.kind,'pick');assert.equal(s.pending.actor,i);s=step(s,{type:'choose',value:s.harvestPool[0].id})}
+  assert.notEqual(s.pending?.kind,'pick');assert.equal(s.players[4].hand.length,1);assert.equal(s.harvestPool.length,0)
+  assert.ok(s.logs.some(l=>l.cue?.kind==='harvest-pick'&&l.cue.source===4),'自动摸牌也要留下公开选牌线索')
+  assert.ok(restoreGame(s));assert.equal(allCards(s).length,108)
+  // 有人无懈最后一张的获得：效果被抵消，牌不入手、进入弃牌堆
+  s=setup();c=give(s,0,'harvest');const n=give(s,2,'nullify');let countered=false
+  s=step(s,{type:'play',as:'harvest',ids:[c.id],targets:[]})
+  while(s.pending){if(s.pending.kind==='pick')s=step(s,{type:'choose',value:s.harvestPool[0].id});else if(!countered&&s.pending.kind==='counter'&&s.pending.target===4&&s.pending.actor===2){countered=true;s=step(s,{type:'respond',ids:[n.id]})}else s=step(s,{type:'pass'})}
+  assert.ok(countered);assert.equal(s.players[4].hand.length,0);assert.equal(s.harvestPool.length,0);assert.ok(s.discard.some(x=>x.id===n.id))
+})

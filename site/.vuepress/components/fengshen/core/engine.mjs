@@ -643,6 +643,8 @@ function settleEvent(s,event) {
     case 'take': if(event.handOnly?player(s,event.target).hand.length:event.equipmentOnly?ownedCards(player(s,event.target)).length:targetCardCount(player(s,event.target)))makePending(s,{...event,kind:'take',actor:event.actor??event.source});break
     case 'harvest': {
       if(!player(s,event.target).alive||!s.harvestPool.length)break
+      // 池里只剩一张牌没有选择余地；前面的破法询问已过（无人无懈才会走到这里），直接摸到手上不再弹选牌。
+      if(s.harvestPool.length===1){const [card]=s.harvestPool.splice(0,1);player(s,event.target).hand.push(card);note(s,`${name(s,event.target)}从五谷丰登拿到了最后一张牌`,catalog.trackBattle?{kind:'harvest-pick',source:event.target,card:clone(card),playedId:s.lastPlayed?.id}:null);break}
       makePending(s,{kind:'pick',actor:event.target,pool:clone(s.harvestPool)});break
     }
     case 'harvestCleanup': s.discard.push(...s.harvestPool.splice(0));break
