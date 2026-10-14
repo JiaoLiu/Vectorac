@@ -939,16 +939,18 @@ export class Lobby {
   }
 
   _leave() {
-    if (!window.confirm('退出房间？座位将立即释放，退出后无法再回到本局。')) return
-    clearCredential()
-    if (this.net) this.net.leaveRoom()
-    this.inGame = false
-    this.room = null
-    this.player = null
-    this.mySeat = null
-    this.view = 'list'
-    this._renderList()
-    this._startPoll()
+    // 不可逆操作：复用页面通用确认弹窗（scmj-confirm），与牌桌内退出一致，不弹系统 confirm
+    this.ui.confirm('退出房间？座位将立即释放，退出后无法再回到本局。', () => {
+      clearCredential()
+      if (this.net) this.net.leaveRoom()
+      this.inGame = false
+      this.room = null
+      this.player = null
+      this.mySeat = null
+      this.view = 'list'
+      this._renderList()
+      this._startPoll()
+    })
   }
 
   _copyInvite() {
