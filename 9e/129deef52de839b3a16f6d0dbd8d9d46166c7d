@@ -1,0 +1,98 @@
+site/.vuepress/components/doudizhu/ai.js
+  e86933ad8403d940 98-225,227,419-425,436-438,442,445-452,501-504,513-515,519-520,522,524,527,530,533,563-566,568
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.8",
+  "base_commit_sha": "9e129deef52de839b3a16f6d0dbd8d9d46166c7d",
+  "prompts": {
+    "27f41da6c57a495d": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6acdda8ef9e87c4613dc6b4e",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 451,
+      "overriden_lines": 0
+    },
+    "5058ed3dc1a97a8c": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6ac848ce090dc5dc9234c7bc",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 213,
+      "overriden_lines": 0
+    },
+    "bfcf2812a5394d1a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ffe24-0691-79c0-9329-ff854e9d5202",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 9,
+      "overriden_lines": 0
+    },
+    "e86933ad8403d940": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6acef816f9e87c4613dc730f",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 316,
+      "overriden_lines": 0
+    }
+  },
+  "commit_stats": {
+    "git_diff_added_lines": 167,
+    "git_diff_deleted_lines": 23,
+    "ai_additions": 167,
+    "ai_accepted": 167,
+    "BYMC": 0,
+    "mixed_additions": 0,
+    "BYAC": 167,
+    "BYRC": 0,
+    "per_file": {
+      "site/.vuepress/components/doudizhu/ai.js": {
+        "BYMC": [],
+        "BYAC": [
+          "98-225",
+          "227",
+          "419-425",
+          "436-438",
+          "442",
+          "445-452",
+          "501-504",
+          "513-515",
+          "519-520",
+          "522",
+          "524",
+          "527",
+          "530",
+          "533",
+          "563-566",
+          "568"
+        ],
+        "BYRC": []
+      }
+    }
+  },
+  "commit_timestamp": 1791962731,
+  "requirement_id": ""
+}
