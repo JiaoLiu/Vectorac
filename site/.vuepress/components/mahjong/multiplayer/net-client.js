@@ -106,6 +106,7 @@ export const ERROR_TEXT = {
   INVALID_ROOM_CODE: '房号格式不正确',
   INVALID_RULES: '规则参数不合法',
   FORBIDDEN: '无权限',
+  RATE_LIMITED: '操作太频繁，请稍后再试',
   SERVER_ERROR: '服务器开小差了，请稍后重试'
 }
 

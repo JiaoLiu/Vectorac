@@ -41,6 +41,10 @@ export const config = {
   // 重连令牌强度（文档 §7：禁止只靠昵称 / 房号 / 座位重连）
   resumeTokenBytes: intEnv('RESUME_TOKEN_BYTES', 32, 16),
 
+  // 建房 / 加入频率限制（每 IP 每窗口）：防脚本刷房、撞库房号等恶意请求
+  roomActionRateLimit: intEnv('ROOM_ACTION_RATE_LIMIT', 10, 1),
+  roomActionRateWindowMs: intEnv('ROOM_ACTION_RATE_WINDOW_SECONDS', 60, 1) * 1000,
+
   // 回合计时（秒）：摸打 / 响应窗口的 deadline。
   // 建房间时可传 turnTimeoutSeconds 覆盖本房间（见 min/maxRoomTurnTimeoutSeconds）；
   // 未传则用这个默认值。

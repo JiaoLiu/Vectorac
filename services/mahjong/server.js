@@ -45,6 +45,28 @@ export function createServer({ logger } = {}) {
   })
   const manager = new RoomManager({ sessions, hub, aiService, logger: log })
 
+  // 建房 / 加入频率限制（每 IP 每窗口）：防脚本刷房、撞库房号等恶意请求。
+  // nginx 反代时取 X-Real-IP；服务只监听 127.0.0.1，外网无法直连伪造该头部。
+  const rateBuckets = new Map() // 'create:1.2.3.4' -> { count, resetAt }
+  function rateLimit(req, kind) {
+    const raw = req.get('X-Real-IP') || req.socket.remoteAddress || 'unknown'
+    const key = kind + ':' + String(raw).replace(/^::ffff:/, '')
+    const now = Date.now()
+    const bucket = rateBuckets.get(key)
+    if (!bucket || now >= bucket.resetAt) {
+      // 惰性清理过期桶，避免 Map 无界增长
+      if (rateBuckets.size > 4096) {
+        for (const [k, v] of rateBuckets) if (now >= v.resetAt) rateBuckets.delete(k)
+      }
+      rateBuckets.set(key, { count: 1, resetAt: now + config.roomActionRateWindowMs })
+      return
+    }
+    if (bucket.count >= config.roomActionRateLimit) {
+      fail(ERR.RATE_LIMITED, '操作太频繁，请稍后再试')
+    }
+    bucket.count++
+  }
+
   const app = express()
   app.disable('x-powered-by')
   app.use(express.json({ limit: '64kb' }))
@@ -79,6 +101,7 @@ export function createServer({ logger } = {}) {
   // 供入口页「快速开局」一步到位直进牌桌；好友房不传，走等待室手动开始。
   app.post('/api/rooms', async (req, res) => {
     try {
+      rateLimit(req, 'create')
       const { displayName, gameType, hostSide, rules, turnTimeoutSeconds, autoStart } = req.body || {}
       const { room, summary, player } = manager.createRoom({ displayName, gameType, hostSide, rules, turnTimeoutSeconds })
       if (autoStart) await room.startGame(player.playerId)
@@ -91,6 +114,7 @@ export function createServer({ logger } = {}) {
   // 加入房间（房号加入）
   app.post('/api/rooms/join', async (req, res) => {
     try {
+      rateLimit(req, 'join')
       const { roomCode, displayName } = req.body || {}
       const { summary, player } = await manager.joinRoom({ roomCode, displayName })
       res.json({ ok: true, data: { room: summary, player } })

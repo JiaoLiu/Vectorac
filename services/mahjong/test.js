@@ -1199,6 +1199,47 @@ async function suiteHttp() {
       }
     })
   )
+
+  await test('HTTP：建房 / 加入频率限制返回 RATE_LIMITED', () =>
+    withServer(async s => {
+      await new Promise(resolve => s.server.listen(0, '127.0.0.1', resolve))
+      const base = 'http://127.0.0.1:' + s.server.address().port
+      const j = async (path, opts) => {
+        const r = await fetch(base + path, opts)
+        return { status: r.status, body: await r.json() }
+      }
+      const create = () =>
+        j('/api/rooms', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ displayName: '刷房' })
+        })
+      const join = code =>
+        j('/api/rooms/join', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ roomCode: code, displayName: '撞库' })
+        })
+
+      // 调低阈值验证限频（限频器按 server 实例隔离，不影响其他用例）
+      const savedLimit = config.roomActionRateLimit
+      config.roomActionRateLimit = 3
+      try {
+        for (let i = 0; i < 3; i++) eq((await create()).status, 200, '限频内建房成功')
+        const blocked = await create()
+        eq(blocked.status, 429, '超频建房 429')
+        eq(blocked.body.errorCode, ERR.RATE_LIMITED, '建房错误码')
+
+        // 加入是独立桶：错误房号先撞限频，再撞房号校验
+        for (let i = 0; i < 3; i++) await join('ZZZZZZ')
+        const blockedJoin = await join('ZZZZZZ')
+        eq(blockedJoin.status, 429, '超频加入 429')
+        eq(blockedJoin.body.errorCode, ERR.RATE_LIMITED, '加入错误码')
+      } finally {
+        config.roomActionRateLimit = savedLimit
+      }
+    })
+  )
 }
 
 // ============================================================

@@ -24,7 +24,9 @@ export const ERR = {
   // 房间码 / 加入流程（HTTP 层）
   INVALID_ROOM_CODE: 'INVALID_ROOM_CODE',
   INVALID_RULES: 'INVALID_RULES',
-  FORBIDDEN: 'FORBIDDEN'
+  FORBIDDEN: 'FORBIDDEN',
+  // 频率限制（HTTP 层）
+  RATE_LIMITED: 'RATE_LIMITED'
 }
 
 /** 默认 HTTP 状态码（WS 只取 errorCode） */
@@ -46,7 +48,8 @@ const HTTP_STATUS = {
   [ERR.SERVER_ERROR]: 500,
   [ERR.INVALID_ROOM_CODE]: 400,
   [ERR.INVALID_RULES]: 400,
-  [ERR.FORBIDDEN]: 403
+  [ERR.FORBIDDEN]: 403,
+  [ERR.RATE_LIMITED]: 429
 }
 
 export class AppError extends Error {

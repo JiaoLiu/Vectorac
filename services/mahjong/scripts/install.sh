@@ -108,6 +108,9 @@ ensure_env WS_PATH "$WS_PATH"
 ensure_env ADMIN_TOKEN "$ADMIN_TOKEN"
 # 容量与超时（不填则用 config.js 内置默认值：20 房 / 摸打 30s / 定缺 20s / 2 路 AI 并发）
 ensure_env MAX_ROOMS "20"
+# 建房 / 加入频率限制（每 IP 每 60s 窗口）：防脚本刷房、撞库房号等恶意请求
+ensure_env ROOM_ACTION_RATE_LIMIT "10"
+ensure_env ROOM_ACTION_RATE_WINDOW_SECONDS "60"
 # 每人起始积分：多局连打跨局累计，任一家 ≤ 0 判破产结束房间
 ensure_env START_SCORE "100"
 ensure_env TURN_TIMEOUT_SECONDS "30"
