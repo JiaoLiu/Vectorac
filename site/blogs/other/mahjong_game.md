@@ -55,6 +55,7 @@ meta:
 <button type="button" class="scmj-btn" data-scmj-rules>规则说明</button>
 </div>
 <div class="scmj-entry-tip">每人 100 分起算，跨局累计；首局掷骰定庄，之后先胡者坐庄（一炮多响时点炮者坐庄），连庄 3 轮挂 🔥。</div>
+<div class="scmj-entry-fine">免费技术演示 · 无充值 / 金币 / 下注 / 奖励兑换 · 投诉与建议：support@vectorac.com 或「联系我们 → 留言」</div>
 </div>
 </div>
 <div class="scmj-lobby" data-scmj-lobby hidden>
@@ -371,6 +372,7 @@ meta:
   color: #ffd968;
 }
 #scmjGame .scmj-entry-tip { margin-top: 10px; font-size: 11.5px; color: #9fbfa8; }
+#scmjGame .scmj-entry-fine { margin-top: 6px; font-size: 11px; line-height: 1.7; color: #6f9a80; }
 
 /* ============ 联机倒计时（服务端权威 deadline） ============ */
 #scmjGame .scmj-countdown {
@@ -491,6 +493,7 @@ meta:
 #scmjGame .scmj-lb-foot { display: flex; justify-content: center; }
 #scmjGame .scmj-lb-foot .scmj-btn { width: 100%; }
 #scmjGame .scmj-lb-tip { text-align: center; color: #9fbfa8; font-size: 13px; padding: 10px; }
+#scmjGame .scmj-lb-fine { margin-top: 10px; text-align: center; font-size: 11px; line-height: 1.7; color: #6f9a80; }
 
 /* ============ 牌桌顶栏 ============ */
 #scmjGame .scmj-topbar {

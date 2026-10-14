@@ -428,6 +428,7 @@ export class Lobby {
       '</div>' +
       '<div class="scmj-lb-meta" data-lb-meta></div>' +
       '<div class="scmj-lb-rooms" data-lb-rooms></div>' +
+      '<div class="scmj-lb-fine">免费技术演示 · 无充值 / 金币 / 下注 / 奖励兑换 · 投诉与建议：support@vectorac.com 或「联系我们 → 留言」</div>' +
       '</div>'
     // 骨架重建后动态部分的缓存作废，强制重绘一次
     this._roomsHtml = null
@@ -621,6 +622,7 @@ export class Lobby {
       '<div class="scmj-lb-waitseats">' + seats + '</div>' +
       rulebar +
       '<div class="scmj-lb-foot">' + footer + '</div>' +
+      '<div class="scmj-lb-fine">免费技术演示 · 无充值 / 金币 / 下注 / 奖励兑换 · 投诉与建议：support@vectorac.com 或「联系我们 → 留言」</div>' +
       '</div>'
     this._bindShell()
   }

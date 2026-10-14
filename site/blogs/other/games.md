@@ -182,12 +182,16 @@
 
 </div>
 
-::: tip 免费技术演示
-本站小游戏均为免费技术演示，仅供学习与技术交流，无需注册、完全免费，不涉及任何充值、金币、道具交易、下注或奖励兑换。联机对局仅凭房号邀请好友，全服房间数量有限。
-如需联系本站，或对站内内容有任何投诉、举报与建议，请发送邮件至 [support@vectorac.com](mailto:support@vectorac.com)，或通过顶部「联系我们 → 留言」提交，我们会尽快核实处理。
-:::
+<p class="site-fine-print">本站小游戏均为免费技术演示，仅供学习与技术交流：无需注册、完全免费，不涉及任何充值、金币、道具交易、下注或奖励兑换；联机对局仅凭房号邀请好友，全服房间数量有限。投诉、举报与建议请发送邮件至 <a href="mailto:support@vectorac.com">support@vectorac.com</a>，或通过顶部「联系我们 → 留言」提交。</p>
 
 <style>
+.site-fine-print {
+  margin: 14px 0 4px;
+  font-size: 12px;
+  line-height: 1.8;
+  color: #9aa0a6;
+}
+.site-fine-print a { color: #9aa0a6; text-decoration: underline; }
 .games-wrap {
   margin: 8px 0;
 }
