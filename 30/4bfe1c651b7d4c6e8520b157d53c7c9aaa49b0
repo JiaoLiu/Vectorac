@@ -1,0 +1,79 @@
+scripts/test-fengshen.mjs
+  27f41da6c57a495d 79-95
+site/.vuepress/components/fengshen/core/engine.mjs
+  27f41da6c57a495d 646-647
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.8",
+  "base_commit_sha": "304bfe1c651b7d4c6e8520b157d53c7c9aaa49b0",
+  "prompts": {
+    "27f41da6c57a495d": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6acdda8ef9e87c4613dc6b4e",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 19,
+      "total_deletions": 0,
+      "accepted_lines": 470,
+      "overriden_lines": 0
+    },
+    "5058ed3dc1a97a8c": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6ac848ce090dc5dc9234c7bc",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 213,
+      "overriden_lines": 0
+    },
+    "bfcf2812a5394d1a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ffe24-0691-79c0-9329-ff854e9d5202",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 9,
+      "overriden_lines": 0
+    }
+  },
+  "commit_stats": {
+    "git_diff_added_lines": 19,
+    "git_diff_deleted_lines": 0,
+    "ai_additions": 19,
+    "ai_accepted": 19,
+    "BYMC": 0,
+    "mixed_additions": 0,
+    "BYAC": 19,
+    "BYRC": 0,
+    "per_file": {
+      "scripts/test-fengshen.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "79-95"
+        ],
+        "BYRC": []
+      },
+      "site/.vuepress/components/fengshen/core/engine.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "646-647"
+        ],
+        "BYRC": []
+      }
+    }
+  },
+  "commit_timestamp": 1791946834,
+  "requirement_id": ""
+}
