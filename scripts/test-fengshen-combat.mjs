@@ -51,6 +51,48 @@ test('AI holds a lone Peach for teammates while healthy, and eats one when carry
  assert.equal(chooseAI(playerView(build(2,3),1)).as,'tao','血量健康但有多张桃时吃一张')
  assert.equal(chooseAI(playerView(build(1,1),1)).as,'tao','贫血时即使只有一张桃也自保')
 })
+test('AI 不浪费救不活的桃：凑不齐就一颗都不出，接力救得活才出手',()=>{
+ // 座位 2、3 同为反贼（队友）；受伤触发技（雷鉴等）的武将避开受害者位，防止插进救援询问。
+ const build=(dyingHp,peaches,attacker=4,victim=3,ai=2,relaySeat=null,victimJunk=false)=>{
+  let s=createAssignedGame({roles:['lord','loyal','rebel','rebel','renegade'],heroIds:['yangjian','wenzhong','nezha','jifa','hades'],seed:23})
+  Object.assign(s,{deck:catalog.makeDeck(),discard:[],processing:[],harvestPool:[],queue:[],pending:null,phase:'play',current:attacker,logs:[],lastPlayed:null,lastEvent:null})
+  for(const p of s.players){p.hand=[];p.equip={weapon:null,armor:null,offenseHorse:null,defenseHorse:null};p.judgment=[];p.marks={sha:0,rende:0};p.hp=p.maxHp}
+  const [sha]=hand(s,attacker,'sha');hand(s,ai,...Array(peaches).fill('tao'))
+  if(relaySeat!=null)hand(s,relaySeat,'sha')
+  if(victimJunk)hand(s,victim,'sha')
+  s.players[victim].hp=dyingHp
+  s=step(s,{seat:attacker,type:'play',as:'sha',ids:[sha.id],targets:[victim]})
+  s=step(s,{type:'pass'})
+  assert.equal(s.pending.kind,'rescue');assert.equal(s.pending.actor,ai)
+  return {s,view:playerView(s,ai)}
+ }
+ // -1 血要两个桃，手里只有一个：出桃也救不活，必须留着
+ let {view}=build(0,1)
+ assert.equal(view.players[3].hp,-1,'被打到 -1 血，需两个桃')
+ assert.equal(chooseAI(view).type,'pass','凑不齐所需桃数，一颗都不该白出')
+ // 濒死者手里就算捏着杂牌也不赌他暗藏桃/琼浆
+ ;({view}=build(0,1,4,3,2,null,true))
+ assert.equal(chooseAI(view).type,'pass','不赌濒死者手里暗藏桃')
+ // 凑得齐两个桃才出手
+ ;({view}=build(0,2))
+ assert.equal(chooseAI(view).type,'respond','手里桃够救活，必须救')
+ // 只差一个桃就能活：出桃即活，照常救
+ ;({view}=build(1,1))
+ assert.equal(chooseAI(view).type,'respond','出一个桃就能救活，照常救')
+ // 多人场放宽：还轮得到询问的同侧队友手里有牌，接力能补上缺口就出（反贼 3 救反贼 2，座位 4 未问到且持牌）
+ ;({view}=build(0,1,1,2,3,4))
+ assert.equal(chooseAI(view).type,'respond','队友接力能成就出')
+ // 接力补不上缺口（没人可接）照样留桃
+ ;({view}=build(0,1,1,2,3))
+ assert.equal(chooseAI(view).type,'pass','没有接力补缺就不出')
+ // 敌方（主公）濒死不救（既有行为不变）
+ ;({view}=build(0,2,4,0,2))
+ assert.equal(chooseAI(view).type,'pass','敌方濒死不救')
+ // 自救照常出桃：救不活自己也是一死，桃随阵亡弃掉，留着没有意义
+ ;({view}=build(0,1,1,2,2))
+ assert.equal(view.players[2].hp,-1,'自己被打到 -1 血')
+ assert.equal(chooseAI(view).type,'respond','自救有多少出多少')
+})
 test('AI stops wasting black slashes on Renwang Shield, yet keeps attacking red, qinggang or unarmored targets',()=>{
  const build=(armor,slashType='sha',suit='spade',weapon=null)=>{
   const military=slashType!=='sha'

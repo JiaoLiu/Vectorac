@@ -138,7 +138,22 @@ function response(view,HERO_BY_ID,isRed) {
     const shouldCancel=harmful?relation<-.5:relation>1
     return shouldCancel!==pending.negated&&answers.length?answers[0]:pass
   }
-  if(pending.kind==='rescue')return hostility(view,pending.target)<0&&answers.length?answers[0]:pass
+  if(pending.kind==='rescue'){
+    // 自救有多少出多少：救不活自己也是难逃一死，桃随阵亡弃掉，留着没有意义。
+    if(pending.target===view.seat)return answers.length?answers[0]:pass
+    // 救别人的桃出了就收不回：按「自己的桃＋座次上还没问到的同侧队友接力」算够不够救活。
+    // 够就出（自己凑不齐时看队友接力，多人场可以放宽）；明显救不活（如 2v2 只有自己能出）
+    // 就一颗都不出，留着等真正救得活的时机；不赌濒死者手里暗藏桃/琼浆。
+    // 手里没真牌时才用废牌假冒去赌（废牌不值钱），假冒也凑不齐就彻底放弃。
+    const target=view.players[pending.target],self=view.players[view.seat]
+    const amount=!view.teamMode&&target.role==='lord'&&target.effectiveSkills?.includes('jiuyuan')&&viewHero(self).faction==='wu'?2:1
+    const need=Math.ceil((1-target.hp)/amount)
+    const real=answers.filter(a=>!a.guhuo),supply=new Set(real.flatMap(a=>a.ids)).size
+    const fakes=new Set(answers.filter(a=>a.guhuo).flatMap(a=>a.ids)).size
+    const order=view.players.map((_,i)=>(view.current+i)%view.players.length).filter(t=>view.players[t].alive)
+    const relay=order.slice(order.indexOf(view.seat)+1).filter(t=>t!==pending.target&&hostility(view,t)<0).reduce((n,t)=>n+(view.players[t].handCount>0?1:0),0)
+    return hostility(view,pending.target)<0&&answers.length&&(supply||fakes)+relay>=need?answers[0]:pass
+  }
   if(pending.kind==='support')return hostility(view,pending.requester)<0&&answers.length?answers[0]:pass
   if(pending.kind==='axe')return hostility(view,pending.target)>0&&answers.length&&cost(view,answers[0].ids)<11?answers[0]:pass
   if(pending.kind==='blade')return hostility(view,pending.target)>0&&answers.length?answers[0]:pass

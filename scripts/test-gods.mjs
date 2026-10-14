@@ -33,6 +33,11 @@ test('AI 响应优先真牌，只有没真牌时才废牌假冒',()=>{
  s=rescueDying(aiStep(s,{type:'play',as:'sha',ids:[atk.id],targets:[0]}))
  pick=aiPick(s)
  assert.ok(pick.guhuo,'没真牌才假冒救援：'+JSON.stringify(pick))
+ // 真桃凑不齐所需（-1 血要两个桃、手里只有一个真桃）：一颗都不出，也不拿真桃去赌假冒凑数
+ s=aiFixture(identity,4);atk=aiGive(s,4,'sha');aiGive(s,1,'tao');aiGive(s,1,'lightning');s.players[0].hp=0
+ s=rescueDying(aiStep(s,{type:'play',as:'sha',ids:[atk.id],targets:[0]}))
+ pick=aiPick(s)
+ assert.equal(pick.type,'pass','救不活就别白送真桃：'+JSON.stringify(pick))
  // 出闪同理：真闪在手不得拿废牌假冒
  s=aiFixture(identity,0);atk=aiGive(s,0,'sha');const shan=aiGive(s,1,'shan');aiGive(s,1,'lightning')
  s=aiStep(s,{type:'play',as:'sha',ids:[atk.id],targets:[1]})
