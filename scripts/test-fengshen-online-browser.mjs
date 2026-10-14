@@ -31,8 +31,9 @@ try{
   assert.ok(await visitor.evaluate('document.querySelector(".fs-room-teams").textContent.includes("1、3 号")'))
   await visitor.tap('[data-online="preview-refresh"]');await visitor.waitFor('window.__fengshenUI.online.preview');assert.equal(apiWrites.length,writes);assert.equal(upgrades,ws)
   console.log('invite preview screenshot:',await visitor.screenshot('invitation-no-seat'))
-  // Backing out of a preview preserves the old room and its private credential.
-  await visitor.tap('[data-online="preview-back"]');await visitor.waitFor('window.__fengshenUI.lobby');assert.equal(apiWrites.length,writes);assert.equal(oldRoom.summary().humanCount,1)
+  // Backing out of a preview preserves the old room and its private credential,
+  // and lands in the shared online lobby like every other game's exit path.
+  await visitor.tap('[data-online="preview-back"]');await visitor.waitFor('location.pathname==="/blogs/other/gamehall.html"&&!!document.querySelector("[data-gh-lobby]")');assert.equal(apiWrites.length,writes);assert.equal(oldRoom.summary().humanCount,1)
   await visitor.evaluate('localStorage.removeItem("scmj-online-cred");true')
   await visitor.navigate('/games/fengshen/?room='+inviteRoom.roomCode);await visitor.waitFor('window.__fengshenUI.online?.preview')
   assert.equal(inviteRoom.summary().humanCount,1);assert.equal(apiWrites.length,writes)
@@ -42,7 +43,7 @@ try{
   assert.equal(apiWrites.slice(writes).filter(p=>p==='/api/rooms/join').length,1);assert.equal(inviteRoom.summary().humanCount,2)
   const seat=await visitor.evaluate('window.__fengshenUI.online.cred.seatIndex'),count=apiWrites.length
   await visitor.navigate('/games/fengshen/?room='+inviteRoom.roomCode);await visitor.waitFor('window.__fengshenUI.online?.ready');assert.equal(apiWrites.length,count);assert.equal(inviteRoom.summary().humanCount,2);assert.equal(await visitor.evaluate('window.__fengshenUI.online.cred.seatIndex'),seat)
-  assert.deepEqual(visitor.errors,[]);await visitor.evaluate('window.__fengshenUI.online.leave();true');await visitor.waitFor('window.__fengshenUI.lobby')
+  assert.deepEqual(visitor.errors,[]);await visitor.evaluate('window.__fengshenUI.online.leave();true');await visitor.waitFor('location.pathname==="/blogs/other/gamehall.html"&&!!document.querySelector("[data-gh-lobby]")')
   console.log('PASS invitation preview/refresh/back make no writes or WS; click/double-click admits once; refresh resumes original seat')
  }finally{await visitor.close()}
  const {room,player:p0}=service.manager.createRoom({gameType:'fengshen',rules:{mode:'1v1'},displayName:'测试甲'}),{player:p1}=await service.manager.joinRoom({roomCode:room.roomCode,displayName:'测试乙'})
