@@ -81,7 +81,8 @@ function response(view,HERO_BY_ID,isRed) {
     const p=view.players[view.seat],score=a=>hostility(view,a.target)*2+(view.players[a.target].hp<=2?3:0)-cost(view,a.ids)*.45+(pending.mode===1?(p.judgment.length?5:-4):p.hand.some(c=>c.type==='sha'||c.type==='draw')?-6:-2),rushes=opts.filter(a=>a.type==='rush').sort((a,b)=>score(b)-score(a))
     return rushes[0]&&score(rushes[0])>0?rushes[0]:pass
   }
-  const answers=opts.filter(o=>o.type==='respond').sort((a,b)=>cost(view,a.ids)+(a.guhuo?3:0)-cost(view,b.ids)-(b.guhuo?3:0))
+  // 真牌自然转化永远优先：假冒声明可能被质疑，废牌换不回真闪真桃；只有确实没真牌时才假冒，假冒里挑最便宜的牌。
+  const answers=opts.filter(o=>o.type==='respond').sort((a,b)=>(a.guhuo?1:0)-(b.guhuo?1:0)||cost(view,a.ids)-cost(view,b.ids))
   if(pending.kind==='discard')return {type:'discard',ids:orderByValue(view).slice(0,pending.count).map(c=>c.id)}
   if(pending.kind==='guess')return opts[(view.revision*7+view.seat)%opts.length]
   if(pending.kind==='tuxi')return opts.slice().sort((a,b)=>(b.targets||[]).reduce((n,t)=>n+hostility(view,t),0)-(a.targets||[]).reduce((n,t)=>n+hostility(view,t),0))[0]
@@ -183,6 +184,11 @@ const chooseAI=function chooseAI(view) {
             // 再打回去状态毫无变化，只是白烧一张牌（仙田当摄宝更是白白耗田），不如不出。
             else if(rel>0&&!ally.handCount&&!Object.values(ally.equip).some(Boolean)&&ally.judgment.length)score=-6
           }
+          if(action.as==='duel'){
+            // 决斗是拼杀，对方先出杀：空手牌必挨炸；对方手牌越多越可能反杀，按双方杀资源差计风险。
+            const threat=view.players[target].handCount
+            score+=threat?Math.max(-6,(slashResources(view,HERO_BY_ID,isRed)-threat)*1.5):4
+          }
           score-=Math.max(0,cost(view,action.ids)-5)*.4
           if(action.as==='duel'&&view.players[target].handCount>0&&slashResources(view,HERO_BY_ID,isRed)===0)score-=self.hp<=1?30:5
         } else if(action.as==='savage'||action.as==='arrows')score=view.players.filter(p=>p.alive&&p.seat!==view.seat&&p.equip.armor?.type!=='vine'&&(action.as!=='savage'||!viewHero(p).skills.some(s=>['huoshou','juxiang'].includes(s)))).reduce((n,p)=>n+hostility(view,p.seat)*(p.hp<=2?1.7:1),0)-Math.max(0,cost(view,action.ids)-5)*.5
@@ -191,7 +197,15 @@ const chooseAI=function chooseAI(view) {
         else if(action.as==='fireattack')score=self.hand.length>1?rel*3+1:-4
         else if(action.as==='ironchain')score=action.targets.length?action.targets.reduce((n,t)=>n+hostility(view,t)*(view.players[t].chained?-2:2),0):6-cost(view,action.ids)*.4
         else if(action.as==='collateral')score=hostility(view,action.targets[1])*2+Math.max(0,rel)+1
-        else if(action.as==='lightning')score=-2
+        else if(action.as==='lightning'){
+          // 闪电先挂自己判定区，之后每判一次未中就流向下家绕圈，黑桃2-9命中炸3血。
+          // 按传递顺序递减权重累加敌意评估：路径上敌人越多、越靠前越值得挂；自己人扎堆就留在手里。
+          const order=[view.seat]
+          for(let i=1;i<view.players.length;i++){const t=(view.seat+i)%view.players.length;if(view.players[t].alive)order.push(t)}
+          let ev=0,weight=1
+          for(const seat of order){ev+=weight*(seat===view.seat?-1:hostility(view,seat));weight*=.8}
+          score=1.5+ev
+        }
       } else if(action.type==='skill') {
         const expansion=foundationSkill(view,action,{hostility,cardValue,ownCards})||expansionSkill(view,action,{hostility,cardValue,ownCards});if(expansion){candidate=expansion.action;score=expansion.score}
         else if(action.skill==='qiangxi')score=hostility(view,action.target)*2+(view.players[action.target].hp<=1?5:0)-(action.ids.length?cost(view,action.ids)*.45:self.hp<=1?50:4)
@@ -220,6 +234,8 @@ const chooseAI=function chooseAI(view) {
         } else if(action.skill==='jijiang')score=self.marks.jijiangTried?-3:hostility(view,action.target)*2+1
       }
       if(action.guhuo){const recent=view.logs.filter(l=>l.cue?.kind==='guhuo-claim'&&l.cue.seat===view.seat&&l.cue.turn===view.turns&&!l.cue.response).length;score-=3;if(recent>=2&&['draw','harvest','garden'].includes(action.as))score=-8}
+      // 同分微偏好价值低的牌（普通杀先出、火杀雷杀留后），幅度远小于真实分差，只用来平票定序。
+      if(action.ids?.length)score-=cost(view,action.ids)*.01
       // Stable tie variation depends only on the public revision and our seat.
       score+=action.type==='end'?0:((view.revision+view.seat*3+(action.targets?.[0]||0))%7)*.015
       scored.push({score,action:candidate})
