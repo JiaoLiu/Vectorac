@@ -95,8 +95,136 @@ export function decompose(hand) {
   return combos
 }
 
+// ---------- 最少手数（最优拆牌）：记忆化搜索 ----------
+// 求「打空这些牌的最少出牌次数」。比贪心 decompose 更准：remain/delta 评估由此受益。
+// 状态 = 各点数（3..17→idx0..14）余量；WLOG 首手必含最低非空点，避免排列爆炸。
+// 翅膀（三带/四带/飞机带牌）取最小可用牌（近最优），序列（顺/连对/飞机）穷举。
+const _mhMemo = new Map()
+const _MH_MEMO_MAX = 200000
+
+function _mhCnt(hand) {
+  const cnt = new Array(15).fill(0)
+  for (const c of hand) cnt[rankOf(c) - 3]++
+  return cnt
+}
+
+/** 飞机带牌：从主体区间 [bodyStart, bodyStart+k) 之外取 k 个点数作翅膀（单翼 per=1，对翼 per=2），取最小 */
+function _pickWings(cnt, bodyStart, k, per) {
+  const out = []
+  for (let i = 0; i < 15 && out.length < k; i++) {
+    if (i >= bodyStart && i < bodyStart + k) continue // 排除飞机主体占用的点
+    if (cnt[i] >= per) out.push(i)
+  }
+  return out.length === k ? out : null
+}
+
+function _minHandsCnt(cnt) {
+  const key = cnt.join('')
+  const hit = _mhMemo.get(key)
+  if (hit !== undefined) return hit
+  let lo = -1, total = 0
+  for (let i = 0; i < 15; i++) {
+    if (cnt[i] > 0) { if (lo < 0) lo = i; total += cnt[i] }
+  }
+  if (total === 0) return 0
+  let best = total // 上界：全单张
+  const use = (i, k) => { cnt[i] -= k }
+  const unuse = (i, k) => { cnt[i] += k }
+  const rec = () => _minHandsCnt(cnt)
+  const cLo = cnt[lo]
+
+  // 单/对/三/炸（含最低点 lo）
+  if (cLo >= 1) { use(lo, 1); best = Math.min(best, 1 + rec()); unuse(lo, 1) }
+  if (cLo >= 2) { use(lo, 2); best = Math.min(best, 1 + rec()); unuse(lo, 2) }
+  if (cLo >= 3) { use(lo, 3); best = Math.min(best, 1 + rec()); unuse(lo, 3) }
+  if (cLo === 4) { use(lo, 4); best = Math.min(best, 1 + rec()); unuse(lo, 4) }
+  // 王炸
+  if ((lo === 13 || lo === 14) && cnt[13] >= 1 && cnt[14] >= 1) {
+    use(13, 1); use(14, 1); best = Math.min(best, 1 + rec()); unuse(13, 1); unuse(14, 1)
+  }
+  // 三带一 / 三带二
+  if (cLo >= 3) {
+    for (let w = 0; w < 15; w++) {
+      if (w === lo || cnt[w] < 1) continue
+      use(lo, 3); use(w, 1); best = Math.min(best, 1 + rec()); unuse(lo, 3); unuse(w, 1)
+      if (cnt[w] >= 2) { use(lo, 3); use(w, 2); best = Math.min(best, 1 + rec()); unuse(lo, 3); unuse(w, 2) }
+    }
+  }
+  // 四带二（两张单 / 两对）
+  if (cLo === 4) {
+    for (let a = 0; a < 15; a++) {
+      if (a === lo || cnt[a] < 1) continue
+      for (let b = a; b < 15; b++) {
+        if (b === lo || cnt[b] < 1) continue
+        if (b === a && cnt[a] < 2) continue
+        use(lo, 4); use(a, 1); use(b, 1); best = Math.min(best, 1 + rec()); unuse(lo, 4); unuse(a, 1); unuse(b, 1)
+      }
+    }
+    for (let a = 0; a < 15; a++) {
+      if (a === lo || cnt[a] < 2) continue
+      for (let b = a + 1; b < 15; b++) {
+        if (b === lo || cnt[b] < 2) continue
+        use(lo, 4); use(a, 2); use(b, 2); best = Math.min(best, 1 + rec()); unuse(lo, 4); unuse(a, 2); unuse(b, 2)
+      }
+    }
+  }
+  // 顺子（idx0..11，即 3..A，2/王不进）
+  if (lo <= 11) {
+    for (let len = 5; lo + len - 1 <= 11; len++) {
+      let ok = true
+      for (let i = lo; i < lo + len; i++) if (cnt[i] < 1) { ok = false; break }
+      if (!ok) break
+      for (let i = lo; i < lo + len; i++) use(i, 1)
+      best = Math.min(best, 1 + rec())
+      for (let i = lo; i < lo + len; i++) unuse(i, 1)
+    }
+  }
+  // 连对（3+ 对）
+  if (lo <= 11 && cLo >= 2) {
+    for (let pairs = 3; lo + pairs - 1 <= 11; pairs++) {
+      let ok = true
+      for (let i = lo; i < lo + pairs; i++) if (cnt[i] < 2) { ok = false; break }
+      if (!ok) break
+      for (let i = lo; i < lo + pairs; i++) use(i, 2)
+      best = Math.min(best, 1 + rec())
+      for (let i = lo; i < lo + pairs; i++) unuse(i, 2)
+    }
+  }
+  // 飞机（2+ 连三），可裸/带 k 单/带 k 对（翼取最小，近最优控分支）
+  if (lo <= 11 && cLo >= 3) {
+    for (let k = 2; lo + k - 1 <= 11; k++) {
+      let ok = true
+      for (let i = lo; i < lo + k; i++) if (cnt[i] < 3) { ok = false; break }
+      if (!ok) break
+      for (let i = lo; i < lo + k; i++) use(i, 3)
+      best = Math.min(best, 1 + rec())
+      const wingS = _pickWings(cnt, lo, k, 1)
+      const wingP = _pickWings(cnt, lo, k, 2)
+      if (wingS) for (const w of wingS) use(w, 1)
+      if (wingS) best = Math.min(best, 1 + rec())
+      if (wingS) for (const w of wingS) unuse(w, 1)
+      if (wingP) for (const w of wingP) use(w, 2)
+      if (wingP) best = Math.min(best, 1 + rec())
+      if (wingP) for (const w of wingP) unuse(w, 2)
+      for (let i = lo; i < lo + k; i++) unuse(i, 3)
+    }
+  }
+  if (_mhMemo.size > _MH_MEMO_MAX) _mhMemo.clear()
+  _mhMemo.set(key, best)
+  return best
+}
+
+export function minHands(hand) {
+  // 取「搜索值」与「贪心拆牌值」的较小者：
+  // 贪心 decompose 给出一组合法拆牌（=可达上界），搜索值在多数情况更优（更接近真实最少手数）。
+  // 二者取 min 保证 handsCount 永不劣于旧贪心，且更贴近真实最小手数。
+  const searched = _minHandsCnt(_mhCnt(hand))
+  const greedy = decompose(hand).length
+  return Math.min(searched, greedy)
+}
+
 export function handsCount(hand) {
-  return decompose(hand).length
+  return minHands(hand)
 }
 
 // ---------- 记牌器：未见牌（对手手牌 + 未亮底牌）的按点数分布 ----------
@@ -288,9 +416,13 @@ let MC_ENABLED = true
 export function setMonteCarlo(on) { MC_ENABLED = !!on }
 export function monteCarloEnabled() { return MC_ENABLED }
 
-const MC_BUDGET_MS = 380   // 单次决策时间预算
-const MC_ROLLOUTS = 14     // 每候选最多采样局数
-const MC_TOPK = 7          // 最多评估的候选数
+// 分层预算：残局多采样、中期少采样，均带时间预算；单步决策硬顶护流畅
+const MC_TIERS = {
+  end: { budget: 380, rollouts: 14, topk: 7 },   // 残局：充分推演（与旧版一致）
+  mid: { budget: 45, rollouts: 5, topk: 4 },    // 关键抉择 / 对手快跑
+  light: { budget: 30, rollouts: 3, topk: 4 }   // 牌面收敛但非关键
+}
+const MC_HARD_CAP_MS = 120 // 启发式 + MC 合计硬顶，避免联机卡顿
 
 const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now())
 
@@ -301,15 +433,23 @@ function shuffleInPlace(a) {
   }
 }
 
-/** 残局判定：牌少到可以采样推演 */
-function endgameTrigger(view, seat) {
+/** 是否值得跑蒙特卡洛、跑哪一档：返回档位对象或 null（前期纯启发式保流畅） */
+function mcPlan(view, seat, ranked) {
+  if (ranked.length <= 1) return null // 无可比候选，无需推演
   const myN = view.hand.length
   const others = [0, 1, 2].filter(s => s !== seat)
   const counts = others.map(s => view.handCounts[s])
-  if (!counts.every(c => typeof c === 'number')) return false
+  if (!counts.every(c => typeof c === 'number')) return null
   const totalUnseen = counts.reduce((a, b) => a + b, 0)
   const minOpp = Math.min(...counts)
-  return myN <= 6 || minOpp <= 4 || totalUnseen <= 12
+  const threat = minOpp <= 2 // 对手报单/报双
+  const top1 = ranked[0]
+  const key = ranked.includes(null) ||
+    (top1 && (top1.type === 'bomb' || top1.type === 'rocket' || top1.type === 'quad_solo' || top1.type === 'quad_pair'))
+  if (myN <= 6 || minOpp <= 4 || totalUnseen <= 12) return MC_TIERS.end
+  if (threat || key) return MC_TIERS.mid
+  if (myN <= 10 || totalUnseen <= 20) return MC_TIERS.light
+  return null // 前期牌多、局面平淡：纯启发式
 }
 
 /** 把未见牌随机分给两家对手，从「我出 cand」开始用启发式打完，返回我的胜负（1/0） */
@@ -358,7 +498,10 @@ function heuristicPlay(view, seat) {
 }
 
 /** 蒙特卡洛主入口：对每个候选取平均胜率，预算内采样，平手尊重启发式排序 */
-function monteCarlo(view, seat, candidates) {
+function monteCarlo(view, seat, candidates, plan) {
+  const { budget, rollouts, topk } = plan
+  const t0 = now()
+  const cap = () => now() - t0 > Math.min(budget, MC_HARD_CAP_MS)
   const playedSet = new Set()
   for (const c of view.hand) playedSet.add(c)
   for (const h of (view.played || [])) for (const c of h.cards) playedSet.add(c)
@@ -367,27 +510,27 @@ function monteCarlo(view, seat, candidates) {
   const otherSeats = [0, 1, 2].filter(s => s !== seat)
   const counts = otherSeats.map(s => view.handCounts[s])
   if (!counts.every(c => typeof c === 'number') || counts[0] + counts[1] !== unseen.length) return candidates[0]
-  const t0 = now()
-  const stats = candidates.map(() => ({ sum: 0, n: 0 }))
-  for (let r = 0; r < MC_ROLLOUTS; r++) {
+  const cands = candidates.slice(0, topk)
+  const stats = cands.map(() => ({ sum: 0, n: 0 }))
+  for (let r = 0; r < rollouts; r++) {
     const deck = unseen.slice()
     shuffleInPlace(deck)
     const oppHands = [deck.slice(0, counts[0]), deck.slice(counts[0])]
-    for (let i = 0; i < candidates.length; i++) {
-      stats[i].sum += simulate(view, seat, otherSeats, oppHands, candidates[i])
+    for (let i = 0; i < cands.length; i++) {
+      stats[i].sum += simulate(view, seat, otherSeats, oppHands, cands[i])
       stats[i].n++
-      if (now() - t0 > MC_BUDGET_MS) break
+      if (cap()) break
     }
-    if (now() - t0 > MC_BUDGET_MS) break
+    if (cap()) break
   }
   let bestIdx = -1, bestVal = -Infinity
-  candidates.forEach((_, i) => {
+  cands.forEach((_, i) => {
     if (!stats[i].n) return
     // 平手时尊重启发式排序（越靠前加微小偏置）
-    const v = stats[i].sum / stats[i].n + (candidates.length - i) * 1e-4
+    const v = stats[i].sum / stats[i].n + (cands.length - i) * 1e-4
     if (v > bestVal) { bestVal = v; bestIdx = i }
   })
-  return bestIdx >= 0 ? candidates[bestIdx] : candidates[0]
+  return bestIdx >= 0 ? cands[bestIdx] : cands[0]
 }
 
 // ---------- 主入口 ----------
@@ -417,11 +560,12 @@ export function aiDecide(view, seat) {
   if (pick === undefined) return null
   // 一手走完直接出，无需推演
   if (pick && pick.cards && pick.cards.length === hand.length) return { type: 'play', cards: pick.cards }
-  // 残局蒙特卡洛：候选不多、牌面收敛时采样推演（提示/测试可关）
-  if (MC_ENABLED && endgameTrigger(view, seat)) {
-    const cands = ranked.slice(0, MC_TOPK).filter(c => c === null || c.cards)
+  // 全阶段蒙特卡洛（残局/关键抉择/牌面收敛时）：采样推演选平均胜率最高（提示/测试可关）
+  const plan = MC_ENABLED ? mcPlan(view, seat, ranked) : null
+  if (plan) {
+    const cands = ranked.slice(0, plan.topk).filter(c => c === null || c.cards)
     if (cands.length > 1) {
-      const best = monteCarlo(view, seat, cands)
+      const best = monteCarlo(view, seat, cands, plan)
       return best === null ? { type: 'pass' } : { type: 'play', cards: best.cards }
     }
   }
