@@ -174,7 +174,7 @@ function operation(ui,v){
 export function renderControls(ui,v){
   if(ui.online?.roundBreak)return ui.online.roundControls()
   if(ui.paused)return `<div class="fs-action-row"><button data-action="pause" class="fs-primary">继续对局</button></div>`
-  if(v.winner)return `<div class="fs-action-row"><button data-action="quit-confirm" class="fs-primary">再开一局</button><button data-action="report" class="fs-secondary">${v.teamMode?'胜负一览':'身份揭晓'}</button></div>`
+  if(v.winner)return `<div class="fs-action-row"><button data-action="restart" class="fs-primary">再开一局</button><button data-action="report" class="fs-secondary">${v.teamMode?'胜负一览':'身份揭晓'}</button></div>`
   if(v.pending?.kind==='reveal'||v.pending?.kind==='ext'&&v.extension.stage==='reveal'||ui.transfer||ui.draws?.length||ui.moves?.length)return `<div class="fs-action-row fs-idle-controls"><span>动画展示中 · 自动继续</span></div>`
   if(ui.auto)return `<div class="fs-action-row"><button data-action="auto" class="fs-primary">接管 · 由我操作</button></div>`
   const extra=extensionControls(ui,v);if(extra)return extra

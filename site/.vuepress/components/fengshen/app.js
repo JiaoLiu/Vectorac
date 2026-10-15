@@ -103,6 +103,8 @@ export class FengshenUI {
     if(!this.lobby)return
     this.requestGameScreen();this.clearEffects();this.voice.stop();this.music.unlock();this.auto=false;this.state=null;this.setup=createSetup({mode:this.mode,deckVersion:this.deckVersion});this.draftHero=null;this.lobby=false;this.paused=false;this.reset();this.save();this.render()
   }
+  // 结算界面「再开一局」：不回大厅（回大厅会关掉沉浸全屏、露出浏览器顶栏），直接开新局。
+  restart(){this.lobby=true;this.start()}
   save(){if(this.online){if(this.state)this.roleMarks=cleanRoleMarks(playerView(this.state,0),this.roleMarks);this.online.saveNotes();return}if(this.setup)store(SAVE,{kind:'setup',setup:this.setup});else if(this.state){this.roleMarks=cleanRoleMarks(playerView(this.state,0),this.roleMarks);store(SAVE,{kind:'game',game:this.state,roleMarks:this.roleMarks})}}
   resume(){
     const raw=load(SAVE,null),session=restoreSession(raw);if(!session)return
@@ -415,6 +417,7 @@ export class FengshenUI {
     if(action==='draft-pick'){this.actSetup({type:'pick',seat:0,heroId:this.draftHero});return}
     if(action==='setup-begin'){this.actSetup({type:'begin',seat:0});return}
     if(action==='start'){this.start();return}
+    if(action==='restart'){this.restart();return}
     if(action==='mode'&&this.lobby){this.mode=modeById(id).id;this.savePreferences();this.render();return}
     if(action==='deck'&&this.lobby){this.deckVersion=this.deckVersion===2?1:2;this.savePreferences();this.render();return}
     if(action==='resume'){this.resume();return}
