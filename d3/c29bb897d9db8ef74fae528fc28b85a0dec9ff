@@ -1,0 +1,85 @@
+site/docs/about.md
+  e86933ad8403d940 2,6,8-10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.8",
+  "base_commit_sha": "d3c29bb897d9db8ef74fae528fc28b85a0dec9ff",
+  "prompts": {
+    "27f41da6c57a495d": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6acdda8ef9e87c4613dc6b4e",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 451,
+      "overriden_lines": 0
+    },
+    "5058ed3dc1a97a8c": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6ac848ce090dc5dc9234c7bc",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 213,
+      "overriden_lines": 0
+    },
+    "bfcf2812a5394d1a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ffe24-0691-79c0-9329-ff854e9d5202",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 9,
+      "overriden_lines": 0
+    },
+    "e86933ad8403d940": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6acef816f9e87c4613dc730f",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 5,
+      "total_deletions": 3,
+      "accepted_lines": 154,
+      "overriden_lines": 0
+    }
+  },
+  "commit_stats": {
+    "git_diff_added_lines": 5,
+    "git_diff_deleted_lines": 3,
+    "ai_additions": 5,
+    "ai_accepted": 5,
+    "BYMC": 0,
+    "mixed_additions": 0,
+    "BYAC": 5,
+    "BYRC": 0,
+    "per_file": {
+      "site/docs/about.md": {
+        "BYMC": [],
+        "BYAC": [
+          "2",
+          "6",
+          "8-10"
+        ],
+        "BYRC": []
+      }
+    }
+  },
+  "commit_timestamp": 1792046625,
+  "requirement_id": ""
+}
