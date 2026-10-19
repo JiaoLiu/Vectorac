@@ -176,7 +176,14 @@ function operation(ui,v){
 // 夺域（仙田当摄宝）点一次就直接进入选仙田流程，并标出仙田张数。
 function skillActionButtons(ui,v){
   const p=v.players[0]
-  if(ui.paused||ui.auto||ui.transfer||ui.draws?.length||ui.moves?.length||v.winner||v.pending||v.current!==0||!p.alive)return ''
+  if(ui.paused||ui.auto||ui.transfer||ui.draws?.length||ui.moves?.length||ui.online?.roundBreak||v.winner||!p.alive)return ''
+  // 回合外的响应窗口同样要给妖言声明入口（声明牌型只能在响应/出牌窗口里挑），否则只能回人物技能条的小按钮。
+  const guhuo=(p.effectiveSkills||[]).includes('guhuo')&&guhuoDeclareTypes(v).length>0
+  if(v.pending){
+    if(v.pending.actor!==0||!guhuo)return ''
+    return skillActionRow([{action:'guhuo',label:skillName(p,'guhuo'),title:'扣置声明一张牌并打出'}])
+  }
+  if(v.current!==0)return ''
   const items=[],seen=new Set()
   for(const a of v.legal){
     if(a.type!=='skill'||seen.has(a.skill))continue
@@ -185,11 +192,14 @@ function skillActionButtons(ui,v){
     items.push({action:'skill',value:a.skill,label:skillName(p,a.skill),title:skillHelp(p,a.skill)})
   }
   if((p.effectiveSkills||[]).includes('huashen'))items.push({action:'forms',label:skillName(p,'huashen'),title:'查看并切换变身形态与技能'})
-  if((p.effectiveSkills||[]).includes('guhuo')&&v.legal.some(a=>a.type==='play'||a.type==='respond'))items.push({action:'guhuo',label:skillName(p,'guhuo'),title:'扣置声明一张牌并打出'})
+  if(guhuo)items.push({action:'guhuo',label:skillName(p,'guhuo'),title:'扣置声明一张牌并打出'})
+  return skillActionRow(items)
+}
+function skillActionRow(items){
   if(!items.length)return ''
   return `<div class="fs-skill-actions" role="group" aria-label="可发动的技能">${items.map(it=>`<button class="fs-skill-action" data-action="${it.action}"${it.value?` data-value="${it.value}"`:''} title="${esc(it.title)}" aria-label="发动${esc(it.label)}">${esc(it.label)}</button>`).join('')}</div>`
 }
-export function renderControls(ui,v){
+function controlsRow(ui,v){
   if(ui.online?.roundBreak)return ui.online.roundControls()
   if(ui.paused)return `<div class="fs-action-row"><button data-action="pause" class="fs-primary">继续对局</button></div>`
   if(v.winner)return `<div class="fs-action-row"><button data-action="restart" class="fs-primary">再开一局</button><button data-action="report" class="fs-secondary">${v.teamMode?'胜负一览':'身份揭晓'}</button></div>`
@@ -229,8 +239,10 @@ export function renderControls(ui,v){
   const conversions=!ui.guhuoMode&&(variants.length>1||variants.length===1&&(as!==natural||!variants.includes(as)))?`<div class="fs-conversions">${variants.map(a=>`<button data-action="as" data-value="${a}" class="${a===as?'selected':''}">当${CARDS_BY_TYPE[a].name}</button>`).join('')}</div>`:''
   const selfTarget=as==='collateral'&&ui.targetable(v).includes(0)&&!ui.targets.includes(0)?'<button class="fs-self-target fs-secondary" data-action="target" data-value="0">让他杀我</button>':''
   const chainMode=as==='ironchain'?`<button class="fs-secondary" data-action="chain-mode" aria-pressed="${!!ui.chainReset}">${ui.chainReset?'改为连接':'改为解除'}</button>`:''
-  return `${skillActionButtons(ui,v)}<div class="fs-action-row">${conversions}${selfTarget}${chainMode}<button data-action="clear" class="fs-clear">重选</button><button data-action="confirm" class="fs-primary" ${!ui.skill&&(!ui.selected.length||opts.length&&opts.every(a=>a.guhuo)&&!ui.guhuoMode)?'disabled':''}>${ui.skill?'发动'+skillName(v.players[0],ui.skill):'确认出牌'}${ui.targets.length?' · '+ui.targets.map(t=>display(v.players[t]).name).join('、'):''}</button><button data-action="end" class="fs-secondary">结束出牌</button></div>`
+  return `<div class="fs-action-row">${conversions}${selfTarget}${chainMode}<button data-action="clear" class="fs-clear">重选</button><button data-action="confirm" class="fs-primary" ${!ui.skill&&(!ui.selected.length||opts.length&&opts.every(a=>a.guhuo)&&!ui.guhuoMode)?'disabled':''}>${ui.skill?'发动'+skillName(v.players[0],ui.skill):'确认出牌'}${ui.targets.length?' · '+ui.targets.map(t=>display(v.players[t]).name).join('、'):''}</button><button data-action="end" class="fs-secondary">结束出牌</button></div>`
 }
+// 对外统一出口：先出「可发动技能」按钮条，再出当前窗口的操作行（响应窗口也会带出妖言声明入口）。
+export function renderControls(ui,v){return skillActionButtons(ui,v)+controlsRow(ui,v)}
 export function renderBattle(ui){
   const v=playerView(ui.state,0),p=v.players[0],h=display(p),selfTarget=ui.targetable(v).includes(0),selfSelected=ui.targets.includes(0)
   // Render-only effective suit projection, never mutate the inventory.

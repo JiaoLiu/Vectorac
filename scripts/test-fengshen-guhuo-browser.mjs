@@ -100,5 +100,24 @@ try{
  const auto=await b.evaluate(`(()=>{const u=window.__fengshenUI;clearTimeout(u.timer);u.state=${JSON.stringify(empty)};u.lobby=false;u.paused=false;u.auto=false;u.guhuoChoice=true;u.autoEndFor=null;u.maybeAutoEnd();return {phase:u.state.phase,current:u.state.current}})()`)
  assert.ok(auto.phase!=='play'||auto.current!==0,`弹窗状态不拦截自动结束出牌: ${JSON.stringify(auto)}`)
  assert.deepEqual(b.errors,[])
+
+ // —— 场景四：回合外单响应窗口（被杀出闪），操作按钮区直接给「妖言」按钮，
+ //     不必再回人物左下角的技能条小按钮（此前只有技能条一个入口）——
+ s=fixture();s.current=1;const junk=give(s,0,'sha');const enemySlash=give(s,1,'sha')
+ s=step(s,{type:'play',as:'sha',ids:[enemySlash.id],targets:[0]})
+ assert.equal(s.pending?.kind,'response','进入出闪响应窗')
+ await inject(s);await sleep(400)
+ const bar=await b.evaluate(`(()=>{const btn=document.querySelector('.fs-skill-actions [data-action="guhuo"]');return btn?btn.textContent.trim():null})()`)
+ assert.ok(bar,'回合外响应窗的操作区有妖言按钮: '+bar)
+ await b.tap('.fs-skill-actions [data-action="guhuo"]');await sleep(300)
+ const single=await b.evaluate(`(()=>{const p=document.querySelector('.fs-guhuo-choice');return p?[...p.querySelectorAll('[data-action="guhuo-choice"]')].map(n=>n.dataset.value):null})()`)
+ assert.deepEqual(single,['shan'],'响应窗只列可声明的闪: '+JSON.stringify(single))
+ await b.tap('[data-action="guhuo-choice"][data-value="shan"]');await sleep(150)
+ await b.tap('[data-action="guhuo-choice"][data-value="shan"]');await sleep(250)
+ assert.equal(await b.evaluate('window.__fengshenUI.guhuoMode'),true,'声明为闪')
+ await b.tap(`.fs-hand-card[data-id="${junk.id}"]`);await sleep(200)
+ await b.tap('.fs-actions [data-action="confirm"]');await sleep(500)
+ assert.equal((await state()).pending?.stage,'question','假闪扣置上桌进入质疑')
+ assert.deepEqual(b.errors,[])
  console.log('PASS 妖言声明弹窗浏览器回归')
 }finally{await b.close();await rm(b.output,{recursive:true,force:true})}

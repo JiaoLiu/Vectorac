@@ -96,6 +96,12 @@ test('usable skills become tap-size buttons in the action area and jixi shows th
  assert.ok(!renderControls({...model(s),paused:true},v).includes('fs-skill-actions'),'暂停时不显示技能按钮')
  const waiting={...v,pending:{id:9,kind:'response',actor:0,as:'shan'}}
  assert.ok(!renderControls(model(s),waiting).includes('fs-skill-actions'),'响应窗口不显示出牌技能按钮')
+ // 回合外响应窗口：妖言玩家也要在操作按钮区拿到声明入口，不能只剩人物技能条上的小按钮。
+ const fake={...waiting,legal:[{type:'respond',ids:['c1'],as:'shan'},{type:'pass'}]}
+ fake.players=v.players.map(p=>p.seat===0?{...p,effectiveSkills:['guhuo']}:p)
+ const out=renderControls(model(s),fake)
+ assert.ok(out.includes('fs-skill-actions'),'响应窗口的操作区带出妖言按钮')
+ assert.ok(out.includes('data-action="guhuo"'),'点击即打开妖言声明弹窗')
 })
 test('all panel geometry reserves short-landscape safe areas and fixed action footer',async()=>{
  for(const height of [240,270,320,390,430,568,844])for(const safeTop of [0,47])for(const safeBottom of [0,21,34]){const g=choicePanelGeometry({height,safeTop,safeBottom});assert.ok(g.top>=safeTop+28);assert.ok(g.top+g.height<=height-safeBottom-8+.01);assert.ok(g.height>=110)}
