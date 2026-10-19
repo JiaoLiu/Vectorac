@@ -1,0 +1,167 @@
+site/.vuepress/components/fengshen/extension-table.mjs
+  c4950059e1c20b0c 14-15,17
+scripts/test-fengshen-foundation.mjs
+  c4950059e1c20b0c 82-84
+site/.vuepress/components/fengshen/table.css
+  c4950059e1c20b0c 111-112
+site/.vuepress/components/fengshen/arena-table.css
+  c4950059e1c20b0c 60,63-66,161-166,206
+site/.vuepress/components/fengshen/table.mjs
+  c4950059e1c20b0c 174-191,232,242-243,248
+scripts/test-fengshen-choice-panels.mjs
+  c4950059e1c20b0c 73-99
+scripts/test-fengshen-field-use-browser.mjs
+  c4950059e1c20b0c 25-29,51-61
+site/.vuepress/components/fengshen/core/foundation-skills.mjs
+  c4950059e1c20b0c 65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.0.8",
+  "base_commit_sha": "dfa4e2596b60a051f4ed76e8461d3eb9b693ae34",
+  "prompts": {
+    "27f41da6c57a495d": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6acdda8ef9e87c4613dc6b4e",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 451,
+      "overriden_lines": 0
+    },
+    "5058ed3dc1a97a8c": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6ac848ce090dc5dc9234c7bc",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 213,
+      "overriden_lines": 0
+    },
+    "bfcf2812a5394d1a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ffe24-0691-79c0-9329-ff854e9d5202",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 9,
+      "overriden_lines": 0
+    },
+    "c4950059e1c20b0c": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6ad5714771bed9f13e0ea786",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 90,
+      "total_deletions": 11,
+      "accepted_lines": 86,
+      "overriden_lines": 0
+    },
+    "e86933ad8403d940": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6acef816f9e87c4613dc730f",
+        "model": "unknown"
+      },
+      "human_author": "Jiao <liujiao@cmhi.chinamobile.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 148,
+      "overriden_lines": 0
+    }
+  },
+  "commit_stats": {
+    "git_diff_added_lines": 86,
+    "git_diff_deleted_lines": 7,
+    "ai_additions": 86,
+    "ai_accepted": 86,
+    "BYMC": 0,
+    "mixed_additions": 0,
+    "BYAC": 86,
+    "BYRC": 0,
+    "per_file": {
+      "scripts/test-fengshen-choice-panels.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "73-99"
+        ],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-field-use-browser.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "25-29",
+          "51-61"
+        ],
+        "BYRC": []
+      },
+      "scripts/test-fengshen-foundation.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "82-84"
+        ],
+        "BYRC": []
+      },
+      "site/.vuepress/components/fengshen/arena-table.css": {
+        "BYMC": [],
+        "BYAC": [
+          "60",
+          "63-66",
+          "161-166",
+          "206"
+        ],
+        "BYRC": []
+      },
+      "site/.vuepress/components/fengshen/core/foundation-skills.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "65"
+        ],
+        "BYRC": []
+      },
+      "site/.vuepress/components/fengshen/extension-table.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "14-15",
+          "17"
+        ],
+        "BYRC": []
+      },
+      "site/.vuepress/components/fengshen/table.css": {
+        "BYMC": [],
+        "BYAC": [
+          "111-112"
+        ],
+        "BYRC": []
+      },
+      "site/.vuepress/components/fengshen/table.mjs": {
+        "BYMC": [],
+        "BYAC": [
+          "174-191",
+          "232",
+          "242-243",
+          "248"
+        ],
+        "BYRC": []
+      }
+    }
+  },
+  "commit_timestamp": 1792377095,
+  "requirement_id": ""
+}
