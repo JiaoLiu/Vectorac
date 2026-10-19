@@ -133,7 +133,12 @@ function response(view,HERO_BY_ID,isRed) {
     // No HP can be gained here: preserve Nullify even in a counter-counter chain.
     const recipient=view.players[pending.target]
     if(pending.cardType==='garden'&&recipient&&(!recipient.alive||recipient.hp>=recipient.maxHp))return pass
-    const harmful=['fireattack','supplyshortage','duel','snatch','dismantle','savage','arrows','collateral','indulgence','lightning'].includes(pending.cardType)
+    // 自己刚打出的锦囊正在生效时，绝不反手无懈掉（等于白烧出牌＋无懈两张牌）；
+    // 被别人无懈掉之后仍可用自己的无懈翻回来，所以只拦「当前生效」这一向。
+    if(pending.source===view.seat&&!pending.negated)return pass
+    // 缚神索对还没连环的目标是上连环（后续火雷伤害会传导，对他有害），对已连环目标是解除（对他有利），
+    // 按这个方向决定当有害牌还是有益牌看，别把自己上连环当好事去挡。
+    const harmful=pending.cardType==='ironchain'?!recipient?.chained:['fireattack','supplyshortage','duel','snatch','dismantle','savage','arrows','collateral','indulgence','lightning'].includes(pending.cardType)
     const relation=hostility(view,pending.target)
     const shouldCancel=harmful?relation<-.5:relation>1
     return shouldCancel!==pending.negated&&answers.length?answers[0]:pass

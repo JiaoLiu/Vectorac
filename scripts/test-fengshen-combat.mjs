@@ -37,6 +37,22 @@ test('AI saves Nullify on a full-HP group-heal recipient in either counter direc
  assert.equal(chooseAI(view).type,'respond','full HP does not make enemy card-draw worthless')
  view.pending={...view.pending,target:3,cardType:'arrows'};assert.equal(chooseAI(view).type,'respond','protect full-HP allies from real damage')
 })
+test('AI never nullifies its own active spell, and ironchain direction decides who is protected',()=>{
+ const s=createAssignedGame({roles:['lord','rebel','loyal','rebel'],heroIds:['yangjian','nezha','jifa','wenzhong'],sides:[0,1,0,1],seed:23});hand(s,1,'nullify')
+ const view=playerView(s,1),counter=view.players[1].hand.find(c=>c.type==='nullify')
+ const ask=(cardType,target,source,negated)=>{view.pending={kind:'counter',actor:1,id:40,source,target,cardType,negated};view.legal=[{type:'pass'},{type:'respond',as:'nullify',ids:[counter.id]}];view.players[target].chained=false;return chooseAI(view).type}
+ // 自己刚连住敌人的缚神索，不能反手无懈掉（曾实测白烧两张牌）；被别人无懈后再无懈翻回来才对。
+ assert.equal(ask('ironchain',0,1,false),'pass','自己的缚神索生效中不出无懈')
+ assert.equal(ask('ironchain',0,1,true),'respond','自己的缚神索被无懈后要翻回来')
+ // 敌人给我的队友上连环要挡；敌人给他自己的队友上连环不用浪费无懈。
+ assert.equal(ask('ironchain',3,2,false),'respond','敌人连我方队友要抵消')
+ assert.equal(ask('ironchain',0,2,false),'pass','敌人连他自己的队友不抵消')
+ // 已连环目标的缚神索是解除连环，方向相反：敌人解除他队友的连环时我方要拦住。
+ view.pending={kind:'counter',actor:1,id:41,source:2,target:0,cardType:'ironchain',negated:false};view.legal=[{type:'pass'},{type:'respond',as:'nullify',ids:[counter.id]}];view.players[0].chained=true
+ assert.equal(chooseAI(view).type,'respond','敌人解除他队友的连环要抵消')
+ // 其他锦囊同样不自无懈：自己的无中生有正在生效时不出无懈。
+ assert.equal(ask('draw',0,1,false),'pass','自己的无中生有不自无懈')
+})
 test('AI holds a lone Peach for teammates while healthy, and eats one when carrying several or badly hurt',()=>{
  const build=(peaches,hp)=>{
   const s=createAssignedGame({roles:['lord','loyal','rebel','rebel','renegade'],heroIds:['yangjian','nezha','jifa','wenzhong','hades'],seed:23})
