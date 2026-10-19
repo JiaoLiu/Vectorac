@@ -70,6 +70,33 @@ test('private identity guesses cycle without revealing roles or changing AI stat
 test('guess sidecar resumes with existing session format; old bare-state saves still load',()=>{
  const s=fixture(),raw={kind:'game',game:s,roleMarks:{1:'loyal'}};assert.ok(restoreSession(raw));assert.ok(restoreSession(s));assert.equal(restoreSession(raw).game.roleMarks,undefined);assert.deepEqual(raw.roleMarks,{1:'loyal'})
 })
+test('board card pool marks every equipment owner so a teammate\'s gear is never taken by mistake',async()=>{
+ const s=fixture(),deck=catalog.makeDeck(),weapon=deck.find(c=>c.type==='qinggang'),horse=deck.find(c=>c.type==='dilu')
+ s.pending={kind:'ext',id:5,actor:0,skill:'qiaobian',stage:'board-pick'}
+ const v=playerView(s,0)
+ v.legal=[{type:'invoke',value:weapon.id,label:'区域牌',owner:2},{type:'invoke',value:horse.id,label:'区域牌',owner:0}]
+ v.extension={stage:'board-pick',instruction:'选择场上一张装备或阵法移动',cards:[weapon,horse]}
+ const html=renderCenter(model(s),v)
+ assert.ok(html.includes('fs-owner-tag'),'每张牌带归属标记')
+ assert.ok(html.includes('（2号）'),'标明他人的座号')
+ assert.ok(html.includes('（你）'),'自己的牌标为“你”')
+ const css=await readFile(new URL('../site/.vuepress/components/fengshen/table.css',import.meta.url),'utf8')
+ assert.ok(css.includes('.fs-owner-tag{'),'归属标记有样式')
+})
+test('usable skills become tap-size buttons in the action area and jixi shows the field count',()=>{
+ const s=fixture(),v=playerView(s,0)
+ v.pending=null;v.phase='play';v.current=0
+ v.legal=[{type:'skill',skill:'rende'},{type:'skill',skill:'jixi'},{type:'end'}]
+ v.players[0].fieldPile=[{id:'f1'},{id:'f2'},{id:'f3'}]
+ const html=renderControls(model(s),v)
+ assert.ok(html.includes('fs-skill-actions'),'可发动技能排进操作按钮区')
+ assert.ok(html.includes('data-action="skill" data-value="rende"'),'技能点击即进入发动流程')
+ assert.ok(html.includes('data-action="field-use"'),'仙田走直接发动入口')
+ assert.ok(html.includes('仙田3'),'仙田按钮标出张数')
+ assert.ok(!renderControls({...model(s),paused:true},v).includes('fs-skill-actions'),'暂停时不显示技能按钮')
+ const waiting={...v,pending:{id:9,kind:'response',actor:0,as:'shan'}}
+ assert.ok(!renderControls(model(s),waiting).includes('fs-skill-actions'),'响应窗口不显示出牌技能按钮')
+})
 test('all panel geometry reserves short-landscape safe areas and fixed action footer',async()=>{
  for(const height of [240,270,320,390,430,568,844])for(const safeTop of [0,47])for(const safeBottom of [0,21,34]){const g=choicePanelGeometry({height,safeTop,safeBottom});assert.ok(g.top>=safeTop+28);assert.ok(g.top+g.height<=height-safeBottom-8+.01);assert.ok(g.height>=110)}
  const css=await readFile(new URL('../site/.vuepress/components/fengshen/arena-table.css',import.meta.url),'utf8');assert.ok(css.includes('height:var(--choice-height'));assert.ok(css.includes('>footer{display:flex;flex:none'));assert.ok(css.includes('.fs-choice-dialog>.fs-incarnation-options'));assert.ok(css.includes('.fs-role-marker'));assert.ok(css.includes('.fs-pick-focus'))

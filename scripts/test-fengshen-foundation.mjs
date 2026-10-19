@@ -79,7 +79,9 @@ test('Qiaobian draw skip offers up to two private hand targets with frontend mul
  let s=fixture('zhangkui');const c=card(s,0,'sha');card(s,1,'shan');card(s,2,'tao');s=phase(s,'drawPhase');s=invoke(s,{ids:[c.id]});assert.equal(s.pending.spec.multiTargets,true);const v=playerView(s,0);assert.deepEqual(extensionAction(v,{selected:[],targets:[1,2]}).targets,[1,2]);assert.equal(extensionAction(v,{selected:[],targets:[1,1]}),null);s=invoke(s,{targets:[1,2],ids:[]});s=step(s,{type:'choose',value:'hand:0'});s=step(s,{type:'choose',value:'hand:0'});assert.equal(s.players[0].hand.length,2);assert.equal(s.players[1].hand.length,0);assert.equal(s.players[2].hand.length,0)
 })
 test('Qiaobian moving equipment uses public card choice and preserves its exact physical identity',()=>{
- let s=fixture('zhangkui');const c=card(s,0,'sha'),weapon=equip(s,1,'bow');s=phase(s,'playPhase');s=invoke(s,{ids:[c.id]});assert.equal(s.pending.stage,'board-pick');assert.ok(extensionPopup(playerView(s,0)));s=invoke(s,{value:weapon.id});s=invoke(s,{target:2,ids:[]});assert.equal(s.players[1].equip.weapon,null);assert.equal(s.players[2].equip.weapon.id,weapon.id)
+ let s=fixture('zhangkui');const c=card(s,0,'sha'),weapon=equip(s,1,'bow');s=phase(s,'playPhase');s=invoke(s,{ids:[c.id]});assert.equal(s.pending.stage,'board-pick');assert.ok(extensionPopup(playerView(s,0)))
+ const pick=playerView(s,0).legal.find(a=>a.type==='invoke'&&a.value===weapon.id);assert.equal(pick.owner,1,'全场牌池的选项带归属座次，前端才能标出是谁的装备')
+ s=invoke(s,{value:weapon.id});s=invoke(s,{target:2,ids:[]});assert.equal(s.players[1].equip.weapon,null);assert.equal(s.players[2].equip.weapon.id,weapon.id)
 })
 test('Qiaobian does not ask to skip the judge phase when the judgment area is empty',()=>{
  // 身上没有判定牌时，跳过判定阶段毫无意义（白弃一张牌），不应提示地变，直接进入摸牌阶段。

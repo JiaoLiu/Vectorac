@@ -22,6 +22,11 @@ try{
  const mark=await b.evaluate(`(()=>{const e=document.querySelector('.fs-state-marks .fs-field-mark[data-action="field-use"]');return {text:e.textContent,pe:getComputedStyle(e).pointerEvents}})()`)
  assert.ok(mark.text.includes('田3'),'仙田标记显示田的张数: '+JSON.stringify(mark))
  assert.equal(mark.pe,'auto','仙田标记可点击（pointer-events:auto）: '+JSON.stringify(mark))
+ // 新增两个更大的入口：操作按钮区的技能按钮、血量/手牌旁的仙田计数按钮，都标出张数。
+ const entries=await b.evaluate(`(()=>{const bar=document.querySelector('.fs-skill-actions [data-action="field-use"]'),chip=document.querySelector('.fs-hand-heading .fs-field-counter');return {bar:bar&&bar.textContent,barBox:bar&&bar.getBoundingClientRect().height,chip:chip&&chip.textContent}})()`)
+ assert.ok(entries.bar&&entries.bar.includes('仙田3'),'操作按钮区列出可发动的仙田按钮: '+JSON.stringify(entries))
+ assert.ok(entries.barBox>=30,'技能按钮达到可点击尺寸: '+JSON.stringify(entries))
+ assert.ok(entries.chip&&entries.chip.includes('3'),'血量/手牌旁有仙田计数按钮: '+JSON.stringify(entries))
  await b.evaluate(`document.querySelector('.fs-state-marks .fs-field-mark[data-action="field-use"]').click()`)
  await b.waitFor('!!document.querySelector(".fs-ext-choice")')
  const pick=await b.evaluate(`(()=>{const u=window.__fengshenUI,d=document.querySelector('.fs-ext-choice');return {kind:u.state.pending&&u.state.pending.kind,header:d?d.querySelector('header strong').textContent:'',options:(d||{querySelectorAll:()=>[]}).querySelectorAll('.fs-choice-card').length,confirm:!!(d&&d.querySelector('[data-action="panel-confirm"]'))}})()`)
@@ -43,4 +48,15 @@ try{
  assert.ok(toast.text.includes('觉醒'),'未觉醒给出觉醒提示: '+JSON.stringify(toast))
  assert.deepEqual(b.errors,[])
  console.log('PASS 未觉醒仙田点击给出提示: '+JSON.stringify({toast:toast.text}))
+
+ // 操作按钮区的技能按钮与血量/手牌旁的计数按钮是同一发动入口：点哪一个都能进入选仙田流程。
+ for(const selector of ['.fs-skill-actions [data-action="field-use"]','.fs-hand-heading .fs-field-counter']){
+  await b.evaluate(await inject(fixture()))
+  await b.waitFor(`!!document.querySelector('${selector}')`)
+  await b.evaluate(`document.querySelector('${selector}').click()`)
+  await b.waitFor('!!document.querySelector(".fs-ext-choice")')
+  assert.equal(await b.evaluate('window.__fengshenUI.state.pending.kind'),'ext',selector+' 点击进入摄宝流程')
+ }
+ assert.deepEqual(b.errors,[])
+ console.log('PASS 仙田技能按钮与计数按钮均可直接发动')
 }finally{await b.close()}

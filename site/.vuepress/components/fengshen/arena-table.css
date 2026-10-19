@@ -57,9 +57,13 @@
 .fs-playing .fs-hand{position:relative;grid-column:1;grid-row:2;height:100%;min-height:0;padding:var(--hand-top,30px) 1px var(--hand-bottom,4px);touch-action:pan-x pinch-zoom;overflow-x:auto;overflow-y:hidden}
 .fs-playing .fs-hand-row{position:relative}
 .fs-playing .fs-hand-card.selected{transform:translateY(calc(-1 * var(--hand-lift,21px)))}
-.fs-playing .fs-actions{grid-column:2;grid-row:1/3;align-self:stretch;display:flex;align-items:center;padding:0 3px var(--fs-safe-bottom)}
+.fs-playing .fs-actions{grid-column:2;grid-row:1/3;align-self:stretch;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:0 3px var(--fs-safe-bottom)}
 .fs-playing .fs-action-row{width:100%;max-height:100%;flex-direction:column;align-items:stretch;justify-content:center;gap:4px;min-height:0;overflow:auto;touch-action:pan-y pinch-zoom}
 .fs-playing .fs-action-row .fs-primary,.fs-playing .fs-action-row .fs-secondary,.fs-playing .fs-action-row .fs-clear{min-height:32px;padding:4px 5px;width:100%;max-width:none;font-size:11px;white-space:normal;flex:none;margin:0}
+/* 可发动技能按钮条：与操作按钮同区同尺寸，解决技能条小字难点、不知道点哪里发动的问题。 */
+.fs-skill-actions{display:flex;flex-wrap:wrap;gap:4px;width:100%}
+.fs-playing .fs-skill-action{flex:1 1 auto;min-width:0;min-height:32px;padding:4px 5px;border:1px solid #c8a75f99;border-radius:5px;background:linear-gradient(#3c5a49,#274034);color:#f2e3b6;font:600 11px/1.2 "PingFang SC",system-ui,sans-serif;white-space:normal;cursor:pointer}
+.fs-playing .fs-skill-action:active{transform:translateY(1px)}
 .fs-playing .fs-own-panel{position:relative;display:block;align-self:end;height:var(--hero-height);min-height:0;overflow:visible}
 .fs-playing .fs-own-hero{position:absolute;inset:0;display:block;overflow:hidden;border:1px solid #c9ab7060;border-radius:5px;background:#172c2c}
 .fs-playing .fs-own-hero>button{position:absolute;inset:0;width:100%;height:100%;margin:0;border:0;border-radius:0}
@@ -154,6 +158,12 @@
 .fs-playing .fs-player[data-equip-count]:has(.fs-equip) .fs-turn-badge{bottom:80px}
 .fs-playing .fs-hand-heading>.fs-resources{display:flex;flex:none;gap:5px;overflow:visible;max-width:none}
 .fs-playing .fs-hand-heading .fs-resources>[data-resource]{min-height:22px}
+/* 仙田计数按钮：紧挨血量/手牌，既是计数也是「当摄宝使用」的入口，比头像上的小字好点。
+   窄屏标题行同时放得下血量/手牌/仙田三枚计数：计数与按钮不被压扁，倒计时可让位。 */
+.fs-playing .fs-hand-heading>.fs-field-counter{display:inline-flex;flex:none;align-items:center;gap:4px;min-height:22px;padding:1px 7px;border:1px solid #a4d9ed;border-radius:4px;background:#163843ec;color:#e0f4ff;font-size:10px;white-space:nowrap}
+.fs-playing .fs-hand-heading>.fs-field-counter>b{font:700 13px/1 system-ui,sans-serif;font-variant-numeric:tabular-nums}
+.fs-playing .fs-hand-heading>.fs-timer{flex:0 1 auto;min-width:0;overflow:hidden}
+@media(max-width:359px){.fs-playing .fs-hand-heading{gap:4px}.fs-playing .fs-hand-heading>.fs-resources{gap:3px}.fs-playing .fs-hand-heading>.fs-field-counter{gap:2px;padding:1px 4px;font-size:9px}.fs-playing .fs-hand-heading button{padding:3px 4px;font-size:8px}}
 .fs-playing .fs-player-main>.fs-identity{left:auto;right:2px;top:3px;min-width:22px;min-height:20px;font-size:11px}
 .fs-playing .fs-seat{left:25px;right:26px;max-height:12px;overflow:hidden}
 .fs-playing .fs-opponent-equipment{bottom:50px;height:26px;max-height:26px}
@@ -193,7 +203,7 @@
 .fs-form-collection img{width:58px;height:86px;object-fit:cover;flex:none;border-radius:3px}
 .fs-form-collection strong{font-size:14px;color:#f0d59f}.fs-form-collection b{font-size:12px}.fs-form-collection p{font-size:11px;line-height:1.5}
 .fs-playing[data-layout=portrait] .fs-dock{grid-template-columns:var(--own-hero-width) minmax(0,1fr);grid-template-rows:1fr;padding:0 6px;gap:6px}
-.fs-playing[data-layout=portrait] .fs-hand-area{grid-template-columns:1fr;grid-template-rows:22px minmax(0,1fr) 38px;gap:3px}
+.fs-playing[data-layout=portrait] .fs-hand-area{grid-template-columns:1fr;grid-template-rows:22px minmax(0,1fr) auto;gap:3px}
 .fs-playing[data-layout=portrait] .fs-hand{padding-top:var(--hand-top,30px)}
 .fs-playing[data-layout=portrait] .fs-hand-area{padding-bottom:var(--fs-safe-bottom)}
 .fs-playing[data-layout=portrait] .fs-actions{grid-column:1;grid-row:3;padding:0;align-items:stretch}
