@@ -1,3 +1,108 @@
+// 公司首页使用独立展示组件，隐藏 reco 默认 Hero，保留导航与页脚
+.vectorac-home
+  .navbar
+    color #e8f0f4
+    background transparent
+    box-shadow none
+    transition background-color .25s ease, box-shadow .25s ease
+    .links
+      background transparent
+    .home-link,
+    .site-name,
+    .sidebar-button
+      color #e8f0f4
+    .nav-links
+      a
+        color #c4d2d9
+        &:hover,
+        &.router-link-active
+          color #75e7c8
+      .nav-dropdown a
+        color var(--text-color)
+        &:hover,
+        &.router-link-active
+          color $accentColor
+    .dropdown-title .arrow
+      border-top-color #9bb6c2
+    .search-box
+      .iconfont
+        color #a9bbc6
+      input
+        position relative
+        width 0
+        cursor pointer
+        color #e8f0f4
+        border-color transparent
+        background transparent
+        &:focus
+          width 10rem
+          cursor text
+          border-color $accentColor
+    &.is-home-scrolled
+      color var(--text-color)
+      background var(--background-color)
+      box-shadow var(--box-shadow)
+      .links
+        background var(--background-color)
+      .home-link,
+      .site-name,
+      .sidebar-button
+        color var(--text-color)
+      .nav-links a
+        color var(--text-color)
+        &:hover,
+        &.router-link-active
+          color $accentColor
+      .dropdown-title .arrow
+        border-top-color var(--text-color-sub)
+      .search-box
+        .iconfont
+          color var(--text-color-sub)
+        input
+          color var(--text-color-sub)
+  &.sidebar-open
+    .navbar
+      color var(--text-color)
+      background var(--background-color)
+      box-shadow var(--box-shadow)
+      .links
+        background var(--background-color)
+      .home-link,
+      .site-name,
+      .sidebar-button,
+      .search-box .iconfont
+        color var(--text-color)
+      .search-box input
+        color var(--text-color-sub)
+  .home-blog
+    > .hero
+      display none
+    .home-center
+      max-width none
+      margin 0
+      padding 0
+  @media (max-width: 719px)
+    .navbar
+      .home-link
+        transition opacity .18s ease
+      .site-name
+        max-width calc(100vw - 190px)
+        overflow hidden
+        text-overflow ellipsis
+        white-space nowrap
+        vertical-align top
+      .search-box input:focus
+        width 8rem
+      &:focus-within .home-link
+        opacity 0
+        pointer-events none
+
+@media (prefers-reduced-motion: reduce)
+  #cw-fab .pulse
+    animation none !important
+  .back-to-top
+    transition none
+
 // 短链服务产品页 CTA 按钮
 .demo-cta
   display block
